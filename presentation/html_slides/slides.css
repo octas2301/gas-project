@@ -1,0 +1,529 @@
+/* 南の海テンプレ風 - スライド共通
+   参考: キンコーズ・irodori パワポデザイン（余白・配色・揃え・フォント階層） */
+:root {
+  --navy: #1B4F72;
+  --turquoise: #17A2B8;
+  --light-blue: #87CEEB;
+  --light-blue-bg: rgba(135, 206, 235, 0.45);
+  --coral: #E07A5F;
+  --yellow: #FFD700;
+  --sand: #F4E4D0;
+  --white: #fff;
+  --text-dark: #2C3E50;
+  --slide-w: 960px;
+  --slide-h: 540px;
+  /* 余白：横幅5%程度で統一（見やすさ・揃え） */
+  --margin-h: 48px;
+  --margin-v: 36px;
+  /* フォント階層（2〜3段でコントラスト） */
+  --font-title: 1.5rem;
+  --font-sub: 1.2rem;
+  --font-body: 1rem;
+  --font-caption: 0.9rem;
+  --line-height: 1.5;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Yu Gothic', 'Meiryo', 'Hiragino Sans', sans-serif; background: #1a1a1a; }
+
+.slides { width: var(--slide-w); margin: 0 auto; }
+
+/* 1スライド = 1ページ（PDF用） */
+section.slide {
+  width: var(--slide-w);
+  height: var(--slide-h);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+@media print {
+  section.slide { page-break-after: always; }
+  body { background: #fff; }
+}
+
+/* ========== タイトルスライド（全面画像 + 右に半透明円） ========== */
+.slide.title-slide {
+  justify-content: flex-start;
+  align-items: stretch;
+}
+.slide.title-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.slide.title-slide .title-circle {
+  position: absolute;
+  right: var(--margin-h);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: var(--light-blue-bg);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--margin-v);
+  text-align: center;
+}
+.slide.title-slide .title-line1 {
+  font-size: var(--font-sub);
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 0.25rem 0;
+}
+.slide.title-slide .title-line2 {
+  font-size: var(--font-title);
+  font-weight: 700;
+  color: var(--yellow);
+  margin: 0 0 0.5rem 0;
+}
+.slide.title-slide .title-sub {
+  font-size: var(--font-caption);
+  color: var(--white);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin: 0;
+}
+.slide.title-slide .accent-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--light-blue-bg);
+  z-index: 1;
+}
+.slide.title-slide .accent-circle.top { width: 80px; height: 80px; top: 12%; left: 48%; }
+.slide.title-slide .accent-circle.bottom { width: 50px; height: 50px; bottom: 18%; right: 22%; }
+
+/* ========== コンテンツスライド（左に青バー CONTENTS風） ========== */
+.slide.contents-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+/* ② 文字を見やすくする白色70%透過オーバーレイ */
+.slide.contents-slide .overlay-white,
+.slide.section-slide .overlay-white,
+.slide.header-slide .overlay-white {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 0.5;
+  pointer-events: none;
+}
+.slide.contents-slide .contents-bar,
+.slide.contents-slide .contents-body,
+.slide.section-slide .section-left,
+.slide.section-slide .section-right,
+.slide.header-slide .header-bar,
+.slide.header-slide .body { z-index: 1; }
+.slide.contents-slide .contents-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 100%;
+  background: var(--light-blue-bg);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--white);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  letter-spacing: 0.2em;
+}
+.slide.contents-slide .contents-body {
+  position: relative;
+  z-index: 1;
+  margin-left: 72px;
+  padding: var(--margin-v) var(--margin-h);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: calc(var(--slide-w) - 72px - var(--margin-h) * 2);
+}
+.slide.contents-slide .contents-body h2 {
+  color: var(--navy);
+  font-size: var(--font-title);
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.35rem;
+  border-bottom: 3px solid var(--turquoise);
+  text-align: left;
+}
+.slide.contents-slide .contents-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.slide.contents-slide .contents-body li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-dark);
+  font-size: var(--font-body);
+  line-height: var(--line-height);
+  text-align: left;
+}
+.slide.contents-slide .contents-body .num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: var(--font-caption);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.slide.contents-slide .contents-body .footer-msg {
+  margin-top: 1rem;
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--navy);
+  text-align: left;
+}
+.slide.contents-slide .contents-body .one-msg,
+.slide.header-slide .body .one-msg,
+.slide.section-slide .section-right .one-msg {
+  font-size: var(--font-sub);
+  line-height: var(--line-height);
+  color: var(--text-dark);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ========== セクションスライド（左に円 + 右に番号リスト） ========== */
+.slide.section-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.slide.section-slide .section-left {
+  position: absolute;
+  left: 3%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: var(--light-blue-bg);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  color: var(--white);
+  font-weight: 700;
+  font-size: 1rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.slide.section-slide .section-right {
+  position: relative;
+  z-index: 1;
+  margin-left: 280px;
+  padding: var(--margin-v) var(--margin-h);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.slide.section-slide .section-right h2 {
+  color: var(--navy);
+  font-size: var(--font-title);
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+  text-align: left;
+}
+.slide.section-slide .section-right ol {
+  padding-left: 1.25rem;
+  margin: 0;
+  color: var(--text-dark);
+  font-size: var(--font-body);
+  line-height: var(--line-height);
+  text-align: left;
+}
+.slide.section-slide .section-right .footer-msg {
+  margin-top: 1rem;
+  font-size: var(--font-caption);
+  font-weight: 700;
+  color: var(--navy);
+  text-align: left;
+}
+
+/* ========== ヘッダースライド（①海画像で統一・②白70%オーバーレイ） ========== */
+.slide.header-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.slide.header-slide .header-bar {
+  height: 52px;
+  background: linear-gradient(135deg, var(--light-blue) 0%, var(--turquoise) 100%);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--margin-h);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+.slide.header-slide .header-bar h2 {
+  margin: 0;
+  font-size: var(--font-title);
+  color: var(--white);
+  font-weight: 700;
+  text-align: left;
+}
+.slide.header-slide .body {
+  flex: 1;
+  padding: var(--margin-v) var(--margin-h);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-dark);
+  overflow: auto;
+  position: relative;
+  z-index: 1;
+}
+.slide.header-slide.has-bg .body {
+  background: rgba(255, 255, 255, 0.7);
+}
+.slide.header-slide .body ul {
+  padding-left: 1.5rem;
+  margin: 0 0 0.5rem 0;
+  line-height: var(--line-height);
+  font-size: var(--font-body);
+  text-align: left;
+}
+.slide.header-slide .body p {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--font-body);
+  line-height: var(--line-height);
+  color: var(--text-dark);
+  text-align: left;
+}
+.slide.header-slide .body .footer-msg {
+  margin-top: 1rem;
+  text-align: center;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: var(--font-caption);
+}
+
+/* ========== 表スライド ========== */
+.slide.table-slide .header-bar {
+  height: 48px;
+  background: linear-gradient(135deg, var(--light-blue) 0%, var(--turquoise) 100%);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--margin-h);
+}
+.slide.table-slide .header-bar h2 {
+  margin: 0;
+  font-size: var(--font-sub);
+  color: var(--white);
+  font-weight: 700;
+  text-align: left;
+}
+.slide.table-slide .body {
+  flex: 1;
+  padding: var(--margin-v) var(--margin-h);
+  background: var(--white);
+  overflow: auto;
+}
+.slide.table-slide table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.slide.table-slide th {
+  background: var(--navy);
+  color: var(--white);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+}
+.slide.table-slide td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(23, 162, 184, 0.35);
+  color: var(--text-dark);
+}
+.slide.table-slide tr:nth-child(even) td { background: var(--sand); }
+.slide.table-slide .table-footer {
+  margin-top: 0.75rem;
+  font-weight: 700;
+  color: var(--navy);
+  font-size: var(--font-caption);
+  text-align: left;
+}
+
+/* ========== ③ オシャレな比較表（列で差・強調列）参考: transporterz 比較表 ========== */
+.slide.table-slide .body table.comparison-cool {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.slide.table-slide .body table.comparison-cool th,
+.slide.table-slide .body table.comparison-cool td {
+  padding: 0.6rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+}
+.slide.table-slide .body table.comparison-cool th {
+  color: var(--white);
+  font-size: 0.9rem;
+}
+.slide.table-slide .body table.comparison-cool th.col-item {
+  background: var(--navy);
+  text-align: left;
+  width: 22%;
+}
+.slide.table-slide .body table.comparison-cool th.col-snorkel {
+  background: var(--turquoise);
+  color: var(--white);
+  width: 26%;
+}
+.slide.table-slide .body table.comparison-cool th.col-other {
+  background: #2C3E50;
+  color: var(--white);
+  width: 26%;
+}
+<｜tool▁call▁end｜><｜tool▁call▁begin｜>
+TodoWrite
+.slide.table-slide .body table.comparison-cool td.col-item {
+  background: #1a252f;
+  color: var(--white);
+  text-align: left;
+}
+.slide.table-slide .body table.comparison-cool td.col-snorkel {
+  background: rgba(23, 162, 184, 0.25);
+  color: var(--navy);
+}
+.slide.table-slide .body table.comparison-cool td.col-other {
+  background: var(--white);
+  color: var(--text-dark);
+}
+.slide.table-slide .body table.comparison-cool tr:nth-child(even) td.col-other {
+  background: #f8f9fa;
+}
+.slide.table-slide .body table.comparison-cool .symbol {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* ========== 課題スライド（問題提起） ========== */
+.slide.problem-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.slide.problem-slide .overlay-white {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 0.5;
+  pointer-events: none;
+}
+.slide.problem-slide .problem-badge {
+  position: absolute;
+  top: var(--margin-v);
+  right: var(--margin-h);
+  background: var(--yellow);
+  color: var(--navy);
+  padding: 0.35rem 0.8rem;
+  border-radius: 20px;
+  font-size: var(--font-caption);
+  font-weight: 700;
+  z-index: 1;
+}
+.slide.problem-slide .problem-body {
+  position: relative;
+  z-index: 1;
+  padding: var(--margin-v) var(--margin-h);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.slide.problem-slide .problem-body h2 {
+  color: var(--navy);
+  font-size: var(--font-title);
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid var(--coral);
+  text-align: left;
+}
+.slide.problem-slide .problem-body .problem-label {
+  font-weight: 700;
+  color: var(--navy);
+  margin: 1rem 0 0.5rem 0;
+  font-size: var(--font-sub);
+  text-align: left;
+}
+.slide.problem-slide .problem-body .problem-label:first-of-type { margin-top: 0; }
+.slide.problem-slide .problem-body ul {
+  padding-left: 1.5rem;
+  line-height: var(--line-height);
+  color: var(--text-dark);
+  margin: 0 0 1rem 0;
+  font-size: var(--font-body);
+  text-align: left;
+}
+.slide.problem-slide .problem-body .one-msg {
+  font-size: var(--font-body);
+  color: var(--text-dark);
+  margin: 0 0 0.5rem 0;
+}
+.slide.problem-slide .problem-body .solution-msg {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(23, 162, 184, 0.2);
+  border-left: 4px solid var(--turquoise);
+  font-weight: 700;
+  color: var(--navy);
+  font-size: var(--font-sub);
+  text-align: left;
+}
+
+/* ========== THANK YOU（全面画像 + 中央白文字） ========== */
+.slide.closing-slide .bg-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+.slide.closing-slide .closing-text {
+  position: relative;
+  z-index: 1;
+  margin: auto;
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: var(--white);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  text-align: center;
+}

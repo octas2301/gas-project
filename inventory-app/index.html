@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <? if (baseUrl) { ?><base href="<?= baseUrl ?>"><? } ?>
+  <title>在庫管理アプリ</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0 0 56px 0; font-family: "Helvetica Neue", Arial, sans-serif; font-size: 16px; background: #f5f5f5; -webkit-tap-highlight-color: transparent; }
+    .container { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
+    .view { display: none; }
+    .view.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    h1 { font-size: 1.2rem; margin: 0 0 12px 0; color: #333; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 4px; color: #666; font-size: 0.875rem; }
+    .field input, .field select { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; background: #fff; }
+    .field input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+    .field.readonly { background: #f0f0f0; padding: 10px; border-radius: 8px; color: #333; }
+    .btn { width: 100%; min-height: 48px; padding: 14px; font-size: 16px; font-weight: bold; color: #fff; background: #1a73e8; border: none; border-radius: 8px; cursor: pointer; margin-top: 8px; display: inline-block; box-sizing: border-box; line-height: 1.25; -webkit-tap-highlight-color: transparent; }
+    .btn:active { opacity: 0.9; }
+    .btn.secondary { background: #5f6368; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; background: #fff; border-top: 1px solid #ddd; display: flex; flex-wrap: wrap; z-index: 50; }
+    .nav-item { flex: 1; min-width: 60px; min-height: 44px; padding: 12px 8px; text-align: center; font-size: 0.65rem; color: #5f6368; cursor: pointer; text-decoration: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    .nav-item.here { color: #1a73e8; font-weight: bold; }
+    .nav-item:hover { background: #f5f5f5; }
+    .toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); padding: 10px 20px; background: #333; color: #fff; border-radius: 8px; font-size: 14px; z-index: 100; opacity: 0; transition: opacity 0.2s; }
+    .toast.show { opacity: 1; }
+    .toast.err { background: #c5221f; }
+    table.list { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: #fff; border-radius: 8px; overflow: hidden; }
+    table.list th, table.list td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+    table.list th { background: #f5f5f5; font-weight: bold; }
+    .variance-minus { color: #c5221f; font-weight: bold; }
+    #barcodeVideo { width: 100%; max-width: 300px; background: #000; border-radius: 8px; }
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal.show { display: flex; }
+    .modal-inner { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; }
+  </style>
+</head>
+<body data-view="<?= viewAttr ?>">
+  <div id="loading-msg" style="padding:1rem;text-align:center;color:#666;display:none;">読み込み中…</div>
+  <p id="diag-line" style="margin:4px 8px;font-size:11px;color:#666;">表示: <?= view ?> | base: <?= baseUrl ? 'あり' : 'なし' ?></p>
+  <? if (showLog) { ?><div id="debug-log" style="margin:8px;padding:8px;background:#fff3cd;border:1px solid #ffc107;font-size:12px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;min-height:50px;"><strong>調査用ログ（?log=1で表示）</strong><br><pre id="server-log-pre"><?!= serverLogHtml || '(サーバーログなし)' ?></pre></div><? } ?>
+  <div class="container" id="main-container">
+    <div id="view-shipping" class="view <?= view === 'shipping' ? 'active' : '' ?>">
+      <h1>🛒 出荷</h1>
+      <? if (toastMsg) { ?><p style="background:#d4edda;color:#155724;padding:8px;border-radius:8px;"><?!= toastMsg ?></p><? } ?>
+      <form id="form-shipping" onsubmit="submitShipping(); return false;">
+        <input type="hidden" name="action" value="shipping">
+        <div class="field">
+          <label for="ship-jan">JANコード</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="ship-jan" name="ship_jan" placeholder="スキャン or 手入力" inputmode="numeric" autocomplete="off" required style="flex:1;">
+            <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('ship-jan')" title="カメラでスキャン">📷 スキャン</button>
+          </div>
+        </div>
+        <div class="field readonly" id="ship-product">商品名 —（JAN入力後は自動表示）</div>
+        <div class="field">
+          <label for="ship-from">出荷元</label>
+          <select id="ship-from" name="ship_from" required><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select>
+        </div>
+        <button type="submit" class="btn">登録（1点）</button>
+      </form>
+    </div>
+
+    <div id="view-move" class="view <?= view === 'move' ? 'active' : '' ?>">
+      <h1>🔄 在庫移動</h1>
+      <div class="field">
+        <label for="move-jan">JANコード</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="move-jan" placeholder="スキャン or 手入力" inputmode="numeric" autocomplete="off" style="flex:1;">
+          <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('move-jan')" title="カメラでスキャン">📷 スキャン</button>
+        </div>
+      </div>
+      <div class="field readonly" id="move-product">商品名 —</div>
+      <div class="field"><label for="move-qty">移動数量</label><input type="number" id="move-qty" value="1" min="1"></div>
+      <div class="field"><label for="move-from">移動元</label><select id="move-from"><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select></div>
+      <div class="field"><label for="move-to">移動先</label><select id="move-to"><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select></div>
+      <button type="button" class="btn" onclick="submitMove()">登録</button>
+    </div>
+
+    <div id="view-receiving" class="view <?= view === 'receiving' ? 'active' : '' ?>">
+      <h1>🚚 入荷</h1>
+      <div class="field">
+        <label for="rec-jan">JANコード</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="rec-jan" placeholder="スキャン or 手入力" inputmode="numeric" autocomplete="off" style="flex:1;">
+          <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('rec-jan')" title="カメラでスキャン">📷 スキャン</button>
+        </div>
+      </div>
+      <div class="field" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:-4px;">
+        <a href="#" id="rec-search-amazon" class="search-link" target="_blank" rel="noopener"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" width="44" height="16" style="vertical-align:middle;object-fit:contain;"> Amazonで商品名を検索</a>
+        <a href="#" id="rec-search-google" class="search-link" target="_blank" rel="noopener"><img src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" alt="Google" width="20" height="20" style="vertical-align:middle;"> Googleで商品名を検索</a>
+      </div>
+      <div class="field">
+        <label for="rec-product">商品名</label>
+        <input type="text" id="rec-product" placeholder="JANで検索 or 手入力">
+      </div>
+      <div class="field"><label for="rec-unitcost">仕入単価（円）</label><input type="number" id="rec-unitcost" min="0" step="1"></div>
+      <div class="field"><label for="rec-box">箱入数</label><input type="number" id="rec-box" value="0" min="0"></div>
+      <div class="field"><label for="rec-boxcount">箱数</label><input type="number" id="rec-boxcount" value="0" min="0"></div>
+      <div class="field"><label for="rec-loose">端数</label><input type="number" id="rec-loose" value="0" min="0"></div>
+      <div class="field readonly" id="rec-totalqty">数量 0</div>
+      <div class="field"><label for="rec-loc">ロケーション</label><select id="rec-loc"><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select></div>
+      <div class="field"><label for="rec-reason">入荷理由</label><select id="rec-reason"><option value="">選択</option><?!= reasonsOptionsHtml || '' ?></select></div>
+      <button type="button" class="btn" onclick="submitReceiving()">登録</button>
+    </div>
+
+    <div id="view-count" class="view <?= view === 'count' ? 'active' : '' ?>">
+      <h1>📦 棚卸</h1>
+      <p style="font-size:0.8rem;color:#666;margin:0 0 0.5rem 0;">棚卸期間中は入出荷を加味した想定在庫で突合し、完了で確定値となります。</p>
+      <div id="count-session-status" style="margin-bottom:0.5rem;font-size:0.875rem;color:#333;">棚卸を開始してください</div>
+      <div style="margin-bottom:0.75rem;">
+        <button type="button" class="btn" id="count-btn-start" onclick="countStart()">スタート</button>
+        <button type="button" class="btn" id="count-btn-complete" onclick="countComplete()" style="display:none;">完了</button>
+        <button type="button" class="btn secondary" onclick="toggleCountAdjust()" style="margin-top:8px;font-size:0.875rem;">棚卸確定後の修正</button>
+      </div>
+
+      <div id="count-adjust-section" style="display:none;margin-bottom:1rem;padding:12px;background:#fff8e1;border-radius:8px;border:1px solid #ffc107;">
+        <h2 style="font-size:1rem;margin:0 0 8px 0;">棚卸確定後の修正</h2>
+        <p style="font-size:0.8rem;color:#666;margin:0 0 10px 0;">前回棚卸の確定値に対して加算・減算します。</p>
+        <div class="field">
+          <label for="adjust-jan">JANコード</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="adjust-jan" placeholder="スキャン or 手入力" inputmode="numeric" autocomplete="off" style="flex:1;">
+            <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('adjust-jan')" title="カメラでスキャン">📷 スキャン</button>
+          </div>
+        </div>
+        <div class="field readonly" id="adjust-product">商品名 —</div>
+        <div class="field">
+          <label for="adjust-type">区分</label>
+          <select id="adjust-type">
+            <option value="加算">加算（在庫を増やす）</option>
+            <option value="減算">減算（在庫を減らす）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="adjust-qty">数量</label>
+          <input type="number" id="adjust-qty" value="1" min="1">
+        </div>
+        <div class="field">
+          <label for="adjust-loc">ロケーション（任意）</label>
+          <select id="adjust-loc"><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select>
+        </div>
+        <div class="field">
+          <label for="adjust-memo">備考（任意）</label>
+          <input type="text" id="adjust-memo" placeholder="">
+        </div>
+        <button type="button" class="btn" onclick="submitCountAdjust()">保存</button>
+        <button type="button" class="btn secondary" onclick="toggleCountAdjust()" style="margin-top:8px;">閉じる</button>
+      </div>
+
+      <div class="field">
+        <label for="count-jan">JANコード</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="count-jan" placeholder="スキャン or 手入力" inputmode="numeric" autocomplete="off" style="flex:1;">
+          <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('count-jan')" title="カメラでスキャン">📷 スキャン</button>
+        </div>
+      </div>
+      <div class="field readonly" id="count-product">商品名 —</div>
+      <div class="field"><label for="count-box">箱入数</label><input type="number" id="count-box" value="0" min="0"></div>
+      <div class="field"><label for="count-boxcount">箱数</label><input type="number" id="count-boxcount" value="0" min="0"></div>
+      <div class="field"><label for="count-loose">端数</label><input type="number" id="count-loose" value="0" min="0"></div>
+      <div class="field readonly" id="count-totalqty">数量 0</div>
+      <div class="field"><label for="count-loc">ロケーション</label><select id="count-loc"><option value="">選択</option><?!= locationsOptionsHtml || '' ?></select></div>
+      <button type="button" class="btn" onclick="submitCount()">保存</button>
+    </div>
+
+    <div id="view-variance" class="view <?= view === 'variance' ? 'active' : '' ?>">
+      <h1>⚠️ 差異</h1>
+      <p id="variance-caption" style="font-size:0.875rem;color:#666;">理論在庫と棚卸実数の差（0でないもの）</p>
+      <div id="variance-list"></div>
+    </div>
+
+    <div id="view-products" class="view <?= view === 'products' ? 'active' : '' ?>">
+      <h1>🛠️ 商品情報</h1>
+      <div class="field">
+        <label for="prod-single">単品JAN</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="prod-single" placeholder="スキャン or 手入力" style="flex:1;">
+          <button type="button" class="btn secondary" style="width:auto;min-width:auto;padding:10px 12px;font-size:0.8rem;" onclick="openScanModal('prod-single')" title="カメラでスキャン">📷 スキャン</button>
+        </div>
+      </div>
+      <div class="field"><label for="prod-box">箱JAN</label><input type="text" id="prod-box"></div>
+      <div class="field"><label for="prod-name">商品名</label><input type="text" id="prod-name"></div>
+      <div class="field"><label for="prod-cost">商品原価</label><input type="number" id="prod-cost" min="0"></div>
+      <div class="field"><label for="prod-boxin">箱入数</label><input type="number" id="prod-boxin" value="0" min="0"></div>
+      <button type="button" class="btn" onclick="submitProduct()">登録</button>
+    </div>
+
+    <div id="view-stock" class="view <?= view === 'stock' ? 'active' : '' ?>">
+      <h1>📊 現在庫</h1>
+      <p style="font-size:0.875rem;color:#666;">前回棚卸＋入荷－出荷（全社合計）</p>
+      <div id="stock-list"></div>
+    </div>
+
+    <div id="view-settings" class="view <?= view === 'settings' ? 'active' : '' ?>">
+      <h1>⚙️ 設定</h1>
+      <div class="field">
+        <label for="setting-tantou">現在の担当者</label>
+        <select id="setting-tantou"><option value="">選択</option><?!= tantouOptionsHtml || '' ?></select>
+      </div>
+      <button type="button" class="btn" onclick="saveTantou()">保存</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a class="nav-item <?= view === 'shipping' ? 'here' : '' ?>" data-view="shipping" href="?view=shipping" target="_self">🛒 出荷</a>
+    <a class="nav-item <?= view === 'move' ? 'here' : '' ?>" data-view="move" href="?view=move" target="_self">🔄 移動</a>
+    <a class="nav-item <?= view === 'receiving' ? 'here' : '' ?>" data-view="receiving" href="?view=receiving" target="_self">🚚 入荷</a>
+    <a class="nav-item <?= view === 'count' ? 'here' : '' ?>" data-view="count" href="?view=count" target="_self">📦 棚卸</a>
+    <a class="nav-item <?= view === 'variance' ? 'here' : '' ?>" data-view="variance" href="?view=variance" target="_self">⚠️ 差異</a>
+    <a class="nav-item <?= view === 'products' ? 'here' : '' ?>" data-view="products" href="?view=products" target="_self">🛠️ 商品</a>
+    <a class="nav-item <?= view === 'stock' ? 'here' : '' ?>" data-view="stock" href="?view=stock" target="_self">📊 在庫</a>
+    <a class="nav-item <?= view === 'settings' ? 'here' : '' ?>" data-view="settings" href="?view=settings" target="_self">⚙️ 設定</a>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="modal-count-confirm" class="modal">
+    <div class="modal-inner">
+      <p style="margin:0 0 16px 0;line-height:1.5;">今回の棚卸をすべて完了し、確定値としますか？</p>
+      <button type="button" class="btn" onclick="_doCountComplete()">はい（確定）</button>
+      <button type="button" class="btn secondary" onclick="closeCountConfirmModal()" style="margin-top:8px;">いいえ（戻る）</button>
+    </div>
+  </div>
+
+  <div id="modal-camera" class="modal">
+    <div class="modal-inner">
+      <p id="scan-modal-msg" style="margin:0 0 12px 0;font-size:0.9rem;">バーコードを枠内に合わせてください</p>
+      <video id="barcodeVideo" playsinline autoplay muted playsinline style="width:100%;max-width:280px;background:#000;border-radius:8px;"></video>
+      <p id="scan-unsupported" style="display:none;margin:10px 0;color:#c5221f;font-size:0.85rem;">お使いのブラウザではカメラスキャンに未対応です。Chrome をご利用ください。</p>
+      <div id="scan-permission-denied" style="display:none;">
+        <p style="margin:0 0 12px 0;font-size:0.85rem;color:#333;line-height:1.5;">カメラが許可されていません。下の「再度許可をリクエスト」をタップすると、ブラウザの許可ダイアログが出ることがあります。出ない場合は、Chromeのメニュー(⋮) → このサイトの設定 → カメラ → 許可 から設定してください。</p>
+        <button type="button" class="btn" id="scan-retry-btn" style="margin-bottom:8px;">再度許可をリクエスト</button>
+      </div>
+      <button type="button" class="btn secondary" style="margin-top:12px;" onclick="closeScanModal()">キャンセル</button>
+    </div>
+  </div>
+
+  <script>
+    var locations = [], reasons = [], tantouList = [];
+    var currentCountSessionId = null;
+    var debugEl = document.getElementById('debug-log');
+    var urlParams = new URLSearchParams(window.location.search);
+    var hash = (window.location.hash || '').replace(/^#/, '');
+    var debugMode = urlParams.get('debug') === '1' || urlParams.get('debug') === 'true' || hash.indexOf('debug=1') >= 0 || hash === 'debug';
+    function debugLog(msg) {
+      var m = (new Date().toISOString().slice(11, 23)) + ' ' + msg;
+      try { console.log(m); } catch (e) {}
+      if (debugEl) { debugEl.innerHTML += (msg + '\n').replace(/</g, '&lt;'); debugEl.scrollTop = debugEl.scrollHeight; }
+    }
+    function countLog(msg) {
+      var m = '[Count] ' + msg;
+      try { console.log(m); } catch (e) {}
+      if (debugEl) { debugEl.innerHTML += (m + '\n').replace(/</g, '&lt;'); debugEl.scrollTop = debugEl.scrollHeight; }
+    }
+    try { debugLog('0 script start'); } catch (e) {}
+
+    var currentView;
+    try {
+      currentView = (document.body.getAttribute('data-view') || 'shipping').trim() || 'shipping';
+      debugLog('1 currentView=' + currentView);
+    } catch (e) {
+      currentView = 'shipping';
+      debugLog('1 currentView set fallback: ' + (e && e.message));
+    }
+
+    function showView(id) {
+      document.querySelectorAll('.view').forEach(function(el) { el.classList.remove('active'); });
+      document.querySelectorAll('.nav-item').forEach(function(el) { el.classList.remove('here'); });
+      var el = document.getElementById('view-' + id);
+      if (el) el.classList.add('active');
+      var nav = document.querySelector('.nav-item[data-view="' + id + '"]');
+      if (nav) nav.classList.add('here');
+      currentView = id;
+      if (id === 'count') refreshCountSessionStatus();
+      if (id === 'variance') loadVariance();
+      if (id === 'stock') loadStock();
+    }
+
+    function toast(msg, isErr) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.toggle('err', !!isErr);
+      t.classList.add('show');
+      setTimeout(function() { t.classList.remove('show'); }, 2500);
+    }
+
+    function fillSelect(selId, list) {
+      var sel = document.getElementById(selId);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">選択</option>';
+      list.forEach(function(v) { sel.innerHTML += '<option value="' + (v || '').replace(/"/g, '&quot;') + '">' + (v || '').replace(/</g, '&lt;') + '</option>'; });
+    }
+
+    function loadMasters() {
+      var t0Loc = performance.now();
+      google.script.run.withSuccessHandler(function(loc) {
+        debugLog('[perf] apiGetLocations: ' + Math.round(performance.now() - t0Loc) + 'ms');
+        locations = loc || [];
+        fillSelect('ship-from', locations);
+        fillSelect('move-from', locations);
+        fillSelect('move-to', locations);
+        fillSelect('count-loc', locations);
+        fillSelect('rec-loc', locations);
+        fillSelect('adjust-loc', locations);
+      }).apiGetLocations();
+      var t0Reasons = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiGetReasons: ' + Math.round(performance.now() - t0Reasons) + 'ms');
+        reasons = r || [];
+        fillSelect('rec-reason', reasons);
+      }).apiGetReasons();
+      var t0TantouList = performance.now();
+      google.script.run.withSuccessHandler(function(t) {
+        debugLog('[perf] apiGetTantouList: ' + Math.round(performance.now() - t0TantouList) + 'ms');
+        tantouList = t || [];
+        fillSelect('setting-tantou', tantouList);
+        var t0Tantou = performance.now();
+        google.script.run.withSuccessHandler(function(cur) {
+          debugLog('[perf] apiGetTantou: ' + Math.round(performance.now() - t0Tantou) + 'ms');
+          var s = document.getElementById('setting-tantou');
+          if (s && cur) s.value = cur;
+        }).apiGetTantou();
+      }).apiGetTantouList();
+    }
+
+    function lookupProduct(janInputId, displayId, boxInCountId, unitCostId) {
+      var jan = (document.getElementById(janInputId) || {}).value;
+      if (!jan || jan.length < 5) {
+        if (displayId) {
+          var el = document.getElementById(displayId);
+          if (el) { if (el.tagName && el.tagName.toUpperCase() === 'INPUT') el.value = ''; else el.textContent = '商品名 —'; }
+        }
+        if (boxInCountId) { var el = document.getElementById(boxInCountId); if (el) el.value = ''; }
+        if (unitCostId) { var u = document.getElementById(unitCostId); if (u) u.value = ''; }
+        return null;
+      }
+      var t0Lookup = performance.now();
+      google.script.run.withSuccessHandler(function(p) {
+        debugLog('[perf] apiLookupProduct (' + janInputId + '): ' + Math.round(performance.now() - t0Lookup) + 'ms');
+        var disp = document.getElementById(displayId);
+        if (disp) { if (disp.tagName && disp.tagName.toUpperCase() === 'INPUT') disp.value = p ? (p.productName || '') : ''; else disp.textContent = p ? (p.productName || '—') : '（未登録）'; }
+        if (boxInCountId && p && (p.boxInCount !== undefined && p.boxInCount !== null && p.boxInCount !== '')) {
+          var boxEl = document.getElementById(boxInCountId);
+          if (boxEl) boxEl.value = Number(p.boxInCount) || 0;
+        }
+        if (unitCostId && p && (p.cost !== undefined && p.cost !== null && p.cost !== '')) {
+          var costEl = document.getElementById(unitCostId);
+          if (costEl) costEl.value = Number(p.cost) || '';
+        }
+        return p;
+      }).apiLookupProduct(jan);
+    }
+
+    document.getElementById('ship-jan').addEventListener('blur', function() { lookupProduct('ship-jan', 'ship-product'); });
+    document.getElementById('move-jan').addEventListener('blur', function() { lookupProduct('move-jan', 'move-product'); });
+    document.getElementById('rec-jan').addEventListener('blur', function() { lookupProduct('rec-jan', 'rec-product', 'rec-box', 'rec-unitcost'); });
+    document.getElementById('rec-search-amazon').addEventListener('click', function(e) { e.preventDefault(); var j = (document.getElementById('rec-jan') || {}).value; if (!j || !j.trim()) { toast('JANを入力してください', true); return; } window.open('https://www.amazon.co.jp/s?k=' + encodeURIComponent(j.trim()), '_blank', 'noopener'); });
+    document.getElementById('rec-search-google').addEventListener('click', function(e) { e.preventDefault(); var j = (document.getElementById('rec-jan') || {}).value; if (!j || !j.trim()) { toast('JANを入力してください', true); return; } window.open('https://www.google.com/search?q=' + encodeURIComponent(j.trim()), '_blank', 'noopener'); });
+    document.getElementById('count-jan').addEventListener('blur', function() { lookupProduct('count-jan', 'count-product', 'count-box'); });
+    document.getElementById('adjust-jan').addEventListener('blur', function() { lookupProduct('adjust-jan', 'adjust-product'); });
+
+    function calcQuantity(boxId, boxCountId, looseId, totalId) {
+      var b = Number(document.getElementById(boxId).value) || 0;
+      var c = Number(document.getElementById(boxCountId).value) || 0;
+      var l = Number(document.getElementById(looseId).value) || 0;
+      var t = b * c + l;
+      var el = document.getElementById(totalId);
+      if (el) el.textContent = (totalId.indexOf('count') >= 0 ? '数量 ' : '数量 ') + t;
+      return t;
+    }
+    document.getElementById('rec-box').addEventListener('input', function() { calcQuantity('rec-box', 'rec-boxcount', 'rec-loose', 'rec-totalqty'); });
+    document.getElementById('rec-boxcount').addEventListener('input', function() { calcQuantity('rec-box', 'rec-boxcount', 'rec-loose', 'rec-totalqty'); });
+    document.getElementById('rec-loose').addEventListener('input', function() { calcQuantity('rec-box', 'rec-boxcount', 'rec-loose', 'rec-totalqty'); });
+    document.getElementById('count-box').addEventListener('input', function() { calcQuantity('count-box', 'count-boxcount', 'count-loose', 'count-totalqty'); });
+    document.getElementById('count-boxcount').addEventListener('input', function() { calcQuantity('count-box', 'count-boxcount', 'count-loose', 'count-totalqty'); });
+    document.getElementById('count-loose').addEventListener('input', function() { calcQuantity('count-box', 'count-boxcount', 'count-loose', 'count-totalqty'); });
+
+    function submitShipping() {
+      var jan = document.getElementById('ship-jan').value.trim();
+      if (!jan) { toast('JANを入力してください', true); return; }
+      var from = document.getElementById('ship-from').value;
+      var product = document.getElementById('ship-product').textContent.replace('商品名 ', '').replace('—', '').trim();
+      var t0Ship = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiShipping: ' + Math.round(performance.now() - t0Ship) + 'ms');
+        if (r.ok) { document.getElementById('ship-jan').value = ''; document.getElementById('ship-product').textContent = '商品名 —'; document.getElementById('ship-jan').focus(); toast('登録しました'); }
+        else toast(r.error || 'エラー', true);
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiShipping(jan, product || jan, from);
+    }
+
+    function submitMove() {
+      var jan = document.getElementById('move-jan').value.trim();
+      if (!jan) { toast('JANを入力してください', true); return; }
+      var product = document.getElementById('move-product').textContent.replace('商品名 ', '').trim();
+      var from = document.getElementById('move-from').value;
+      var to = document.getElementById('move-to').value;
+      var qty = document.getElementById('move-qty').value || 1;
+      var t0Move = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiMove: ' + Math.round(performance.now() - t0Move) + 'ms');
+        if (r.ok) { document.getElementById('move-jan').value = ''; document.getElementById('move-product').textContent = '商品名 —'; toast('登録しました'); }
+        else toast(r.error || 'エラー', true);
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiMove(jan, product || jan, from, to, qty);
+    }
+
+    function resetReceivingForm() {
+      var ids = ['rec-jan', 'rec-product', 'rec-unitcost', 'rec-box', 'rec-boxcount', 'rec-loose'];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (!el) continue;
+        if (el.tagName && el.tagName.toUpperCase() === 'SELECT') el.value = '';
+        else if (ids[i] === 'rec-box' || ids[i] === 'rec-boxcount' || ids[i] === 'rec-loose') el.value = '0';
+        else el.value = '';
+      }
+      var totalEl = document.getElementById('rec-totalqty');
+      if (totalEl) totalEl.textContent = '数量 0';
+      var locEl = document.getElementById('rec-loc');
+      if (locEl) locEl.value = '';
+      var reasonEl = document.getElementById('rec-reason');
+      if (reasonEl) reasonEl.value = '';
+      var janEl = document.getElementById('rec-jan');
+      if (janEl) janEl.focus();
+    }
+
+    function submitReceiving() {
+      try {
+        var janEl = document.getElementById('rec-jan');
+        if (!janEl || !janEl.value || !janEl.value.trim()) { toast('JANを入力してください', true); return; }
+        var jan = janEl.value.trim();
+        var productEl = document.getElementById('rec-product');
+        var product = (productEl && productEl.value !== undefined ? productEl.value : '').trim() || jan;
+        var unitCost = (document.getElementById('rec-unitcost') || {}).value || '';
+        var box = (document.getElementById('rec-box') || {}).value || 0;
+        var boxCount = (document.getElementById('rec-boxcount') || {}).value || 0;
+        var loose = (document.getElementById('rec-loose') || {}).value || 0;
+        var qty = calcQuantity('rec-box', 'rec-boxcount', 'rec-loose', 'rec-totalqty');
+        if (qty <= 0) { toast('数量（箱数・端数）を入力してください', true); return; }
+        var loc = (document.getElementById('rec-loc') || {}).value || '';
+        var reason = (document.getElementById('rec-reason') || {}).value || '';
+        var cost = unitCost === '' || unitCost === null ? 0 : unitCost;
+        var t0Rec = performance.now();
+        google.script.run.withSuccessHandler(function(r) {
+          debugLog('[perf] apiReceiving: ' + Math.round(performance.now() - t0Rec) + 'ms');
+          if (r && r.ok) {
+            resetReceivingForm();
+            toast('登録しました');
+          } else { toast((r && r.error) || 'エラー', true); }
+        }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message ? e.message : String(e)), true); }).apiReceiving(jan, product, cost, box, boxCount, loose, qty, loc, unitCost, reason);
+      } catch (err) {
+        toast('エラー: ' + (err && (err.message || String(err))), true);
+      }
+    }
+
+    function refreshCountSessionStatus() {
+      countLog('refreshCountSessionStatus called');
+      var t0Session = performance.now();
+      google.script.run.withSuccessHandler(function(session) {
+        debugLog('[perf] apiGetCountSession (refresh): ' + Math.round(performance.now() - t0Session) + 'ms');
+        if (session && session.sessionId) {
+          countLog('apiGetCountSession success sessionId=' + (session.sessionId || '').substring(0, 8) + '...');
+          currentCountSessionId = session.sessionId;
+          var statusEl = document.getElementById('count-session-status');
+          if (statusEl) statusEl.textContent = '棚卸期間中（入出荷を加味した想定在庫で突合）';
+          var startBtn = document.getElementById('count-btn-start');
+          var completeBtn = document.getElementById('count-btn-complete');
+          if (startBtn) startBtn.style.display = 'none';
+          if (completeBtn) completeBtn.style.display = 'inline-block';
+          countLog('UI updated: 棚卸実施中');
+        } else {
+          countLog('apiGetCountSession success session=null or no sessionId');
+          currentCountSessionId = null;
+          var statusEl = document.getElementById('count-session-status');
+          if (statusEl) statusEl.textContent = '棚卸を開始してください';
+          var startBtn = document.getElementById('count-btn-start');
+          var completeBtn = document.getElementById('count-btn-complete');
+          if (startBtn) startBtn.style.display = 'inline-block';
+          if (completeBtn) completeBtn.style.display = 'none';
+          countLog('UI updated: スタート表示');
+        }
+      }).withFailureHandler(function(e) {
+        countLog('apiGetCountSession failure: ' + (e && e.message));
+      }).apiGetCountSession();
+    }
+
+    function countStart() {
+      countLog('countStart called');
+      var t0Start = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiCountStart: ' + Math.round(performance.now() - t0Start) + 'ms');
+        countLog('apiCountStart result ok=' + (r && r.ok) + ' sessionId=' + (r && r.sessionId ? (r.sessionId + '').substring(0, 8) + '...' : '') + ' error=' + (r && r.error ? (r.error + '').substring(0, 40) + '...' : ''));
+        if (r && r.ok && r.sessionId) {
+          currentCountSessionId = r.sessionId;
+          var statusEl = document.getElementById('count-session-status');
+          if (statusEl) statusEl.textContent = '棚卸期間中（入出荷を加味した想定在庫で突合）';
+          var startBtn = document.getElementById('count-btn-start');
+          var completeBtn = document.getElementById('count-btn-complete');
+          if (startBtn) startBtn.style.display = 'none';
+          if (completeBtn) completeBtn.style.display = 'inline-block';
+          toast('棚卸を開始しました');
+          countLog('UI updated: 棚卸実施中');
+        } else if (r && r.error && (r.error + '').indexOf('未完了の棚卸があります') >= 0) {
+          countLog('detected 未完了, calling apiGetCountSession');
+          var t0Fallback = performance.now();
+          google.script.run.withSuccessHandler(function(session) {
+            debugLog('[perf] apiGetCountSession (fallback): ' + Math.round(performance.now() - t0Fallback) + 'ms');
+            if (session && session.sessionId) {
+              countLog('apiGetCountSession (fallback) success sessionId=' + (session.sessionId || '').substring(0, 8) + '...');
+              currentCountSessionId = session.sessionId;
+              var statusEl = document.getElementById('count-session-status');
+              if (statusEl) statusEl.textContent = '棚卸期間中（入出荷を加味した想定在庫で突合）';
+              var startBtn = document.getElementById('count-btn-start');
+              var completeBtn = document.getElementById('count-btn-complete');
+              if (startBtn) startBtn.style.display = 'none';
+              if (completeBtn) completeBtn.style.display = 'inline-block';
+              toast('未完了の棚卸に復帰しました。続きを入力して完了を押してください。');
+              countLog('UI updated: 棚卸実施中 (fallback)');
+            } else {
+              countLog('apiGetCountSession (fallback) success but session=null or no sessionId');
+              toast((r && r.error) || 'スタートに失敗しました', true);
+            }
+          }).withFailureHandler(function(e) {
+            countLog('apiGetCountSession (fallback) failure: ' + (e && e.message));
+            toast((r && r.error) || 'スタートに失敗しました', true);
+          }).apiGetCountSession();
+        } else {
+          toast((r && r.error) || 'スタートに失敗しました', true);
+        }
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); countLog('apiCountStart failure: ' + (e && e.message)); }).apiCountStart();
+    }
+
+    function countComplete() {
+      if (!currentCountSessionId) { toast('セッションがありません', true); return; }
+      document.getElementById('modal-count-confirm').classList.add('show');
+    }
+
+    function closeCountConfirmModal() {
+      document.getElementById('modal-count-confirm').classList.remove('show');
+    }
+
+    function _doCountComplete() {
+      closeCountConfirmModal();
+      var t0 = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiCountComplete: ' + Math.round(performance.now() - t0) + 'ms');
+        if (r && r.ok) {
+          currentCountSessionId = null;
+          var statusEl = document.getElementById('count-session-status');
+          if (statusEl) statusEl.textContent = '棚卸を開始してください';
+          var startBtn = document.getElementById('count-btn-start');
+          var completeBtn = document.getElementById('count-btn-complete');
+          if (startBtn) startBtn.style.display = 'inline-block';
+          if (completeBtn) completeBtn.style.display = 'none';
+          toast('棚卸を完了しました');
+        } else {
+          toast((r && r.error) || '完了に失敗しました', true);
+        }
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiCountComplete(currentCountSessionId);
+    }
+
+    function submitCount() {
+      var jan = document.getElementById('count-jan').value.trim();
+      if (!jan) { toast('JANを入力してください', true); return; }
+      var product = document.getElementById('count-product').textContent.replace('商品名 ', '').trim();
+      var box = document.getElementById('count-box').value || 0;
+      var boxCount = document.getElementById('count-boxcount').value || 0;
+      var loose = document.getElementById('count-loose').value || 0;
+      var qty = calcQuantity('count-box', 'count-boxcount', 'count-loose', 'count-totalqty');
+      if (qty <= 0) { toast('数量を入力してください', true); return; }
+      var loc = document.getElementById('count-loc').value;
+      var sessionId = currentCountSessionId || undefined;
+      var t0CountLookup = performance.now();
+      google.script.run.withSuccessHandler(function(p) {
+        debugLog('[perf] apiLookupProduct (count): ' + Math.round(performance.now() - t0CountLookup) + 'ms');
+        var cost = (p && (p.avgCost || p.cost)) ? (p.avgCost || p.cost) : 0;
+        var t0Count = performance.now();
+        google.script.run.withSuccessHandler(function(r) {
+          debugLog('[perf] apiCount: ' + Math.round(performance.now() - t0Count) + 'ms');
+          if (r.ok) { document.getElementById('count-jan').value = ''; document.getElementById('count-product').textContent = '商品名 —'; document.getElementById('count-jan').focus(); toast('保存しました'); }
+          else toast(r.error || 'エラー', true);
+        }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiCount(jan, product || jan, cost, box, boxCount, loose, qty, loc, sessionId);
+      }).apiLookupProduct(jan);
+    }
+
+    function submitProduct() {
+      var single = document.getElementById('prod-single').value.trim();
+      var box = document.getElementById('prod-box').value.trim();
+      var name = document.getElementById('prod-name').value.trim();
+      var cost = document.getElementById('prod-cost').value;
+      var boxIn = document.getElementById('prod-boxin').value || 0;
+      if (!single && !box) { toast('単品JANまたは箱JANを入力してください', true); return; }
+      var t0Prod = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiProductAdd: ' + Math.round(performance.now() - t0Prod) + 'ms');
+        if (r.ok) { toast('登録しました'); }
+        else toast(r.error || 'エラー', true);
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiProductAdd(single || box, box || single, name, cost, boxIn);
+    }
+
+    function loadVariance() {
+      var t0Variance = performance.now();
+      google.script.run.withSuccessHandler(function(res) {
+        debugLog('[perf] apiGetVarianceList: ' + Math.round(performance.now() - t0Variance) + 'ms');
+        var list = (res && res.list) ? res.list : [];
+        var sessionActive = res && res.sessionActive === true;
+        var locationList = (res && res.locationList) ? res.locationList : [];
+        var cap = document.getElementById('variance-caption');
+        if (cap) cap.textContent = sessionActive ? '棚卸期間中：入出荷を加味した想定在庫と棚卸実数の差（0でないもの）' : '理論在庫と棚卸実数の差（0でないもの）';
+        var html = '';
+        var filtered = (list || []).filter(function(x) { return x.variance !== 0; });
+        if (filtered.length === 0) html = '<p>差異はありません。</p>';
+        else {
+          html = '<div style="overflow-x:auto;margin:0 -12px;"><table class="list" style="min-width:max-content;"><tr><th>JAN</th><th>商品名</th><th>理論</th><th>棚卸</th><th>差異</th>';
+          (locationList || []).forEach(function(loc) {
+            html += '<th style="min-width:4rem;font-size:0.75rem;" title="' + (loc || '').replace(/"/g, '&quot;') + '">' + (loc || '').replace(/</g, '&lt;').substring(0, 8) + '</th>';
+          });
+          html += '</tr>';
+          filtered.forEach(function(x) {
+            var cls = x.variance < 0 ? ' class="variance-minus"' : '';
+            html += '<tr><td>' + (x.singleJAN || '') + '</td><td>' + (x.productName || '').replace(/</g, '&lt;') + '</td><td>' + x.theoryStock + '</td><td>' + x.countQty + '</td><td' + cls + '>' + x.variance + '</td>';
+            var bl = x.byLocation || [];
+            for (var i = 0; i < locationList.length; i++) {
+              var b = bl[i];
+              if (b) {
+                var vCls = (b.variance || 0) < 0 ? ' variance-minus' : '';
+                html += '<td class="' + vCls + '" style="font-size:0.8rem;">' + (b.theory || 0) + '/' + (b.count || 0) + '/' + (b.variance || 0) + '</td>';
+              } else html += '<td style="font-size:0.8rem;">—</td>';
+            }
+            html += '</tr>';
+          });
+          html += '</table></div>';
+        }
+        document.getElementById('variance-list').innerHTML = html;
+      }).apiGetVarianceList();
+    }
+
+    function loadStock() {
+      var t0Stock = performance.now();
+      google.script.run.withSuccessHandler(function(res) {
+        debugLog('[perf] apiGetCurrentStockList: ' + Math.round(performance.now() - t0Stock) + 'ms');
+        var list = (res && res.list) ? res.list : [];
+        var locationList = (res && res.locationList) ? res.locationList : [];
+        var html = '';
+        if (!list || list.length === 0) html = '<p>データがありません。</p>';
+        else {
+          html = '<div style="overflow-x:auto;margin:0 -12px;"><table class="list" style="min-width:max-content;"><tr><th>JAN</th><th>商品名</th><th>合計</th>';
+          (locationList || []).forEach(function(loc) {
+            html += '<th style="min-width:3.5rem;font-size:0.75rem;" title="' + (loc || '').replace(/"/g, '&quot;') + '">' + (loc || '').replace(/</g, '&lt;').substring(0, 8) + '</th>';
+          });
+          html += '</tr>';
+          list.forEach(function(x) {
+            html += '<tr><td>' + (x.singleJAN || '') + '</td><td>' + (x.productName || '').replace(/</g, '&lt;') + '</td><td>' + (x.stock || 0) + '</td>';
+            (x.byLocation || []).forEach(function(b) {
+              html += '<td style="font-size:0.8rem;">' + (b.qty || 0) + '</td>';
+            });
+            html += '</tr>';
+          });
+          html += '</table></div>';
+        }
+        document.getElementById('stock-list').innerHTML = html;
+      }).apiGetCurrentStockList();
+    }
+
+    function saveTantou() {
+      var name = document.getElementById('setting-tantou').value;
+      var t0Tantou = performance.now();
+      google.script.run.withSuccessHandler(function() {
+        debugLog('[perf] apiSetTantou: ' + Math.round(performance.now() - t0Tantou) + 'ms');
+        toast('保存しました');
+      }).apiSetTantou(name);
+    }
+
+    function toggleCountAdjust() {
+      var sec = document.getElementById('count-adjust-section');
+      if (!sec) return;
+      var isHidden = sec.style.display === 'none' || sec.style.display === '';
+      sec.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) {
+        var el = document.getElementById('adjust-jan');
+        if (el) setTimeout(function() { el.focus(); }, 100);
+      }
+    }
+
+    function submitCountAdjust() {
+      var jan = document.getElementById('adjust-jan').value.trim();
+      if (!jan) { toast('JANを入力してください', true); return; }
+      var product = document.getElementById('adjust-product').textContent.replace('商品名 ', '').trim();
+      var adjustType = document.getElementById('adjust-type').value;
+      var qty = Number(document.getElementById('adjust-qty').value) || 0;
+      if (qty <= 0) { toast('数量を入力してください', true); return; }
+      var loc = document.getElementById('adjust-loc').value;
+      var memo = document.getElementById('adjust-memo').value.trim();
+      var t0 = performance.now();
+      google.script.run.withSuccessHandler(function(r) {
+        debugLog('[perf] apiCountAdjust: ' + Math.round(performance.now() - t0) + 'ms');
+        if (r && r.ok) {
+          document.getElementById('adjust-jan').value = '';
+          document.getElementById('adjust-product').textContent = '商品名 —';
+          document.getElementById('adjust-qty').value = '1';
+          document.getElementById('adjust-memo').value = '';
+          toast('確定後修正を保存しました');
+        } else {
+          toast((r && r.error) || 'エラー', true);
+        }
+      }).withFailureHandler(function(e) { toast('エラー: ' + (e && e.message), true); }).apiCountAdjust(jan, product || jan, adjustType, qty, loc, memo);
+    }
+
+    var scanModalTargetId = null;
+    var scanStream = null;
+    var scanAnimationId = null;
+
+    function openScanModal(targetInputId) {
+      scanModalTargetId = targetInputId || null;
+      var msgEl = document.getElementById('scan-unsupported');
+      var videoEl = document.getElementById('barcodeVideo');
+      var permissionDeniedEl = document.getElementById('scan-permission-denied');
+      if (msgEl) msgEl.style.display = 'none';
+      if (permissionDeniedEl) permissionDeniedEl.style.display = 'none';
+      if (videoEl) videoEl.style.display = 'block';
+      document.getElementById('modal-camera').classList.add('show');
+
+      var barcodeDetectorOk = (typeof BarcodeDetector !== 'undefined');
+      var ua = (navigator.userAgent || '').substring(0, 500);
+      google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('BarcodeDetector: ' + (barcodeDetectorOk ? 'OK' : 'NG') + ', UA: ' + ua);
+
+      if (!barcodeDetectorOk) {
+        if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'お使いのブラウザではカメラスキャンに未対応です。Chrome をご利用ください。'; }
+        if (videoEl) videoEl.style.display = 'none';
+        google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('getUserMedia: 未試行(BarcodeDetector未対応)');
+        return;
+      }
+      var barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128'] });
+      function tick() {
+        if (!videoEl || !videoEl.srcObject || videoEl.readyState !== 4) { scanAnimationId = requestAnimationFrame(tick); return; }
+        barcodeDetector.detect(videoEl).then(function(codes) {
+          if (codes && codes.length > 0 && codes[0].rawValue && scanModalTargetId) {
+            var target = document.getElementById(scanModalTargetId);
+            if (target) {
+              target.value = codes[0].rawValue;
+              target.dispatchEvent(new Event('blur', { bubbles: true }));
+            }
+            closeScanModal();
+            return;
+          }
+          scanAnimationId = requestAnimationFrame(tick);
+        }).catch(function() { scanAnimationId = requestAnimationFrame(tick); });
+      }
+      function tryGetUserMediaForScan() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('getUserMedia: 未試行(mediaDevicesなし)');
+          if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'お使いの環境ではカメラが利用できません。'; }
+          if (videoEl) videoEl.style.display = 'none';
+          return;
+        }
+        if (permissionDeniedEl) permissionDeniedEl.style.display = 'none';
+        if (videoEl) videoEl.style.display = 'block';
+        if (msgEl) msgEl.style.display = 'none';
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+          google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('getUserMedia: success');
+          scanStream = stream;
+          videoEl.srcObject = stream;
+          videoEl.play().then(function() { tick(); }).catch(function() { tick(); });
+        }).catch(function(err) {
+          var errName = (err && err.name) ? String(err.name) : '';
+          var errMsg = (err && err.message) ? String(err.message).substring(0, 200) : '';
+          google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('getUserMedia: failed, name: ' + errName + ', message: ' + errMsg);
+          if (errName === 'NotAllowedError') {
+            if (permissionDeniedEl) permissionDeniedEl.style.display = 'block';
+            if (videoEl) videoEl.style.display = 'none';
+          } else {
+            if (msgEl) { msgEl.style.display = 'block'; msgEl.textContent = 'カメラへのアクセスが拒否されたか、利用できません。'; }
+            if (videoEl) videoEl.style.display = 'none';
+          }
+        });
+      }
+      var retryBtn = document.getElementById('scan-retry-btn');
+      if (retryBtn) retryBtn.onclick = function() { tryGetUserMediaForScan(); };
+      tryGetUserMediaForScan();
+    }
+
+    function closeScanModal() {
+      if (scanAnimationId) { cancelAnimationFrame(scanAnimationId); scanAnimationId = null; }
+      var v = document.getElementById('barcodeVideo');
+      if (v && v.srcObject) { v.srcObject.getTracks().forEach(function(t) { t.stop(); }); v.srcObject = null; }
+      if (scanStream) { scanStream.getTracks().forEach(function(t) { t.stop(); }); scanStream = null; }
+      scanModalTargetId = null;
+      document.getElementById('modal-camera').classList.remove('show');
+    }
+
+    try {
+      document.querySelectorAll('.nav-item').forEach(function(el) {
+        el.addEventListener('click', function(e) { e.preventDefault(); showView(this.getAttribute('data-view')); });
+      });
+    } catch (e) { debugLog('nav setup: ' + (e && e.message)); }
+
+    // 初期表示（調査用ログ付き）
+    (function init() {
+      var loadingEl = document.getElementById('loading-msg');
+      var mainEl = document.getElementById('main-container');
+      try {
+        if (!currentView || currentView === 'undefined') currentView = 'shipping';
+        debugLog('2 showView start: ' + currentView);
+        showView(currentView);
+        debugLog('3 showView done');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (mainEl) mainEl.style.display = 'block';
+        debugLog('4 container visible');
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          debugLog('5 WARN: google.script.run not ready');
+        } else {
+          debugLog('5 loadMasters start');
+          loadMasters();
+          debugLog('6 loadMasters called');
+        }
+        var shipJan = document.getElementById('ship-jan');
+        if (shipJan) setTimeout(function() { shipJan.focus(); }, 500);
+        debugLog('7 init done');
+      } catch (err) {
+        var errMsg = (err && (err.message || String(err))) || 'Unknown error';
+        debugLog('ERR: ' + errMsg);
+        if (loadingEl) {
+          loadingEl.innerHTML = 'エラー: ' + errMsg.replace(/</g, '&lt;') + '<br><small>上記を管理者に伝えてください。原因調査時はURLの末尾に ?debug=1 を付けて再読み込みしてください。</small>';
+          loadingEl.style.display = 'block';
+          loadingEl.style.color = '#c00';
+        }
+        if (mainEl) mainEl.style.display = 'block';
+        if (debugEl) { debugEl.style.display = 'block'; debugEl.style.background = '#ffe0e0'; }
+      }
+    })();
+  </script>
+</body>
+</html>

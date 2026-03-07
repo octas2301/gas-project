@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>スキャン動作確認テスト</title>
+  <style>
+    body { font-family: sans-serif; padding: 1.5rem; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; margin-bottom: 1rem; }
+    h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; }
+    .url { word-break: break-all; font-size: 0.85rem; color: #555; margin: 0.5rem 0 1rem; }
+    .jan { font-size: 1rem; font-weight: bold; margin: 1rem 0; padding: 0.5rem; background: #e8f5e9; border-radius: 4px; }
+    .scan-links { margin-top: 1rem; }
+    a.scan-link { display: inline-block; margin: 0.25rem 0.5rem 0.25rem 0; padding: 0.75rem 1.25rem; background: #1976d2; color: #fff; text-decoration: none; border-radius: 6px; }
+    a.scan-link:hover { background: #1565c0; }
+    a.scan-link.qrbot { background: #2e7d32; }
+    a.scan-link.qrbot:hover { background: #1b5e20; }
+    .camera-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #ddd; }
+    .camera-section h2 { font-size: 1rem; margin-bottom: 0.5rem; }
+    #reader { width: 100%; max-width: 300px; margin: 0.5rem 0; }
+    #QRtext { width: 100%; max-width: 300px; padding: 0.5rem; margin: 0.5rem 0; box-sizing: border-box; }
+    .btn-camera { margin-top: 0.5rem; padding: 0.75rem 1.25rem; background: #7b1fa2; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+    .btn-camera:hover { background: #6a1b9a; }
+    .btn-camera:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-camera.alt { background: #00695c; }
+    .btn-camera.alt:hover { background: #004d40; }
+    .btn-camera.secondary { background: #455a64; }
+    .btn-camera.secondary:hover { background: #263238; }
+    .mono-box { font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; margin-top: 0.5rem; word-break: break-word; }
+    .result-box { background: #fff8e1; border-color: #e0c46c; }
+    .note { font-size: 0.85rem; color: #666; }
+  </style>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <h1>スキャン動作確認テスト</h1>
+  <p>callback のベース URL:</p>
+  <p class="url"><?= baseUrlEscaped ?></p>
+  <? if (jan) { ?>
+  <p class="jan">受信した JAN: <?= janEscaped ?></p>
+  <? } else { ?>
+  <p>下のボタンをタップし、バーコードを読むとこのページに JAN が渡ります。</p>
+  <? } ?>
+  <div class="scan-links">
+    <a class="scan-link" href="pic2shop://scan?callback=<?= encodedCallback ?>">pic2shop でスキャン</a>
+    <a class="scan-link qrbot" href="qrbot://x-callback-url/scan?x-success=<?= encodedCallbackQrbot ?>">QRbot でスキャン</a>
+  </div>
+
+  <div class="camera-section">
+    <h2>ブラウザカメラ（html5-qrcode）テスト</h2>
+    <p>「カメラ起動」をタップし、カメラが起動してQR・バーコードが読めるか確認します。script.google.com では許可が下りない場合があります。</p>
+    <div id="reader" style="width:100%;max-width:300px;"></div>
+    <input type="text" id="QRtext" readonly placeholder="スキャン結果がここに表示されます" class="url">
+    <br>
+    <button type="button" id="btnCamera" onclick="startScanner()" class="btn-camera">カメラ起動</button>
+    <button type="button" id="btnVideoSimple" onclick="runSimpleCameraTest()" class="btn-camera alt">video:true テスト</button>
+    <button type="button" id="btnVideoEnv" onclick="runEnvironmentCameraTest()" class="btn-camera secondary">environment テスト</button>
+    <video id="testVideo" autoplay playsinline muted style="width:100%;max-width:300px;margin-top:0.75rem;display:none;background:#000;"></video>
+  </div>
+
+  <div class="camera-section">
+    <h2>環境情報</h2>
+    <p class="note">この内容は画面表示とサーバーログの両方に残します。</p>
+    <div id="envInfo" class="mono-box"></div>
+  </div>
+
+  <div class="camera-section">
+    <h2>テスト結果</h2>
+    <div id="testResult" class="mono-box result-box">未実行</div>
+  </div>
+
+  <div class="camera-section">
+    <h2>ログ送信</h2>
+    <p class="note">ページ表示時と各テスト実行時にデバッグログへ追記します。</p>
+    <button type="button" id="btnSendEnv" onclick="sendEnvironmentLog(true)" class="btn-camera secondary">環境ログを再送信</button>
+  </div>
+
+  <script>
+    var html5QrCodeInstance = null;
+    var activeStream = null;
+
+    function safeString(value) {
+      if (value === null || value === undefined) return '';
+      return String(value);
+    }
+
+    function logToServer(message) {
+      if (window.google && google.script && google.script.run) {
+        google.script.run.withFailureHandler(function() {}).apiLogScanDiagnostics('[scantest] ' + message);
+      }
+    }
+
+    function setResult(message, alsoLog) {
+      document.getElementById('testResult').textContent = message;
+      if (alsoLog !== false) logToServer(message);
+    }
+
+    function stopActiveStream() {
+      if (activeStream) {
+        activeStream.getTracks().forEach(function(track) { track.stop(); });
+        activeStream = null;
+      }
+      var testVideo = document.getElementById('testVideo');
+      testVideo.pause();
+      testVideo.srcObject = null;
+      testVideo.style.display = 'none';
+    }
+
+    function getPermissionState() {
+      if (!navigator.permissions || !navigator.permissions.query) {
+        return Promise.resolve('Permissions API unsupported');
+      }
+      return navigator.permissions.query({ name: 'camera' }).then(function(status) {
+        return status && status.state ? status.state : 'unknown';
+      }).catch(function(err) {
+        return 'query failed: ' + safeString(err && err.message ? err.message : err);
+      });
+    }
+
+    function getDeviceSummary() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        return Promise.resolve('enumerateDevices unsupported');
+      }
+      return navigator.mediaDevices.enumerateDevices().then(function(devices) {
+        var videoInputs = devices.filter(function(device) { return device.kind === 'videoinput'; });
+        return 'all=' + devices.length + ', videoinput=' + videoInputs.length;
+      }).catch(function(err) {
+        return 'enumerateDevices failed: ' + safeString(err && err.message ? err.message : err);
+      });
+    }
+
+    function buildEnvironmentLines(permissionState, deviceSummary) {
+      return [
+        'href: ' + safeString(location.href),
+        'origin: ' + safeString(location.origin),
+        'referrer: ' + safeString(document.referrer || '(none)'),
+        'isTopWindow: ' + (window.self === window.top),
+        'isSecureContext: ' + (!!window.isSecureContext),
+        'userAgent: ' + safeString(navigator.userAgent || ''),
+        'Permissions.camera: ' + permissionState,
+        'mediaDevices: ' + (!!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)),
+        'enumerateDevices: ' + deviceSummary
+      ];
+    }
+
+    function sendEnvironmentLog(forceManual) {
+      return Promise.all([getPermissionState(), getDeviceSummary()]).then(function(results) {
+        var infoText = buildEnvironmentLines(results[0], results[1]).join('\n');
+        document.getElementById('envInfo').textContent = infoText;
+        logToServer((forceManual ? 'environment(manual)' : 'environment(auto)') + '\n' + infoText);
+        return infoText;
+      }).catch(function(err) {
+        var msg = 'environment collection failed: ' + safeString(err && err.message ? err.message : err);
+        document.getElementById('envInfo').textContent = msg;
+        logToServer(msg);
+        return msg;
+      });
+    }
+
+    function handleCameraSuccess(label, stream) {
+      stopActiveStream();
+      activeStream = stream;
+      var testVideo = document.getElementById('testVideo');
+      testVideo.srcObject = stream;
+      testVideo.style.display = 'block';
+      testVideo.play().catch(function() {});
+      var settings = [];
+      var videoTrack = stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (videoTrack && videoTrack.getSettings) {
+        var rawSettings = videoTrack.getSettings();
+        settings.push('deviceId=' + safeString(rawSettings.deviceId || ''));
+        settings.push('facingMode=' + safeString(rawSettings.facingMode || ''));
+        settings.push('width=' + safeString(rawSettings.width || ''));
+        settings.push('height=' + safeString(rawSettings.height || ''));
+      }
+      setResult(label + ': success' + (settings.length ? '\n' + settings.join(', ') : ''));
+    }
+
+    function handleCameraError(label, err) {
+      var errName = safeString(err && err.name ? err.name : '');
+      var errMsg = safeString(err && err.message ? err.message : err);
+      setResult(label + ': failed\nname=' + errName + '\nmessage=' + errMsg);
+    }
+
+    function runGetUserMediaTest(label, constraints, buttonId) {
+      stopActiveStream();
+      var btn = document.getElementById(buttonId);
+      btn.disabled = true;
+      setResult(label + ': 起動中...', true);
+      return sendEnvironmentLog(false).then(function() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('getUserMedia unsupported');
+        }
+        return navigator.mediaDevices.getUserMedia(constraints);
+      }).then(function(stream) {
+        handleCameraSuccess(label, stream);
+      }).catch(function(err) {
+        handleCameraError(label, err);
+      }).finally(function() {
+        btn.disabled = false;
+      });
+    }
+
+    function runSimpleCameraTest() {
+      return runGetUserMediaTest('video:true', { video: true }, 'btnVideoSimple');
+    }
+
+    function runEnvironmentCameraTest() {
+      return runGetUserMediaTest('environment', { video: { facingMode: 'environment' } }, 'btnVideoEnv');
+    }
+
+    function startScanner() {
+      var btn = document.getElementById('btnCamera');
+      var readerEl = document.getElementById('reader');
+      var textEl = document.getElementById('QRtext');
+      if (html5QrCodeInstance && html5QrCodeInstance.isScanning) {
+        html5QrCodeInstance.stop().then(function() {
+          html5QrCodeInstance = null;
+          btn.disabled = false;
+          btn.textContent = 'カメラ起動';
+        }).catch(function() {});
+        return;
+      }
+      readerEl.innerHTML = '';
+      textEl.value = '';
+      stopActiveStream();
+      btn.disabled = true;
+      btn.textContent = '起動中...';
+      setResult('html5-qrcode: 起動中...', true);
+      if (typeof Html5Qrcode === 'undefined') {
+        setResult('html5-qrcode: 読み込み失敗');
+        btn.disabled = false;
+        btn.textContent = 'カメラ起動';
+        return;
+      }
+      html5QrCodeInstance = new Html5Qrcode('reader');
+      sendEnvironmentLog(false).then(function() {
+        return Html5Qrcode.getCameras();
+      }).then(function(devices) {
+        logToServer('html5-qrcode cameras: ' + (devices ? devices.length : 0));
+        if (!devices || devices.length === 0) {
+          setResult('html5-qrcode: カメラが見つかりません');
+          btn.disabled = false;
+          btn.textContent = 'カメラ起動';
+          return;
+        }
+        var cameraId = devices[0].id;
+        html5QrCodeInstance.start(
+          cameraId,
+          { fps: 10, qrbox: 250 },
+          function(qrCodeMessage) {
+            textEl.value = qrCodeMessage;
+            setResult('html5-qrcode: success\ncode=' + qrCodeMessage);
+            html5QrCodeInstance.stop().then(function() {
+              btn.disabled = false;
+              btn.textContent = 'カメラ起動';
+            }).catch(function() {});
+          },
+          function() {}
+        ).then(function() {
+          btn.textContent = 'カメラ停止';
+        }).catch(function(err) {
+          handleCameraError('html5-qrcode.start', err);
+          btn.disabled = false;
+          btn.textContent = 'カメラ起動';
+        });
+      }).catch(function(err) {
+        handleCameraError('html5-qrcode.getCameras', err);
+        btn.disabled = false;
+        btn.textContent = 'カメラ起動';
+      });
+    }
+
+    sendEnvironmentLog(false);
+  </script>
+</body>
+</html>

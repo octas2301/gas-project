@@ -1,0 +1,21 @@
+# サブプロジェクトを除外（別のGASプロジェクト。それぞれ別 scriptId で push する）
+# ※ 新しいサブプロジェクトを追加したら、ここに フォルダ名/** を必ず追加すること
+export-tax-list/**
+広告運用GAS/**
+inventory-app/**
+
+# ドキュメント・参考資料（GAS コードではない。push 対象外）
+docs/**
+参考資料/**
+参考資料：*/
+
+# Node/Python用（GASでは動かない。require 等でエラーになる）
+check-rakuten-32byte.js
+check_rakuten_32byte.py
+楽天CSVファイル/バリエーション32バイトチェック.html
+
+# その他の不要ファイル
+.cursor/**
+*.md
+*.pdf
+【*

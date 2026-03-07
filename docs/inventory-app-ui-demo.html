@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>在庫アプリ UI デモ（スキャン→タップで進める）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0 0 60px 0;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      background: #f5f5f5;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .screen {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 12px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 16px 0; color: #333; }
+    .field {
+      margin-bottom: 16px;
+    }
+    .field label {
+      display: block;
+      margin-bottom: 4px;
+      color: #666;
+      font-size: 0.875rem;
+    }
+    .field input, .field select {
+      width: 100%;
+      padding: 14px 12px;
+      font-size: 18px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+    }
+    .field.readonly {
+      background: #f9f9f9;
+      color: #333;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      background: #1a73e8;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn:active { opacity: 0.9; }
+    .toast {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: #333;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .toast.show { opacity: 1; }
+    .log {
+      margin-top: 24px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      font-size: 0.875rem;
+      color: #666;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+    .log div:last-child { border-bottom: none; }
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      background: #fff;
+      border-top: 1px solid #ddd;
+      padding: 8px 0;
+      z-index: 50;
+    }
+    .nav span {
+      flex: 1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #666;
+    }
+    .nav span.here { color: #1a73e8; font-weight: bold; }
+    .hint { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="screen">
+    <h1>棚卸（UIデモ）</h1>
+    <p class="hint">※実際の保存は行いません。スマホで「スキャン→タップで進める」流れを確認する用です。</p>
+
+    <div class="field">
+      <label for="jan">JANコード ★ここにフォーカス</label>
+      <input type="text" id="jan" inputmode="numeric" pattern="[0-9]*" placeholder="スキャン or 手入力" autocomplete="off">
+    </div>
+
+    <div class="field readonly" id="productName">商品名（自動） —</div>
+
+    <div class="field">
+      <label for="boxQty">箱入数</label>
+      <input type="number" id="boxQty" value="0" min="0" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="boxCount">箱数</label>
+      <input type="number" id="boxCount" value="0" min="0" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="loose">端数</label>
+      <input type="number" id="loose" value="0" min="0" inputmode="numeric">
+    </div>
+    <div class="field readonly" id="totalQty">数量（自動） 0</div>
+
+    <div class="field">
+      <label for="location">ロケーション</label>
+      <select id="location">
+        <option value="">選択</option>
+        <option value="オフィス">オフィス</option>
+        <option value="ガレージ">ガレージ</option>
+        <option value="倉庫 豊明">倉庫 豊明</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn" id="save">保存</button>
+
+    <div class="log" id="log">
+      <div class="log-placeholder" style="color:#999;">保存された件がここに表示されます</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">登録しました</div>
+
+  <div class="nav">
+    <span>出荷</span>
+    <span>移動</span>
+    <span>入荷</span>
+    <span class="here">棚卸</span>
+    <span>差異</span>
+    <span>商品</span>
+  </div>
+
+  <script>
+    (function() {
+      var jan = document.getElementById('jan');
+      var productName = document.getElementById('productName');
+      var boxQty = document.getElementById('boxQty');
+      var boxCount = document.getElementById('boxCount');
+      var loose = document.getElementById('loose');
+      var totalQty = document.getElementById('totalQty');
+      var location = document.getElementById('location');
+      var saveBtn = document.getElementById('save');
+      var logEl = document.getElementById('log');
+      var toast = document.getElementById('toast');
+
+      function updateProduct() {
+        var v = (jan.value || '').trim();
+        if (v.length >= 8) {
+          productName.textContent = '商品名（自動） サンプル商品 ' + v.slice(-4);
+        } else {
+          productName.textContent = '商品名（自動） —';
+        }
+      }
+
+      function updateTotal() {
+        var bq = parseInt(boxQty.value, 10) || 0;
+        var bc = parseInt(boxCount.value, 10) || 0;
+        var ls = parseInt(loose.value, 10) || 0;
+        var t = bq * bc + ls;
+        totalQty.textContent = '数量（自動） ' + t;
+      }
+
+      function showToast() {
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 1500);
+      }
+
+      function focusJan() {
+        jan.value = '';
+        jan.focus();
+      }
+
+      function onSave() {
+        var j = (jan.value || '').trim();
+        if (!j) {
+          showToast();
+          toast.textContent = 'JANを入力してください';
+          return;
+        }
+        var loc = location.value || '—';
+        var t = totalQty.textContent.replace('数量（自動） ', '');
+        var ph = logEl.querySelector('.log-placeholder');
+        if (ph) ph.remove();
+        var div = document.createElement('div');
+        div.className = 'log-item';
+        div.textContent = j + ' … ' + productName.textContent.replace('商品名（自動） ', '') + ' 数量:' + t + ' 場所:' + loc;
+        logEl.insertBefore(div, logEl.firstChild);
+        showToast();
+        toast.textContent = '登録しました';
+        focusJan();
+        updateProduct();
+        updateTotal();
+      }
+
+      jan.addEventListener('input', updateProduct);
+      jan.addEventListener('change', updateProduct);
+      boxQty.addEventListener('input', updateTotal);
+      boxCount.addEventListener('input', updateTotal);
+      loose.addEventListener('input', updateTotal);
+      saveBtn.addEventListener('click', onSave);
+
+      // 初期: JAN にフォーカス
+      setTimeout(function() { jan.focus(); }, 300);
+      updateTotal();
+    })();
+  </script>
+</body>
+</html>

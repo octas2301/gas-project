@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>楽天「バリエーション1選択肢定義」32バイトチェック</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; max-width: 900px; }
+    h1 { font-size: 1.1em; }
+    .note { color: #666; font-size: 12px; margin: 10px 0; }
+    input[type="file"] { margin: 10px 0; }
+    button { padding: 8px 16px; cursor: pointer; }
+    pre { background: #f5f5f5; padding: 12px; overflow: auto; font-size: 12px; white-space: pre-wrap; }
+    .ok { color: green; }
+    .ng { color: #c00; }
+  </style>
+</head>
+<body>
+  <h1>楽天「バリエーション1選択肢定義」32バイトチェック</h1>
+  <p class="note">楽天の仕様は「各選択肢」（|で区切った1つ1つ）が32バイトまで。コード.js と同じ数え方で、超過した選択肢を表示します。</p>
+  <input type="file" id="file" accept=".csv">
+  <button type="button" id="run">チェック実行</button>
+  <pre id="result"></pre>
+
+  <script>
+    function byteLength(str) {
+      if (str == null || str === '') return 0;
+      var s = String(str).trim();
+      var n = 0;
+      for (var i = 0; i < s.length; i++) n += s.charCodeAt(i) < 128 ? 1 : 2;
+      return n;
+    }
+    function parseCsv(text) {
+      var rows = [];
+      var cur = '', inQuotes = false, row = [];
+      for (var i = 0; i < text.length; i++) {
+        var c = text[i];
+        if (c === '"') inQuotes = !inQuotes;
+        else if (!inQuotes && (c === ',' || c === '\n' || c === '\r')) {
+          if (c === ',' || c === '\n') {
+            row.push(cur);
+            cur = '';
+            if (c === '\n') { rows.push(row); row = []; }
+          }
+        } else cur += c;
+      }
+      if (cur !== '' || row.length > 0) { row.push(cur); rows.push(row); }
+      return rows;
+    }
+    document.getElementById('run').onclick = function() {
+      var file = document.getElementById('file').files[0];
+      var result = document.getElementById('result');
+      if (!file) { result.textContent = 'CSVファイルを選択してください。'; return; }
+      var r = new FileReader();
+      r.onload = function() {
+        var text = r.result;
+        var rows = parseCsv(text);
+        if (rows.length < 2) { result.textContent = '行がありません。'; return; }
+        var header = rows[0];
+        var idx = -1;
+        for (var i = 0; i < header.length; i++) {
+          if (String(header[i]).trim() === 'バリエーション1選択肢定義') { idx = i; break; }
+        }
+        if (idx === -1) { result.textContent = 'ヘッダーに「バリエーション1選択肢定義」列がありません。'; return; }
+        var over = [];
+        var dataRows = 0;
+        for (var ri = 1; ri < rows.length; ri++) {
+          var row = rows[ri];
+          if (row.length <= idx) continue;
+          dataRows++;
+          var val = String(row[idx] || '').trim();
+          if (val === '') continue;
+          var parts = val.split('|');
+          for (var pi = 0; pi < parts.length; pi++) {
+            var seg = parts[pi].trim();
+            if (seg === '') continue;
+            var bytes = byteLength(seg);
+            if (bytes > 32) {
+              var item = (row[0] || '') || ('行' + (ri + 1));
+              over.push({ row: ri + 1, item: item, value: seg.length > 30 ? seg.substring(0, 30) + '…' : seg, bytes: bytes });
+            }
+          }
+        }
+        var out = 'ファイル: ' + file.name + '\n';
+        out += 'データ行数: ' + dataRows + '  32バイト超過の選択肢: ' + over.length + '\n\n';
+        if (over.length === 0 && dataRows > 0) out += '→ すべての選択肢が32バイト以下でした。\n';
+        else if (over.length > 0) {
+          out += '【超過している選択肢】\n';
+          over.forEach(function(o) {
+            out += '  行' + o.row + '  ' + o.item + '  バイト数=' + o.bytes + '  値="' + o.value + '"\n';
+          });
+        }
+        result.textContent = out;
+      };
+      r.readAsText(file, 'UTF-8');
+    };
+  </script>
+</body>
+</html>

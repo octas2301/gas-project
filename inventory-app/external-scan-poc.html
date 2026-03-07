@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>外部スキャン PoC</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; color: #222; }
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 1.2rem; margin: 0 0 12px; }
+    h2 { font-size: 1rem; margin: 20px 0 8px; }
+    p { line-height: 1.5; }
+    .card { background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+    .mono { font-family: Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; background: #f7f7f7; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+    .result { background: #fff8e1; border-color: #e0c46c; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, a.btn-link { display: inline-block; border: none; border-radius: 8px; background: #1a73e8; color: #fff; padding: 12px 14px; font-size: 15px; text-decoration: none; cursor: pointer; }
+    button.secondary, a.btn-link.secondary { background: #5f6368; }
+    button:disabled { background: #bdbdbd; cursor: not-allowed; }
+    #reader { width: 100%; min-height: 240px; }
+    .warn { color: #b00020; font-weight: bold; }
+    .ok { color: #137333; font-weight: bold; }
+  </style>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>外部スキャン PoC</h1>
+    <div class="card">
+      <p>このページは <strong>GAS の外</strong> に配置して、カメラ起動と GAS 連携を切り分けるための最小PoCです。</p>
+      <p id="configStatus" class="warn">GAS URL 未設定</p>
+      <div class="btn-row">
+        <button type="button" id="btnStart">スキャン開始</button>
+        <button type="button" id="btnStop" class="secondary">停止</button>
+        <button type="button" id="btnBack" class="secondary">GAS に戻る</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>カメラ</h2>
+      <div id="reader"></div>
+    </div>
+
+    <div class="card">
+      <h2>スキャン結果</h2>
+      <div id="scanResult" class="mono result">未スキャン</div>
+      <h2>商品検索結果</h2>
+      <div id="lookupResult" class="mono">未検索</div>
+    </div>
+
+    <div class="card">
+      <h2>環境情報</h2>
+      <div id="envInfo" class="mono"></div>
+    </div>
+
+    <div class="card">
+      <h2>設定メモ</h2>
+      <div class="mono">1. GAS_EXEC_URL を exec URL に書き換える
+2. 必要なら returnUrl を変更する
+3. このHTMLを HTTPS で公開する
+
+URLクエリでも上書きできます:
+?gasUrl=...&returnUrl=...</div>
+    </div>
+  </div>
+
+  <script>
+    var GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbwDL63lO2ap3yaqcndkMAisVBSyORQs16pqC_mQr7vBWgqlDtScv74OQ5XVkGC42NBk/exec';
+    var DEFAULT_RETURN_PATH = '?test=1&view=scantest';
+    var scanner = null;
+    var lastScannedJan = '';
+
+    function qs(name) {
+      return new URLSearchParams(location.search).get(name) || '';
+    }
+
+    function getGasExecUrl() {
+      var url = qs('gasUrl') || GAS_EXEC_URL;
+      return (url || '').trim();
+    }
+
+    function getReturnUrl(jan) {
+      var explicit = (qs('returnUrl') || '').trim();
+      if (explicit) {
+        var joiner = explicit.indexOf('?') >= 0 ? '&' : '?';
+        return explicit + joiner + 'jan=' + encodeURIComponent(jan || '');
+      }
+      var gasUrl = getGasExecUrl();
+      if (!gasUrl || gasUrl === 'PASTE_GAS_EXEC_URL_HERE') return '';
+      return gasUrl + DEFAULT_RETURN_PATH + '&jan=' + encodeURIComponent(jan || '');
+    }
+
+    function isGasConfigured() {
+      var url = getGasExecUrl();
+      return !!url && url !== 'PASTE_GAS_EXEC_URL_HERE';
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function setResult(text) {
+      setText('scanResult', text);
+    }
+
+    function setLookup(text) {
+      setText('lookupResult', text);
+    }
+
+    function sendLog(message) {
+      if (!isGasConfigured()) return;
+      var url = getGasExecUrl() + '?api=externalScanLog&msg=' + encodeURIComponent(message) + '&_=' + Date.now();
+      var img = new Image();
+      img.src = url;
+    }
+
+    function collectEnvInfo() {
+      var lines = [
+        'href: ' + location.href,
+        'origin: ' + location.origin,
+        'isTopWindow: ' + (window.self === window.top),
+        'isSecureContext: ' + (!!window.isSecureContext),
+        'userAgent: ' + (navigator.userAgent || '')
+      ];
+      setText('envInfo', lines.join('\n'));
+      sendLog('[外部スキャンPoC] env\n' + lines.join('\n'));
+    }
+
+    function updateConfigStatus() {
+      var el = document.getElementById('configStatus');
+      if (isGasConfigured()) {
+        el.textContent = 'GAS URL 設定済み: ' + getGasExecUrl();
+        el.className = 'ok';
+      } else {
+        el.textContent = 'GAS URL 未設定: GAS_EXEC_URL を exec URL に書き換えてください';
+        el.className = 'warn';
+      }
+    }
+
+    function jsonpLookupProduct(jan) {
+      return new Promise(function(resolve, reject) {
+        if (!isGasConfigured()) {
+          reject(new Error('GAS URL が未設定です'));
+          return;
+        }
+        var callbackName = '__lookupCallback_' + Date.now();
+        var timeoutId = null;
+        window[callbackName] = function(payload) {
+          cleanup();
+          resolve(payload);
+        };
+        function cleanup() {
+          if (timeoutId) clearTimeout(timeoutId);
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+        var script = document.createElement('script');
+        script.src = getGasExecUrl()
+          + '?api=externalLookupJsonp&jan=' + encodeURIComponent(jan)
+          + '&callback=' + encodeURIComponent(callbackName)
+          + '&_=' + Date.now();
+        script.onerror = function() {
+          cleanup();
+          reject(new Error('JSONP 読み込みに失敗しました'));
+        };
+        timeoutId = setTimeout(function() {
+          cleanup();
+          reject(new Error('JSONP 応答がタイムアウトしました'));
+        }, 10000);
+        document.body.appendChild(script);
+      });
+    }
+
+    function onScanSuccess(decodedText) {
+      lastScannedJan = decodedText;
+      setResult('JAN: ' + decodedText);
+      sendLog('[外部スキャンPoC] scanned jan=' + decodedText);
+      stopScan();
+      jsonpLookupProduct(decodedText).then(function(payload) {
+        if (!payload || payload.ok !== true) {
+          setLookup('lookup 失敗\n' + JSON.stringify(payload || {}));
+          return;
+        }
+        if (!payload.product) {
+          setLookup('lookup 成功\n商品マスタ未登録\nJAN: ' + payload.jan);
+          return;
+        }
+        setLookup(
+          'lookup 成功\n'
+          + '商品名: ' + (payload.product.productName || '') + '\n'
+          + '単品JAN: ' + (payload.product.singleJAN || '') + '\n'
+          + '箱入数: ' + (payload.product.boxInCount || '') + '\n'
+          + '原価: ' + (payload.product.cost || '')
+        );
+      }).catch(function(err) {
+        setLookup('lookup 失敗\n' + (err && err.message ? err.message : String(err)));
+      });
+    }
+
+    function onScanFailure() {}
+
+    function startScan() {
+      if (typeof Html5Qrcode === 'undefined') {
+        setResult('html5-qrcode の読み込みに失敗しました');
+        return;
+      }
+      if (!scanner) {
+        scanner = new Html5Qrcode('reader');
+      }
+      setResult('スキャン起動中...');
+      sendLog('[外部スキャンPoC] scan start');
+      scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess,
+        onScanFailure
+      ).catch(function(err) {
+        setResult('スキャン開始失敗\n' + (err && err.message ? err.message : String(err)));
+        sendLog('[外部スキャンPoC] scan failed ' + (err && err.message ? err.message : String(err)));
+      });
+    }
+
+    function stopScan() {
+      if (!scanner) return Promise.resolve();
+      return scanner.stop().catch(function() {});
+    }
+
+    document.getElementById('btnStart').addEventListener('click', function() {
+      startScan();
+    });
+
+    document.getElementById('btnStop').addEventListener('click', function() {
+      stopScan().then(function() {
+        setResult('停止しました');
+      });
+    });
+
+    document.getElementById('btnBack').addEventListener('click', function() {
+      if (!lastScannedJan) {
+        setResult('先にスキャンしてください');
+        return;
+      }
+      var url = getReturnUrl(lastScannedJan);
+      if (!url) {
+        setResult('戻り先 URL が未設定です');
+        return;
+      }
+      location.href = url;
+    });
+
+    updateConfigStatus();
+    collectEnvInfo();
+  </script>
+</body>
+</html>

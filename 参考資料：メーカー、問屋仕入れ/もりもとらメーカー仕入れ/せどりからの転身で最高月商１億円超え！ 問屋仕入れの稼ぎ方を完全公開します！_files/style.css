@@ -1,0 +1,383 @@
+@import url("https://fonts.googleapis.com/css2?family=M+PLUS+1p&display=swap");
+@import url("https://use.fontawesome.com/releases/v5.3.1/css/all.css");
+
+/* ----------------------------------------------------------------------
+ 共通
+---------------------------------------------------------------------- */
+/* 色宣言 */
+:root {
+  --color-main: #0481D5;
+  --color-sub: #8eddff;
+}
+/* フォント関係設定 */
+body {
+  font-family: "M PLUS 1p", sans-serif;
+  color: #363636;
+  line-height: 1.6;
+  font-size: 1.7rem;
+  font-weight: 400;
+}
+
+p.text-break {
+  line-height: 2.2;
+}
+
+/* 画像サイズ設定 */
+.description-image {
+  width: 100%;
+}
+
+/* ----------------------------------------------------------------------
+ 外枠調整
+---------------------------------------------------------------------- */
+/* LステップオリジナルCSSのリセット */
+.form-box {
+  padding: 0px 0px;
+}
+.form-box form {
+  box-shadow: none;
+}
+.row {
+  margin-left: 0;
+  margin-right: 0;
+}
+.container {
+  padding-left: 0;
+  padding-right: 0;
+}
+.col-sm-12 {
+  width: 100%;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+.col-sm-4 {
+  width: 100%;
+}
+.col-sm-8 {
+  width: 100%;
+}
+.form-top-right {
+  display: none;
+}
+
+.form-top-left {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+}
+.form-top-left h3 {
+  display: none;
+}
+.form-top {
+  padding: 0;
+}
+.form-bottom {
+  margin-top: 0px;
+  padding: 0;
+  padding-bottom: 80px;
+  background: transparent;
+}
+.form-editor div .form-group .form-text > label.control-label {
+  padding-bottom: 0;
+}
+.help-block {
+  color: #202020;
+}
+
+/* 背景設定*/
+
+.form-editor div:nth-child(2) .form-group {
+	background:linear-gradient(165deg,#a9f0f1,#73a5d9);
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+.form-editor div:nth-child(2) .form-group:after {
+  content: '';
+	height:100%;
+	width:100%;
+	display:block;
+	background-size: 20px 20px;
+	background-image:
+	 linear-gradient(rgba(255,255,255,.25) 3%, rgba(255,255,255,.25) 3%, transparent 3%,
+	  transparent 97%, rgba(255,255,255,.25) 97%, rgba(255,255,255,.25) 100%),
+	 linear-gradient(90deg, rgba(255,255,255,.25) 3%, rgba(255,255,255,.25) 3%, transparent 3%,
+	  transparent 97%, rgba(255,255,255,.25) 97%, rgba(255,255,255,.25) 100%);
+}
+
+/* ----------------------------------------------------------------------
+ コンテンツ内部調整
+---------------------------------------------------------------------- */
+/* 全体調整 */
+.form-editor .form-group {
+  width: 95%;
+  margin: auto;
+  display: block;
+}
+
+/* トップ画像(1つ目の要素を使用) */
+.form-editor div:nth-child(1) .form-group {
+  margin-top: 20px;
+}
+
+@media screen and (max-width: 650px) {
+  .form-editor div:nth-child(1) .form-group {
+    margin-top: 0;
+    width: 100%;
+  }
+}
+
+.form-editor div:nth-child(1) .form-group .description-image {
+  padding: 0;
+  background-color: initial;
+}
+
+/* コンテンツ背景設定(3つ目以降の要素を使用) */
+.form-editor div:nth-child(n + 3) .form-group .form-text > * {
+  padding: 10px 30px;
+  display: block;
+  margin-bottom: 0;
+  background-color: #fff;
+  border-left: 2px solid var(--color-main);
+  border-right: 2px solid var(--color-main);
+}
+
+@media screen and (max-width: 650px) {
+  .form-editor div:nth-child(n + 3) .form-group .form-text > * {
+    padding: 10px 15px;
+  }
+}
+
+/* コンテンツ上部設定(3つ目の要素を使用) */
+.form-editor div:nth-child(3) .form-group .form-text > * {
+  border-top: 2px solid var(--color-main);
+}
+
+@media screen and (max-width: 650px) {
+  .form-editor div:nth-child(3) .form-group .form-text > * {
+    border-top: none;
+  }
+}
+
+/* コンテンツ下部設定(最後から4つ目の要素を使用) */
+.form-editor div:nth-last-child(4) .form-group .form-text > * {
+  border-radius: 0 0 15px 15px;
+  border-bottom: 2px solid var(--color-main);
+}
+
+/* ----------------------------------------------------------------------
+ 見出し
+---------------------------------------------------------------------- */
+/* 中見出し */
+.form-editor > div .description-md-title {
+  width: 100%;
+  position: relative;
+  color: #fff;
+  padding: 20px 10px 20px 30px;
+  margin: 20px 0 40px 0;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  line-height: 1.5;
+  background-color: var(--color-main);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.form-editor > div .description-md-title:before {
+  position: absolute;
+  top: 25%;
+  left: 10px;
+  width: 6px;
+  height: 50%;
+  content: "";
+  border-radius: 3px;
+  background: var(--color-sub);
+}
+
+/* 小見出し */
+.container .description-title {
+  position: relative;
+  color: #000;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1.5;
+  border-radius: 0 4px 4px 0;
+  padding: 0.5em 0.5em 0.5em 1.8em;
+}
+
+.container .description-title:before {
+  color: #0481D5;
+  font-family: "Font Awesome 5 Free";
+  content: "\f058";
+  font-weight: 900;
+  position: absolute;
+  left : 0.5em;
+}
+
+/* ----------------------------------------------------------------------
+ ボタン
+---------------------------------------------------------------------- */
+.btn-primary {
+  font-size: 30px;
+  font-family: "Poppins", sans-serif;
+  text-transform: capitalize;
+  padding: 25px 20px;
+  font-weight: 400;
+  border: 0;
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+  transition: 0.2s ease;
+  font-weight: bold;
+  color: #fff;
+  background-color: #ff981d;
+  border-bottom: 5px solid #fd8318;
+  white-space: normal;
+}
+
+.btn-primary:active,
+.btn-primary:focus,
+.btn-primary:hover,
+.btn-primary.active.focus,
+.btn-primary.active:focus,
+.btn-primary.active:hover,
+.btn-primary:active.focus,
+.btn-primary:active:focus,
+.btn-primary:active:hover {
+  margin-top: 3px;
+  color: #fff;
+  background: #fa9417;
+  border-bottom: 2px solid #fd8318;
+  outline: none;
+  box-shadow: none;
+}
+
+/* ----------------------------------------------------------------------
+ テキスト装飾
+---------------------------------------------------------------------- */
+/* 太字 */
+.form-editor div:nth-child(11) .form-group .form-text p,
+.form-editor div:nth-child(13) .form-group .form-text p,
+.form-editor div:nth-child(17) .form-group .form-text p,
+.form-editor div:nth-child(23) .form-group .form-text p,
+.form-editor div:nth-child(25) .form-group .form-text p,
+.form-editor div:nth-child(35) .form-group .form-text p,
+.form-editor div:nth-child(47) .form-group .form-text p,
+.form-editor div:nth-child(57) .form-group .form-text p,
+.form-editor div:nth-child(72) .form-group .form-text p,
+.form-editor div:nth-child(75) .form-group .form-text p,
+.form-editor div:nth-child(80) .form-group .form-text p,
+.form-editor div:nth-child(85) .form-group .form-text p,
+.form-editor div:nth-child(87) .form-group .form-text p,
+.form-editor div:nth-child(93) .form-group .form-text p,
+.form-editor div:nth-child(96) .form-group .form-text p,
+.form-editor div:nth-child(98) .form-group .form-text p,
+.form-editor div:nth-child(105) .form-group .form-text p,
+.form-editor div:nth-child(113) .form-group .form-text p,
+.form-editor div:nth-child(120) .form-group .form-text p,
+.form-editor div:nth-child(124) .form-group .form-text p,
+.form-editor div:nth-child(133) .form-group .form-text p,
+.form-editor div:nth-child(137) .form-group .form-text p,
+.form-editor div:nth-child(143) .form-group .form-text p,
+.form-editor div:nth-child(148) .form-group .form-text p,
+.form-editor div:nth-child(152) .form-group .form-text p,
+.form-editor div:nth-child(160) .form-group .form-text p,
+.form-editor div:nth-child(162) .form-group .form-text p,
+.form-editor div:nth-child(183) .form-group .form-text p,
+.form-editor div:nth-child(187) .form-group .form-text p,
+.form-editor div:nth-child(192) .form-group .form-text p,
+.form-editor div:nth-child(194) .form-group .form-text p,
+.form-editor div:nth-child(195) .form-group .form-text p,
+.form-editor div:nth-child(196) .form-group .form-text p,
+.form-editor div:nth-child(201) .form-group .form-text p,
+.form-editor div:nth-child(216) .form-group .form-text p,
+.form-editor div:nth-child(218) .form-group .form-text p,
+.form-editor div:nth-child(223) .form-group .form-text p {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+/* 赤太字 */
+.form-editor div:nth-child(9) .form-group .form-text p,
+.form-editor div:nth-child(21) .form-group .form-text p,
+.form-editor div:nth-child(30) .form-group .form-text p,
+.form-editor div:nth-child(38) .form-group .form-text p,
+.form-editor div:nth-child(41) .form-group .form-text p,
+.form-editor div:nth-child(45) .form-group .form-text p,
+.form-editor div:nth-child(49) .form-group .form-text p,
+.form-editor div:nth-child(53) .form-group .form-text p,
+.form-editor div:nth-child(65) .form-group .form-text p,
+.form-editor div:nth-child(78) .form-group .form-text p,
+.form-editor div:nth-child(100) .form-group .form-text p,
+.form-editor div:nth-child(103) .form-group .form-text p,
+.form-editor div:nth-child(117) .form-group .form-text p,
+.form-editor div:nth-child(131) .form-group .form-text p,
+.form-editor div:nth-child(140) .form-group .form-text p,
+.form-editor div:nth-child(146) .form-group .form-text p,
+.form-editor div:nth-child(150) .form-group .form-text p,
+.form-editor div:nth-child(154) .form-group .form-text p,
+.form-editor div:nth-child(158) .form-group .form-text p,
+.form-editor div:nth-child(169) .form-group .form-text p,
+.form-editor div:nth-child(172) .form-group .form-text p,
+.form-editor div:nth-child(175) .form-group .form-text p,
+.form-editor div:nth-child(179) .form-group .form-text p,
+.form-editor div:nth-child(184) .form-group .form-text p,
+.form-editor div:nth-child(191) .form-group .form-text p,
+.form-editor div:nth-child(198) .form-group .form-text p,
+.form-editor div:nth-child(203) .form-group .form-text p,
+.form-editor div:nth-child(206) .form-group .form-text p,
+.form-editor div:nth-child(221) .form-group .form-text p,
+.form-editor div:nth-child(225) .form-group .form-text p {
+  font-weight: 700;
+  color: #cd0000;
+  font-size: 18px;
+}
+
+/* マーカー */
+.form-editor div:nth-child(5) .form-group .form-text p,
+.form-editor div:nth-child(44) .form-group .form-text p,
+.form-editor div:nth-child(59) .form-group .form-text p,
+.form-editor div:nth-child(70) .form-group .form-text p,
+.form-editor div:nth-child(82) .form-group .form-text p,
+.form-editor div:nth-child(90) .form-group .form-text p,
+.form-editor div:nth-child(129) .form-group .form-text p,
+.form-editor div:nth-child(135) .form-group .form-text p,
+.form-editor div:nth-child(167) .form-group .form-text p,
+.form-editor div:nth-child(212) .form-group .form-text p,
+.form-editor div:nth-child(214) .form-group .form-text p {
+  font-weight: 700;
+  display: inline;
+  background: linear-gradient(transparent 75%, #ffff7f 75%);
+  font-size: 18px;
+}
+
+/* 枠 */
+.form-editor div:nth-child(7) .form-group .form-text p,
+.form-editor div:nth-child(66) .form-group .form-text p,
+.form-editor div:nth-child(127) .form-group .form-text p,
+.form-editor div:nth-child(141) .form-group .form-text p,
+.form-editor div:nth-child(164) .form-group .form-text p,
+.form-editor div:nth-child(189) .form-group .form-text p {
+  background: #edf8ff;
+  padding: 15px 15px 15px 15px;
+  line-height: 1.8;
+  font-weight: 700;
+
+}
+
+/* 画像サイズ調整 */
+.form-editor div:nth-child(99) .form-group .form-text img {
+  max-width: 400px;
+}
+
+/* その他調整 */
+.form-editor div:nth-child(3) .form-group .form-text > * {
+  padding-bottom: 0;
+}
+.form-editor div:nth-child(4) .form-group .form-text > * {
+  padding-top: 0;
+}

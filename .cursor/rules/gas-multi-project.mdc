@@ -1,0 +1,99 @@
+---
+description: 複数GASプロジェクトの管理ルール（clasp連携）
+globs: ["*.js", "*.gs", ".clasp.json", "appsscript.json"]
+alwaysApply: false
+---
+
+# 複数GASプロジェクトの管理ルール
+
+## フォルダ構成
+
+```
+gas-project/                    ← 親フォルダ（複数プロジェクトを格納）
+├── .clasp.json                 ← メインプロジェクト用（Yahoo出品システム）
+├── appsscript.json
+├── Yahoo.js
+├── コード.js
+│
+├── export-tax-list/            ← サブプロジェクト1
+│   ├── .clasp.json             ← このプロジェクト専用（別のscriptId）
+│   ├── appsscript.json
+│   └── Code.gs
+│
+└── 新規プロジェクト/            ← サブプロジェクト2（将来追加）
+    ├── .clasp.json
+    ├── appsscript.json
+    └── main.gs
+```
+
+## 重要ルール
+
+### 1. 各プロジェクトは独立したフォルダで管理
+- 各GASプロジェクトは **専用のサブフォルダ** を持つ
+- 各フォルダに **独自の `.clasp.json`** を配置（異なる `scriptId`）
+
+### 2. 親フォルダの `.clasp.json` 設定
+- **必須**: `"skipSubdirectories": true` を設定
+- これによりサブフォルダのファイルが親プロジェクトに混入しない
+
+### 3. clasp コマンドの実行場所
+- **必ず対象プロジェクトのフォルダで実行**
+
+```powershell
+# メインプロジェクト（Yahoo出品システム）
+cd "C:\Users\takuy\Desktop\gas-project"
+clasp push
+
+# export-tax-listプロジェクト
+cd "C:\Users\takuy\Desktop\gas-project\export-tax-list"
+clasp push
+```
+
+## 新規プロジェクト追加手順
+
+### Step 1: サブフォルダ作成
+```powershell
+mkdir "C:\Users\takuy\Desktop\gas-project\新規プロジェクト名"
+cd "C:\Users\takuy\Desktop\gas-project\新規プロジェクト名"
+```
+
+### Step 2: GASプロジェクトをclone（既存の場合）
+```powershell
+clasp clone [scriptId]
+```
+
+### Step 3: または新規作成
+```powershell
+clasp create --title "プロジェクト名" --type standalone
+```
+
+### Step 4: .clasp.json の確認
+- `scriptId` が正しいことを確認
+- `rootDir` が `.` または空であることを確認
+
+## clasp コマンド早見表
+
+| コマンド | 意味 | 方向 |
+|----------|------|------|
+| `clasp pull` | GAS → ローカル | ダウンロード |
+| `clasp push` | ローカル → GAS | アップロード |
+| `clasp open` | GASエディタを開く | - |
+| `clasp status` | 同期状態を確認 | - |
+
+## トラブルシューティング
+
+### pushで「A file with this name already exists」エラー
+- **原因**: サブフォルダのファイルが検出されている
+- **対処**: `.clasp.json` で `"skipSubdirectories": true` を設定
+
+### pushで「Pushed X files.」が表示されない
+- **原因**: pushが完了していない
+- **対処**: エラーメッセージを確認し、上記の設定を確認
+
+### 認証エラー（invalid_grant）
+```powershell
+clasp logout
+cd "C:\Users\takuy"
+del ".clasprc.json" -ErrorAction SilentlyContinue
+clasp login --no-localhost
+```
