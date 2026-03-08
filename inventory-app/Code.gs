@@ -186,6 +186,19 @@ function doGet(e) {
     } catch (z) {}
     if (!baseUrl) baseUrl = '';
 
+    var gasExecUrl = baseUrl;
+    var externalScanBaseUrl = (PropertiesService.getScriptProperties().getProperty('EXTERNAL_SCAN_BASE_URL') || '').toString().trim();
+    if (!externalScanBaseUrl) {
+      externalScanBaseUrl = 'https://octas2301.github.io/gas-project/inventory-app/external-scan-poc.html';
+    }
+    var sep = (gasExecUrl.indexOf('?') >= 0) ? '&' : '?';
+    var returnUrlShipping = gasExecUrl + sep + 'view=shipping';
+    var returnUrlMove = gasExecUrl + sep + 'view=move';
+    var returnUrlReceiving = gasExecUrl + sep + 'view=receiving';
+    var returnUrlCount = gasExecUrl + sep + 'view=count';
+    var returnUrlAdjust = gasExecUrl + sep + 'view=count&adjust=1';
+    var returnUrlProducts = gasExecUrl + sep + 'view=products';
+
     if (params.test === '1' || params.view === 'scantest') {
       var jan = (params.jan || '').toString().trim();
       var callbackUrl = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + 'test=1&view=scantest&jan=EAN';
@@ -208,6 +221,8 @@ function doGet(e) {
     var safeView = ['shipping', 'move', 'receiving', 'count', 'variance', 'products', 'stock', 'settings'].indexOf(String(view)) >= 0 ? view : 'shipping';
     log('safeView=' + safeView);
     var toastMsg = params.toast || '';
+    var janFromUrl = (params.jan || '').toString().trim();
+    var adjustFromUrl = (params.adjust === '1' || params.adjust === 'true');
     var locations = [], reasons = [], tantou = [];
     try {
       locations = getMasterList('場所マスタ') || [];
@@ -228,6 +243,17 @@ function doGet(e) {
     html.reasonsOptionsHtml = reasonsOptionsHtml;
     html.tantouOptionsHtml = tantouOptionsHtml;
     html.toastMsg = escapeForHtml(toastMsg);
+    html.janFromUrl = janFromUrl;
+    html.janFromUrlEscaped = escapeForHtml(janFromUrl);
+    html.adjustFromUrl = adjustFromUrl;
+    html.gasExecUrl = gasExecUrl;
+    html.externalScanBaseUrl = externalScanBaseUrl;
+    html.returnUrlShippingEnc = encodeURIComponent(returnUrlShipping);
+    html.returnUrlMoveEnc = encodeURIComponent(returnUrlMove);
+    html.returnUrlReceivingEnc = encodeURIComponent(returnUrlReceiving);
+    html.returnUrlCountEnc = encodeURIComponent(returnUrlCount);
+    html.returnUrlAdjustEnc = encodeURIComponent(returnUrlAdjust);
+    html.returnUrlProductsEnc = encodeURIComponent(returnUrlProducts);
     log('template vars set');
     var out = html.evaluate()
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

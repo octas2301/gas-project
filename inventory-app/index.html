@@ -38,7 +38,7 @@
     .modal-inner { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; }
   </style>
 </head>
-<body data-view="<?= viewAttr ?>">
+<body data-view="<?= viewAttr ?>" data-jan-from-url="<?= janFromUrlEscaped ?>" data-adjust-from-url="<?= adjustFromUrl ? '1' : '' ?>" data-scan-url-count="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count">
   <div id="loading-msg" style="padding:1rem;text-align:center;color:#666;display:none;">読み込み中…</div>
   <p id="diag-line" style="margin:4px 8px;font-size:11px;color:#666;">表示: <?= view ?> | base: <?= baseUrl ? 'あり' : 'なし' ?></p>
   <? if (showLog) { ?><div id="debug-log" style="margin:8px;padding:8px;background:#fff3cd;border:1px solid #ffc107;font-size:12px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;min-height:50px;"><strong>調査用ログ（?log=1で表示）</strong><br><pre id="server-log-pre"><?!= serverLogHtml || '(サーバーログなし)' ?></pre></div><? } ?>
@@ -170,6 +170,7 @@
     <div id="view-variance" class="view <?= view === 'variance' ? 'active' : '' ?>">
       <h1>⚠️ 差異</h1>
       <p id="variance-caption" style="font-size:0.875rem;color:#666;">理論在庫と棚卸実数の差（0でないもの）</p>
+      <p style="margin-bottom:0.75rem;"><a href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlAdjustEnc ?>&amp;view=variance" target="_blank" class="btn secondary" style="display:inline-block;text-decoration:none;text-align:center;">📷 棚卸確定後の修正でスキャン</a></p>
       <div id="variance-list"></div>
     </div>
 
@@ -206,12 +207,12 @@
   </div>
 
   <nav class="nav">
-    <a class="nav-item <?= view === 'shipping' ? 'here' : '' ?>" data-view="shipping" href="?view=shipping" target="_self">🛒 出荷</a>
-    <a class="nav-item <?= view === 'move' ? 'here' : '' ?>" data-view="move" href="?view=move" target="_self">🔄 移動</a>
-    <a class="nav-item <?= view === 'receiving' ? 'here' : '' ?>" data-view="receiving" href="?view=receiving" target="_self">🚚 入荷</a>
-    <a class="nav-item <?= view === 'count' ? 'here' : '' ?>" data-view="count" href="?view=count" target="_self">📦 棚卸</a>
+    <a class="nav-item <?= view === 'shipping' ? 'here' : '' ?>" data-view="shipping" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlShippingEnc ?>&view=shipping" target="_blank">🛒 出荷</a>
+    <a class="nav-item <?= view === 'move' ? 'here' : '' ?>" data-view="move" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlMoveEnc ?>&view=move" target="_blank">🔄 移動</a>
+    <a class="nav-item <?= view === 'receiving' ? 'here' : '' ?>" data-view="receiving" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlReceivingEnc ?>&view=receiving" target="_blank">🚚 入荷</a>
+    <a class="nav-item <?= view === 'count' ? 'here' : '' ?>" data-view="count" data-scan-url="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count" href="?view=count" target="_self">📦 棚卸</a>
     <a class="nav-item <?= view === 'variance' ? 'here' : '' ?>" data-view="variance" href="?view=variance" target="_self">⚠️ 差異</a>
-    <a class="nav-item <?= view === 'products' ? 'here' : '' ?>" data-view="products" href="?view=products" target="_self">🛠️ 商品</a>
+    <a class="nav-item <?= view === 'products' ? 'here' : '' ?>" data-view="products" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlProductsEnc ?>&view=products" target="_blank">🛠️ 商品</a>
     <a class="nav-item <?= view === 'stock' ? 'here' : '' ?>" data-view="stock" href="?view=stock" target="_self">📊 在庫</a>
     <a class="nav-item <?= view === 'settings' ? 'here' : '' ?>" data-view="settings" href="?view=settings" target="_self">⚙️ 設定</a>
   </nav>
@@ -502,6 +503,8 @@
           if (completeBtn) completeBtn.style.display = 'inline-block';
           toast('棚卸を開始しました');
           countLog('UI updated: 棚卸実施中');
+          var scanUrl = document.querySelector('.nav-item[data-view="count"]') && document.querySelector('.nav-item[data-view="count"]').getAttribute('data-scan-url');
+          if (scanUrl) window.open(scanUrl, '_blank');
         } else if (r && r.error && (r.error + '').indexOf('未完了の棚卸があります') >= 0) {
           countLog('detected 未完了, calling apiGetCountSession');
           var t0Fallback = performance.now();
@@ -518,6 +521,8 @@
               if (completeBtn) completeBtn.style.display = 'inline-block';
               toast('未完了の棚卸に復帰しました。続きを入力して完了を押してください。');
               countLog('UI updated: 棚卸実施中 (fallback)');
+              var scanUrl = document.querySelector('.nav-item[data-view="count"]') && document.querySelector('.nav-item[data-view="count"]').getAttribute('data-scan-url');
+              if (scanUrl) window.open(scanUrl, '_blank');
             } else {
               countLog('apiGetCountSession (fallback) success but session=null or no sessionId');
               toast((r && r.error) || 'スタートに失敗しました', true);
@@ -792,7 +797,11 @@
 
     try {
       document.querySelectorAll('.nav-item').forEach(function(el) {
-        el.addEventListener('click', function(e) { e.preventDefault(); showView(this.getAttribute('data-view')); });
+        el.addEventListener('click', function(e) {
+          if (this.getAttribute('data-scan-first') === '1') return;
+          e.preventDefault();
+          showView(this.getAttribute('data-view'));
+        });
       });
     } catch (e) { debugLog('nav setup: ' + (e && e.message)); }
 
@@ -805,6 +814,28 @@
         debugLog('2 showView start: ' + currentView);
         showView(currentView);
         debugLog('3 showView done');
+        var janFromUrl = (document.body.getAttribute('data-jan-from-url') || '').trim();
+        var adjustFromUrl = document.body.getAttribute('data-adjust-from-url') === '1';
+        if (janFromUrl) {
+          var inputId = null;
+          if (adjustFromUrl && currentView === 'count') inputId = 'adjust-jan';
+          else if (currentView === 'shipping') inputId = 'ship-jan';
+          else if (currentView === 'move') inputId = 'move-jan';
+          else if (currentView === 'receiving') inputId = 'rec-jan';
+          else if (currentView === 'count') inputId = 'count-jan';
+          else if (currentView === 'products') inputId = 'prod-single';
+          if (inputId) {
+            var inputEl = document.getElementById(inputId);
+            if (inputEl) {
+              inputEl.value = janFromUrl;
+              inputEl.dispatchEvent(new Event('blur', { bubbles: true }));
+            }
+          }
+        }
+        if (adjustFromUrl && currentView === 'count') {
+          var adjustSection = document.getElementById('count-adjust-section');
+          if (adjustSection && adjustSection.style.display === 'none') toggleCountAdjust();
+        }
         if (loadingEl) loadingEl.style.display = 'none';
         if (mainEl) mainEl.style.display = 'block';
         debugLog('4 container visible');

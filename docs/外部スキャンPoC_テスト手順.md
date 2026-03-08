@@ -32,6 +32,9 @@ var GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
 
 ローカルファイルのままでは、スマホでの実機確認がしづらいため、HTTPS 公開を推奨します。
 
+## 本番連携時の「別タブで開く」
+GAS の在庫アプリから外部スキャンへ遷移する場合、**必ず別タブ（target="_blank" または window.open）で開く**。同一タブで開くと多くの環境でページが iframe 扱いになり **isTopWindow: false** となり、カメラが Permission denied になる。実装では出荷・移動・入荷・商品のナビ、棚卸スタート後、差異タブ内の「棚卸確定後の修正でスキャン」はいずれも別タブで開く。
+
 ## テスト手順
 1. 公開した `external-scan-poc.html` をスマホの Chrome で開く
 2. 「スキャン開始」を押す
@@ -70,6 +73,7 @@ https://YOUR-HOST/external-scan-poc.html?gasUrl=https%3A%2F%2Fscript.google.com%
 ## 失敗時の見方
 - カメラが起動しない:
   - 外部ページ側の HTTPS やブラウザ権限を確認
+  - **本番連携（GAS のナビから開く場合）**: ページ内の「環境情報」で **isTopWindow** を確認。**false** のときは同一タブや iframe 内で開いているため、ブラウザがカメラを許可しない。GAS 側で外部スキャンへのリンクを **別タブで開く（target="_blank"）** にしてあり、再デプロイ済みか確認する。Chrome の通常タブで GAS を開き直し、該当メニューをタップして **新しいタブ** で外部スキャンが開くか確認する。
 - 商品検索結果が出ない:
   - `GAS_EXEC_URL` が誤っていないか確認
   - GAS が再デプロイされているか確認

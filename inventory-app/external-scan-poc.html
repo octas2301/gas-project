@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>外部スキャン PoC</title>
+  <title>バーコードスキャン</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; color: #222; }
     .container { max-width: 480px; margin: 0 auto; padding: 16px; }
@@ -25,14 +25,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>外部スキャン PoC</h1>
+    <h1>バーコードスキャン</h1>
     <div class="card">
-      <p>このページは <strong>GAS の外</strong> に配置して、カメラ起動と GAS 連携を切り分けるための最小PoCです。</p>
-      <p id="configStatus" class="warn">GAS URL 未設定</p>
       <div class="btn-row">
-        <button type="button" id="btnStart">スキャン開始</button>
+        <button type="button" id="btnTorch" class="secondary" style="display:none;">💡 ライト</button>
+        <button type="button" id="btnStart">再スキャン</button>
         <button type="button" id="btnStop" class="secondary">停止</button>
-        <button type="button" id="btnBack" class="secondary">GAS に戻る</button>
+        <a id="btnHandInput" href="#" class="btn-link secondary">手入力（GASで入力）</a>
+        <button type="button" id="btnBack" class="secondary" style="display:none;">GAS に戻る</button>
       </div>
     </div>
 
@@ -52,16 +52,6 @@
       <h2>環境情報</h2>
       <div id="envInfo" class="mono"></div>
     </div>
-
-    <div class="card">
-      <h2>設定メモ</h2>
-      <div class="mono">1. GAS_EXEC_URL を exec URL に書き換える
-2. 必要なら returnUrl を変更する
-3. このHTMLを HTTPS で公開する
-
-URLクエリでも上書きできます:
-?gasUrl=...&returnUrl=...</div>
-    </div>
   </div>
 
   <script>
@@ -70,24 +60,38 @@ URLクエリでも上書きできます:
     var scanner = null;
     var lastScannedJan = '';
 
+    function isTestOrManualReturn() {
+      return (qs('test') === '1' || qs('manualReturn') === '1');
+    }
+
     function qs(name) {
       return new URLSearchParams(location.search).get(name) || '';
     }
 
     function getGasExecUrl() {
       var url = qs('gasUrl') || GAS_EXEC_URL;
+      try { url = decodeURIComponent(url); } catch (e) {}
       return (url || '').trim();
     }
 
     function getReturnUrl(jan) {
       var explicit = (qs('returnUrl') || '').trim();
       if (explicit) {
+        try { explicit = decodeURIComponent(explicit); } catch (e) {}
         var joiner = explicit.indexOf('?') >= 0 ? '&' : '?';
         return explicit + joiner + 'jan=' + encodeURIComponent(jan || '');
       }
       var gasUrl = getGasExecUrl();
       if (!gasUrl || gasUrl === 'PASTE_GAS_EXEC_URL_HERE') return '';
       return gasUrl + DEFAULT_RETURN_PATH + '&jan=' + encodeURIComponent(jan || '');
+    }
+
+    function getHandInputUrl() {
+      var gasUrl = getGasExecUrl();
+      if (!gasUrl) return '#';
+      var view = (qs('view') || 'shipping').trim() || 'shipping';
+      var sep = gasUrl.indexOf('?') >= 0 ? '&' : '?';
+      return gasUrl + sep + 'view=' + encodeURIComponent(view);
     }
 
     function isGasConfigured() {
@@ -127,14 +131,7 @@ URLクエリでも上書きできます:
     }
 
     function updateConfigStatus() {
-      var el = document.getElementById('configStatus');
-      if (isGasConfigured()) {
-        el.textContent = 'GAS URL 設定済み: ' + getGasExecUrl();
-        el.className = 'ok';
-      } else {
-        el.textContent = 'GAS URL 未設定: GAS_EXEC_URL を exec URL に書き換えてください';
-        el.className = 'warn';
-      }
+      // 表示はしない（GAS URL 設定済みの表示を削除したため）
     }
 
     function jsonpLookupProduct(jan) {
@@ -176,6 +173,13 @@ URLクエリでも上書きできます:
       setResult('JAN: ' + decodedText);
       sendLog('[外部スキャンPoC] scanned jan=' + decodedText);
       stopScan();
+      if (!isTestOrManualReturn()) {
+        var url = getReturnUrl(lastScannedJan);
+        if (url) {
+          location.href = url;
+          return;
+        }
+      }
       jsonpLookupProduct(decodedText).then(function(payload) {
         if (!payload || payload.ok !== true) {
           setLookup('lookup 失敗\n' + JSON.stringify(payload || {}));
@@ -209,12 +213,17 @@ URLクエリでも上書きできます:
       }
       setResult('スキャン起動中...');
       sendLog('[外部スキャンPoC] scan start');
+      var qrboxSize = function(vw, vh) {
+        return { width: Math.min(320, Math.round((vw || 300) * 0.92)), height: Math.min(400, Math.round((vh || 400) * 0.7)) };
+      };
       scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: qrboxSize },
         onScanSuccess,
         onScanFailure
-      ).catch(function(err) {
+      ).then(function() {
+        try { setupTorchButton(); } catch (e) {}
+      }).catch(function(err) {
         setResult('スキャン開始失敗\n' + (err && err.message ? err.message : String(err)));
         sendLog('[外部スキャンPoC] scan failed ' + (err && err.message ? err.message : String(err)));
       });
@@ -222,7 +231,37 @@ URLクエリでも上書きできます:
 
     function stopScan() {
       if (!scanner) return Promise.resolve();
+      torchOff();
       return scanner.stop().catch(function() {});
+    }
+
+    function getVideoTrack() {
+      var video = document.querySelector('#reader video');
+      if (!video || !video.srcObject) return null;
+      var tracks = video.srcObject.getVideoTracks();
+      return tracks.length ? tracks[0] : null;
+    }
+
+    var torchOn = false;
+    function setTorch(on) {
+      var track = getVideoTrack();
+      if (!track || !(track.getCapabilities().torch)) return;
+      torchOn = on;
+      track.applyConstraints({ advanced: [{ torch: on }] }).catch(function() { torchOn = false; });
+      var btn = document.getElementById('btnTorch');
+      if (btn) btn.textContent = on ? '💡 ライトオフ' : '💡 ライト';
+    }
+    function torchOff() {
+      setTorch(false);
+    }
+    function setupTorchButton() {
+      var track = getVideoTrack();
+      var btn = document.getElementById('btnTorch');
+      if (!btn) return;
+      if (track && track.getCapabilities().torch) {
+        btn.style.display = 'inline-block';
+        btn.onclick = function() { setTorch(!torchOn); };
+      }
     }
 
     document.getElementById('btnStart').addEventListener('click', function() {
@@ -248,8 +287,20 @@ URLクエリでも上書きできます:
       location.href = url;
     });
 
+    var btnBackEl = document.getElementById('btnBack');
+    if (btnBackEl && isTestOrManualReturn()) btnBackEl.style.display = 'inline-block';
+
+    var handInputEl = document.getElementById('btnHandInput');
+    if (handInputEl) {
+      handInputEl.href = getHandInputUrl();
+    }
+
     updateConfigStatus();
     collectEnvInfo();
+
+    if (qs('returnUrl') || qs('gasUrl')) {
+      setTimeout(function() { startScan(); }, 400);
+    }
   </script>
 </body>
 </html>

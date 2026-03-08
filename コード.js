@@ -197,12 +197,10 @@ function onOpen() {
           .addItem('選択行のJANで楽天から競合価格を取得', 'menuFetchCompetitivePriceFromRakuten')
           .addItem('選択行のJANでYahoo!からセット別競合価格を取得', 'menuFetchYahooSetPricesToMaster')
           .addItem('選択行のJANで楽天からセット別競合価格を取得', 'menuFetchRakutenSetPricesToMaster')
-          .addItem('Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
-          .addItem('楽天・Yahoo 競合価格APIテスト', 'menuTestRakutenYahooCompetitivePriceApi')
-          .addItem('楽天 90件＋セット数・最安テスト', 'menuTestRakuten90ItemsSetCountMinPrice')
-          .addItem('楽天 90件スコア一覧（降順・URL付き）', 'menuTestRakuten90ItemsScoreList')
-          .addItem('楽天 セット数 Gemini一括判定テスト', 'menuTestRakutenSetCountBatchGemini')
-          .addItem('モール横断 セット数統合判定テスト', 'menuTestCrossMallSetCountJudge')
+          .addItem('モール横断 セット数統合判定', 'menuTestCrossMallSetCountJudge')
+          .addItem('モール横断結果を楽天・Yahoo! マスタに反映', 'menuApplyCrossMallResultToRakutenYahooMaster')
+          .addItem('抜けセット数行の挿入', 'menuInsertMissingSetCountRows')
+          .addItem('リサーチ一括（モール横断→抜け挿入→反映→提案）', 'menuResearchBatchCrossMallAndPropose')
           .addItem('選択行に価格・セット数提案を反映', 'menuProposePriceAndSetToSelection')
           .addSeparator()
           .addItem('ASIN貼り付け（Keepa用）シートを準備', 'menuPrepareAsinPasteSheet')
@@ -214,6 +212,14 @@ function onOpen() {
           .addItem('競合・穴のセット数を提案（ASIN貼り付け）', 'menuProposeSetCountFromAsinPasteSheet')
           .addItem('セット構成提案', 'menuSetCompositionProposal')
           .addItem('競合価格のみ修正を反映', 'menuUpdateCompetitivePriceOnly'))
+        .addSeparator()
+        .addSubMenu(ui.createMenu('⑩ テストメニュー')
+          .addItem('Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
+          .addItem('楽天・Yahoo 競合価格APIテスト', 'menuTestRakutenYahooCompetitivePriceApi')
+          .addItem('楽天 90件＋セット数・最安テスト', 'menuTestRakuten90ItemsSetCountMinPrice')
+          .addItem('楽天 90件スコア一覧（降順・URL付き）', 'menuTestRakuten90ItemsScoreList')
+          .addItem('楽天 セット数 Gemini一括判定テスト', 'menuTestRakutenSetCountBatchGemini')
+          .addItem('モール横断 セット数統合判定テスト', 'menuTestCrossMallSetCountJudge'))
         .addSeparator()
         .addSubMenu(ui.createMenu('③ 販売価格の調整')
           .addItem('Amazonカテゴリーを自動入力（Gemini）', 'menuFillAmazonCategoryByGemini')
@@ -1778,7 +1784,7 @@ function fetchCompetitivePricesFromKeepa(apiKey, asins) {
 }
 
 // ----------------------------------------
-// 3.1c-2 楽天・Yahoo! 競合価格API 最小テスト（テスト終了後メニュー削除想定）
+// 3.1c-2 楽天・Yahoo! 競合価格API 最小テスト（テストは「商品リサーチ > ② 出品用 > テスト」サブメニューに退避）
 // ----------------------------------------
 /** テスト用固定 JAN（よくある商品。JAN で 0 件の場合はキーワードで再検索する）。 */
 var TEST_RAKUTEN_YAHOO_JAN = '4970107110284';
@@ -2108,6 +2114,8 @@ const RAKUTEN_SCORE_LIST_SHEET_NAME = '楽天スコア一覧';
 const RAKUTEN_SET_COUNT_BATCH_SHEET_NAME = '楽天セット数一括判定';
 /** 楽天・Yahoo!・Amazon の候補を1シートに集約し、Gemini の統合判定を出すテスト用シート名。 */
 const CROSS_MALL_SET_COUNT_SHEET_NAME = 'モール横断セット数判定';
+/** 他セット数と比べて単価が高すぎるとみなす倍率（1.5＝1.5倍以上でメモ追記）。 */
+const CROSS_MALL_UNIT_PRICE_HIGH_RATIO = 1.5;
 
 /**
  * 楽天 90件取得し、商品名一致スコアを降順で一覧出力する（ログ＋シート）。URL 付きで人間が目視確認できる。
@@ -2841,15 +2849,6 @@ function menuTestCrossMallSetCountJudge() {
     SpreadsheetApp.getUi().alert('▼商品マスタ(人間作業用) シートが見つかりません。');
     return;
   }
-  if (ss.getActiveSheet().getSheetName() !== MASTER_SHEET_NAME) {
-    SpreadsheetApp.getUi().alert('マスタシートを開き、対象行を1行選択してから実行してください。');
-    return;
-  }
-  var range = masterSheet.getActiveRange();
-  if (!range) {
-    SpreadsheetApp.getUi().alert('行を選択してから実行してください。');
-    return;
-  }
   var masterValues = masterSheet.getDataRange().getValues();
   var headerRowIdx = -1;
   for (var hr = 0; hr < Math.min(masterValues.length, 20); hr++) {
@@ -2865,21 +2864,47 @@ function menuTestCrossMallSetCountJudge() {
   var colName = masterColMap['商品名ベース'] != null ? masterColMap['商品名ベース'] : masterColMap['商品名'];
   var colAsin = masterColMap['ASINコード'];
   var colCompetitorAsin = masterColMap['競合店ASINコード'];
+  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
   if (colJan === undefined) {
     SpreadsheetApp.getUi().alert('マスタに JANコード 列がありません。');
     return;
   }
-  var firstRow = range.getRow();
-  var dataIdx = firstRow - 1;
-  if (dataIdx <= headerRowIdx) {
-    SpreadsheetApp.getUi().alert('データ行を選択してください。');
+  if (colCheckbox === undefined) {
+    SpreadsheetApp.getUi().alert('マスタに「' + CHECKBOX_HEADER_NAME + '」列がありません。レ点で対象を指定するため必要です。');
     return;
   }
-  var jan = String(masterValues[dataIdx][colJan] || '').trim();
-  if (jan.length < 8) {
-    SpreadsheetApp.getUi().alert('選択行の JANコード が無効です。');
+  // 出品CK（レ点）が付いた行からユニークなJANを取得（出現順を保持）
+  var checkedRowIndices = [];
+  for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+    if (masterValues[mr][colCheckbox]) checkedRowIndices.push(mr);
+  }
+  if (checkedRowIndices.length === 0) {
+    SpreadsheetApp.getUi().alert('出品CK（レ点）が付いた行がありません。対象行にレ点を付けてから実行してください。');
     return;
   }
+  var uniqueJans = [];
+  var firstRowByJan = {};
+  for (var ui = 0; ui < checkedRowIndices.length; ui++) {
+    var r = checkedRowIndices[ui];
+    var j = String(masterValues[r][colJan] || '').trim();
+    if (j.length >= 8 && uniqueJans.indexOf(j) === -1) {
+      uniqueJans.push(j);
+      firstRowByJan[j] = r;
+    }
+  }
+  if (uniqueJans.length === 0) {
+    SpreadsheetApp.getUi().alert('レ点が付いた行に有効な JANコード がありません。');
+    return;
+  }
+  var sheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(CROSS_MALL_SET_COUNT_SHEET_NAME);
+  sheet.clear();
+  var headerRow24 = ['順位', 'モール', 'スコア', '商品名', '画像', 'URL', '価格', '価格+送料', '仮定送料', '仮定手数料率', '比較用補正価格', 'ローカル候補セット数', 'ローカル根拠', 'ローカル比較単価', 'ローカル原価倍率', 'ローカル想定原価', 'ローカル想定利益額', '統合セット数', '統合根拠', '不明理由種別', '統合比較単価', '統合原価倍率', '統合想定原価', '統合想定利益額'];
+  var allRows = [];
+  var totalCandidates = 0;
+  for (var ji = 0; ji < uniqueJans.length; ji++) {
+    var jan = uniqueJans[ji];
+    var dataIdx = firstRowByJan[jan];
   var comparisonCtx = getCrossMallComparisonContext(ss, masterValues, masterColMap, headerRowIdx, dataIdx, jan);
   Logger.log('[モール横断セット数] 比較前提 shipping=' + comparisonCtx.shipping + ' source=' + comparisonCtx.shippingSource
     + ' amazonCategory=' + (comparisonCtx.amazonCategory || '(空)') + ' categorySource=' + comparisonCtx.amazonCategorySource
@@ -2922,7 +2947,12 @@ function menuTestCrossMallSetCountJudge() {
     var rItem = rakutenItems[ri];
     var rScore = evalRakutenItemNameMatchScore(maker, coreName, rItem.itemName);
     var rParsed = parseSetCountFromItemNameWithSource(rItem.itemName);
-    var rShippingInfo = getAssumedShippingForSetCount(rParsed ? rParsed.setCount : null, comparisonCtx);
+    var rShippingInfo = (function () {
+      if (rItem.postageFlag === 0) return { shipping: 0, source: 'postage_free' };
+      var nameStr = (rItem.itemName != null) ? String(rItem.itemName) : '';
+      if (/送料無料|商品無料|送料\s*無料/i.test(nameStr)) return { shipping: 0, source: 'postage_free_item_name' };
+      return getAssumedShippingForSetCount(rParsed ? rParsed.setCount : null, comparisonCtx);
+    })();
     var rCostInfo = getAssumedCostForSetCount(rParsed ? rParsed.setCount : null, comparisonCtx);
     var rFeeRate = getComparisonFeeRateForSource('rakuten', rItem.itemPrice, comparisonCtx);
     var rAdjusted = (rItem.itemPrice != null) ? Math.max(0, rItem.itemPrice - rShippingInfo.shipping - (rItem.itemPrice * rFeeRate)) : null;
@@ -2955,11 +2985,28 @@ function menuTestCrossMallSetCountJudge() {
   // Yahoo candidates
   var yahooRes = fetchYahooShoppingItemsByJan(yahooId, jan, 50);
   var yahooHits = yahooRes && yahooRes.hits ? yahooRes.hits : [];
+  if (yahooHits.length === 0 && fallbackKeyword && fallbackKeyword.length >= 2) {
+    Logger.log('[Yahoo!セット数] JAN=' + jan + ' JAN検索0件のためフォールバック keyword="' + fallbackKeyword.substring(0, 60) + (fallbackKeyword.length > 60 ? '...' : '') + '"');
+    Utilities.sleep(300);
+    var yahooKeywordRes = fetchYahooShoppingItemsByQuery(yahooId, fallbackKeyword, 50);
+    if (yahooKeywordRes && yahooKeywordRes.hits && yahooKeywordRes.hits.length > 0) {
+      yahooHits = yahooKeywordRes.hits;
+      Logger.log('[Yahoo!セット数] JAN=' + jan + ' フォールバック取得件数=' + yahooHits.length);
+    } else {
+      Logger.log('[Yahoo!セット数] JAN=' + jan + ' フォールバック後も0件');
+    }
+  }
+  if (yahooRes && yahooRes.error) Logger.log('[Yahoo!セット数] JAN=' + jan + ' JAN検索 error=' + yahooRes.error);
   for (var yi = 0; yi < yahooHits.length; yi++) {
     var yItem = yahooHits[yi];
     var yScore = evalRakutenItemNameMatchScore(maker, coreName, yItem.name);
     var yParsed = parseSetCountFromItemNameWithSource(yItem.name);
-    var yShippingInfo = getAssumedShippingForSetCount(yParsed ? yParsed.setCount : null, comparisonCtx);
+    var yShippingInfo = (function () {
+      if (yItem.shippingCode === 2) return { shipping: 0, source: 'postage_free' };
+      var nameStr = (yItem.name != null) ? String(yItem.name) : '';
+      if (/送料無料|商品無料|送料\s*無料/i.test(nameStr)) return { shipping: 0, source: 'postage_free_item_name' };
+      return getAssumedShippingForSetCount(yParsed ? yParsed.setCount : null, comparisonCtx);
+    })();
     var yCostInfo = getAssumedCostForSetCount(yParsed ? yParsed.setCount : null, comparisonCtx);
     var yFeeRate = getComparisonFeeRateForSource('yahoo', yItem.price, comparisonCtx);
     var yAdjusted = (yItem.price != null) ? Math.max(0, yItem.price - yShippingInfo.shipping - (yItem.price * yFeeRate)) : null;
@@ -3006,10 +3053,9 @@ function menuTestCrossMallSetCountJudge() {
         for (var ai = 0; ai < keepaRes.list.length; ai++) {
           var aItem = keepaRes.list[ai];
           var aScore = evalRakutenItemNameMatchScore(maker, coreName, aItem.title);
-          var aShippingInfo = getAssumedShippingForSetCount(aItem.setCount, comparisonCtx);
           var aCostInfo = getAssumedCostForSetCount(aItem.setCount, comparisonCtx);
           var aFeeRate = getComparisonFeeRateForSource('amazon', aItem.price, comparisonCtx);
-          var aAdjusted = (aItem.price != null) ? Math.max(0, aItem.price - aShippingInfo.shipping - (aItem.price * aFeeRate)) : null;
+          var aAdjusted = (aItem.price != null) ? Math.max(0, aItem.price - 0 - (aItem.price * aFeeRate)) : null;
           var aLocalUnit = (aItem.setCount != null && aItem.setCount >= 1 && aAdjusted != null) ? (aAdjusted / aItem.setCount) : null;
           var aLocalCostRatio = (aLocalUnit != null && comparisonCtx.baseUnitCost != null && comparisonCtx.baseUnitCost > 0) ? (aLocalUnit / comparisonCtx.baseUnitCost) : null;
           var aExpectedProfit = (aAdjusted != null && aCostInfo.cost != null) ? Math.round(aAdjusted - aCostInfo.cost) : null;
@@ -3023,8 +3069,8 @@ function menuTestCrossMallSetCountJudge() {
             localSetCount: aItem.setCount != null ? aItem.setCount : null,
             localReason: aItem.setCountReason || '不明',
             localRules: aScore.usedRules.map(function (x) { return x.rule + ':' + x.score; }).join(','),
-            assumedShipping: aShippingInfo.shipping,
-            assumedShippingSource: aShippingInfo.source,
+            assumedShipping: 0,
+            assumedShippingSource: 'amazon_no_shipping_data',
             feeRate: aFeeRate,
             adjustedPrice: aAdjusted != null ? Math.round(aAdjusted) : null,
             assumedCost: aCostInfo.cost,
@@ -3040,8 +3086,8 @@ function menuTestCrossMallSetCountJudge() {
   }
 
   if (candidates.length === 0) {
-    SpreadsheetApp.getUi().alert('候補を1件も取得できませんでした。');
-    return;
+    Logger.log('[モール横断セット数] JAN=' + jan + ' 候補0件のためスキップ');
+    continue;
   }
 
   candidates.sort(function (a, b) {
@@ -3071,11 +3117,6 @@ function menuTestCrossMallSetCountJudge() {
     }
   }
 
-  var sheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(CROSS_MALL_SET_COUNT_SHEET_NAME);
-  sheet.clear();
-  sheet.getRange(1, 1, 1, 23).setValues([['順位', 'モール', 'スコア', '商品名', 'URL', '価格', '価格+送料', '仮定送料', '仮定手数料率', '比較用補正価格', 'ローカル候補セット数', 'ローカル根拠', 'ローカル比較単価', 'ローカル原価倍率', 'ローカル想定原価', 'ローカル想定利益額', '統合セット数', '統合根拠', '不明理由種別', '統合比較単価', '統合原価倍率', '統合想定原価', '統合想定利益額']]);
-  sheet.getRange(1, 1, 1, 23).setFontWeight('bold');
   var rows = [];
   for (var ci = 0; ci < candidates.length; ci++) {
     var integratedSet = (integrated[ci] && integrated[ci].setCount != null && integrated[ci].setCount >= 1) ? integrated[ci].setCount : null;
@@ -3097,11 +3138,14 @@ function menuTestCrossMallSetCountJudge() {
       else if (reasonText === '（未取得）') unknownKind = '未取得';
       else if (reasonText.length > 0) unknownKind = 'Gemini判定';
     }
+    var imgUrl = (candidates[ci].imageUrl || '').trim();
+    var imageFormula = (imgUrl.indexOf('http') === 0) ? ('=IMAGE("' + imgUrl.replace(/"/g, '""') + '", 2)') : '';
     rows.push([
       ci + 1,
       candidates[ci].source,
       candidates[ci].score,
       (candidates[ci].title || '').substring(0, 200),
+      imageFormula,
       candidates[ci].url || '',
       candidates[ci].price != null ? candidates[ci].price : '',
       priceInclShipping,
@@ -3123,13 +3167,506 @@ function menuTestCrossMallSetCountJudge() {
       integratedProfit
     ]);
   }
-  if (rows.length > 0) {
-    sheet.getRange(2, 1, rows.length, 23).setValues(rows);
+  // 各JANブロック内を統合セット数で昇順ソート（不明は末尾）
+  rows.sort(function(a, b) {
+    var sa = a[17];
+    var sb = b[17];
+    var na = (typeof sa === 'number' && sa >= 1) ? sa : 999999;
+    var nb = (typeof sb === 'number' && sb >= 1) ? sb : 999999;
+    return na - nb;
+  });
+  var janLabelRow = ['JAN: ' + jan];
+  for (var fill = 1; fill < 24; fill++) janLabelRow.push('');
+  allRows.push(janLabelRow);
+  allRows.push(headerRow24);
+  for (var ri = 0; ri < rows.length; ri++) allRows.push(rows[ri]);
+  totalCandidates += candidates.length;
+  Logger.log('[モール横断セット数] JAN=' + jan + ' 楽天=' + rakutenItems.length + ' Yahoo=' + yahooHits.length + ' Amazon=' + (candidates.filter(function (x) { return x.source === 'amazon'; }).length) + ' 合計=' + candidates.length);
   }
-  if (comparisonCtx.baseUnitCost != null) sheet.getRange(1, 25).setValue('基準単品原価');
-  if (comparisonCtx.baseUnitCost != null) sheet.getRange(2, 25).setValue(comparisonCtx.baseUnitCost);
-  Logger.log('[モール横断セット数] JAN=' + jan + ' 楽天=' + rakutenItems.length + ' Yahoo=' + yahooHits.length + ' Amazon=' + (candidates.filter(function (x) { return x.source === 'amazon'; }).length) + ' 合計=' + candidates.length + ' Gemini対象=' + geminiTargets.length + ' 利益除外=' + (candidates.length - geminiTargets.length) + ' 比較用送料=' + comparisonCtx.shipping + ' 基準単品原価=' + (comparisonCtx.baseUnitCost != null ? comparisonCtx.baseUnitCost : 'null'));
-  SpreadsheetApp.getActive().toast('モール横断セット数判定を「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」に出力しました（' + candidates.length + '件）', 'モール横断セット数', 8);
+  if (allRows.length > 0) {
+    sheet.getRange(1, 1, allRows.length, 24).setValues(allRows);
+    for (var hr = 0; hr < allRows.length; hr++) {
+      if (allRows[hr][1] === 'モール') {
+        sheet.getRange(hr + 1, 1, hr + 1, 24).setFontWeight('bold');
+        continue;
+      }
+      var src = (allRows[hr][1] != null) ? String(allRows[hr][1]).trim().toLowerCase() : '';
+      if (src === 'amazon') {
+        sheet.getRange(hr + 1, 1, hr + 1, 24).setBackground(null);
+      } else if (src === 'rakuten') {
+        sheet.getRange(hr + 1, 1, hr + 1, 24).setBackground('#f4cccc');
+      } else if (src === 'yahoo') {
+        sheet.getRange(hr + 1, 1, hr + 1, 24).setBackground('#fff2cc');
+      }
+      if (src === 'amazon' || src === 'rakuten' || src === 'yahoo') {
+        var assumedShip = allRows[hr][8];
+        var shipNum = (assumedShip !== '' && assumedShip != null) ? parseInt(Number(assumedShip), 10) : 0;
+        if (!isNaN(shipNum) && shipNum > 0) {
+          sheet.getRange(hr + 1, 8).setFontColor('#cc0000').setFontWeight('bold').setFontSize(12);
+        }
+      }
+    }
+  }
+  SpreadsheetApp.getActive().toast('モール横断セット数判定を「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」に出力しました（' + uniqueJans.length + 'JAN・' + totalCandidates + '件）', 'モール横断セット数', 8);
+}
+
+/**
+ * シート「モール横断セット数判定」の直近結果を読み、そのJANに属し出品CK（レ点）が付いたマスタ行に楽天・Yahoo! のセット数別最安（価格+送料・URL）を書き込む。
+ * 事前に「モール横断 セット数統合判定」を出品CKにレ点を付けた状態で実行し、同じJANの結果がシートに出力されていること。反映はレ点が付いた行のみが対象。
+ */
+function menuApplyCrossMallResultToRakutenYahooMaster() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) {
+    SpreadsheetApp.getUi().alert('▼商品マスタ(人間作業用) シートが見つかりません。');
+    return;
+  }
+  var crossSheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
+  if (!crossSheet) {
+    SpreadsheetApp.getUi().alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」が見つかりません。先に「モール横断 セット数統合判定」を実行してください。');
+    return;
+  }
+  // モール横断シートのデータを読む（1JANのときは(2,25)、複数JANのときはブロックごとにパース）
+  var crossValues = crossSheet.getDataRange().getValues();
+  if (crossValues.length < 2) {
+    SpreadsheetApp.getUi().alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」にデータがありません。先にモール横断 セット数統合判定を実行してください。');
+    return;
+  }
+  var masterValues = masterSheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(masterValues.length, 20); hr++) {
+    if (masterValues[hr].indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
+  }
+  if (headerRowIdx === -1) {
+    SpreadsheetApp.getUi().alert('マスタのヘッダー行（ASINコード）が見つかりません。');
+    return;
+  }
+  var masterColMap = getColumnIndexMap(masterValues[headerRowIdx]);
+  var colJan = masterColMap['JANコード'];
+  var colSetQty = masterColMap[COL_MASTER_TOTAL_QTY];
+  var colRakuten = masterColMap[COL_COMPETITIVE_PRICE_RAKUTEN];
+  var colUrlRakuten = masterColMap[COL_COMPETITOR_URL_RAKUTEN];
+  var colReviewRakuten = masterColMap[COL_REVIEW_STATUS_RAKUTEN];
+  var colMemoRakuten = masterColMap[COL_REVIEW_MEMO_RAKUTEN];
+  var colYahoo = masterColMap[COL_COMPETITIVE_PRICE_YAHOO];
+  var colUrlYahoo = masterColMap[COL_COMPETITOR_URL_YAHOO];
+  var colReviewYahoo = masterColMap[COL_REVIEW_STATUS_YAHOO];
+  var colMemoYahoo = masterColMap[COL_REVIEW_MEMO_YAHOO];
+  var colAmazon = masterColMap[COL_COMPETITIVE_PRICE_AMAZON];
+  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
+  if (colJan === undefined || colSetQty === undefined) {
+    SpreadsheetApp.getUi().alert('マスタに JANコード または ' + COL_MASTER_TOTAL_QTY + ' 列がありません。');
+    return;
+  }
+  if (colRakuten === undefined || colUrlRakuten === undefined || colYahoo === undefined || colUrlYahoo === undefined) {
+    SpreadsheetApp.getUi().alert('マスタに 競合価格楽天・競合URL楽天・競合価格Yahoo!・競合URLYahoo! のいずれかがありません。');
+    return;
+  }
+  if (colCheckbox === undefined) {
+    SpreadsheetApp.getUi().alert('マスタに「' + CHECKBOX_HEADER_NAME + '」列がありません。レ点で反映対象を指定するため必要です。');
+    return;
+  }
+  // シートをパース: 「JAN: xxx」行でブロック開始。24列形式は row[5]=URL, row[7]=価格+送料, row[8]=仮定送料, row[17]=統合セット数。送料無料（仮定送料0）を優先して採用。A.セット商品数は上書きしない（案Cは行わない）。
+  var byJan = {};
+  var minUnitPriceByJan = {};  // 同一JAN内の他セット数単価比較用（最小単価＝価格+送料/セット数）
+  var currentJan = '';
+  var firstCell = (crossValues[0] && crossValues[0][0] != null) ? String(crossValues[0][0]).trim() : '';
+  if (firstCell.indexOf('JAN:') === 0) {
+    currentJan = firstCell.replace(/^JAN:\s*/, '').trim();
+  } else {
+    currentJan = String(crossSheet.getRange(2, 25).getValue() || '').trim();
+    if (currentJan.length < 8) currentJan = String(crossSheet.getRange(2, 24).getValue() || '').trim();
+    if (currentJan.length >= 8) byJan[currentJan] = { rakutenBySet: {}, yahooBySet: {} };
+  }
+  for (var r = 1; r < crossValues.length; r++) {
+    var row = crossValues[r];
+    var cell0 = (row[0] != null) ? String(row[0]).trim() : '';
+    if (cell0.indexOf('JAN:') === 0) {
+      currentJan = cell0.replace(/^JAN:\s*/, '').trim();
+      if (currentJan.length >= 8 && !byJan[currentJan]) byJan[currentJan] = { rakutenBySet: {}, yahooBySet: {} };
+      continue;
+    }
+    if ((row[1] != null) && String(row[1]).trim() === 'モール') continue;
+    if (currentJan.length < 8) continue;
+    if (!byJan[currentJan]) byJan[currentJan] = { rakutenBySet: {}, yahooBySet: {} };
+    var is24Col = (row.length >= 24);
+    var colUrl = is24Col ? 5 : 4;
+    var colPriceIncl = is24Col ? 7 : 6;
+    var colAssumedShipping = is24Col ? 8 : -1;
+    var colSetCount = is24Col ? 17 : 16;
+    var source = (row[1] != null) ? String(row[1]).trim().toLowerCase() : '';
+    var url = (row[colUrl] != null) ? String(row[colUrl]).trim() : '';
+    var priceIncl = (row[colPriceIncl] !== '' && row[colPriceIncl] != null) ? parseInt(Number(row[colPriceIncl]), 10) : NaN;
+    if (isNaN(priceIncl) || priceIncl < 0) continue;
+    var setCount = (row[colSetCount] !== '' && row[colSetCount] != null) ? parseInt(Number(row[colSetCount]), 10) : NaN;
+    if (isNaN(setCount) || setCount < 1 || setCount > 999) continue;
+    var assumedShipping = (colAssumedShipping >= 0 && row[colAssumedShipping] !== '' && row[colAssumedShipping] != null) ? parseInt(Number(row[colAssumedShipping]), 10) : 0;
+    if (isNaN(assumedShipping) || assumedShipping < 0) assumedShipping = 0;
+    // 最小単価用: 楽天・Yahoo!の有効行で更新
+    if (source === 'rakuten' || source === 'yahoo') {
+      var unitP = priceIncl / setCount;
+      if (minUnitPriceByJan[currentJan] == null || unitP < minUnitPriceByJan[currentJan]) minUnitPriceByJan[currentJan] = unitP;
+    }
+    var key = String(setCount);
+    function preferCandidate(existing, newVal) {
+      if (!existing) return true;
+      var shipNew = newVal.assumedShipping || 0;
+      var shipCur = existing.assumedShipping || 0;
+      if (shipNew < shipCur) return true;
+      if (shipNew > shipCur) return false;
+      return newVal.priceIncl < existing.priceIncl;
+    }
+    if (source === 'rakuten') {
+      var curR = byJan[currentJan].rakutenBySet[key];
+      var newR = { priceIncl: priceIncl, url: url, assumedShipping: assumedShipping };
+      if (preferCandidate(curR, newR)) byJan[currentJan].rakutenBySet[key] = newR;
+    } else if (source === 'yahoo') {
+      var curY = byJan[currentJan].yahooBySet[key];
+      var newY = { priceIncl: priceIncl, url: url, assumedShipping: assumedShipping };
+      if (preferCandidate(curY, newY)) byJan[currentJan].yahooBySet[key] = newY;
+    }
+  }
+  var jansWithData = Object.keys(byJan).filter(function (j) { return Object.keys(byJan[j].rakutenBySet).length > 0 || Object.keys(byJan[j].yahooBySet).length > 0; });
+  if (jansWithData.length === 0 && currentJan.length >= 8 && byJan[currentJan]) {
+    jansWithData = [currentJan];
+  }
+  if (jansWithData.length === 0) {
+    SpreadsheetApp.getUi().alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」に有効なJANブロックがありません。先にモール横断 セット数統合判定を実行してください。');
+    return;
+  }
+  // 該当JANかつ出品CK（レ点）が付いた行だけを反映対象にする（シートに存在するJANのみ）
+  var targetRows = [];
+  for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+    var rowJan = String(masterValues[mr][colJan] || '').trim();
+    if (!masterValues[mr][colCheckbox]) continue;
+    if (!byJan[rowJan]) continue;
+    targetRows.push({ rowNum: mr + 1, jan: rowJan });
+  }
+  if (targetRows.length === 0) {
+    SpreadsheetApp.getUi().alert('シートに出力されたJANのいずれかと一致し、かつ出品CK（レ点）が付いたマスタのデータ行がありません。該当する行にレ点を付けてから実行してください。');
+    return;
+  }
+  var reviewRatio = (typeof YAHOO_SET_PRICE_REVIEW_RATIO !== 'undefined') ? YAHOO_SET_PRICE_REVIEW_RATIO : 0.3;
+  var written = 0;
+  for (var ti = 0; ti < targetRows.length; ti++) {
+    var rowNum = targetRows[ti].rowNum;
+    var rowJan = targetRows[ti].jan;
+    var rakutenBySet = byJan[rowJan] ? byJan[rowJan].rakutenBySet : {};
+    var yahooBySet = byJan[rowJan] ? byJan[rowJan].yahooBySet : {};
+    var dataRowIdx = rowNum - 1;
+    var setQtyVal = masterValues[dataRowIdx][colSetQty];
+    var setQty = (setQtyVal !== '' && setQtyVal != null) ? (typeof setQtyVal === 'number' ? setQtyVal : parseInt(String(setQtyVal).replace(/[^0-9]/g, ''), 10)) : null;
+    if (isNaN(setQty) || setQty < 1) setQty = null;
+    var amazonVal = masterValues[dataRowIdx][colAmazon];
+    var amazonNum = (amazonVal !== '' && amazonVal != null) ? (typeof amazonVal === 'number' ? amazonVal : parseInt(String(amazonVal).replace(/[^0-9]/g, ''), 10)) : 0;
+    if (isNaN(amazonNum)) amazonNum = 0;
+    var setKey = setQty != null ? String(setQty) : '';
+    var priceRakuten = '';
+    var urlRakuten = '';
+    var needReviewRakuten = false;
+    var memoRakuten = '';
+    if (setKey && rakutenBySet[setKey]) {
+      var rData = rakutenBySet[setKey];
+      priceRakuten = String(rData.priceIncl);
+      urlRakuten = rData.url || '';
+      if (rData.assumedShipping != null && rData.assumedShipping > 0) {
+        memoRakuten = (memoRakuten ? memoRakuten + ' ' : '') + '自社送料を反映した価格を適用';
+      }
+      var minUnit = minUnitPriceByJan[rowJan];
+      if (setQty != null && setQty >= 1 && minUnit != null && minUnit > 0) {
+        var unitR = rData.priceIncl / setQty;
+        if (unitR >= minUnit * CROSS_MALL_UNIT_PRICE_HIGH_RATIO) {
+          memoRakuten = (memoRakuten ? memoRakuten + ' ' : '') + '他セット数と比べて単価が高めのため自社送料を反映した価格を適用';
+        }
+      }
+      if (setQty != null && setQty >= 1 && amazonNum > 0) {
+        var perUnitR = rData.priceIncl / setQty;
+        if (perUnitR < amazonNum * reviewRatio) {
+          needReviewRakuten = true;
+          memoRakuten = (memoRakuten ? memoRakuten + ' ' : '') + setQty + '→' + rData.priceIncl + '円: 1個あたりがAmazon競合価格比で異常に安い';
+        }
+      }
+    }
+    var priceYahoo = '';
+    var urlYahoo = '';
+    var needReviewYahoo = false;
+    var memoYahoo = '';
+    if (setKey && yahooBySet[setKey]) {
+      var yData = yahooBySet[setKey];
+      priceYahoo = String(yData.priceIncl);
+      urlYahoo = yData.url || '';
+      if (yData.assumedShipping != null && yData.assumedShipping > 0) {
+        memoYahoo = (memoYahoo ? memoYahoo + ' ' : '') + '自社送料を反映した価格を適用';
+      }
+      var minUnitY = minUnitPriceByJan[rowJan];
+      if (setQty != null && setQty >= 1 && minUnitY != null && minUnitY > 0) {
+        var unitY = yData.priceIncl / setQty;
+        if (unitY >= minUnitY * CROSS_MALL_UNIT_PRICE_HIGH_RATIO) {
+          memoYahoo = (memoYahoo ? memoYahoo + ' ' : '') + '他セット数と比べて単価が高めのため自社送料を反映した価格を適用';
+        }
+      }
+      if (setQty != null && setQty >= 1 && amazonNum > 0) {
+        var perUnitY = yData.priceIncl / setQty;
+        if (perUnitY < amazonNum * reviewRatio) {
+          needReviewYahoo = true;
+          memoYahoo = (memoYahoo ? memoYahoo + ' ' : '') + setQty + '→' + yData.priceIncl + '円: 1個あたりがAmazon競合価格比で異常に安い';
+        }
+      }
+    }
+    masterSheet.getRange(rowNum, colRakuten + 1).setValue(priceRakuten);
+    masterSheet.getRange(rowNum, colUrlRakuten + 1).setValue(urlRakuten);
+    if (colReviewRakuten !== undefined) masterSheet.getRange(rowNum, colReviewRakuten + 1).setValue(needReviewRakuten ? '要確認' : '');
+    if (colMemoRakuten !== undefined) masterSheet.getRange(rowNum, colMemoRakuten + 1).setValue(memoRakuten);
+    masterSheet.getRange(rowNum, colYahoo + 1).setValue(priceYahoo);
+    masterSheet.getRange(rowNum, colUrlYahoo + 1).setValue(urlYahoo);
+    if (colReviewYahoo !== undefined) masterSheet.getRange(rowNum, colReviewYahoo + 1).setValue(needReviewYahoo ? '要確認' : '');
+    if (colMemoYahoo !== undefined) masterSheet.getRange(rowNum, colMemoYahoo + 1).setValue(memoYahoo);
+    written++;
+  }
+  Logger.log('[モール横断反映] 対象行=' + targetRows.length + ' 反映=' + written);
+  SpreadsheetApp.getActive().toast('モール横断結果を楽天・Yahoo! に ' + written + ' 行反映しました', 'モール横断反映', 6);
+}
+
+/**
+ * モール横断セット数判定シートの結果を元に、マスタでレ点のJANについて「抜けている統合セット数」の行を挿入する。
+ * 挿入位置は既存のレ点行のセット数並びの間（抜けセット数より大きい最初の行の上）。
+ * 新規行には「2行目」（子SKU用テンプレート）をテンプレートとして反映: A,B,D はその行の数式、C はレ点、Q列以降はその行の数式。JAN・A.セット商品数も設定。
+ * 事前に「モール横断 セット数統合判定」を実行し、続けて「抜けセット数行の挿入」を実行する想定。
+ */
+function menuInsertMissingSetCountRows() {
+  Logger.log('[抜けセット数行] ========== 開始 ==========');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  var crossSheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
+  Logger.log('[抜けセット数行] シート取得 マスタ=' + (masterSheet ? MASTER_SHEET_NAME : 'null') + ' モール横断=' + (crossSheet ? CROSS_MALL_SET_COUNT_SHEET_NAME : 'null'));
+  if (!masterSheet) {
+    SpreadsheetApp.getUi().alert('▼商品マスタ(人間作業用) シートが見つかりません。');
+    return;
+  }
+  if (!crossSheet) {
+    SpreadsheetApp.getUi().alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」が見つかりません。先にモール横断 セット数統合判定を実行してください。');
+    return;
+  }
+  try {
+  var crossValues = crossSheet.getDataRange().getValues();
+  Logger.log('[抜けセット数行] モール横断シート 取得行数=' + (crossValues ? crossValues.length : 0));
+  if (crossValues.length < 2) {
+    SpreadsheetApp.getUi().alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」にデータがありません。');
+    return;
+  }
+  var masterValues = masterSheet.getDataRange().getValues();
+  Logger.log('[抜けセット数行] マスタシート 取得行数=' + (masterValues ? masterValues.length : 0));
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(masterValues.length, 20); hr++) {
+    if (masterValues[hr].indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
+  }
+  if (headerRowIdx === -1) {
+    Logger.log('[抜けセット数行] ヘッダー未検出 アンカー=' + ANCHOR_HEADER_NAME);
+    SpreadsheetApp.getUi().alert('マスタのヘッダー行（ASINコード）が見つかりません。');
+    return;
+  }
+  Logger.log('[抜けセット数行] ヘッダー検出 行(0-based)=' + headerRowIdx + ' 行(1-based)=' + (headerRowIdx + 1));
+  var masterColMap = getColumnIndexMap(masterValues[headerRowIdx]);
+  var colJan = masterColMap['JANコード'];
+  var colSetQty = masterColMap[COL_MASTER_TOTAL_QTY];
+  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
+  if (colJan === undefined || colSetQty === undefined || colCheckbox === undefined) {
+    SpreadsheetApp.getUi().alert('マスタに JANコード または ' + COL_MASTER_TOTAL_QTY + ' または ' + CHECKBOX_HEADER_NAME + ' がありません。');
+    return;
+  }
+  var numMasterCols = (masterValues[headerRowIdx] || []).length;
+  Logger.log('[抜けセット数行] マスタ 総行数=' + masterValues.length + ' ヘッダー行(0-based)=' + headerRowIdx + ' colJan=' + colJan + ' colSetQty=' + colSetQty + ' colCheckbox=' + colCheckbox + ' numMasterCols=' + numMasterCols);
+  Logger.log('[抜けセット数行] 列(1-based) JAN=' + (colJan + 1) + ' セット数=' + (colSetQty + 1) + ' レ点=' + (colCheckbox + 1));
+
+  // モール横断シートから JAN → 統合セット数（ユニーク・数値）のマップを構築
+  Logger.log('[抜けセット数行] --- モール横断シート解析 ---');
+  var integratedSetByJan = {};
+  var currentJan = '';
+  for (var r = 0; r < crossValues.length; r++) {
+    var row = crossValues[r];
+    var cell0 = (row[0] != null) ? String(row[0]).trim() : '';
+    if (cell0.indexOf('JAN:') === 0) {
+      currentJan = cell0.replace(/^JAN:\s*/, '').trim();
+      if (currentJan.length >= 8 && !integratedSetByJan[currentJan]) integratedSetByJan[currentJan] = {};
+      continue;
+    }
+    if ((row[1] != null) && String(row[1]).trim() === 'モール') continue;
+    if (currentJan.length < 8) continue;
+    var is24Col = (row.length >= 24);
+    var colSetCount = is24Col ? 17 : 16;
+    var setCount = (row[colSetCount] !== '' && row[colSetCount] != null) ? parseInt(Number(row[colSetCount]), 10) : NaN;
+    if (!isNaN(setCount) && setCount >= 1 && setCount <= 999) {
+      if (!integratedSetByJan[currentJan]) integratedSetByJan[currentJan] = {};
+      integratedSetByJan[currentJan][setCount] = true;
+    }
+  }
+  var integratedJans = Object.keys(integratedSetByJan);
+  Logger.log('[抜けセット数行] モール横断シート解析済み JAN数=' + integratedJans.length);
+  for (var ij = 0; ij < integratedJans.length; ij++) {
+    var jj = integratedJans[ij];
+    var sets = Object.keys(integratedSetByJan[jj]).map(function (k) { return parseInt(k, 10); }).sort(function (a, b) { return a - b; });
+    Logger.log('[抜けセット数行] JAN=' + jj + ' 統合セット数=[' + sets.join(',') + ']');
+  }
+  Logger.log('[抜けセット数行] --- マスタレ点行収集 ---');
+
+  // マスタでレ点行を JAN ごとに収集（rowNum 1-based, setQty 昇順）
+  var rowsByJan = {};
+  for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+    if (!masterValues[mr][colCheckbox]) continue;
+    var jan = String(masterValues[mr][colJan] || '').trim();
+    if (!jan || !integratedSetByJan[jan]) continue;
+    var sq = masterValues[mr][colSetQty];
+    var setQty = (sq !== '' && sq != null) ? (typeof sq === 'number' ? sq : parseInt(String(sq).replace(/[^0-9]/g, ''), 10)) : null;
+    if (isNaN(setQty) || setQty < 1) setQty = null;
+    if (!rowsByJan[jan]) rowsByJan[jan] = [];
+    rowsByJan[jan].push({ rowNum: mr + 1, setQty: setQty });
+  }
+  for (var j in rowsByJan) {
+    rowsByJan[j].sort(function (a, b) {
+      var na = (a.setQty != null) ? a.setQty : 999999;
+      var nb = (b.setQty != null) ? b.setQty : 999999;
+      return na - nb;
+    });
+  }
+  var rowsByJanKeys = Object.keys(rowsByJan);
+  Logger.log('[抜けセット数行] マスタレ点行 対象JAN数=' + rowsByJanKeys.length);
+  for (var rj = 0; rj < rowsByJanKeys.length; rj++) {
+    var jn = rowsByJanKeys[rj];
+    var lst = rowsByJan[jn];
+    var qtys = lst.map(function (x) { return x.setQty != null ? x.setQty : 'null'; });
+    Logger.log('[抜けセット数行] JAN=' + jn + ' 行数=' + lst.length + ' 行番号(1-based)=' + lst.map(function (x) { return x.rowNum; }).join(',') + ' setQty=' + qtys.join(','));
+  }
+  Logger.log('[抜けセット数行] --- 挿入位置決定 ---');
+
+  // 抜けセット数ごとに挿入位置を決定
+  var inserts = [];
+  var jans = Object.keys(rowsByJan);
+  for (var ji = 0; ji < jans.length; ji++) {
+    var jan = jans[ji];
+    var existing = {};
+    var list = rowsByJan[jan];
+    for (var li = 0; li < list.length; li++) {
+      var q = list[li].setQty;
+      if (q != null) existing[q] = true;
+    }
+    var integrated = Object.keys(integratedSetByJan[jan]).map(function (k) { return parseInt(k, 10); }).filter(function (n) { return !isNaN(n) && n >= 1; });
+    for (var ii = 0; ii < integrated.length; ii++) {
+      var n = integrated[ii];
+      if (existing[n]) continue;
+      var insertBeforeRow = null;
+      for (var li = 0; li < list.length; li++) {
+        if (list[li].setQty != null && list[li].setQty > n) {
+          insertBeforeRow = list[li].rowNum;
+          break;
+        }
+      }
+      if (insertBeforeRow == null && list.length > 0) insertBeforeRow = list[list.length - 1].rowNum + 1;
+      if (insertBeforeRow == null) continue;
+      inserts.push({ insertBeforeRow: insertBeforeRow, jan: jan, setCount: n });
+    }
+  }
+  if (inserts.length === 0) {
+    Logger.log('[抜けセット数行] 挿入対象0件のため終了');
+    SpreadsheetApp.getActive().toast('抜けているセット数はありませんでした。', '抜けセット数行', 4);
+    return;
+  }
+  inserts.sort(function (a, b) { return b.insertBeforeRow - a.insertBeforeRow; });
+  Logger.log('[抜けセット数行] 挿入リスト 件数=' + inserts.length + ' (下の行から挿入)');
+  for (var is = 0; is < inserts.length; is++) {
+    var x = inserts[is];
+    Logger.log('[抜けセット数行]   [' + (is + 1) + '] insertBeforeRow=' + x.insertBeforeRow + ' JAN=' + x.jan + ' setCount=' + x.setCount);
+  }
+  Logger.log('[抜けセット数行] --- 行挿入・テンプレコピー ---');
+
+  var FORMULA_TMPL_COL_START = 17;
+  var FORMULA_TMPL_COL_END = Math.min(218, numMasterCols);
+  var templateRow1Based = 2;
+  var formulaTmplNumCols = FORMULA_TMPL_COL_END - FORMULA_TMPL_COL_START + 1;
+  Logger.log('[抜けセット数行] テンプレート行 1-based=' + templateRow1Based + ' (子SKU用・2行目)');
+  Logger.log('[抜けセット数行] コピー範囲 A-D: 行' + templateRow1Based + ' 1行4列, Q-HJ: 行' + templateRow1Based + ' 1行' + formulaTmplNumCols + '列');
+  for (var ii = 0; ii < inserts.length; ii++) {
+    var ins = inserts[ii];
+    Logger.log('[抜けセット数行] 挿入 ' + (ii + 1) + '/' + inserts.length + ' insertBeforeRow=' + ins.insertBeforeRow + ' JAN=' + ins.jan + ' setCount=' + ins.setCount + ' templateRow=' + templateRow1Based);
+    masterSheet.insertRowsBefore(ins.insertBeforeRow, 1);
+    var newRow = ins.insertBeforeRow;
+    Logger.log('[抜けセット数行]   行' + ins.insertBeforeRow + 'の上に1行挿入 → 新規行(1-based)=' + newRow);
+    masterSheet.getRange(newRow, colJan + 1).setValue(ins.jan);
+    masterSheet.getRange(newRow, colSetQty + 1).setValue(ins.setCount);
+    Logger.log('[抜けセット数行]   新規行 列' + (colJan + 1) + '(JAN)=' + ins.jan + ' 列' + (colSetQty + 1) + '(セット数)=' + ins.setCount);
+    var r2 = masterSheet.getRange(templateRow1Based, 1, 1, 4);
+    var formulas = r2.getFormulas();
+    if (formulas && formulas[0]) {
+      for (var c = 0; c < 4; c++) {
+        if (c === 2) {
+          var v = masterSheet.getRange(templateRow1Based, 3).getValue();
+          masterSheet.getRange(newRow, 3).setValue(v !== undefined && v !== null && v !== '' ? v : true);
+        } else if (formulas[0][c]) {
+          masterSheet.getRange(newRow, c + 1).setFormula(formulas[0][c]);
+        }
+      }
+      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から A-D(1-4列) 数式/値をコピー');
+    }
+    if (FORMULA_TMPL_COL_END >= FORMULA_TMPL_COL_START) {
+      var r2q = masterSheet.getRange(templateRow1Based, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);
+      var destRange = masterSheet.getRange(newRow, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);
+      r2q.copyTo(destRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から 列' + FORMULA_TMPL_COL_START + '-' + FORMULA_TMPL_COL_END + '(Q-HJ) 数式をコピー(1行のみ)');
+    }
+    if (colCheckbox !== undefined) {
+      masterSheet.getRange(newRow, colCheckbox + 1).setValue(true);
+      Logger.log('[抜けセット数行]   列' + (colCheckbox + 1) + ' レ点をONに設定');
+    }
+  }
+  Logger.log('[抜けセット数行] ========== 完了 挿入行数=' + inserts.length + ' ==========');
+  SpreadsheetApp.getActive().toast('抜けセット数行を ' + inserts.length + ' 行挿入しました。', '抜けセット数行', 6);
+  } catch (e) {
+    Logger.log('[抜けセット数行] エラー: ' + (e && e.message));
+    if (e && e.stack) Logger.log('[抜けセット数行] スタック: ' + e.stack);
+    throw e;
+  }
+}
+
+/**
+ * チェックとメニューをまとめたフロー: モール横断 → 抜けセット数行挿入 → モール横断結果をマスタに反映（案C）→ 価格・セット数提案を連続実行。
+ * レ点を付けた状態で実行し、目視チェックは全処理後に1回で済む想定。30分制限を考慮し、JAN数が多い場合は分割実行を推奨。
+ */
+function menuResearchBatchCrossMallAndPropose() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert(
+    'リサーチ一括',
+    '次の順で実行します。\n1. モール横断 セット数統合判定\n2. 抜けセット数行の挿入\n3. モール横断結果を楽天・Yahoo! マスタに反映（案C）\n4. 選択行に価格・セット数提案を反映\n\nレ点を付けた状態で実行してください。続行しますか？',
+    ui.ButtonSet.YES_NO
+  );
+  if (res !== ui.Button.YES) return;
+  SpreadsheetApp.getActive().toast('1/4 モール横断 セット数統合判定を実行中...', 'リサーチ一括', 3);
+  try {
+    menuTestCrossMallSetCountJudge();
+  } catch (e) {
+    ui.alert('モール横断 セット数統合判定でエラー: ' + (e && e.message));
+    return;
+  }
+  SpreadsheetApp.getActive().toast('2/4 抜けセット数行の挿入を実行中...', 'リサーチ一括', 3);
+  try {
+    menuInsertMissingSetCountRows();
+  } catch (e) {
+    ui.alert('抜けセット数行の挿入でエラー: ' + (e && e.message));
+    return;
+  }
+  SpreadsheetApp.getActive().toast('3/4 モール横断結果をマスタに反映中...', 'リサーチ一括', 3);
+  try {
+    menuApplyCrossMallResultToRakutenYahooMaster();
+  } catch (e) {
+    ui.alert('モール横断結果の反映でエラー: ' + (e && e.message));
+    return;
+  }
+  SpreadsheetApp.getActive().toast('4/4 価格・セット数提案を実行中...', 'リサーチ一括', 3);
+  try {
+    menuProposePriceAndSetToSelection();
+  } catch (e) {
+    ui.alert('価格・セット数提案でエラー: ' + (e && e.message));
+    return;
+  }
+  SpreadsheetApp.getActive().toast('リサーチ一括が完了しました。内容を確認してください。', 'リサーチ一括', 8);
 }
 
 /**
@@ -3171,11 +3708,65 @@ function fetchYahooShoppingItemPriceByJan(clientId, janCode) {
 }
 
 /**
+ * Yahoo! ショッピング API v3 で query（キーワード）検索し、複数件（最大 maxResults）を取得する。
+ * JAN検索で0件のときのフォールバック用。ログは [Yahoo!セット数] で検索可能。
+ * @param {string} clientId - appid（Client ID）
+ * @param {string} query - 検索キーワード（商品名など）
+ * @param {number} [maxResults=20] - 取得件数（最大50）
+ * @return {{ error: string|null, hits: Array<{ name: string, price: number|null, url: string, imageUrl: string, shippingCode: number }> }}
+ */
+function fetchYahooShoppingItemsByQuery(clientId, query, maxResults) {
+  var result = { error: null, hits: [] };
+  if (!clientId || !clientId.trim()) {
+    result.error = 'YAHOO_SHOPPING_CLIENT_ID が未設定です。';
+    return result;
+  }
+  if (!query || !String(query).trim()) {
+    result.error = 'query が空です。';
+    return result;
+  }
+  var limit = Math.min(Math.max(Number(maxResults) || 20, 1), 50);
+  var url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid=' + encodeURIComponent(clientId) + '&query=' + encodeURIComponent(String(query).trim()) + '&results=' + limit;
+  try {
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = res.getResponseCode();
+    var text = res.getContentText();
+    if (code !== 200) {
+      result.error = 'HTTP ' + code + ' ' + (text ? text.substring(0, 200) : '');
+      Logger.log('[Yahoo!セット数] API query="' + (String(query).substring(0, 50) + (query.length > 50 ? '...' : '')) + '" ' + result.error);
+      return result;
+    }
+    var json = JSON.parse(text);
+    var rawHits = (json.hits || []);
+    for (var i = 0; i < rawHits.length; i++) {
+      var h = rawHits[i];
+      var name = (h.name != null) ? String(h.name) : '';
+      var price = (h.price != null) ? parseInt(h.price, 10) : null;
+      if (isNaN(price)) price = null;
+      var itemUrl = (h.url != null) ? String(h.url) : '';
+      var imageUrl = '';
+      if (h.image && h.image.medium != null) imageUrl = String(h.image.medium || '');
+      if (!imageUrl && h.image && h.image.small != null) imageUrl = String(h.image.small || '');
+      if (!imageUrl && h.image && h.image.id != null) imageUrl = String(h.image.id || '');
+      var shippingCode = (h.shipping && h.shipping.code != null) ? parseInt(h.shipping.code, 10) : 1;
+      if (isNaN(shippingCode)) shippingCode = 1;
+      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode });
+    }
+    Logger.log('[Yahoo!セット数] API query="' + (String(query).substring(0, 50) + (query.length > 50 ? '...' : '')) + '" 取得件数=' + result.hits.length);
+    return result;
+  } catch (e) {
+    result.error = e.message || String(e);
+    Logger.log('[Yahoo!セット数] API 例外 query="' + (String(query).substring(0, 30) + '...") ') + result.error);
+    return result;
+  }
+}
+
+/**
  * Yahoo! ショッピング API v3 で jan_code 検索し、複数件（最大 maxResults）を取得する。セット別価格テスト用。
  * @param {string} clientId - appid（Client ID）
  * @param {string} janCode - JAN コード
  * @param {number} [maxResults=20] - 取得件数（最大50）
- * @return {{ error: string|null, hits: Array<{ name: string, price: number|null, url: string, imageUrl: string }> }}
+ * @return {{ error: string|null, hits: Array<{ name: string, price: number|null, url: string, imageUrl: string, shippingCode: number }> }}
  */
 function fetchYahooShoppingItemsByJan(clientId, janCode, maxResults) {
   var result = { error: null, hits: [] };
@@ -3206,7 +3797,9 @@ function fetchYahooShoppingItemsByJan(clientId, janCode, maxResults) {
       if (h.image && h.image.medium != null) imageUrl = String(h.image.medium || '');
       if (!imageUrl && h.image && h.image.small != null) imageUrl = String(h.image.small || '');
       if (!imageUrl && h.image && h.image.id != null) imageUrl = String(h.image.id || '');
-      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl });
+      var shippingCode = (h.shipping && h.shipping.code != null) ? parseInt(h.shipping.code, 10) : 1;
+      if (isNaN(shippingCode)) shippingCode = 1;
+      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode });
     }
     return result;
   } catch (e) {
