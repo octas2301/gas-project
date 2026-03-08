@@ -3694,46 +3694,40 @@ function menuInsertMissingSetCountRows() {
 }
 
 /**
- * チェックとメニューをまとめたフロー: モール横断 → 抜けセット数行挿入 → モール横断結果をマスタに反映（案C）→ 価格・セット数提案を連続実行。
- * レ点を付けた状態で実行し、目視チェックは全処理後に1回で済む想定。30分制限を考慮し、JAN数が多い場合は分割実行を推奨。
+ * ④楽天Yahoo!リサーチ一括（競合価格⇒セット数抜け追加）: モール横断 → 抜けセット数行挿入 → モール横断結果をマスタに反映。
+ * 価格提案は含めない。確認・修正後に「楽天Yahoo!販売価格を提案（CPO）」を別メニューで実行する。
+ * レ点を付けた状態で実行。30分制限を考慮し、JAN数が多い場合は分割実行を推奨。
  */
 function menuResearchBatchCrossMallAndPropose() {
   var ui = SpreadsheetApp.getUi();
   var res = ui.alert(
-    'リサーチ一括',
-    '次の順で実行します。\n1. モール横断 セット数統合判定\n2. 抜けセット数行の挿入\n3. モール横断結果を楽天・Yahoo! マスタに反映（案C）\n4. 選択行に価格・セット数提案を反映\n\nレ点を付けた状態で実行してください。続行しますか？',
+    '楽天Yahoo!リサーチ一括',
+    '次の順で実行します。\n1. モール横断 セット数統合判定\n2. 抜けセット数行の挿入\n3. モール横断結果を楽天・Yahoo! マスタに反映\n\n（価格提案は含みません。確認後「楽天Yahoo!販売価格を提案」で実行してください）\n\nレ点を付けた状態で実行してください。続行しますか？',
     ui.ButtonSet.YES_NO
   );
   if (res !== ui.Button.YES) return;
-  SpreadsheetApp.getActive().toast('1/4 モール横断 セット数統合判定を実行中...', 'リサーチ一括', 3);
+  SpreadsheetApp.getActive().toast('1/3 モール横断 セット数統合判定を実行中...', '楽天Yahoo!リサーチ一括', 3);
   try {
     menuTestCrossMallSetCountJudge();
   } catch (e) {
     ui.alert('モール横断 セット数統合判定でエラー: ' + (e && e.message));
     return;
   }
-  SpreadsheetApp.getActive().toast('2/4 抜けセット数行の挿入を実行中...', 'リサーチ一括', 3);
+  SpreadsheetApp.getActive().toast('2/3 抜けセット数行の挿入を実行中...', '楽天Yahoo!リサーチ一括', 3);
   try {
     menuInsertMissingSetCountRows();
   } catch (e) {
     ui.alert('抜けセット数行の挿入でエラー: ' + (e && e.message));
     return;
   }
-  SpreadsheetApp.getActive().toast('3/4 モール横断結果をマスタに反映中...', 'リサーチ一括', 3);
+  SpreadsheetApp.getActive().toast('3/3 モール横断結果をマスタに反映中...', '楽天Yahoo!リサーチ一括', 3);
   try {
     menuApplyCrossMallResultToRakutenYahooMaster();
   } catch (e) {
     ui.alert('モール横断結果の反映でエラー: ' + (e && e.message));
     return;
   }
-  SpreadsheetApp.getActive().toast('4/4 価格・セット数提案を実行中...', 'リサーチ一括', 3);
-  try {
-    menuProposePriceAndSetToSelection();
-  } catch (e) {
-    ui.alert('価格・セット数提案でエラー: ' + (e && e.message));
-    return;
-  }
-  SpreadsheetApp.getActive().toast('リサーチ一括が完了しました。内容を確認してください。', 'リサーチ一括', 8);
+  SpreadsheetApp.getActive().toast('リサーチ一括が完了しました。競合・セット数を確認し、対象行を選択して「楽天Yahoo!販売価格を提案」を実行してください。', '楽天Yahoo!リサーチ一括', 8);
 }
 
 /**
@@ -5619,14 +5613,10 @@ function runKeepaFetchAsinPasteSheetImpl(limit) {
   if (!sheet) {
     sheet = ensureAsinPasteSheet(ss);
     sheet.activate();
-    SpreadsheetApp.getUi().alert(
-      '「' + ASIN_PASTE_SHEET_NAME + '」シートを作成しました。\n\n' +
-      '1行目：AI情報取得dataの商品名が計算式で表示されます（そのまま利用してください）。\n' +
-      '2行目：ヘッダー。3行目以降に各ブロックの1列目（A列＝1商品目、G列＝2商品目、M列＝…）へASINを縦に1行1件で貼り付けてから、メニューで「Keepa取得」を実行してください。'
-    );
-    return;
+    SpreadsheetApp.getActive().toast('「' + ASIN_PASTE_SHEET_NAME + '」シートを作成しました。ASINが未入力の場合は0件で終了します。', 'Keepa取得', 5);
+    // 自動作成したのでこのまま取得処理へ続行（ASINが無ければ0件扱い）
   }
-  if (ss.getActiveSheet().getSheetName() !== ASIN_PASTE_SHEET_NAME) {
+  if (sheet && ss.getActiveSheet().getSheetName() !== ASIN_PASTE_SHEET_NAME) {
     sheet.activate();
     SpreadsheetApp.getActive().toast('「' + ASIN_PASTE_SHEET_NAME + '」に切り替えました。ASINを貼り付けてからKeepa取得を実行してください。', '準備', 5);
     return;

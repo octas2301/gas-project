@@ -170,7 +170,7 @@
     <div id="view-variance" class="view <?= view === 'variance' ? 'active' : '' ?>">
       <h1>⚠️ 差異</h1>
       <p id="variance-caption" style="font-size:0.875rem;color:#666;">理論在庫と棚卸実数の差（0でないもの）</p>
-      <p style="margin-bottom:0.75rem;"><a href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlAdjustEnc ?>&amp;view=variance" target="_blank" class="btn secondary" style="display:inline-block;text-decoration:none;text-align:center;">📷 棚卸確定後の修正でスキャン</a></p>
+      <p style="margin-bottom:0.75rem;"><a href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlAdjustEnc ?>&amp;view=variance" target="_blank" rel="opener" class="btn secondary" style="display:inline-block;text-decoration:none;text-align:center;">📷 棚卸確定後の修正でスキャン</a></p>
       <div id="variance-list"></div>
     </div>
 
@@ -207,12 +207,12 @@
   </div>
 
   <nav class="nav">
-    <a class="nav-item <?= view === 'shipping' ? 'here' : '' ?>" data-view="shipping" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlShippingEnc ?>&view=shipping" target="_blank">🛒 出荷</a>
-    <a class="nav-item <?= view === 'move' ? 'here' : '' ?>" data-view="move" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlMoveEnc ?>&view=move" target="_blank">🔄 移動</a>
-    <a class="nav-item <?= view === 'receiving' ? 'here' : '' ?>" data-view="receiving" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlReceivingEnc ?>&view=receiving" target="_blank">🚚 入荷</a>
+    <a class="nav-item <?= view === 'shipping' ? 'here' : '' ?>" data-view="shipping" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlShippingEnc ?>&view=shipping" target="_blank" rel="opener">🛒 出荷</a>
+    <a class="nav-item <?= view === 'move' ? 'here' : '' ?>" data-view="move" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlMoveEnc ?>&view=move" target="_blank" rel="opener">🔄 移動</a>
+    <a class="nav-item <?= view === 'receiving' ? 'here' : '' ?>" data-view="receiving" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlReceivingEnc ?>&view=receiving" target="_blank" rel="opener">🚚 入荷</a>
     <a class="nav-item <?= view === 'count' ? 'here' : '' ?>" data-view="count" data-scan-url="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count" href="?view=count" target="_self">📦 棚卸</a>
     <a class="nav-item <?= view === 'variance' ? 'here' : '' ?>" data-view="variance" href="?view=variance" target="_self">⚠️ 差異</a>
-    <a class="nav-item <?= view === 'products' ? 'here' : '' ?>" data-view="products" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlProductsEnc ?>&view=products" target="_blank">🛠️ 商品</a>
+    <a class="nav-item <?= view === 'products' ? 'here' : '' ?>" data-view="products" data-scan-first="1" href="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlProductsEnc ?>&view=products" target="_blank" rel="opener">🛠️ 商品</a>
     <a class="nav-item <?= view === 'stock' ? 'here' : '' ?>" data-view="stock" href="?view=stock" target="_self">📊 在庫</a>
     <a class="nav-item <?= view === 'settings' ? 'here' : '' ?>" data-view="settings" href="?view=settings" target="_self">⚙️ 設定</a>
   </nav>
