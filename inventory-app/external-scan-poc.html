@@ -58,7 +58,7 @@
 
   <script>
     // 反映確認用。push/デプロイ前に scripts\update-scan-version.ps1 を実行すると現在日時に更新される。
-    var SCAN_PAGE_VERSION = '2026-03-08 19:15';
+    var SCAN_PAGE_VERSION = '2026-03-08 19:25';
     (function setVersionInHeader() {
       var el = document.getElementById('scan-version');
       if (el) el.textContent = 'v ' + (typeof SCAN_PAGE_VERSION !== 'undefined' ? SCAN_PAGE_VERSION : new Date().toLocaleString('ja-JP'));

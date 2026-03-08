@@ -62,6 +62,7 @@ function invalidateListCachesOnWrite() {
 /**
  * 現在のユーザー（ログイン中のメールアドレス）がアクセス許可シートに含まれるかチェックする。
  * Web アプリでは getActiveUser().getEmail() が空になることがあるため、空の場合は getEffectiveUser()（実行ユーザー＝オーナー）でフォールバックする。
+ * doGet の phase_init 短縮のため、結果をキャッシュする（TTL 60秒）。アクセス許可シートを変更した場合は最大60秒で反映される。
  * @return {boolean} 許可されていれば true
  */
 function isAccessAllowed() {
@@ -69,18 +70,35 @@ function isAccessAllowed() {
     var userEmail = Session.getActiveUser().getEmail();
     if (!userEmail) userEmail = Session.getEffectiveUser().getEmail();
     if (!userEmail) return false;
+    var cacheKey = 'accessAllowed_' + userEmail.replace(/[^a-zA-Z0-9@._-]/g, '_').slice(0, 200);
+    var cache = getAppCache();
+    var cached = cache.get(cacheKey);
+    if (cached !== null) return cached === '1';
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('アクセス許可');
-    if (!sheet) return false;
+    if (!sheet) {
+      try { cache.put(cacheKey, '0', 60); } catch (e) {}
+      return false;
+    }
     var data = sheet.getDataRange().getValues();
-    if (data.length < 2) return false;
+    if (data.length < 2) {
+      try { cache.put(cacheKey, '0', 60); } catch (e) {}
+      return false;
+    }
     var header = data[0];
     var emailCol = header.indexOf('メールアドレス');
-    if (emailCol < 0) return false;
+    if (emailCol < 0) {
+      try { cache.put(cacheKey, '0', 60); } catch (e) {}
+      return false;
+    }
     for (var i = 1; i < data.length; i++) {
       var email = (data[i][emailCol] || '').toString().trim().toLowerCase();
-      if (email && userEmail.toLowerCase() === email) return true;
+      if (email && userEmail.toLowerCase() === email) {
+        try { cache.put(cacheKey, '1', 60); } catch (e) {}
+        return true;
+      }
     }
+    try { cache.put(cacheKey, '0', 60); } catch (e) {}
     return false;
   } catch (e) {
     return false;
