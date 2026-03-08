@@ -3675,18 +3675,11 @@ function menuInsertMissingSetCountRows() {
   Logger.log('[抜けセット数行] ========== 挿入完了 挿入行数=' + inserts.length + ' ==========');
   SpreadsheetApp.getActive().toast('抜けセット数行を ' + inserts.length + ' 行挿入しました。', '抜けセット数行', 4);
   if (inserts.length > 0) {
-    Logger.log('[抜けセット数行] 挿入したJANのみモール横断セット数統合判定を実行し、結果をマスタに反映します');
-    SpreadsheetApp.getActive().toast('モール横断を実行し、結果をマスタに反映します...', '抜けセット数行', 3);
+    Logger.log('[抜けセット数行] モール横断セット数判定シートの既存データをマスタに反映します');
+    SpreadsheetApp.getActive().toast('モール横断結果をマスタに反映します...', '抜けセット数行', 3);
     try {
-      var jansForCross = [];
-      var seenJan = {};
-      for (var ix = 0; ix < inserts.length; ix++) {
-        var j = inserts[ix].jan;
-        if (!seenJan[j]) { seenJan[j] = true; jansForCross.push(j); }
-      }
-      menuTestCrossMallSetCountJudge(jansForCross);
       menuApplyCrossMallResultToRakutenYahooMaster();
-      SpreadsheetApp.getActive().toast('抜けセット数行の挿入とモール横断反映が完了しました。', '抜けセット数行', 5);
+      SpreadsheetApp.getActive().toast('抜けセット数行の挿入と反映が完了しました。', '抜けセット数行', 5);
     } catch (e) {
       Logger.log('[抜けセット数行] モール横断/反映でエラー: ' + (e && e.message));
       if (e && e.stack) Logger.log('[抜けセット数行] スタック: ' + e.stack);
