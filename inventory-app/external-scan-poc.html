@@ -213,12 +213,13 @@
       }
       setResult('スキャン起動中...');
       sendLog('[外部スキャンPoC] scan start');
-      var qrboxSize = function(vw, vh) {
-        return { width: Math.min(320, Math.round((vw || 300) * 0.92)), height: Math.min(400, Math.round((vh || 400) * 0.7)) };
+      // 画面全体をスキャン範囲にする（qrbox でビューファインダー全幅・全高を指定）
+      var qrboxFull = function(vw, vh) {
+        return { width: vw || 300, height: vh || 300 };
       };
       scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: qrboxSize },
+        { fps: 10, qrbox: qrboxFull },
         onScanSuccess,
         onScanFailure
       ).then(function() {

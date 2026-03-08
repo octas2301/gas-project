@@ -3586,7 +3586,7 @@ function menuInsertMissingSetCountRows() {
   var EP_COL_START = 5;
   var EP_COL_END = 16;
   var epNumCols = EP_COL_END - EP_COL_START + 1;
-  Logger.log('[抜けセット数行] コピー範囲 A-D: 行' + templateRow1Based + ' 数式のみ, E-P: 行' + templateRow1Based + ' 数式のみ, Q-HJ: 行' + templateRow1Based + ' 数式のみ。最後にJAN・セット数・レ点を設定');
+  Logger.log('[抜けセット数行] コピー範囲 A-B: 直前行参照の連番数式(挿入行+以下も更新), C-D: テンプレ数式, E-P: 数式はテンプレ/値は同JAN他子SKU(直前行), Q-HJ: テンプレ数式。最後にJAN・セット数・レ点を設定');
   for (var ii = 0; ii < inserts.length; ii++) {
     var ins = inserts[ii];
     Logger.log('[抜けセット数行] 挿入 ' + (ii + 1) + '/' + inserts.length + ' insertBeforeRow=' + ins.insertBeforeRow + ' JAN=' + ins.jan + ' setCount=' + ins.setCount + ' templateRow=' + templateRow1Based);
@@ -3594,11 +3594,22 @@ function menuInsertMissingSetCountRows() {
     var newRow = ins.insertBeforeRow;
     Logger.log('[抜けセット数行]   行' + ins.insertBeforeRow + 'の上に1行挿入 → 新規行(1-based)=' + newRow);
 
-    // A-D: テンプレ2行目から数式が入っている列のみコピー（C列はレ点のため値で上書き）
+    // A-B: テンプレはコピーせず、挿入行は直前行参照の連番数式を直接設定。その後、挿入行の下の行も連番になるようA,Bを更新する。
+    masterSheet.getRange(newRow, 1).setFormula('=A' + (newRow - 1) + '+1');
+    masterSheet.getRange(newRow, 2).setFormula('="No."&A' + newRow);
+    var lastRow = masterSheet.getLastRow();
+    if (newRow + 1 <= lastRow) {
+      for (var r = newRow + 1; r <= lastRow; r++) {
+        masterSheet.getRange(r, 1).setFormula('=A' + (r - 1) + '+1');
+        masterSheet.getRange(r, 2).setFormula('="No."&A' + r);
+      }
+      Logger.log('[抜けセット数行]   A-B列 行' + (newRow + 1) + '-' + lastRow + ' の連番数式を更新');
+    }
+    // C-D: テンプレ2行目から数式が入っている列のみコピー（C列はレ点のため値で上書き）
     var r2 = masterSheet.getRange(templateRow1Based, 1, 1, 4);
     var formulas = r2.getFormulas();
     if (formulas && formulas[0]) {
-      for (var c = 0; c < 4; c++) {
+      for (var c = 2; c < 4; c++) {
         if (c === 2) {
           var v = masterSheet.getRange(templateRow1Based, 3).getValue();
           masterSheet.getRange(newRow, 3).setValue(v !== undefined && v !== null && v !== '' ? v : true);
@@ -3606,21 +3617,25 @@ function menuInsertMissingSetCountRows() {
           masterSheet.getRange(newRow, c + 1).setFormula(formulas[0][c]);
         }
       }
-      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から A-D(1-4列) 数式のみコピー');
+      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から C-D(3-4列) 数式のみコピー');
     }
-    // E-P: テンプレ2行目から数式が入っている列のみコピー
+    // E-P: 数式はテンプレ2行目から、値のみの列は同JANの他子SKU（挿入直前の行）からコピー
+    var sourceRow = newRow - 1;
     var rEp = masterSheet.getRange(templateRow1Based, EP_COL_START, 1, epNumCols);
     var formulasEp = rEp.getFormulas();
-    if (formulasEp && formulasEp[0]) {
-      var epCount = 0;
-      for (var ec = 0; ec < epNumCols; ec++) {
-        if (formulasEp[0][ec]) {
-          masterSheet.getRange(newRow, EP_COL_START + ec).setFormula(formulasEp[0][ec]);
-          epCount++;
-        }
+    var valuesSource = (sourceRow >= 1) ? masterSheet.getRange(sourceRow, EP_COL_START, 1, epNumCols).getValues()[0] : [];
+    var epFormulaCount = 0;
+    var epValueCount = 0;
+    for (var ec = 0; ec < epNumCols; ec++) {
+      if (formulasEp && formulasEp[0] && formulasEp[0][ec]) {
+        masterSheet.getRange(newRow, EP_COL_START + ec).setFormula(formulasEp[0][ec]);
+        epFormulaCount++;
+      } else if (valuesSource[ec] !== undefined && valuesSource[ec] !== null && valuesSource[ec] !== '') {
+        masterSheet.getRange(newRow, EP_COL_START + ec).setValue(valuesSource[ec]);
+        epValueCount++;
       }
-      if (epCount > 0) Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から E-P(5-16列) 数式' + epCount + '件コピー');
     }
+    if (epFormulaCount > 0 || epValueCount > 0) Logger.log('[抜けセット数行]   E-P(5-16列) テンプレ数式' + epFormulaCount + '件・同JAN他子SKU(行' + sourceRow + ')値' + epValueCount + '件コピー');
     // Q-HJ: テンプレ2行目から数式のみコピー
     if (FORMULA_TMPL_COL_END >= FORMULA_TMPL_COL_START) {
       var r2q = masterSheet.getRange(templateRow1Based, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);

@@ -223,15 +223,10 @@ function doGet(e) {
     var toastMsg = params.toast || '';
     var janFromUrl = (params.jan || '').toString().trim();
     var adjustFromUrl = (params.adjust === '1' || params.adjust === 'true');
-    var locations = [], reasons = [], tantou = [];
-    try {
-      locations = getMasterList('場所マスタ') || [];
-      reasons = getMasterList('理由マスタ') || [];
-      tantou = getMasterList('担当者マスタ') || [];
-    } catch (z) {}
-    var locationsOptionsHtml = locations.map(function(l) { return '<option value="' + escapeForHtml(l) + '">' + escapeForHtml(l) + '</option>'; }).join('');
-    var reasonsOptionsHtml = reasons.map(function(r) { return '<option value="' + escapeForHtml(r) + '">' + escapeForHtml(r) + '</option>'; }).join('');
-    var tantouOptionsHtml = tantou.map(function(t) { return '<option value="' + escapeForHtml(t) + '">' + escapeForHtml(t) + '</option>'; }).join('');
+    // 初回表示を軽くするためマスタは doGet では取得せず、クライアントの loadMasters() で非同期取得
+    var locationsOptionsHtml = '';
+    var reasonsOptionsHtml = '';
+    var tantouOptionsHtml = '';
 
     var html = HtmlService.createTemplateFromFile('index');
     html.view = safeView;
