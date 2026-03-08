@@ -3583,16 +3583,18 @@ function menuInsertMissingSetCountRows() {
   var templateRow1Based = 2;
   var formulaTmplNumCols = FORMULA_TMPL_COL_END - FORMULA_TMPL_COL_START + 1;
   Logger.log('[抜けセット数行] テンプレート行 1-based=' + templateRow1Based + ' (子SKU用・2行目)');
-  Logger.log('[抜けセット数行] コピー範囲 A-D: 行' + templateRow1Based + ' 1行4列, Q-HJ: 行' + templateRow1Based + ' 1行' + formulaTmplNumCols + '列');
+  var EP_COL_START = 5;
+  var EP_COL_END = 16;
+  var epNumCols = EP_COL_END - EP_COL_START + 1;
+  Logger.log('[抜けセット数行] コピー範囲 A-D: 行' + templateRow1Based + ' 数式のみ, E-P: 行' + templateRow1Based + ' 数式のみ, Q-HJ: 行' + templateRow1Based + ' 数式のみ。最後にJAN・セット数・レ点を設定');
   for (var ii = 0; ii < inserts.length; ii++) {
     var ins = inserts[ii];
     Logger.log('[抜けセット数行] 挿入 ' + (ii + 1) + '/' + inserts.length + ' insertBeforeRow=' + ins.insertBeforeRow + ' JAN=' + ins.jan + ' setCount=' + ins.setCount + ' templateRow=' + templateRow1Based);
     masterSheet.insertRowsBefore(ins.insertBeforeRow, 1);
     var newRow = ins.insertBeforeRow;
     Logger.log('[抜けセット数行]   行' + ins.insertBeforeRow + 'の上に1行挿入 → 新規行(1-based)=' + newRow);
-    masterSheet.getRange(newRow, colJan + 1).setValue(ins.jan);
-    masterSheet.getRange(newRow, colSetQty + 1).setValue(ins.setCount);
-    Logger.log('[抜けセット数行]   新規行 列' + (colJan + 1) + '(JAN)=' + ins.jan + ' 列' + (colSetQty + 1) + '(セット数)=' + ins.setCount);
+
+    // A-D: テンプレ2行目から数式が入っている列のみコピー（C列はレ点のため値で上書き）
     var r2 = masterSheet.getRange(templateRow1Based, 1, 1, 4);
     var formulas = r2.getFormulas();
     if (formulas && formulas[0]) {
@@ -3604,21 +3606,52 @@ function menuInsertMissingSetCountRows() {
           masterSheet.getRange(newRow, c + 1).setFormula(formulas[0][c]);
         }
       }
-      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から A-D(1-4列) 数式/値をコピー');
+      Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から A-D(1-4列) 数式のみコピー');
     }
+    // E-P: テンプレ2行目から数式が入っている列のみコピー
+    var rEp = masterSheet.getRange(templateRow1Based, EP_COL_START, 1, epNumCols);
+    var formulasEp = rEp.getFormulas();
+    if (formulasEp && formulasEp[0]) {
+      var epCount = 0;
+      for (var ec = 0; ec < epNumCols; ec++) {
+        if (formulasEp[0][ec]) {
+          masterSheet.getRange(newRow, EP_COL_START + ec).setFormula(formulasEp[0][ec]);
+          epCount++;
+        }
+      }
+      if (epCount > 0) Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から E-P(5-16列) 数式' + epCount + '件コピー');
+    }
+    // Q-HJ: テンプレ2行目から数式のみコピー
     if (FORMULA_TMPL_COL_END >= FORMULA_TMPL_COL_START) {
       var r2q = masterSheet.getRange(templateRow1Based, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);
       var destRange = masterSheet.getRange(newRow, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);
       r2q.copyTo(destRange, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
       Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から 列' + FORMULA_TMPL_COL_START + '-' + FORMULA_TMPL_COL_END + '(Q-HJ) 数式をコピー(1行のみ)');
     }
+    // 全コピー後にJAN・セット数・レ点を設定（上書きで正しい値にする）
+    masterSheet.getRange(newRow, colJan + 1).setValue(ins.jan);
+    masterSheet.getRange(newRow, colSetQty + 1).setValue(ins.setCount);
+    Logger.log('[抜けセット数行]   新規行 列' + (colJan + 1) + '(JAN)=' + ins.jan + ' 列' + (colSetQty + 1) + '(セット数)=' + ins.setCount + ' を設定');
     if (colCheckbox !== undefined) {
       masterSheet.getRange(newRow, colCheckbox + 1).setValue(true);
       Logger.log('[抜けセット数行]   列' + (colCheckbox + 1) + ' レ点をONに設定');
     }
   }
-  Logger.log('[抜けセット数行] ========== 完了 挿入行数=' + inserts.length + ' ==========');
-  SpreadsheetApp.getActive().toast('抜けセット数行を ' + inserts.length + ' 行挿入しました。', '抜けセット数行', 6);
+  Logger.log('[抜けセット数行] ========== 挿入完了 挿入行数=' + inserts.length + ' ==========');
+  SpreadsheetApp.getActive().toast('抜けセット数行を ' + inserts.length + ' 行挿入しました。', '抜けセット数行', 4);
+  if (inserts.length > 0) {
+    Logger.log('[抜けセット数行] モール横断セット数統合判定を実行し、結果をマスタに反映します');
+    SpreadsheetApp.getActive().toast('モール横断を実行し、結果をマスタに反映します...', '抜けセット数行', 3);
+    try {
+      menuTestCrossMallSetCountJudge();
+      menuApplyCrossMallResultToRakutenYahooMaster();
+      SpreadsheetApp.getActive().toast('抜けセット数行の挿入とモール横断反映が完了しました。', '抜けセット数行', 5);
+    } catch (e) {
+      Logger.log('[抜けセット数行] モール横断/反映でエラー: ' + (e && e.message));
+      if (e && e.stack) Logger.log('[抜けセット数行] スタック: ' + e.stack);
+      SpreadsheetApp.getActive().toast('挿入は完了しましたが、モール横断反映でエラー: ' + (e && e.message), '抜けセット数行', 8);
+    }
+  }
   } catch (e) {
     Logger.log('[抜けセット数行] エラー: ' + (e && e.message));
     if (e && e.stack) Logger.log('[抜けセット数行] スタック: ' + e.stack);
