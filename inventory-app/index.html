@@ -299,12 +299,15 @@
           var adjustSection = document.getElementById('count-adjust-section');
           if (adjustSection && adjustSection.style.display === 'none') toggleCountAdjust();
           inputId = 'adjust-jan';
-        } else if (view === 'shipping') inputId = 'ship-jan';
-        else if (view === 'move') inputId = 'move-jan';
-        else if (view === 'receiving') inputId = 'rec-jan';
-        else if (view === 'count') inputId = 'count-jan';
-        else if (view === 'products') inputId = 'prod-single';
-        else inputId = 'ship-jan';
+        } else {
+          showView(view);
+          if (view === 'shipping') inputId = 'ship-jan';
+          else if (view === 'move') inputId = 'move-jan';
+          else if (view === 'receiving') inputId = 'rec-jan';
+          else if (view === 'count') inputId = 'count-jan';
+          else if (view === 'products') inputId = 'prod-single';
+          else inputId = 'ship-jan';
+        }
         var inputEl = document.getElementById(inputId);
         if (inputEl && jan) {
           inputEl.value = jan;
