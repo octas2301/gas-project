@@ -102,6 +102,28 @@
       return gasUrl + sep + 'view=' + encodeURIComponent(view);
     }
 
+    /**
+     * 開いている GAS タブ（opener）に postMessage で JAN を渡し、スキャンタブを閉じる。
+     * 成功で true、フォールバック時は false。
+     */
+    function tryReturnViaPostMessage(jan) {
+      if (isTestOrManualReturn()) return false;
+      if (!window.opener || typeof window.opener.postMessage !== 'function') return false;
+      var url = getReturnUrl(jan);
+      if (!url) return false;
+      var targetOrigin = '';
+      try { targetOrigin = new URL(url).origin; } catch (e) { return false; }
+      if (!targetOrigin) return false;
+      var view = (qs('view') || 'shipping').trim() || 'shipping';
+      try {
+        window.opener.postMessage({ type: 'externalScanResult', jan: String(jan || ''), view: view }, targetOrigin);
+        setTimeout(function() { window.close(); }, 80);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
     function isGasConfigured() {
       var url = getGasExecUrl();
       return !!url && url !== 'PASTE_GAS_EXEC_URL_HERE';
@@ -182,6 +204,7 @@
       sendLog('[外部スキャンPoC] scanned jan=' + decodedText);
       stopScan();
       if (!isTestOrManualReturn()) {
+        if (tryReturnViaPostMessage(lastScannedJan)) return;
         var url = getReturnUrl(lastScannedJan);
         if (url) {
           location.href = url;
@@ -285,6 +308,7 @@
         setResult('先にスキャンしてください');
         return;
       }
+      if (tryReturnViaPostMessage(lastScannedJan)) return;
       var url = getReturnUrl(lastScannedJan);
       if (!url) {
         setResult('戻り先 URL が未設定です');

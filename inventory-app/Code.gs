@@ -247,6 +247,7 @@ function doGet(e) {
     html.adjustFromUrl = adjustFromUrl;
     html.gasExecUrl = gasExecUrl;
     html.externalScanBaseUrl = externalScanBaseUrl;
+    html.externalScanBaseUrlForAttr = escapeForHtml(externalScanBaseUrl);
     html.returnUrlShippingEnc = encodeURIComponent(returnUrlShipping);
     html.returnUrlMoveEnc = encodeURIComponent(returnUrlMove);
     html.returnUrlReceivingEnc = encodeURIComponent(returnUrlReceiving);

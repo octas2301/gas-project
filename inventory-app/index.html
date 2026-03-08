@@ -38,7 +38,7 @@
     .modal-inner { background: #fff; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; }
   </style>
 </head>
-<body data-view="<?= viewAttr ?>" data-jan-from-url="<?= janFromUrlEscaped ?>" data-adjust-from-url="<?= adjustFromUrl ? '1' : '' ?>" data-scan-url-count="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count">
+<body data-view="<?= viewAttr ?>" data-jan-from-url="<?= janFromUrlEscaped ?>" data-adjust-from-url="<?= adjustFromUrl ? '1' : '' ?>" data-external-scan-base="<?= externalScanBaseUrlForAttr ?>" data-scan-url-count="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count">
   <div id="loading-msg" style="padding:1rem;text-align:center;color:#666;display:none;">読み込み中…</div>
   <p id="diag-line" style="margin:4px 8px;font-size:11px;color:#666;">表示: <?= view ?> | base: <?= baseUrl ? 'あり' : 'なし' ?></p>
   <? if (showLog) { ?><div id="debug-log" style="margin:8px;padding:8px;background:#fff3cd;border:1px solid #ffc107;font-size:12px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;min-height:50px;"><strong>調査用ログ（?log=1で表示）</strong><br><pre id="server-log-pre"><?!= serverLogHtml || '(サーバーログなし)' ?></pre></div><? } ?>
@@ -280,6 +280,39 @@
       if (id === 'variance') loadVariance();
       if (id === 'stock') loadStock();
     }
+
+    // 外部スキャンから postMessage で JAN を受け取る（GAS を再読み込みせず即反映）
+    (function setupExternalScanMessageListener() {
+      var allowedOrigin = '';
+      try {
+        var base = document.body.getAttribute('data-external-scan-base') || '';
+        if (base) allowedOrigin = new URL(base).origin;
+      } catch (e) {}
+      window.addEventListener('message', function(e) {
+        if (!e.data || e.data.type !== 'externalScanResult') return;
+        if (allowedOrigin && e.origin !== allowedOrigin) return;
+        var view = (e.data.view || 'shipping').trim() || 'shipping';
+        var jan = (e.data.jan || '').toString().trim();
+        var inputId = null;
+        if (view === 'variance') {
+          showView('count');
+          var adjustSection = document.getElementById('count-adjust-section');
+          if (adjustSection && adjustSection.style.display === 'none') toggleCountAdjust();
+          inputId = 'adjust-jan';
+        } else if (view === 'shipping') inputId = 'ship-jan';
+        else if (view === 'move') inputId = 'move-jan';
+        else if (view === 'receiving') inputId = 'rec-jan';
+        else if (view === 'count') inputId = 'count-jan';
+        else if (view === 'products') inputId = 'prod-single';
+        else inputId = 'ship-jan';
+        var inputEl = document.getElementById(inputId);
+        if (inputEl && jan) {
+          inputEl.value = jan;
+          inputEl.dispatchEvent(new Event('blur', { bubbles: true }));
+          try { inputEl.focus(); } catch (z) {}
+        }
+      });
+    })();
 
     function toast(msg, isErr) {
       var t = document.getElementById('toast');
