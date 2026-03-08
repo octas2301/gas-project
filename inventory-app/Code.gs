@@ -181,6 +181,8 @@ function doGet(e) {
       return errHtml('アクセス権がありません', loginInfo, serverLog);
     }
     log('access ok');
+    var t1AfterAccess = new Date().getTime();
+    try { appendPerfLog('doGet_phase_init', t1AfterAccess - t0DoGet, ''); } catch (z) {}
 
     var baseUrl = '';
     try {
@@ -254,11 +256,17 @@ function doGet(e) {
     html.returnUrlCountEnc = encodeURIComponent(returnUrlCount);
     html.returnUrlAdjustEnc = encodeURIComponent(returnUrlAdjust);
     html.returnUrlProductsEnc = encodeURIComponent(returnUrlProducts);
+    var t2TemplateVars = new Date().getTime();
     log('template vars set');
+    try { appendPerfLog('doGet_phase_templateVars', t2TemplateVars - t1AfterAccess, ''); } catch (z) {}
+
+    var t3BeforeEvaluate = new Date().getTime();
     var out = html.evaluate()
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setTitle('在庫管理アプリ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+    var t4AfterEvaluate = new Date().getTime();
+    try { appendPerfLog('doGet_phase_evaluate', t4AfterEvaluate - t3BeforeEvaluate, ''); } catch (z) {}
     var doGetMs = new Date().getTime() - t0DoGet;
     log('doGet end ' + doGetMs + 'ms');
     try { appendPerfLog('doGet', doGetMs, ''); } catch (z) {}
@@ -417,6 +425,11 @@ function apiGetMasters() {
 /** クライアントから呼ばれる。ページ表示〜マスタ取得までの時間をパフォーマンスログに追記する。 */
 function apiPerfLogClient(t_domMs, t_mastersMs) {
   try { appendPerfLogClient(t_domMs, t_mastersMs); } catch (e) {}
+}
+
+/** クライアントから呼ばれる。区間別の詳細パフォーマンスをパフォーマンスログに追記する。 */
+function apiPerfLogClientDetail(t_responseMs, t_domMs, t_apiGetMastersMs, t_mastersTotalMs) {
+  try { appendPerfLogClientDetail(t_responseMs, t_domMs, t_apiGetMastersMs, t_mastersTotalMs); } catch (e) {}
 }
 
 function apiGetVarianceList() {

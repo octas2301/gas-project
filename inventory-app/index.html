@@ -348,12 +348,18 @@
         fillSelect('setting-tantou', tantouList);
         var s = document.getElementById('setting-tantou');
         if (s && data && data.currentTantou) s.value = data.currentTantou;
-        debugLog('[perf] apiGetMasters: ' + Math.round(performance.now() - t0Masters) + 'ms');
-        var t_mastersMs = Math.round(performance.now() - t0Masters);
+        var t_apiGetMastersMs = Math.round(performance.now() - t0Masters);
+        debugLog('[perf] apiGetMasters: ' + t_apiGetMastersMs + 'ms');
+        var t_mastersTotalMs = t_apiGetMastersMs;
         var t_dom = 0;
-        if (typeof performance !== 'undefined' && performance.timing)
-          t_dom = Math.max(0, (performance.timing.domContentLoadedEventEnd || 0) - (performance.timing.navigationStart || 0));
-        google.script.run.apiPerfLogClient(t_dom, t_mastersMs);
+        var t_response = 0;
+        if (typeof performance !== 'undefined' && performance.timing) {
+          var pt = performance.timing;
+          t_dom = Math.max(0, (pt.domContentLoadedEventEnd || 0) - (pt.navigationStart || 0));
+          t_response = Math.max(0, (pt.responseEnd || 0) - (pt.navigationStart || 0));
+        }
+        google.script.run.apiPerfLogClient(t_dom, t_mastersTotalMs);
+        google.script.run.apiPerfLogClientDetail(t_response, t_dom, t_apiGetMastersMs, t_mastersTotalMs);
       }).apiGetMasters();
     }
 

@@ -353,6 +353,27 @@ function appendPerfLogClient(t_domMs, t_mastersMs) {
 }
 
 /**
+ * クライアント側の詳細パフォーマンス（区間別）をパフォーマンスログに追記。調査用。
+ * 1回のページロードで4行追加する。
+ */
+function appendPerfLogClientDetail(t_responseMs, t_domMs, t_apiGetMastersMs, t_mastersTotalMs) {
+  try {
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName(PERF_LOG_SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(PERF_LOG_SHEET_NAME);
+      sheet.getRange(1, 1, 1, 4).setValues([['日時', 'API名', '処理時間(ms)', '担当者']]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+    }
+    var now = new Date();
+    sheet.appendRow([now, 'client_t_response', Math.round(Number(t_responseMs) || 0), '']);
+    sheet.appendRow([now, 'client_t_dom', Math.round(Number(t_domMs) || 0), '']);
+    sheet.appendRow([now, 'client_t_apiGetMasters', Math.round(Number(t_apiGetMastersMs) || 0), '']);
+    sheet.appendRow([now, 'client_t_mastersTotal', Math.round(Number(t_mastersTotalMs) || 0), '']);
+  } catch (e) {}
+}
+
+/**
  * 操作ログに1行追加。
  */
 function appendLog(email, tantouName, screen, action, memo) {
