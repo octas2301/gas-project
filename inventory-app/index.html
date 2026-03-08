@@ -40,7 +40,7 @@
 </head>
 <body data-view="<?= viewAttr ?>" data-jan-from-url="<?= janFromUrlEscaped ?>" data-adjust-from-url="<?= adjustFromUrl ? '1' : '' ?>" data-external-scan-base="<?= externalScanBaseUrlForAttr ?>" data-scan-url-count="<?= externalScanBaseUrl ?>?returnUrl=<?= returnUrlCountEnc ?>&amp;view=count">
   <div id="loading-msg" style="padding:1rem;text-align:center;color:#666;display:none;">読み込み中…</div>
-  <p id="diag-line" style="margin:4px 8px;font-size:11px;color:#666;">表示: <?= view ?> | base: <?= baseUrl ? 'あり' : 'なし' ?></p>
+  <p id="diag-line" style="margin:4px 8px;font-size:11px;color:#666;">表示: <?= view ?> | base: <?= baseUrl ? 'あり' : 'なし' ?> | v <?= appVersion ?></p>
   <? if (showLog) { ?><div id="debug-log" style="margin:8px;padding:8px;background:#fff3cd;border:1px solid #ffc107;font-size:12px;font-family:monospace;white-space:pre-wrap;max-height:200px;overflow:auto;min-height:50px;"><strong>調査用ログ（?log=1で表示）</strong><br><pre id="server-log-pre"><?!= serverLogHtml || '(サーバーログなし)' ?></pre></div><? } ?>
   <div class="container" id="main-container">
     <div id="view-shipping" class="view <?= view === 'shipping' ? 'active' : '' ?>">
@@ -307,6 +307,21 @@
           else if (view === 'count') inputId = 'count-jan';
           else if (view === 'products') inputId = 'prod-single';
           else inputId = 'ship-jan';
+        }
+        try {
+          var logMsg = '[在庫アプリ] externalScanResult view=' + view + ' showView_called inputId=' + (inputId || '');
+          var logUrl = (window.location.origin + window.location.pathname) + '?api=externalScanLog&msg=' + encodeURIComponent(logMsg) + '&_=' + Date.now();
+          fetch(logUrl).catch(function() {});
+        } catch (logErr) {}
+        var expectedView = (view === 'variance') ? 'count' : view;
+        var activeEl = document.querySelector('.view.active');
+        var actualView = activeEl && activeEl.id ? activeEl.id.replace(/^view-/, '') : '';
+        if (actualView !== expectedView) {
+          try {
+            var mismatchMsg = '[在庫アプリ] externalScanResult view_transition_mismatch expected=' + expectedView + ' actual=' + actualView + ' requestedView=' + view;
+            var mismatchUrl = (window.location.origin + window.location.pathname) + '?api=externalScanLog&msg=' + encodeURIComponent(mismatchMsg) + '&_=' + Date.now();
+            fetch(mismatchUrl).catch(function() {});
+          } catch (mismatchErr) {}
         }
         var inputEl = document.getElementById(inputId);
         if (inputEl && jan) {

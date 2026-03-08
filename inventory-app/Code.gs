@@ -7,6 +7,9 @@ var SPREADSHEET_ID_DEFAULT = '1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE';
 /** デバッグログ用シート名 */
 var DEBUG_LOG_SHEET_NAME = 'デバッグログ';
 
+/** 在庫アプリのバージョン表示用（反映確認）。scripts/update-inventory-app-version.ps1 で更新。 */
+var INVENTORY_APP_VERSION = '2026-03-08 22:00';
+
 /**
  * GAS側のログをスプレッドシート「デバッグログ」に追記する。調査用。失敗しても doGet は続行する。
  * @param {string} msg メッセージ
@@ -274,6 +277,7 @@ function doGet(e) {
     html.returnUrlCountEnc = encodeURIComponent(returnUrlCount);
     html.returnUrlAdjustEnc = encodeURIComponent(returnUrlAdjust);
     html.returnUrlProductsEnc = encodeURIComponent(returnUrlProducts);
+    html.appVersion = typeof INVENTORY_APP_VERSION !== 'undefined' ? INVENTORY_APP_VERSION : '';
     var t2TemplateVars = new Date().getTime();
     log('template vars set');
     try { appendPerfLog('doGet_phase_templateVars', t2TemplateVars - t1AfterAccess, ''); } catch (z) {}
