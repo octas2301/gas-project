@@ -330,6 +330,29 @@ function appendPerfLog(apiName, elapsedMs, tantou) {
 }
 
 /**
+ * クライアント側のパフォーマンス（ページ表示〜マスタ取得完了）を1行追加。調査用。
+ * @param {number} t_domMs ナビゲーション開始〜DOM準備完了までのミリ秒
+ * @param {number} t_mastersMs ページ表示開始〜apiGetMasters 完了までのミリ秒
+ */
+function appendPerfLogClient(t_domMs, t_mastersMs) {
+  try {
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName(PERF_LOG_SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(PERF_LOG_SHEET_NAME);
+      sheet.getRange(1, 1, 1, 4).setValues([['日時', 'API名', '処理時間(ms)', '担当者']]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+    }
+    sheet.appendRow([
+      new Date(),
+      'client_pageLoad',
+      Math.round(Number(t_domMs) || 0),
+      String(t_mastersMs != null ? t_mastersMs : '')
+    ]);
+  } catch (e) {}
+}
+
+/**
  * 操作ログに1行追加。
  */
 function appendLog(email, tantouName, screen, action, memo) {

@@ -2829,7 +2829,7 @@ function applyImageAiToAmbiguousSetCandidates(candidates, limit) {
  * モール横断のセット数統合判定テスト。楽天・Yahoo!・Amazon 候補を1シートに集約し、Gemini の一括判定結果を比較する。
  * 旧テストは比較用に残し、この統合テストを新しい主テストとして追加する。
  */
-function menuTestCrossMallSetCountJudge() {
+function menuTestCrossMallSetCountJudge(onlyJans) {
   var props = PropertiesService.getScriptProperties();
   var appId = (props.getProperty('RAKUTEN_APP_ID') || '').trim();
   var accessKey = (props.getProperty('RAKUTEN_ACCESS_KEY') || '').trim();
@@ -2873,23 +2873,40 @@ function menuTestCrossMallSetCountJudge() {
     SpreadsheetApp.getUi().alert('マスタに「' + CHECKBOX_HEADER_NAME + '」列がありません。レ点で対象を指定するため必要です。');
     return;
   }
-  // 出品CK（レ点）が付いた行からユニークなJANを取得（出現順を保持）
+  // 出品CK（レ点）が付いた行からユニークなJANを取得（出現順を保持）。onlyJans が渡された場合はそのJANのみ対象にする。
   var checkedRowIndices = [];
   for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
     if (masterValues[mr][colCheckbox]) checkedRowIndices.push(mr);
   }
-  if (checkedRowIndices.length === 0) {
+  if (checkedRowIndices.length === 0 && (!onlyJans || onlyJans.length === 0)) {
     SpreadsheetApp.getUi().alert('出品CK（レ点）が付いた行がありません。対象行にレ点を付けてから実行してください。');
     return;
   }
   var uniqueJans = [];
   var firstRowByJan = {};
-  for (var ui = 0; ui < checkedRowIndices.length; ui++) {
-    var r = checkedRowIndices[ui];
-    var j = String(masterValues[r][colJan] || '').trim();
-    if (j.length >= 8 && uniqueJans.indexOf(j) === -1) {
-      uniqueJans.push(j);
-      firstRowByJan[j] = r;
+  if (onlyJans != null && onlyJans.length > 0) {
+    for (var oi = 0; oi < onlyJans.length; oi++) {
+      var j = String(onlyJans[oi] || '').trim();
+      if (j.length >= 8 && uniqueJans.indexOf(j) === -1) uniqueJans.push(j);
+    }
+    for (var oi = 0; oi < uniqueJans.length; oi++) {
+      var j = uniqueJans[oi];
+      for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+        if (masterValues[mr][colCheckbox] && String(masterValues[mr][colJan] || '').trim() === j) {
+          firstRowByJan[j] = mr;
+          break;
+        }
+      }
+    }
+    Logger.log('[モール横断セット数] 挿入JANのみ対象 JAN数=' + uniqueJans.length + ' JAN=' + uniqueJans.join(','));
+  } else {
+    for (var ui = 0; ui < checkedRowIndices.length; ui++) {
+      var r = checkedRowIndices[ui];
+      var j = String(masterValues[r][colJan] || '').trim();
+      if (j.length >= 8 && uniqueJans.indexOf(j) === -1) {
+        uniqueJans.push(j);
+        firstRowByJan[j] = r;
+      }
     }
   }
   if (uniqueJans.length === 0) {
@@ -3594,16 +3611,19 @@ function menuInsertMissingSetCountRows() {
     var newRow = ins.insertBeforeRow;
     Logger.log('[抜けセット数行]   行' + ins.insertBeforeRow + 'の上に1行挿入 → 新規行(1-based)=' + newRow);
 
-    // A-B: テンプレはコピーせず、挿入行は直前行参照の連番数式を直接設定。その後、挿入行の下の行も連番になるようA,Bを更新する。
+    // A-B: テンプレはコピーせず、挿入行は直前行参照の連番数式を直接設定。挿入行の下は1回の範囲書きで連番数式を設定。
     masterSheet.getRange(newRow, 1).setFormula('=A' + (newRow - 1) + '+1');
     masterSheet.getRange(newRow, 2).setFormula('="No."&A' + newRow);
     var lastRow = masterSheet.getLastRow();
     if (newRow + 1 <= lastRow) {
-      for (var r = newRow + 1; r <= lastRow; r++) {
-        masterSheet.getRange(r, 1).setFormula('=A' + (r - 1) + '+1');
-        masterSheet.getRange(r, 2).setFormula('="No."&A' + r);
+      var numRowsBelow = lastRow - newRow;
+      var abFormulas = [];
+      for (var r = 0; r < numRowsBelow; r++) {
+        var rowNum = newRow + 1 + r;
+        abFormulas.push(['=A' + (newRow + r) + '+1', '="No."&A' + rowNum]);
       }
-      Logger.log('[抜けセット数行]   A-B列 行' + (newRow + 1) + '-' + lastRow + ' の連番数式を更新');
+      masterSheet.getRange(newRow + 1, 1, numRowsBelow, 2).setFormulas(abFormulas);
+      Logger.log('[抜けセット数行]   A-B列 行' + (newRow + 1) + '-' + lastRow + ' を1回の範囲書きで更新(行数=' + numRowsBelow + ')');
     }
     // C-D: テンプレ2行目から数式が入っている列のみコピー（C列はレ点のため値で上書き）
     var r2 = masterSheet.getRange(templateRow1Based, 1, 1, 4);
@@ -3655,10 +3675,16 @@ function menuInsertMissingSetCountRows() {
   Logger.log('[抜けセット数行] ========== 挿入完了 挿入行数=' + inserts.length + ' ==========');
   SpreadsheetApp.getActive().toast('抜けセット数行を ' + inserts.length + ' 行挿入しました。', '抜けセット数行', 4);
   if (inserts.length > 0) {
-    Logger.log('[抜けセット数行] モール横断セット数統合判定を実行し、結果をマスタに反映します');
+    Logger.log('[抜けセット数行] 挿入したJANのみモール横断セット数統合判定を実行し、結果をマスタに反映します');
     SpreadsheetApp.getActive().toast('モール横断を実行し、結果をマスタに反映します...', '抜けセット数行', 3);
     try {
-      menuTestCrossMallSetCountJudge();
+      var jansForCross = [];
+      var seenJan = {};
+      for (var ix = 0; ix < inserts.length; ix++) {
+        var j = inserts[ix].jan;
+        if (!seenJan[j]) { seenJan[j] = true; jansForCross.push(j); }
+      }
+      menuTestCrossMallSetCountJudge(jansForCross);
       menuApplyCrossMallResultToRakutenYahooMaster();
       SpreadsheetApp.getActive().toast('抜けセット数行の挿入とモール横断反映が完了しました。', '抜けセット数行', 5);
     } catch (e) {

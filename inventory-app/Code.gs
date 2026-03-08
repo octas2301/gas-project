@@ -161,6 +161,7 @@ function doGet(e) {
     ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setTitle('在庫管理アプリ');
   };
   try {
+    var t0DoGet = new Date().getTime();
     log('doGet start');
     var params = e && e.parameter ? e.parameter : {};
     var view = params.view || params.v || '';
@@ -174,6 +175,9 @@ function doGet(e) {
 
     if (!isAccessAllowed()) {
       log('access denied');
+      var doGetMsDeny = new Date().getTime() - t0DoGet;
+      log('doGet end ' + doGetMsDeny + 'ms');
+      try { appendPerfLog('doGet', doGetMsDeny, ''); } catch (z) {}
       return errHtml('アクセス権がありません', loginInfo, serverLog);
     }
     log('access ok');
@@ -254,10 +258,15 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setTitle('在庫管理アプリ')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-    log('evaluate done');
+    var doGetMs = new Date().getTime() - t0DoGet;
+    log('doGet end ' + doGetMs + 'ms');
+    try { appendPerfLog('doGet', doGetMs, ''); } catch (z) {}
     return out;
   } catch (err) {
     log('ERR: ' + (err && err.message ? err.message : String(err)));
+    var doGetMs = new Date().getTime() - t0DoGet;
+    log('doGet end ' + doGetMs + 'ms');
+    try { appendPerfLog('doGet', doGetMs, ''); } catch (z) {}
     return errHtml('エラーが発生しました', (err && err.message) ? String(err.message) : '', serverLog);
   }
 }
@@ -370,6 +379,45 @@ function apiGetTantouList() {
   appendPerfLog('apiGetTantouList', new Date().getTime() - t0, '');
   return result;
 }
+
+/**
+ * 場所・理由・担当者マスタと現在担当者を1回の呼び出しで返す。初回表示の往復回数を減らす。
+ * @return {{ locations: Array, reasons: Array, tantouList: Array, currentTantou: string }}
+ */
+function apiGetMasters() {
+  var t0 = new Date().getTime();
+  var cache = getAppCache();
+  var locations = null, reasons = null, tantouList = null;
+  try {
+    var cLoc = cache.get('locations');
+    var cRea = cache.get('reasons');
+    var cTan = cache.get('tantouList');
+    if (cLoc !== null && cRea !== null && cTan !== null) {
+      locations = JSON.parse(cLoc);
+      reasons = JSON.parse(cRea);
+      tantouList = JSON.parse(cTan);
+    }
+  } catch (e) {}
+  if (locations === null || reasons === null || tantouList === null) {
+    locations = getMasterList('場所マスタ') || [];
+    reasons = getMasterList('理由マスタ') || [];
+    tantouList = getMasterList('担当者マスタ') || [];
+    try {
+      cache.put('locations', JSON.stringify(locations), CACHE_TTL_SEC);
+      cache.put('reasons', JSON.stringify(reasons), CACHE_TTL_SEC);
+      cache.put('tantouList', JSON.stringify(tantouList), CACHE_TTL_SEC);
+    } catch (e) {}
+  }
+  var currentTantou = (PropertiesService.getUserProperties().getProperty('CURRENT_TANTOU') || '').toString().trim();
+  appendPerfLog('apiGetMasters', new Date().getTime() - t0, '');
+  return { locations: locations, reasons: reasons, tantouList: tantouList, currentTantou: currentTantou };
+}
+
+/** クライアントから呼ばれる。ページ表示〜マスタ取得までの時間をパフォーマンスログに追記する。 */
+function apiPerfLogClient(t_domMs, t_mastersMs) {
+  try { appendPerfLogClient(t_domMs, t_mastersMs); } catch (e) {}
+}
+
 function apiGetVarianceList() {
   var cache = getAppCache();
   var cached = cache.get('varianceList');

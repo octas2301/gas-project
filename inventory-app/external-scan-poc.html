@@ -17,7 +17,9 @@
     button, a.btn-link { display: inline-block; border: none; border-radius: 8px; background: #1a73e8; color: #fff; padding: 12px 14px; font-size: 15px; text-decoration: none; cursor: pointer; }
     button.secondary, a.btn-link.secondary { background: #5f6368; }
     button:disabled { background: #bdbdbd; cursor: not-allowed; }
-    #reader { width: 100%; min-height: 240px; }
+    #reader { width: 100%; min-height: 50vh; }
+    .scan-version { font-size: 0.7em; font-weight: normal; color: #666; margin-left: 6px; }
+    .card.camera-card { margin-left: -16px; margin-right: -16px; border-radius: 0; padding-left: 16px; padding-right: 16px; }
     .warn { color: #b00020; font-weight: bold; }
     .ok { color: #137333; font-weight: bold; }
   </style>
@@ -25,7 +27,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>バーコードスキャン</h1>
+    <h1>バーコードスキャン <span class="scan-version" id="scan-version"></span></h1>
     <div class="card">
       <div class="btn-row">
         <button type="button" id="btnTorch" class="secondary" style="display:none;">💡 ライト</button>
@@ -36,7 +38,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card camera-card">
       <h2>カメラ</h2>
       <div id="reader"></div>
     </div>
@@ -55,6 +57,12 @@
   </div>
 
   <script>
+    // 反映確認用。デプロイ時に日時を更新すること。
+    var SCAN_PAGE_VERSION = '2026-03-08 17:30';
+    (function setVersionInHeader() {
+      var el = document.getElementById('scan-version');
+      if (el) el.textContent = 'v ' + (typeof SCAN_PAGE_VERSION !== 'undefined' ? SCAN_PAGE_VERSION : new Date().toLocaleString('ja-JP'));
+    })();
     var GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbwDL63lO2ap3yaqcndkMAisVBSyORQs16pqC_mQr7vBWgqlDtScv74OQ5XVkGC42NBk/exec';
     var DEFAULT_RETURN_PATH = '?test=1&view=scantest';
     var scanner = null;
@@ -213,13 +221,10 @@
       }
       setResult('スキャン起動中...');
       sendLog('[外部スキャンPoC] scan start');
-      // 画面全体をスキャン範囲にする（qrbox でビューファインダー全幅・全高を指定）
-      var qrboxFull = function(vw, vh) {
-        return { width: vw || 300, height: vh || 300 };
-      };
+      // 枠を出さず画面全体をスキャン（qrbox を指定しない）
       scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: qrboxFull },
+        { fps: 10 },
         onScanSuccess,
         onScanFailure
       ).then(function() {

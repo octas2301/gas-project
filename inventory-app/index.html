@@ -297,35 +297,31 @@
     }
 
     function loadMasters() {
-      var t0Loc = performance.now();
-      google.script.run.withSuccessHandler(function(loc) {
-        debugLog('[perf] apiGetLocations: ' + Math.round(performance.now() - t0Loc) + 'ms');
-        locations = loc || [];
+      var t0Masters = performance.now();
+      google.script.run.withSuccessHandler(function(data) {
+        var loc = (data && data.locations) ? data.locations : [];
+        var rea = (data && data.reasons) ? data.reasons : [];
+        var tan = (data && data.tantouList) ? data.tantouList : [];
+        locations = loc;
+        reasons = rea;
+        tantouList = tan;
         fillSelect('ship-from', locations);
         fillSelect('move-from', locations);
         fillSelect('move-to', locations);
         fillSelect('count-loc', locations);
         fillSelect('rec-loc', locations);
         fillSelect('adjust-loc', locations);
-      }).apiGetLocations();
-      var t0Reasons = performance.now();
-      google.script.run.withSuccessHandler(function(r) {
-        debugLog('[perf] apiGetReasons: ' + Math.round(performance.now() - t0Reasons) + 'ms');
-        reasons = r || [];
         fillSelect('rec-reason', reasons);
-      }).apiGetReasons();
-      var t0TantouList = performance.now();
-      google.script.run.withSuccessHandler(function(t) {
-        debugLog('[perf] apiGetTantouList: ' + Math.round(performance.now() - t0TantouList) + 'ms');
-        tantouList = t || [];
         fillSelect('setting-tantou', tantouList);
-        var t0Tantou = performance.now();
-        google.script.run.withSuccessHandler(function(cur) {
-          debugLog('[perf] apiGetTantou: ' + Math.round(performance.now() - t0Tantou) + 'ms');
-          var s = document.getElementById('setting-tantou');
-          if (s && cur) s.value = cur;
-        }).apiGetTantou();
-      }).apiGetTantouList();
+        var s = document.getElementById('setting-tantou');
+        if (s && data && data.currentTantou) s.value = data.currentTantou;
+        debugLog('[perf] apiGetMasters: ' + Math.round(performance.now() - t0Masters) + 'ms');
+        var t_mastersMs = Math.round(performance.now() - t0Masters);
+        var t_dom = 0;
+        if (typeof performance !== 'undefined' && performance.timing)
+          t_dom = Math.max(0, (performance.timing.domContentLoadedEventEnd || 0) - (performance.timing.navigationStart || 0));
+        google.script.run.apiPerfLogClient(t_dom, t_mastersMs);
+      }).apiGetMasters();
     }
 
     function lookupProduct(janInputId, displayId, boxInCountId, unitCostId) {
