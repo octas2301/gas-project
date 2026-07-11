@@ -697,6 +697,24 @@ class YahooCSVGenerator {
 // 4. データ構築クラス (Builder)
 // ==========================================
 
+/** マスタ「出品CK」と generateRakutenCSV 等と同様に真とみなす（TRUE 文字列含む） */
+function yahooMasterCheckboxIsTrue_(cell) {
+  return cell === true || String(cell).toUpperCase() === 'TRUE';
+}
+
+/**
+ * Yahoo editItem の path 用。マスタの (Yahooカテゴリ名) 等で
+ * プルダウンが「＞」区切りの場合と、手入力で既に「:」区切りの場合の両方に対応する。
+ * 全角＞・半角> → 半角 : 、続けてコロン周りの空白を除去（要件 TITLE_WORKAREA… § path 正規化 2026-05）。
+ */
+function normalizeYahooItemPathForApi_(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  s = s.replace(/＞/g, ':').replace(/>/g, ':');
+  s = s.replace(/\s*:\s*/g, ':');
+  return s.trim();
+}
+
 class YahooDataBuilder {
   constructor(masterSheet, mapSheet) {
     this.masterSheet = masterSheet;
@@ -724,8 +742,10 @@ class YahooDataBuilder {
     const childSku = String(childRow[this.headerMap['子SKU']]).trim();
     const yahooCode = childSku; // 子SKUをそのまま商品コードとして使用
 
-    // 商品名: 親商品名 + 【バリエーション値】 (75文字制限・単語区切りカット)
-    let baseName = String(parentRow[this.headerMap['商品名']]).trim();
+    // 商品名: 親の商品名Yahoo!を優先、空欄時は商品名amazon（要件 TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md）
+    const nameYahoo = this.headerMap['商品名Yahoo!'] !== undefined ? String(parentRow[this.headerMap['商品名Yahoo!']] || '').trim() : '';
+    const nameAmazon = this.headerMap['商品名amazon'] !== undefined ? String(parentRow[this.headerMap['商品名amazon']] || '').trim() : '';
+    let baseName = nameYahoo || nameAmazon || '';
     const varValue = this.headerMap['バリエーション値'] ? String(childRow[this.headerMap['バリエーション値']]).trim() : "";
     
     let suffixName = varValue ? ` 【${varValue}】` : "";
@@ -783,8 +803,8 @@ class YahooDataBuilder {
     // 親データと子データをマージ（子が空なら親の値を使う）
     const mergedData = this._mergeParentChild(parentRow, childRow);
 
-    // 【修正】特定項目は強制的に親の値を適用（子行の入力を無視）
-    const forceParentCols = ['商品名', 'キャッチコピー', 'Yahoo!キャッチコピー\nAIから取得', '商品説明の箇条書き①', '商品説明の箇条書き②', '商品説明の箇条書き③', '商品説明の箇条書き④', '商品説明の箇条書き⑤'];
+    // 【修正】特定項目は強制的に親の値を適用（子行の入力を無視）。商品名は商品名Yahoo!/商品名amazon を優先（要件 TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md）
+    const forceParentCols = ['商品名Yahoo!', '商品名amazon', '商品名', 'キャッチコピー', 'Yahoo!キャッチコピー\nAIから取得', '商品説明の箇条書き①', '商品説明の箇条書き②', '商品説明の箇条書き③', '商品説明の箇条書き④', '商品説明の箇条書き⑤'];
     forceParentCols.forEach(col => {
       const idx = this.headerMap[col];
       if (idx !== undefined) mergedData[col] = String(parentRow[idx]).trim();
@@ -875,17 +895,27 @@ class YahooDataBuilder {
     this.masterData.forEach(row => {
       const pSku = String(row[colP]).trim();
       const cSku = String(row[colC]).trim();
-      const isCheck = row[colCK] === true;
+      const isCheck = yahooMasterCheckboxIsTrue_(row[colCK]);
 
       if (pSku && !cSku) {
-        // 親行: グループを用意（親のレ点は出数目の制御には使わず、子のレ点のみで出品する）
+        // 親行: 子行のぶら下がり先を維持。親のレ点は「子の出品対象数」には使わないが、
+        // 同一親SKUで親行が複数あるときは「出品CK付き親行（複数なら下に近い方）」をマージ元に使う（2026-05）。
+        // レ点付き親が1行もない場合のみ、従来どおり「走査で最後に見た親行」をフォールバックする。
         currentParentSku = pSku;
         currentParent = row;
         if (!groups[pSku]) {
-          groups[pSku] = { parent: row, children: [], siblings: [] };
-        } else {
-          groups[pSku].parent = row;
+          groups[pSku] = {
+            _lastParentChecked: null,
+            _lastParentAny: null,
+            parent: null,
+            children: [],
+            siblings: []
+          };
         }
+        const g = groups[pSku];
+        g._lastParentAny = row;
+        if (isCheck) g._lastParentChecked = row;
+        g.parent = g._lastParentChecked || g._lastParentAny;
       } else if (pSku && cSku && currentParent && pSku === currentParentSku) {
         // 子行: レ点が付いている行だけ出品対象に追加
         if (isCheck) {
@@ -893,6 +923,12 @@ class YahooDataBuilder {
           groups[pSku].siblings.push(row);
         }
       }
+    });
+
+    Object.keys(groups).forEach(function (sku) {
+      const g = groups[sku];
+      delete g._lastParentChecked;
+      delete g._lastParentAny;
     });
     return groups;
   }
@@ -1211,8 +1247,14 @@ class YahooApiClient {
     return defaultVal;
   }
 
-  // 値解決ヘルパー (マッピング or 固定値 or マスタ値)
+  // 値解決ヘルパー (マッピング or 固定値 or マスタ値)。path は API 向けに正規化する。
   _getValue(field, product) {
+    var raw = this._getMappingValueRaw(field, product);
+    if (field === 'path') return normalizeYahooItemPathForApi_(raw);
+    return raw;
+  }
+
+  _getMappingValueRaw(field, product) {
     const config = this.mapping[field];
     if (!config) return "";
 
