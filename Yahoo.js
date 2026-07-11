@@ -39,7 +39,13 @@ function showDeleteSelectionDialog() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const masterSheet = ss.getSheetByName(SHEET_NAME_MASTER);
   const data = masterSheet.getDataRange().getValues();
-  const headers = data[7];
+  const ctx = getYahooMasterHeaderContext_(data);
+  if (!ctx) {
+    ui.alert('❌ エラー', 'マスタのヘッダー行（親SKU・出品CK）が見つかりません。', ui.ButtonSet.OK);
+    return;
+  }
+  const headers = ctx.headers;
+  const dataStartIdx = ctx.dataStartIdx;
   
   const deleteCheckCol = headers.indexOf(DELETE_CHECK_HEADER);
   const yahooIdCol = headers.indexOf('Yahoo出品済ID');
@@ -59,7 +65,7 @@ function showDeleteSelectionDialog() {
   
   // 削除CKにレ点が付いていて、Yahoo出品済IDがある行を対象にする（削除フラグ・削除日時は問わない＝再出品前の行も削除可能）
   const itemCodes = [];
-  for (let i = 8; i < data.length; i++) {
+  for (let i = dataStartIdx; i < data.length; i++) {
     const row = data[i];
     const isDeleteChecked = row[deleteCheckCol] === true || row[deleteCheckCol] === 1 || String(row[deleteCheckCol]).toUpperCase() === 'TRUE';
     const yahooId = row[yahooIdCol];
@@ -89,7 +95,7 @@ function showDeleteSelectionDialog() {
   const result = executeDeleteFromDialog(itemCodes);
   // 削除が終わったら削除CKのレ点を自動で外す（次回の誤削除防止）
   const codeSet = new Set(itemCodes);
-  for (let i = 8; i < data.length; i++) {
+  for (let i = dataStartIdx; i < data.length; i++) {
     const yahooId = data[i][yahooIdCol];
     if (yahooId && codeSet.has(String(yahooId).trim())) {
       masterSheet.getRange(i + 1, deleteCheckCol + 1).setValue(false);
@@ -263,7 +269,12 @@ function listDeletableItems() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const masterSheet = ss.getSheetByName(SHEET_NAME_MASTER);
   const data = masterSheet.getDataRange().getValues();
-  const headers = data[7];
+  const ctx = getYahooMasterHeaderContext_(data);
+  if (!ctx) {
+    SpreadsheetApp.getUi().alert('❌ エラー', 'マスタのヘッダー行（親SKU・出品CK）が見つかりません。', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+  const headers = ctx.headers;
   
   const yahooIdCol = headers.indexOf('Yahoo出品済ID');
   const deleteFlagCol = headers.indexOf('Yahoo削除フラグ');
@@ -275,7 +286,7 @@ function listDeletableItems() {
   }
   
   let items = [];
-  for (let i = 8; i < data.length; i++) {
+  for (let i = ctx.dataStartIdx; i < data.length; i++) {
     const yahooId = data[i][yahooIdCol];
     const deleted = deleteFlagCol !== -1 ? data[i][deleteFlagCol] : false;
     if (yahooId && !deleted) {
@@ -702,6 +713,27 @@ function yahooMasterCheckboxIsTrue_(cell) {
   return cell === true || String(cell).toUpperCase() === 'TRUE';
 }
 
+/** ▼商品マスタ(人間作業用) のヘッダー行を 0-based で返す。見つからなければ -1 */
+function findYahooMasterHeaderRowIndex_(values) {
+  const limit = Math.min(values.length, 20);
+  for (let r = 0; r < limit; r++) {
+    const row = values[r] || [];
+    if (row.indexOf('親SKU') !== -1 && row.indexOf('出品CK') !== -1) return r;
+  }
+  return -1;
+}
+
+/** ヘッダー行・列名配列・データ開始行(0-based) を返す。失敗時は null */
+function getYahooMasterHeaderContext_(values) {
+  const headerRowIdx = findYahooMasterHeaderRowIndex_(values);
+  if (headerRowIdx < 0) return null;
+  return {
+    headerRowIdx: headerRowIdx,
+    headers: values[headerRowIdx],
+    dataStartIdx: headerRowIdx + 1
+  };
+}
+
 /**
  * Yahoo editItem の path 用。マスタの (Yahooカテゴリ名) 等で
  * プルダウンが「＞」区切りの場合と、手入力で既に「:」区切りの場合の両方に対応する。
@@ -870,18 +902,12 @@ class YahooDataBuilder {
 
   _loadMasterData() {
     const values = this.masterSheet.getDataRange().getValues();
-    let headerRowIdx = -1;
-    for (let r = 0; r < 20; r++) {
-      if (values[r].includes('親SKU') && values[r].includes('出品CK')) {
-        headerRowIdx = r;
-        break;
-      }
-    }
-    if (headerRowIdx === -1) throw new Error("マスタのヘッダー行が見つかりません。");
+    const ctx = getYahooMasterHeaderContext_(values);
+    if (!ctx) throw new Error("マスタのヘッダー行が見つかりません。");
 
-    const headers = values[headerRowIdx];
+    const headers = ctx.headers;
     headers.forEach((h, i) => { this.headerMap[String(h).trim()] = i; });
-    this.masterData = values.slice(headerRowIdx + 1);
+    this.masterData = values.slice(ctx.dataStartIdx);
   }
 
   _groupMasterData() {
@@ -2060,7 +2086,12 @@ function debugPriceAndImages() {
 
 function updateMasterYahooId(masterSheet, childSku, yahooItemCode) {
   const data = masterSheet.getDataRange().getValues();
-  const headers = data[7]; // 8行目がヘッダー
+  const ctx = getYahooMasterHeaderContext_(data);
+  if (!ctx) {
+    console.warn("⚠️ マスタのヘッダー行（親SKU・出品CK）が見つかりません");
+    return;
+  }
+  const headers = ctx.headers;
   
   const childSkuCol = headers.indexOf('子SKU');
   const yahooIdCol = headers.indexOf('Yahoo出品済ID');
@@ -2071,7 +2102,7 @@ function updateMasterYahooId(masterSheet, childSku, yahooItemCode) {
   }
   
   // 子SKUに一致する行を探して更新
-  for (let i = 8; i < data.length; i++) {
+  for (let i = ctx.dataStartIdx; i < data.length; i++) {
     if (String(data[i][childSkuCol]).trim() === String(childSku).trim()) {
       masterSheet.getRange(i + 1, yahooIdCol + 1).setValue(yahooItemCode);
       return;
@@ -2344,7 +2375,12 @@ function deleteYahooItem(itemCode) {
 // マスタシートの削除フラグを更新
 function updateMasterDeleteFlag(masterSheet, yahooItemCode) {
   const data = masterSheet.getDataRange().getValues();
-  const headers = data[7]; // 8行目がヘッダー
+  const ctx = getYahooMasterHeaderContext_(data);
+  if (!ctx) {
+    console.warn("⚠️ マスタのヘッダー行（親SKU・出品CK）が見つかりません");
+    return;
+  }
+  const headers = ctx.headers;
   
   const yahooIdCol = headers.indexOf('Yahoo出品済ID');
   const deleteFlagCol = headers.indexOf('Yahoo削除フラグ');
@@ -2356,7 +2392,7 @@ function updateMasterDeleteFlag(masterSheet, yahooItemCode) {
   }
   
   // Yahoo出品済IDに一致する行を探して更新
-  for (let i = 8; i < data.length; i++) {
+  for (let i = ctx.dataStartIdx; i < data.length; i++) {
     if (String(data[i][yahooIdCol]).trim() === String(yahooItemCode).trim()) {
       if (deleteFlagCol !== -1) {
         masterSheet.getRange(i + 1, deleteFlagCol + 1).setValue(true);
