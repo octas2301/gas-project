@@ -471,7 +471,8 @@ function createZSplitMenu(ui) {
       .addItem('17-① 計算式を書き出し（表示中シート）', 'menuExportSheetFormulas')
       .addItem('17-② 計算式を書き出し（シート・行範囲を指定）', 'menuExportSheetFormulasWithRange')
       .addItem('17-③ システム診断を実行', 'debugSystemCheck')
-      .addItem('17-④ documentエラー原因を診断（ログで調査）', 'menuDebugDocumentError'))
+      .addItem('17-④ documentエラー原因を診断（ログで調査）', 'menuDebugDocumentError')
+      .addItem('17-⑤ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet'))
     .addSeparator()
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
@@ -481,7 +482,8 @@ function createZSplitMenu(ui) {
       .addItem('99-⑤ 楽天 セット数 Gemini一括判定テスト', 'menuTestRakutenSetCountBatchGemini')
       .addItem('99-⑥ モール横断 セット数統合判定テスト', 'menuTestCrossMallSetCountJudge')
       .addItem('99-⑦ Google Custom Search テスト', 'menuTestGoogleCustomSearch')
-      .addItem('99-⑧ SerpAPI Google検索テスト', 'menuTestSerpApiGoogleSearch'));
+      .addItem('99-⑧ SerpAPI Google検索テスト', 'menuTestSerpApiGoogleSearch')
+      .addItem('99-⑨ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet'));
 }
 
 /** B. 統合実行の状態保存用 Script Property。全8ステップ完了時に削除する。 */
@@ -22027,4 +22029,235 @@ function runRound3PriceAdjustAllMalls_(ss, opts) {
     } catch (te) {}
   }
   return { updated: totalUpdated, skipped: false };
+}
+
+// =============================================================================
+// 楽天ジャンルID NavigationAPI 疎通診断（書込なし・CSV非改変）
+// Script Property: RAKUTEN_NAV_GENRE_DIAG_ENABLED（既定 true。false でメニュー実行を拒否）
+// docs/RAKUTEN_NAV_GENRE_DIAG.md
+// =============================================================================
+
+/** @const {string} */
+var RAKUTEN_NAV_GENRE_DIAG_PROP = 'RAKUTEN_NAV_GENRE_DIAG_ENABLED';
+
+/** 疎通用固定ジャンルID（マスタへは書かない） */
+var RAKUTEN_NAV_GENRE_DIAG_TEST_IDS = [
+  { genreId: '101888', expectHint: 'ダイエット・健康 > 健康グッズ > その他' },
+  { genreId: '101535', expectHint: '食品 > 魚介類・水産加工品 > セット・詰め合わせ' }
+];
+
+/**
+ * メニュー: 既知ジャンルIDで Navigation genres.get 相当を呼び、Logger のみに結果を出す。
+ * 商品マスタ・AI情報取得data・出品CSVへの書き込みは行わない。
+ */
+function menuDiagnoseRakutenNavigationGenreGet() {
+  if (!getBoolScriptProperty_(RAKUTEN_NAV_GENRE_DIAG_PROP, true)) {
+    var msgOff = '診断は無効です。Script Properties の ' + RAKUTEN_NAV_GENRE_DIAG_PROP + ' を true にしてください。';
+    Logger.log('[RakutenNavGenreDiag] ' + msgOff);
+    try { SpreadsheetApp.getUi().alert(msgOff); } catch (e0) {}
+    return;
+  }
+  var secret = (getRakutenServiceSecret() || '').trim();
+  var license = (getRakutenLicenseKey() || '').trim();
+  if (!secret || !license) {
+    var msgAuth = 'RAKUTEN_SERVICE_SECRET / RAKUTEN_LICENSE_KEY が未設定です（値はログに出しません）。';
+    Logger.log('[RakutenNavGenreDiag] FAIL authMissing=true');
+    try { SpreadsheetApp.getUi().alert(msgAuth); } catch (e1) {}
+    return;
+  }
+
+  Logger.log('[RakutenNavGenreDiag] start runId=navGenreDiag_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') +
+    ' state=RUNNING testCount=' + RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length);
+
+  var okCount = 0;
+  var lines = [];
+  for (var i = 0; i < RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length; i++) {
+    var t = RAKUTEN_NAV_GENRE_DIAG_TEST_IDS[i];
+    var result = diagnoseRakutenNavigationGenreGetOne_(t.genreId, t.expectHint);
+    if (result && result.ok) okCount++;
+    lines.push(result && result.summaryLine ? result.summaryLine : ('genreId=' + t.genreId + ' unknown'));
+  }
+
+  Logger.log('[RakutenNavGenreDiag] done state=DONE okCount=' + okCount + '/' + RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length);
+  for (var j = 0; j < lines.length; j++) {
+    Logger.log('[RakutenNavGenreDiag] result[' + j + '] ' + lines[j]);
+  }
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      '楽天ジャンル NavigationAPI 疎通',
+      '完了: 成功 ' + okCount + '/' + RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length +
+        '\n詳細は「実行数」→該当関数のログを確認してください。\n' +
+        '（マスタ等への書き込みはしていません）',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e2) {}
+}
+
+/**
+ * 1ジャンルID分の疎通（最大2エンドポイント試行）。シークレットはログに出さない。
+ * @param {string} genreId
+ * @param {string} expectHint
+ * @return {{ok:boolean, summaryLine:string}}
+ */
+function diagnoseRakutenNavigationGenreGetOne_(genreId, expectHint) {
+  var id = String(genreId || '').trim();
+  // NavigationAPI 2.0 genres.get の実パスは path パラメータ型（コミュニティ実装・公式命名 genres.get 相当）
+  // 誤: /es/2.0/navigation/genres?genreId= → GF0002 Not Found
+  // 正: /es/2.0/navigation/genres/{genreId}
+  var endpoints = [
+    {
+      label: 'nav2_genres_byId',
+      url: 'https://api.rms.rakuten.co.jp/es/2.0/navigation/genres/' + encodeURIComponent(id) +
+        '?showAncestors=true'
+    },
+    {
+      label: 'nav2_genres_byId_plain',
+      url: 'https://api.rms.rakuten.co.jp/es/2.0/navigation/genres/' + encodeURIComponent(id)
+    }
+  ];
+
+  var authKey = Utilities.base64Encode(getRakutenServiceSecret() + ':' + getRakutenLicenseKey());
+  var headers = { Authorization: 'ESA ' + authKey, Accept: 'application/json, application/xml, text/xml, */*' };
+  var lastErr = '';
+
+  for (var ei = 0; ei < endpoints.length; ei++) {
+    var ep = endpoints[ei];
+    try {
+      Logger.log('[RakutenNavGenreDiag] fetch genreId=' + id + ' endpoint=' + ep.label + ' state=RUNNING');
+      var res = UrlFetchApp.fetch(ep.url, {
+        method: 'get',
+        headers: headers,
+        muteHttpExceptions: true,
+        followRedirects: true
+      });
+      var code = res.getResponseCode();
+      var body = res.getContentText() || '';
+      var parsed = parseRakutenNavigationGenreResponse_(body);
+      var namePath = parsed.namePath || parsed.genreName || '';
+      var bodyLen = body.length;
+      var errSnippet = '';
+      if (code < 200 || code >= 300) {
+        errSnippet = String(body).replace(/\s+/g, ' ').substring(0, 160);
+        lastErr = 'http=' + code + ' endpoint=' + ep.label + ' bodySnippet=' + errSnippet;
+        Logger.log('[RakutenNavGenreDiag] genreId=' + id + ' endpoint=' + ep.label +
+          ' http=' + code + ' bodyLen=' + bodyLen + ' state=FAILED err=' + errSnippet);
+        continue;
+      }
+      // 名称が取れたときだけ名称OK。HTTP成功だが名称空は ok=true でも nameOk=false を明示
+      var nameOk = !!(namePath || (parsed.genreName && String(parsed.genreName).trim()));
+      var ok = (code >= 200 && code < 300) && (nameOk || bodyLen > 0);
+      var summary = 'genreId=' + id +
+        ' http=' + code +
+        ' endpoint=' + ep.label +
+        ' namePath=' + (namePath || '(empty)') +
+        ' genreName=' + (parsed.genreName || '(empty)') +
+        ' nameOk=' + nameOk +
+        ' expectHint=' + (expectHint || '') +
+        ' bodyLen=' + bodyLen +
+        ' ok=' + ok;
+      Logger.log('[RakutenNavGenreDiag] ' + summary + ' state=' + (ok ? 'DONE' : 'FAILED'));
+      return { ok: ok, summaryLine: summary };
+    } catch (e) {
+      lastErr = 'exception endpoint=' + ep.label + ' msg=' + ((e && e.message) || e);
+      Logger.log('[RakutenNavGenreDiag] genreId=' + id + ' ' + lastErr + ' state=FAILED');
+    }
+  }
+
+  var failLine = 'genreId=' + id + ' ok=false lastErr=' + lastErr;
+  Logger.log('[RakutenNavGenreDiag] ' + failLine + ' state=FAILED');
+  return { ok: false, summaryLine: failLine };
+}
+
+/**
+ * NavigationAPI 2.0 応答からジャンル名を拾う。秘匿値は扱わない。
+ * 2.0 の名称フィールドは nameJa / nameJaPath（genreName ではない）。
+ * @param {string} body
+ * @return {{genreId:string, genreName:string, namePath:string}}
+ */
+function parseRakutenNavigationGenreResponse_(body) {
+  var out = { genreId: '', genreName: '', namePath: '' };
+  var text = String(body || '');
+  if (!text) return out;
+
+  var joinNameList_ = function (list) {
+    if (!list || Object.prototype.toString.call(list) !== '[object Array]') return '';
+    var parts = [];
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      if (item === null || item === undefined) continue;
+      if (typeof item === 'string' || typeof item === 'number') {
+        var s0 = String(item).trim();
+        if (s0) parts.push(s0);
+      } else if (typeof item === 'object') {
+        var sn = String(item.nameJa || item.genreName || item.name || '').trim();
+        if (sn) parts.push(sn);
+      }
+    }
+    return parts.join(' > ');
+  };
+
+  var pickGenreNode_ = function (obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    if (obj.genre && typeof obj.genre === 'object') return obj.genre;
+    if (obj.Genre && typeof obj.Genre === 'object') return obj.Genre;
+    if (obj.navigationGenreResult && obj.navigationGenreResult.genre) {
+      return obj.navigationGenreResult.genre;
+    }
+    if (obj.nameJa || obj.genreName || obj.genreId != null) return obj;
+    return null;
+  };
+
+  var trimmed = text.replace(/^\uFEFF/, '').trim();
+  if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+    try {
+      var json = JSON.parse(trimmed);
+      var node = pickGenreNode_(json);
+      if (node) {
+        out.genreId = String(
+          node.genreId != null ? node.genreId : (node.genreID != null ? node.genreID : (node.id != null ? node.id : ''))
+        );
+        out.genreName = String(node.nameJa || node.genreName || node.name || '').trim();
+        // 公式2.0: nameJaPath がパンくず（文字列配列）
+        out.namePath = joinNameList_(node.nameJaPath);
+        if (!out.namePath && node.ancestors) {
+          out.namePath = joinNameList_(node.ancestors);
+          if (out.genreName) {
+            out.namePath = out.namePath ? (out.namePath + ' > ' + out.genreName) : out.genreName;
+          }
+        }
+        if (!out.namePath && out.genreName) out.namePath = out.genreName;
+      }
+      if (!out.namePath && typeof json === 'object') {
+        var blob = JSON.stringify(json);
+        var mPath = blob.match(/"nameJaPath"\s*:\s*\[([^\]]*)\]/);
+        if (mPath) {
+          var inner = mPath[1];
+          var names = [];
+          var reStr = /"((?:\\.|[^"\\])*)"/g;
+          var mm;
+          while ((mm = reStr.exec(inner)) !== null) {
+            names.push(mm[1]);
+          }
+          if (names.length) out.namePath = names.join(' > ');
+        }
+        if (!out.genreName) {
+          var mName = blob.match(/"nameJa"\s*:\s*"((?:\\.|[^"\\])*)"/);
+          if (mName) out.genreName = mName[1];
+        }
+        if (!out.namePath && out.genreName) out.namePath = out.genreName;
+      }
+      return out;
+    } catch (eJson) {
+      // fall through to XML/regex
+    }
+  }
+
+  var xmId = text.match(/<genreId>\s*([^<]+)\s*<\/genreId>/i);
+  var xmName = text.match(/<nameJa>\s*([^<]+)\s*<\/nameJa>/i) ||
+    text.match(/<genreName>\s*([^<]+)\s*<\/genreName>/i);
+  if (xmId) out.genreId = String(xmId[1]).trim();
+  if (xmName) out.genreName = String(xmName[1]).trim();
+  if (out.genreName) out.namePath = out.genreName;
+  return out;
 }
