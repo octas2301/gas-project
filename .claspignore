@@ -8,8 +8,12 @@ inventory-app/**
 docs/**
 参考資料/**
 参考資料：*/
+**/参考資料：*/
+presentation/**
 
-# Node/Python用（GASでは動かない。require 等でエラーになる）
+# メインプロジェクトは コード.js / Yahoo.js のみ想定（HTML は GAS に不要）
+**/*.html
+
 check-rakuten-32byte.js
 check_rakuten_32byte.py
 楽天CSVファイル/バリエーション32バイトチェック.html
