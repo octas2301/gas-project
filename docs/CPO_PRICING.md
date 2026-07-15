@@ -25,13 +25,15 @@ GASはこの範囲を読み、プロンプトの `{{ }}` を埋める際の参�
 
 ## 4. プロンプト本文
 
-- 参照: `docs/CPO_PROMPT.md`
-- GASでは同一内容を定数または文字列として保持し、`{{ }}` をマスタから取得した値で置換する。
+- **旧（legacy）**: 参照: `docs/CPO_PROMPT.md` — `getCPOPromptTemplate()` / `runCpoProposePricesWithRound_`
+- **V2（既定）**: 参照: `docs/CPO_PROMPT_V2.md` — `getCPOPromptTemplateV2()` / `runCpoProposePricesV2_`（要件: `docs/PRICING_CPO_V2_REQUIREMENTS.md`）
+- Script Properties **`CPO_ENGINE`**: 未設定または `v2` = V2、`legacy` = 旧CPO。
+- GASでは `{{ }}` をマスタ（`getCPOMapping`）から取得した値で置換する。
 
-## 5. 楽天・Yahoo! 拡張
+## 5. 楽天・Yahoo! 拡張（⑤で実装済み）
 
-- 出力JSONの `rakuten` / `yahoo` は将来用。今回対象は Amazon のみで、`amazon` 配列のみパースして書き込む。
-- 同じプロンプトで楽天・Yahoo! を渡す場合は、入力の `{{ モール名 }}` とセット数別テーブルの競合列を切り替え、JSONの `rakuten` / `yahoo` にも配列を出力させる。
+- **⑤ 楽天Yahoo!販売価格を提案（CPO）** で実装済み。楽天・Yahoo それぞれ別プロンプト・別呼び出し（1 JAN あたり楽天 1 回・Yahoo 1 回）。親行に楽天価格戦略・Yahoo!価格戦略、子行に楽天価格設定・Yahoo!価格設定を書き込む。計算式アウトラインをプロンプトで渡し、返答後にコードで競合-1 上書き・単価逆転防止・総額逆転防止を適用。親行には価格を書かない。
+- **③は Amazon のみのまま**。③の出力JSONの `rakuten` / `yahoo` は未使用。⑤は専用の楽天・Yahoo 用プロンプトとパース（`parseCPOJsonForMall`）を使用する。
 
 ---
 

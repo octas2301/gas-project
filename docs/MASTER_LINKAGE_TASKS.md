@@ -44,7 +44,7 @@
 - **3.1 の判断基準**: 「楽天価格設定」「Yahoo!価格設定」をコード／▼設定(Yahooマッピング) で参照する変更が**未実施**の場合は「要変更」と判断する。実施済みなら既存のまま最小必須項目が賄えているため「変更不要」とする。
 - **3.2 の実施条件**: 列名・シート名がコード内に分散していて修正コストが高い場合、または Amazon 用の列参照を追加する場合に、Config.js 等への定数一元化を検討する。**楽天CSV出力ロジックは変更しない**。
 - **3.3 の実施条件**: セラセンCSV取込など「商品情報取得」機能を追加する場合に ProductInfoAcquisition.js を新設する。既存マスタ連携（syncAiDataToMaster・楽天CSV・Yahoo 出力）のみで足りる間は不要とする。
-- **前提**: Phase 2 確定事項を Phase 3 の前提とする。価格列は **(B) 採用**（販売価格amazon／楽天価格設定／Yahoo!価格設定）。調査項目CSVは **`参考資料：出品自動化スプシデータ`** に配置する。syncAiDataToMaster のロジック・同期対象列は変更しない。
+- **前提**: Phase 2 確定事項を Phase 3 の前提とする。価格列は **(B) 採用**（販売価格amazon／楽天価格設定／Yahoo!価格設定）。調査項目CSVは **`参考資料：出品自動化スプシデータ`** に配置する。**同期対象列（COMPARE_ITEMS 等）は変更しない**。`syncAiDataToMaster` の**マスタ行と AI 行の突合**については 2026-05 に **`商品名ベース` を第4キーとして追加**（経緯・判断は [TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md](TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md) 参照）。
 
 ---
 

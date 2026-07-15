@@ -546,6 +546,47 @@ APIキー等は **Script Properties** に格納し、コードからは参照の
 - MAKEシナリオ `RakutenFTPUpload` は**常時ON**にしておく
 - 楽天CSV出力実行 → 自動でFTPアップロード → 反映確認（5分おき）→ 完了メール
 
+### 8.7 B.統合実行の調査運用（2026-03 追記）
+
+`B.統合実行` は入口を1つに保ちつつ、障害時の切り分けは単独メニュー単位で行う。
+
+**コード上の境界（正）**
+
+- `B_INTEGRATED_STEP_FUNCTIONS` の定義を正とする。
+- Step1 `menuSetCompositionProposal`
+- Step2 `menuResearchBatchCrossMallAndPropose`
+- Step2.5 `runEstimateLogisticsCostStep`
+- Step4 `menuProposePriceAndSetToSelection`
+- Step3 `menuCPOProposePrices`
+- Step5 `generateListingDataComparison`
+- Step6 `syncAiDataToMaster`
+- Step7 `menuProductNameAndDropdownForCheckedParentRows`
+
+**障害時の確認手順（固定）**
+
+1. `runId` を特定する。
+2. `beforeStep` はあるが `afterStep` がないStepを特定する。
+3. そのStepの一次確認ログを確認する。
+4. 必要に応じて関連ログを追う（例: Step3は `[CPO]` で setCount/反映漏れ確認）。
+
+**Step別 一次確認ログ**
+
+- Step1: `[セット構成提案]`
+- Step2: `[モール横断セット数]`
+- Step2.5: 物流費AI試算のStep専用プレフィックス（統一対象）
+- Step4: 楽天Yahoo価格提案のStep専用プレフィックス（統一対象）
+- Step3: `[CPO]`
+- Step5: AI出品取得のStep専用プレフィックス（統一対象）
+- Step6: 同期処理のStep専用プレフィックス（統一対象）
+- Step7: `[Step7]`
+
+**差分復元（前に戻す）運用**
+
+- MDのみで復元しない。Git差分を正とする。
+- 1タスク1ブランチ、かつ小さなコミットで管理する。
+- 戻しは `git revert` を基本とし、コミット単位で安全に実施する。
+- 補助として変更台帳を使う場合は、対象関数・目的・戻し方（commit hash）のみを記録する。
+
 ---
 
 ## 9. 要件棚卸し（必須／任意／後回し）
@@ -660,6 +701,7 @@ APIキー等は **Script Properties** に格納し、コードからは参照の
 gas-project の開発を引き継ぎます。
 - 楽天・Yahoo 自動出品は運用中。Yahoo.js には認証エラー時のトークン再取得＋1回リトライを実装済み（HANDOVER.md §4.5）。
 - 残タスク: HANDOVER.md の §8（残タスク）および §9（要件棚卸し）を参照。一括出品ログの setValues 警告・出品失敗時のエラーメッセージ改善が未対応。
+- B.統合実行の障害調査は HANDOVER.md §8.7 の手順に従い、runId→失敗Step特定→Step別ログ確認で進めてください。
 - 【最優先】画像マッチング（getImageMatchScoreByGemini）が画像取得に失敗して null を返す問題が未解決。詳細ログは追加済み。HANDOVER.md §8.3.1 および docs/RESEARCH_AND_ESTIMATE.md の「画像取得失敗の調査状況」を参照し、clasp push → 実行 → ログ確認 → 修正の手順で復旧すること。
 - 新プロジェクト「商品情報取得とマスタ効率化」の要件とGASファイル分割案は HANDOVER.md §10 および .cursor/plans の「商品情報取得とマスタ効率化」プランを参照し、同じ精度で開発を続けてください。
 ```

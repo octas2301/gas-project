@@ -4,6 +4,8 @@
 
 **フロー間の必須要件・クリティカルパス・自動化構築の優先順位**は [FLOW_AND_PRIORITY.md](FLOW_AND_PRIORITY.md) で定義している。細かい要件定義は各フロー構築時に詰める。
 
+**コード実装時の必須セット**（要件 docs 更新・調査ログ・復元手段）は [AGENT_HANDOVER.md](AGENT_HANDOVER.md) **§9・§9.1** に従う。
+
 ---
 
 ## 1. リサーチ・見積もり
@@ -26,7 +28,9 @@
 | Amazon出品・広告設定 | リスティング登録・広告キャンペーン設定 | タイトル・説明文・KW提案・広告文案 | 高 |
 | 楽天・Yahoo!出品・広告設定 | 出品・広告設定 | 既存 gas-project と連携する部分の要件は [HANDOVER.md](../HANDOVER.md) を参照 | 高 |
 
-**前提・メモ**: 楽天・Yahoo! の開発引継ぎ・確定仕様はプロジェクト直下の HANDOVER.md に集約されている。
+**前提・メモ**: 楽天・Yahoo! の開発引継ぎ・確定仕様はプロジェクト直下の HANDOVER.md に集約している。
+
+**楽天CSV（商品属性・セット数・親子行）**: マルチ SKU で親の `楽天セット数` と子の実値がずれると FTP エラーになる問題の、コード側の扱いと判断の経緯は [RAKUTEN_CSV_ATTR_AND_SETCOUNT_REQUIREMENTS.md](RAKUTEN_CSV_ATTR_AND_SETCOUNT_REQUIREMENTS.md) を参照。**原産地を自由入力行に寄せる案・段階別再アップロード案**など未決の検討メモは同ドキュメント **§6**。
 
 ---
 
