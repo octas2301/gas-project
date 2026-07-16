@@ -47,5 +47,6 @@ Amazon・楽天・Yahoo! での売上高を、**利益の出る状態で早く�
 | [ROADMAP.md](ROADMAP.md) | 優先度・依存関係に基づくフェーズ案（ロードマップ） |
 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の要件整理 |
 | [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | リサーチ・見積もりの整理 |
+| [AI_LISTING_AND_TITLE_REQUIREMENTS.md](AI_LISTING_AND_TITLE_REQUIREMENTS.md) | 商品名・説明・AI提案の要件（列対応・AIおすすめ商品名・開発残） |
 
 楽天・Yahoo! 出品の**開発・実装の詳細**は、本プロジェクト直下の [HANDOVER.md](../HANDOVER.md) を参照すること。**他エージェント**は [AGENT_HANDOVER.md](AGENT_HANDOVER.md) に従い、gas-project の資料をインプットしたうえで共通認識で開発し、新要件・前提は docs に反映すること。
