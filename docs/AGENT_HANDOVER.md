@@ -99,6 +99,7 @@
 
 ## 6. 更新履歴
 
+- 2026-07-17: **Lv別実装プラン叩き台**: [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)（Lv0クローズ→Lv1承認UI→Yahoo/楽天/Amazon/補充。コードなし）。
 - 2026-07-17: **楽天ジャンル Nav Stage1 実装**: [RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)。`menuDiagnoseRakutenNavigationGenreStage1Write`（17-⑥/99-⑩）。書込は `▼診断(楽天ジャンルNav)` のみ。`RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED` 既定 false。Stage0 は [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)。
 - 2026-07-15: **AI組織 Phase0 多数決反映**: [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、憲章／マトリクス採用項、`.cursor/rules/three-review-runbook.mdc`。3者は親1＋並列サブ3が基本。**実装コードなし**。
 - 2026-07-15: **AI組織 Phase0**: [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md) を追加。朝承認→日中在庫0/1出品→12時前完了→夜確認。§2.1 に順0.5、CURRENT_PHASE を同期。**実装コードは含めない**（次は3者検証）。

@@ -18,11 +18,11 @@
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **AI組織 Phase0** — 憲章・承認マトリクスの正本化と **3者多数決の反映**まで。手順の正は [org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)（親1＋並列サブ3）。記録は [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)。**実装コードは書かない。**
+- **フォーカス領域**: **AI組織 Phase0 クローズ → Lv別プラン確定**。憲章・マトリクス・多数決は docs 済み。Lv叩き台は [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。手順の正は [org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)。**Lv0完了までは出品実装コードを書かない。**
 - **このフェーズの完了条件（目安）**  
   - 憲章・承認マトリクスが docs にあり、多数決採用項を反映済み。  
   - 社長が多数決メモを最終承認し、未決一覧が洗い出されている。  
-  - 次フェーズ（Lv別プラン／在庫0日中出品の実装）への着手条件が文書上はっきりしている。
+  - Lv別プラン叩き台があり、着手順（Lv1承認UI→…）が文書上はっきりしている。
 
 - **並行・継続（後回し可）**: 商品情報まわりの OpenAI 429 切り分け、Z「11-③」と B Step7 の差の検証（[AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md)）。楽天ジャンル Nav は Stage0 完了・Stage1 実装済み（専用診断シートのみ・Property 既定オフ。[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)）。
 
@@ -44,10 +44,10 @@
 
 ## 4. 次にやること（優先順）
 
-1. 社長が [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) を最終承認する。  
-2. **Lv別プラン**（在庫0日中出品・Amazonバルク等）を策定し実装フェーズへ。  
+1. 社長が [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) を最終承認する（**Lv0**）。  
+2. [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md) のモール順を確認し、**Lv1（承認キュー・出品なし）** の詳細要件へ。  
 3. （並行可）OpenAI 429 / `insufficient_quota` の解消と、11-③ と B Step7 のログ比較。  
-4. （並行可）楽天ジャンル Nav Stage1 の **人間検証**（`clasp push` → Property true → 17-⑥）。次は Stage2（別 scriptId）または組織 Lv プラン。
+4. （並行可）楽天ジャンル Nav Stage1 の **人間検証**（`clasp push` → Property true → 17-⑥）。
 
 ---
 
@@ -55,7 +55,7 @@
 
 | テーマ | ドキュメント |
 |--------|----------------|
-| **AI組織・承認** | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)、[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)、[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) |
+| **AI組織・承認** | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)、[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)、[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)、[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md) |
 | 楽天ジャンル Nav（並行） | [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)（Stage0）、[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)（Stage1要件） |
 | Gemini / OpenAI・11-③ vs B Step7・429 | [AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md) |
 | 商品マスタ人間作業エリア | [商品マスタ_人間作業エリアとマスタエリア_要件定義.md](商品マスタ_人間作業エリアとマスタエリア_要件定義.md) |
@@ -69,6 +69,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-17 | **Lv別実装プラン叩き台**追加（[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)、コードなし）。 |
 | 2026-07-17 | 並行: 楽天ジャンル Nav Stage1 実装（専用診断シート追記・Property 既定オフ）。 |
 | 2026-07-15 | **AI組織 Phase0**: 3者多数決反映・RUNBOOK（親1＋並列3）・多数決メモ追加。実装は次フェーズ。 |
 | 2026-07-15 | **AI組織 Phase0**: org 憲章・承認マトリクスをフォーカスに。実装は次フェーズ。 |

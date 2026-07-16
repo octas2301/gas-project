@@ -3,7 +3,7 @@
 **文書種別**: 組織・運用の正（requirements）  
 **最終更新**: 2026-07-15  
 **実装**: 本フェーズでは **コード実装なし**（憲章＋承認マトリクスの確定と、その後の3者検証がゴール）  
-**関連**: [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [AGENTS.md](../../AGENTS.md) ・ [CURRENT_PHASE.md](../CURRENT_PHASE.md)
+**関連**: [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [LEVELLED_IMPLEMENTATION_PLAN.md](LEVELLED_IMPLEMENTATION_PLAN.md) ・ [AGENTS.md](../../AGENTS.md) ・ [CURRENT_PHASE.md](../CURRENT_PHASE.md)
 
 ---
 
