@@ -472,7 +472,8 @@ function createZSplitMenu(ui) {
       .addItem('17-② 計算式を書き出し（シート・行範囲を指定）', 'menuExportSheetFormulasWithRange')
       .addItem('17-③ システム診断を実行', 'debugSystemCheck')
       .addItem('17-④ documentエラー原因を診断（ログで調査）', 'menuDebugDocumentError')
-      .addItem('17-⑤ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet'))
+      .addItem('17-⑤ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet')
+      .addItem('17-⑥ 楽天ジャンル Nav Stage1（テストシート追記）', 'menuDiagnoseRakutenNavigationGenreStage1Write'))
     .addSeparator()
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
@@ -483,7 +484,8 @@ function createZSplitMenu(ui) {
       .addItem('99-⑥ モール横断 セット数統合判定テスト', 'menuTestCrossMallSetCountJudge')
       .addItem('99-⑦ Google Custom Search テスト', 'menuTestGoogleCustomSearch')
       .addItem('99-⑧ SerpAPI Google検索テスト', 'menuTestSerpApiGoogleSearch')
-      .addItem('99-⑨ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet'));
+      .addItem('99-⑨ 楽天ジャンル NavigationAPI 疎通（書込なし）', 'menuDiagnoseRakutenNavigationGenreGet')
+      .addItem('99-⑩ 楽天ジャンル Nav Stage1（テストシート追記）', 'menuDiagnoseRakutenNavigationGenreStage1Write'));
 }
 
 /** B. 統合実行の状態保存用 Script Property。全8ステップ完了時に削除する。 */
@@ -22098,21 +22100,22 @@ function menuDiagnoseRakutenNavigationGenreGet() {
  * 1ジャンルID分の疎通（最大2エンドポイント試行）。シークレットはログに出さない。
  * @param {string} genreId
  * @param {string} expectHint
- * @return {{ok:boolean, summaryLine:string}}
+ * @return {{ok:boolean, summaryLine:string, genreId:string, httpStatus:(number|string), endpointKey:string, nameJa:string, nameJaPath:string, expectedHint:string, nameOk:boolean, errorSummary:string}}
  */
 function diagnoseRakutenNavigationGenreGetOne_(genreId, expectHint) {
   var id = String(genreId || '').trim();
+  var hint = String(expectHint || '');
   // NavigationAPI 2.0 genres.get の実パスは path パラメータ型（コミュニティ実装・公式命名 genres.get 相当）
   // 誤: /es/2.0/navigation/genres?genreId= → GF0002 Not Found
   // 正: /es/2.0/navigation/genres/{genreId}
   var endpoints = [
     {
-      label: 'nav2_genres_byId',
+      label: 'nav2_genres_byId_showAncestors',
       url: 'https://api.rms.rakuten.co.jp/es/2.0/navigation/genres/' + encodeURIComponent(id) +
         '?showAncestors=true'
     },
     {
-      label: 'nav2_genres_byId_plain',
+      label: 'nav2_genres_byId',
       url: 'https://api.rms.rakuten.co.jp/es/2.0/navigation/genres/' + encodeURIComponent(id)
     }
   ];
@@ -22120,6 +22123,8 @@ function diagnoseRakutenNavigationGenreGetOne_(genreId, expectHint) {
   var authKey = Utilities.base64Encode(getRakutenServiceSecret() + ':' + getRakutenLicenseKey());
   var headers = { Authorization: 'ESA ' + authKey, Accept: 'application/json, application/xml, text/xml, */*' };
   var lastErr = '';
+  var lastHttp = '';
+  var lastEndpoint = '';
 
   for (var ei = 0; ei < endpoints.length; ei++) {
     var ep = endpoints[ei];
@@ -22135,8 +22140,11 @@ function diagnoseRakutenNavigationGenreGetOne_(genreId, expectHint) {
       var body = res.getContentText() || '';
       var parsed = parseRakutenNavigationGenreResponse_(body);
       var namePath = parsed.namePath || parsed.genreName || '';
+      var nameJa = String(parsed.genreName || '').trim();
       var bodyLen = body.length;
       var errSnippet = '';
+      lastHttp = code;
+      lastEndpoint = ep.label;
       if (code < 200 || code >= 300) {
         errSnippet = String(body).replace(/\s+/g, ' ').substring(0, 160);
         lastErr = 'http=' + code + ' endpoint=' + ep.label + ' bodySnippet=' + errSnippet;
@@ -22144,29 +22152,55 @@ function diagnoseRakutenNavigationGenreGetOne_(genreId, expectHint) {
           ' http=' + code + ' bodyLen=' + bodyLen + ' state=FAILED err=' + errSnippet);
         continue;
       }
-      // 名称が取れたときだけ名称OK。HTTP成功だが名称空は ok=true でも nameOk=false を明示
-      var nameOk = !!(namePath || (parsed.genreName && String(parsed.genreName).trim()));
-      var ok = (code >= 200 && code < 300) && (nameOk || bodyLen > 0);
+      // ok=名称取得できたか。nameOk=期待ヒント一致（ヒント空なら名称非空で true）
+      var pathNorm = String(namePath || '').replace(/\s+/g, '');
+      var hintNorm = hint.replace(/\s+/g, '');
+      var hasName = !!pathNorm;
+      var nameOk = hasName && (!hintNorm || pathNorm === hintNorm);
+      var ok = (code >= 200 && code < 300) && hasName;
       var summary = 'genreId=' + id +
         ' http=' + code +
         ' endpoint=' + ep.label +
         ' namePath=' + (namePath || '(empty)') +
-        ' genreName=' + (parsed.genreName || '(empty)') +
+        ' genreName=' + (nameJa || '(empty)') +
         ' nameOk=' + nameOk +
-        ' expectHint=' + (expectHint || '') +
+        ' expectHint=' + hint +
         ' bodyLen=' + bodyLen +
         ' ok=' + ok;
       Logger.log('[RakutenNavGenreDiag] ' + summary + ' state=' + (ok ? 'DONE' : 'FAILED'));
-      return { ok: ok, summaryLine: summary };
+      return {
+        ok: ok,
+        summaryLine: summary,
+        genreId: id,
+        httpStatus: code,
+        endpointKey: ep.label,
+        nameJa: nameJa,
+        nameJaPath: namePath || '',
+        expectedHint: hint,
+        nameOk: nameOk,
+        errorSummary: ok ? '' : 'namePathEmpty'
+      };
     } catch (e) {
       lastErr = 'exception endpoint=' + ep.label + ' msg=' + ((e && e.message) || e);
+      lastEndpoint = ep.label;
       Logger.log('[RakutenNavGenreDiag] genreId=' + id + ' ' + lastErr + ' state=FAILED');
     }
   }
 
   var failLine = 'genreId=' + id + ' ok=false lastErr=' + lastErr;
   Logger.log('[RakutenNavGenreDiag] ' + failLine + ' state=FAILED');
-  return { ok: false, summaryLine: failLine };
+  return {
+    ok: false,
+    summaryLine: failLine,
+    genreId: id,
+    httpStatus: lastHttp,
+    endpointKey: lastEndpoint,
+    nameJa: '',
+    nameJaPath: '',
+    expectedHint: hint,
+    nameOk: false,
+    errorSummary: String(lastErr || 'unknown').substring(0, 200)
+  };
 }
 
 /**
@@ -22260,4 +22294,137 @@ function parseRakutenNavigationGenreResponse_(body) {
   if (xmName) out.genreName = String(xmName[1]).trim();
   if (out.genreName) out.namePath = out.genreName;
   return out;
+}
+
+// =============================================================================
+// 楽天ジャンル Nav Stage1（テストシート追記のみ・マスタ/CSV非書込）
+// Script Property: RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED（既定 false）
+// docs/RAKUTEN_NAV_GENRE_STAGE1.md
+// =============================================================================
+
+/** @const {string} */
+var RAKUTEN_NAV_GENRE_STAGE1_WRITE_PROP = 'RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED';
+/** @const {string} 書込先シート名（この名前以外には書かない） */
+var RAKUTEN_NAV_GENRE_STAGE1_SHEET_NAME = '▼診断(楽天ジャンルNav)';
+/** @const {string} */
+var RAKUTEN_NAV_GENRE_STAGE1_SCRIPT_VERSION = 'stage1-20260717';
+/** @const {string[]} ヘッダー（完全一致） */
+var RAKUTEN_NAV_GENRE_STAGE1_HEADERS = [
+  'runId', 'ranAt', 'genreId', 'httpStatus', 'endpointKey',
+  'nameJa', 'nameJaPath', 'expectedHint', 'nameOk', 'ok', 'errorSummary', 'scriptVersion'
+];
+
+/**
+ * メニュー: NavigationAPI 結果を専用テストシートへ追記する（商品マスタ等へは書かない）。
+ */
+function menuDiagnoseRakutenNavigationGenreStage1Write() {
+  var stepName = 'RakutenNavGenreStage1';
+  var functionName = 'menuDiagnoseRakutenNavigationGenreStage1Write';
+  if (!getBoolScriptProperty_(RAKUTEN_NAV_GENRE_STAGE1_WRITE_PROP, false)) {
+    var msgOff = 'Stage1書込は無効です。Script Properties の ' + RAKUTEN_NAV_GENRE_STAGE1_WRITE_PROP +
+      ' を true にしてください（既定は無効）。';
+    Logger.log('[' + stepName + '] runId=- stepName=' + stepName + ' functionName=' + functionName +
+      ' state=FAILED ' + msgOff);
+    try { SpreadsheetApp.getUi().alert(msgOff); } catch (e0) {}
+    return;
+  }
+  var secret = (getRakutenServiceSecret() || '').trim();
+  var license = (getRakutenLicenseKey() || '').trim();
+  if (!secret || !license) {
+    Logger.log('[' + stepName + '] state=FAILED authMissing=true');
+    try {
+      SpreadsheetApp.getUi().alert('RAKUTEN_SERVICE_SECRET / RAKUTEN_LICENSE_KEY が未設定です（値はログに出しません）。');
+    } catch (e1) {}
+    return;
+  }
+
+  var runId = 'navS1_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') +
+    '_' + String(Utilities.getUuid()).replace(/-/g, '').substring(0, 8);
+  var ranAt = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX");
+  Logger.log('[' + stepName + '] runId=' + runId + ' stepName=' + stepName +
+    ' functionName=' + functionName + ' state=RUNNING testCount=' + RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length);
+
+  var rows = [];
+  var okCount = 0;
+  for (var i = 0; i < RAKUTEN_NAV_GENRE_DIAG_TEST_IDS.length; i++) {
+    var t = RAKUTEN_NAV_GENRE_DIAG_TEST_IDS[i];
+    var result = diagnoseRakutenNavigationGenreGetOne_(t.genreId, t.expectHint);
+    if (result && result.ok) okCount++;
+    rows.push([
+      runId,
+      ranAt,
+      result && result.genreId != null ? result.genreId : t.genreId,
+      result && result.httpStatus !== '' && result.httpStatus != null ? result.httpStatus : '',
+      result && result.endpointKey ? result.endpointKey : '',
+      result && result.nameJa ? result.nameJa : '',
+      result && result.nameJaPath ? result.nameJaPath : '',
+      result && result.expectedHint != null ? result.expectedHint : (t.expectHint || ''),
+      !!(result && result.nameOk),
+      !!(result && result.ok),
+      result && result.errorSummary ? String(result.errorSummary).substring(0, 200) : '',
+      RAKUTEN_NAV_GENRE_STAGE1_SCRIPT_VERSION
+    ]);
+  }
+
+  try {
+    appendRakutenNavGenreStage1Rows_(rows);
+    Logger.log('[' + stepName + '] runId=' + runId + ' stepName=' + stepName +
+      ' functionName=' + functionName + ' state=DONE okCount=' + okCount + '/' + rows.length +
+      ' sheet=' + RAKUTEN_NAV_GENRE_STAGE1_SHEET_NAME + ' appended=' + rows.length);
+    try {
+      SpreadsheetApp.getUi().alert(
+        '楽天ジャンル Nav Stage1',
+        '完了: 成功 ' + okCount + '/' + rows.length +
+          '\nシート「' + RAKUTEN_NAV_GENRE_STAGE1_SHEET_NAME + '」に追記しました。' +
+          '\nrunId=' + runId +
+          '\n（商品マスタ等への書き込みはしていません）',
+        SpreadsheetApp.getUi().ButtonSet.OK
+      );
+    } catch (eUi) {}
+  } catch (eWrite) {
+    var wmsg = (eWrite && eWrite.message) || eWrite;
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED writeError=' + wmsg);
+    try { SpreadsheetApp.getUi().alert('Stage1書込失敗: ' + wmsg); } catch (e2) {}
+  }
+}
+
+/**
+ * 専用シートのみへ追記。シート名が定数と一致しない場合は例外。
+ * @param {Array<Array<*>>} rows
+ */
+function appendRakutenNavGenreStage1Rows_(rows) {
+  if (!rows || !rows.length) {
+    throw new Error('追記行が空です');
+  }
+  var sheetName = RAKUTEN_NAV_GENRE_STAGE1_SHEET_NAME;
+  if (sheetName !== '▼診断(楽天ジャンルNav)') {
+    throw new Error('Stage1: シート名定数が不正です（安全停止）');
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('アクティブなスプレッドシートがありません');
+  var sh = ss.getSheetByName(sheetName);
+  var headers = RAKUTEN_NAV_GENRE_STAGE1_HEADERS;
+  if (!sh) {
+    sh = ss.insertSheet(sheetName);
+    Logger.log('[RakutenNavGenreStage1] created sheet name=' + sheetName + ' state=RUNNING');
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  } else {
+    if (sh.getName() !== sheetName) {
+      throw new Error('Stage1: 取得シート名不一致（書込中止）');
+    }
+    var h1 = String(sh.getRange(1, 1).getValue() || '').trim();
+    if (h1 !== 'runId') {
+      if (sh.getLastRow() === 0) {
+        sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else {
+        throw new Error('Stage1: ヘッダー行が runId ではありません（誤シート書込防止のため中止）');
+      }
+    }
+  }
+  var startRow = sh.getLastRow() + 1;
+  if (startRow < 2) startRow = 2;
+  // getRange(row, column, numRows, numColumns) ※第3・4は行数・列数
+  sh.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+  Logger.log('[RakutenNavGenreStage1] append startRow=' + startRow + ' numRows=' + rows.length +
+    ' numCols=' + headers.length + ' state=DONE');
 }

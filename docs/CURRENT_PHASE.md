@@ -24,7 +24,7 @@
   - 社長が多数決メモを最終承認し、未決一覧が洗い出されている。  
   - 次フェーズ（Lv別プラン／在庫0日中出品の実装）への着手条件が文書上はっきりしている。
 
-- **並行・継続（後回し可）**: 商品情報まわりの OpenAI 429 切り分け、Z「11-③」と B Step7 の差の検証（[AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md)）。楽天ジャンル Nav は Stage0 疎通完了・Stage1 要件のみ整備済み（[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)、**実装は別承認**）。
+- **並行・継続（後回し可）**: 商品情報まわりの OpenAI 429 切り分け、Z「11-③」と B Step7 の差の検証（[AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md)）。楽天ジャンル Nav は Stage0 完了・Stage1 実装済み（専用診断シートのみ・Property 既定オフ。[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)）。
 
 - **スコープ外（本 Phase0）**  
   - `Yahoo.js` / `コード.js` の改修、GAS Web 承認UI実装、三モール出品ジョブ、`clasp push` 自動化。  
@@ -47,7 +47,7 @@
 1. 社長が [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) を最終承認する。  
 2. **Lv別プラン**（在庫0日中出品・Amazonバルク等）を策定し実装フェーズへ。  
 3. （並行可）OpenAI 429 / `insufficient_quota` の解消と、11-③ と B Step7 のログ比較。  
-4. （並行可・要承認）楽天ジャンル Nav **Stage1 実装**（[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)）。
+4. （並行可）楽天ジャンル Nav Stage1 の **人間検証**（`clasp push` → Property true → 17-⑥）。次は Stage2（別 scriptId）または組織 Lv プラン。
 
 ---
 
@@ -69,7 +69,7 @@
 
 | 日付 | 内容 |
 |------|------|
-| 2026-07-17 | 並行: 楽天ジャンル Nav Stage1 要件 docs 追加（実装なし）。 |
+| 2026-07-17 | 並行: 楽天ジャンル Nav Stage1 実装（専用診断シート追記・Property 既定オフ）。 |
 | 2026-07-15 | **AI組織 Phase0**: 3者多数決反映・RUNBOOK（親1＋並列3）・多数決メモ追加。実装は次フェーズ。 |
 | 2026-07-15 | **AI組織 Phase0**: org 憲章・承認マトリクスをフォーカスに。実装は次フェーズ。 |
 | 2026-03-19 | 初版。全体＋現在フェーズの引き継ぎを本ファイルに集約。 |
