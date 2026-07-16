@@ -99,6 +99,7 @@
 
 ## 6. 更新履歴
 
+- 2026-07-17: **楽天ジャンル Nav Stage1 要件**: [RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)（テストシート追記隔離・コード実装なし）。Stage0 は [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)。
 - 2026-07-15: **AI組織 Phase0 多数決反映**: [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、憲章／マトリクス採用項、`.cursor/rules/three-review-runbook.mdc`。3者は親1＋並列サブ3が基本。**実装コードなし**。
 - 2026-07-15: **AI組織 Phase0**: [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md) を追加。朝承認→日中在庫0/1出品→12時前完了→夜確認。§2.1 に順0.5、CURRENT_PHASE を同期。**実装コードは含めない**（次は3者検証）。
 - 2026-07-15: 憲章の **部署名を確定**（戦略企画室＝略称AI部長、販売部、サプロジ部、CS部、商品部、マーケ部、情シス部）。組織詳細は後続で組み直し可。

@@ -3,7 +3,8 @@
 **文書種別**: スパイク／診断（実装あり・出品自動化の完成ではない）  
 **最終更新**: 2026-07-16  
 **コード**: `コード.js` の `menuDiagnoseRakutenNavigationGenreGet` 等  
-**制約**: `generateRakutenCSV` 非改変。商品マスタ／AI情報取得data／出品CSVへは**書かない**（Logger のみ）。
+**制約**: `generateRakutenCSV` 非改変。商品マスタ／AI情報取得data／出品CSVへは**書かない**（Logger のみ）。  
+**次**: テストシート書込隔離は [RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)（要件のみ・実装は別承認）。
 
 ---
 
