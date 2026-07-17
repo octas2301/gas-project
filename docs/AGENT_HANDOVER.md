@@ -32,7 +32,7 @@
 | 順 | ファイル | 内容 |
 |----|----------|------|
 | 0 | [CURRENT_PHASE.md](CURRENT_PHASE.md) | **全体の位置づけと現在の開発フォーカス**（§2 に入る前に読む） |
-| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) | **一人社長＋AI部門の組織憲章・承認マトリクス**。3者レビューは RUNBOOK（親1＋並列サブ3）。多数決記録あり。Phase0は実装コードなし |
+| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md) | **一人社長＋AI部門**。Phase0(=Lv0)最終承認済(2026-07-17)。次はLv1。モール順は楽天→Yahoo→Amazon |
 | 1 | [FLOW_AND_PRIORITY.md](FLOW_AND_PRIORITY.md) | フロー間の接続・必須要件・クリティカルパス・自動化優先順位・次のアクション・§8 以降の進め方 |
 | 2 | [REQUIREMENTS.md](REQUIREMENTS.md) | 6領域の要件定義・タスク・AI効率化・優先度。出庫・障がい者施設等の必須要件 |
 | 3 | [MASTER_LINKAGE_TASKS.md](MASTER_LINKAGE_TASKS.md) | 既存マスタ連携の Phase 1〜2 実施結果。価格列（販売価格amazon／楽天価格設定／Yahoo!価格設定）、在庫、同期対象列、確定値の運用、今後の方針 |
@@ -99,7 +99,8 @@
 
 ## 6. 更新履歴
 
-- 2026-07-17: **Lv別実装プラン叩き台**: [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)（Lv0クローズ→Lv1承認UI→Yahoo/楽天/Amazon/補充。コードなし）。
+- 2026-07-17: **Lv0最終承認**＋モール順 **楽天→Yahoo→Amazon**。次はLv1。レ点＝候補／スキップ＝販売中在庫>0の出品①除外／上書きは当面手動(U1)。[PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。
+- 2026-07-17: **Lv別実装プラン叩き台**: [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。
 - 2026-07-17: **楽天ジャンル Nav Stage1 実装**: [RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)。`menuDiagnoseRakutenNavigationGenreStage1Write`（17-⑥/99-⑩）。書込は `▼診断(楽天ジャンルNav)` のみ。`RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED` 既定 false。Stage0 は [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)。
 - 2026-07-15: **AI組織 Phase0 多数決反映**: [org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、憲章／マトリクス採用項、`.cursor/rules/three-review-runbook.mdc`。3者は親1＋並列サブ3が基本。**実装コードなし**。
 - 2026-07-15: **AI組織 Phase0**: [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md) を追加。朝承認→日中在庫0/1出品→12時前完了→夜確認。§2.1 に順0.5、CURRENT_PHASE を同期。**実装コードは含めない**（次は3者検証）。
