@@ -58,7 +58,7 @@
 | 成果物 | [PHASE0_THREE_REVIEW_MAJORITY.md](PHASE0_THREE_REVIEW_MAJORITY.md) 最終承認＋本プラン確定 |
 | 完了条件 | 満たした（社長明示承認・未決は後送り可） |
 
-### Lv1 — 承認キュー骨格（出品なし）— **要件済み・実装は別承認**
+### Lv1 — 承認キュー骨格（出品なし）— **実装済み・人間検収待ち**
 
 **要件正本**: [LV1_APPROVAL_QUEUE_REQUIREMENTS.md](LV1_APPROVAL_QUEUE_REQUIREMENTS.md)
 
@@ -166,8 +166,9 @@
 1. ~~多数決最終承認~~ → **済（2026-07-17）**  
 2. ~~モール順~~ → **楽天→Yahoo→Amazon 確定**  
 3. ~~Lv1 要件詳細~~ → **済**（[LV1_APPROVAL_QUEUE_REQUIREMENTS.md](LV1_APPROVAL_QUEUE_REQUIREMENTS.md)）  
-4. **次**: Lv1 **実装承認** → 実装 → 人間検収  
-5. （並行・できたとき）ジャンル Nav Stage1 人間検証（毎日必須ではない）  
+4. ~~Lv1 実装~~ → **コード済**。次は人間検収（clasp push・Property・Webデプロイ）  
+5. 検収後 **Lv2 楽天**（聖域内）  
+6. （並行・できたとき）ジャンル Nav Stage1 人間検証（毎日必須ではない）  
 
 ---
 
@@ -175,6 +176,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-17 | Lv1実装（ApprovalQueue.js）。次は人間検収。 |
 | 2026-07-17 | Lv1要件 docs 追加。次は実装承認。 |
 | 2026-07-17 | Lv0承認反映。モール順を楽天先に入替。レ点／スキップ／上書き手動(U1)を明記。次はLv1。 |
 | 2026-07-17 | 初版叩き台。Phase0前提・Lv0〜5＋並行P・未決の置き場。コードなし。 |

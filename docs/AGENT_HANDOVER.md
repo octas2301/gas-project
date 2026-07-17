@@ -99,7 +99,8 @@
 
 ## 6. 更新履歴
 
-- 2026-07-17: **Lv1要件**: [org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)（承認キュー・EC書込なし）。次は実装承認。
+- 2026-07-17: **Lv1実装**: `ApprovalQueue.js`・Zメニュー18・Webは `?action=approval_queue`（Yahoo doGet分岐）。`APPROVAL_QUEUE_V1_ENABLED` 既定 false。EC書込なし。
+- 2026-07-17: **Lv1要件**: [org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)。
 - 2026-07-17: **Lv0最終承認**＋モール順 **楽天→Yahoo→Amazon**。レ点＝候補／スキップ＝販売中在庫>0の出品①除外／上書きは当面手動(U1)。[PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。
 - 2026-07-17: **Lv別実装プラン叩き台**: [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。
 - 2026-07-17: **楽天ジャンル Nav Stage1 実装**: [RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)。`menuDiagnoseRakutenNavigationGenreStage1Write`（17-⑥/99-⑩）。書込は `▼診断(楽天ジャンルNav)` のみ。`RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED` 既定 false。Stage0 は [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)。

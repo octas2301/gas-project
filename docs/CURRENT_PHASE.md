@@ -18,10 +18,10 @@
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Lv1 実装**（要件正本: [org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)）。Phase0（Lv0）は **2026-07-17 最終承認済み**。Lv順は [org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)（**楽天→Yahoo→Amazon**）。  
+- **フォーカス領域**: **Lv1 人間検収**（コード済: `ApprovalQueue.js`）。要件: [org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)。Phase0（Lv0）最終承認済。Lv順は楽天→Yahoo→Amazon。  
 - **このフェーズの完了条件（目安）**  
-  - ~~憲章・多数決・Lv叩き台・Lv1要件~~ → 済  
-  - Lv1実装: レ点由来リストを朝モバイル承認でき、EC書込ゼロで検収できる。
+  - ~~憲章・多数決・Lv1要件・Lv1コード~~ → 済（検収待ち）  
+  - Lv1検収: レ点由来リストを朝モバイル承認でき、EC書込ゼロ。
 
 - **並行・継続（後回し可）**: 商品情報まわりの OpenAI 429 切り分け、Z「11-③」と B Step7 の差の検証（[AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md)）。楽天ジャンル Nav は Stage0 完了・Stage1 実装済み（専用診断シートのみ・Property 既定オフ。[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)）。
 
@@ -43,7 +43,7 @@
 
 ## 4. 次にやること（優先順）
 
-1. **Lv1 実装承認** → 実装（[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)）→ `clasp push` 検収。  
+1. **Lv1 人間検収**（`clasp push` → Property → 18-① → Web `?action=approval_queue`）。  
 2. その後 **Lv2 楽天**（聖域内オーケストレーション）→ Lv3 Yahoo → Lv4 Amazon。  
 3. （並行可）OpenAI 429 / `insufficient_quota` の解消と、11-③ と B Step7 のログ比較。  
 4. （並行・できたとき）楽天ジャンル Nav Stage1 人間検証（毎日必須ではない）。
@@ -68,7 +68,8 @@
 
 | 日付 | 内容 |
 |------|------|
-| 2026-07-17 | **Lv1要件**追加（[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)）。次は実装承認。 |
+| 2026-07-17 | **Lv1実装**（ApprovalQueue.js・メニュー18・Web approval_queue）。次は人間検収。 |
+| 2026-07-17 | **Lv1要件**追加（[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)）。 |
 | 2026-07-17 | **Lv0最終承認**反映。モール順楽天先。フォーカスを Lv1 へ。上書きは当面手動(U1)。 |
 | 2026-07-17 | **Lv別実装プラン叩き台**追加（[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)、コードなし）。 |
 | 2026-07-17 | 並行: 楽天ジャンル Nav Stage1 実装（専用診断シート追記・Property 既定オフ）。 |

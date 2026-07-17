@@ -1,8 +1,9 @@
 # Lv1 承認キュー骨格 — 要件定義
 
-**文書種別**: 要件定義（実装は別承認後）  
+**文書種別**: 要件定義＋実装済み（コード）  
 **最終更新**: 2026-07-17  
 **親**: [LEVELLED_IMPLEMENTATION_PLAN.md](LEVELLED_IMPLEMENTATION_PLAN.md) ・ [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [PHASE0_THREE_REVIEW_MAJORITY.md](PHASE0_THREE_REVIEW_MAJORITY.md)  
+**コード**: `ApprovalQueue.js`（本体）／`Yahoo.js` の `doGet` に `action=approval_queue` 分岐／メニュー 18-①②  
 **ゴール一文**: 朝モバイルで「今日出してよいSKU」を承認／取消でき、結果がシートに残る。**モールへの出品・在庫API・楽天CSVは一切呼ばない。**
 
 ---
@@ -249,4 +250,5 @@ REJECTED 行は APPROVED バッチ内に混在可（実行時は APPROVED 行の
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-17 | 実装: ApprovalQueue.js・メニュー18・Webは `?action=approval_queue`。Property 既定オフ。 |
 | 2026-07-17 | 初版。Lv0承認後の Lv1 要件。レ点／承認／スキップ分離。EC書込なし。 |

@@ -2256,6 +2256,16 @@ function doGet(e) {
   const productName = params.name || "";
   const itemUrl = params.item_url;
 
+  // Lv1 承認キュー（出品APIは呼ばない）。ApprovalQueue.js
+  if (action === 'approval_queue' || action === 'approve_a1') {
+    if (typeof approvalQueueGetHtmlForWebApp === 'function') {
+      return HtmlService.createHtmlOutput(approvalQueueGetHtmlForWebApp())
+        .setTitle('承認キュー(出品①)')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
+    return HtmlService.createHtmlOutput('<h1>ApprovalQueue.js が未反映です</h1>');
+  }
+
   if (action === 'delete' && itemCode) {
     const html = getDeleteConfirmHtml(itemCode, productName);
     return HtmlService.createHtmlOutput(html)
