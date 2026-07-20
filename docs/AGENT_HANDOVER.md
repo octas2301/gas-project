@@ -32,13 +32,13 @@
 | 順 | ファイル | 内容 |
 |----|----------|------|
 | 0 | [CURRENT_PHASE.md](CURRENT_PHASE.md) | **全体の位置づけと現在の開発フォーカス**（§2 に入る前に読む） |
-| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)・[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md) | **一人社長＋AI部門**。Lv0済。Lv1要件済・次は実装。モール順は楽天→Yahoo→Amazon |
+| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)・[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)・[org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md)・[org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md)・[org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md)・[org/LV4_THREE_REVIEW_MAJORITY.md](org/LV4_THREE_REVIEW_MAJORITY.md) | **一人社長＋AI部門**。Lv0〜3済。**Lv4は実装＋clasp push済・次はドライラン検収**（[CURRENT_PHASE.md](CURRENT_PHASE.md) §0） |
 | 1 | [FLOW_AND_PRIORITY.md](FLOW_AND_PRIORITY.md) | フロー間の接続・必須要件・クリティカルパス・自動化優先順位・次のアクション・§8 以降の進め方 |
 | 2 | [REQUIREMENTS.md](REQUIREMENTS.md) | 6領域の要件定義・タスク・AI効率化・優先度。出庫・障がい者施設等の必須要件 |
 | 3 | [MASTER_LINKAGE_TASKS.md](MASTER_LINKAGE_TASKS.md) | 既存マスタ連携の Phase 1〜2 実施結果。価格列（販売価格amazon／楽天価格設定／Yahoo!価格設定）、在庫、同期対象列、確定値の運用、今後の方針 |
 | 4 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | 目的・対象モール・6領域・前提・参考資料・成果物一覧 |
 | 5 | [RUNBOOK_DAY_WEEK_MONTH.md](RUNBOOK_DAY_WEEK_MONTH.md) | 日次・週次・隔週・月次の定型タスク（Runbook） |
-| 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の要件整理（フロー・共通必須・Amazon 固有項目。詳細は後で詰める） |
+| 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の列メモ（参考）。**Lv4正本**は [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) |
 | 7 | [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | リサーチ・見積もりの整理（出品時 vs 仕入れ時の項目・取得方法の選択肢・見積もり） |
 | 8 | [ROADMAP.md](ROADMAP.md) | フェーズ案・依存関係・既存 gas-project の位置づけ |
 | 9 | [PRICING_V1_REQUIREMENTS.md](PRICING_V1_REQUIREMENTS.md) | **価格・送料・再③ v1**、Script Properties による切戻し、ログ（`価格送料ロジックログ` 任意） |
@@ -99,6 +99,25 @@
 
 ## 6. 更新履歴
 
+- 2026-07-21: **セッション終了（深夜）**: Lv4 clasp push成功。外出用は [CURRENT_PHASE.md](CURRENT_PHASE.md) **§0**。次はドライラン（SKIP_EXPORT=true）。未コミットの可能性あり・commitは指示まで禁止。
+- 2026-07-20: **Lv4 再レビュー採用修正**: DRY_RUN専用／冪等latest汚染除去／subBatchId単調増加／ブランド=ノーブランド品完全一致。次は修正後3者レビュー→clasp push。
+- 2026-07-20: **Lv4 実装レビュー修正**: レジューム二重スキップ解消・価格/画像はSKIPPED記録・GTIN空カテゴリ不合格・GENERATED冪等・ステータス追記専用。次は clasp push→ドライラン検収。
+- 2026-07-20: **Lv4 実装**: `AmazonApprovalExport.js` 新規、`ApprovalQueue.js` に amazon 親+子加算、`コード.js` メニュー21。マスタ在庫/JAN非書込・TRACK未設定は非実行・GTINは状態シート EXEMPTION。次は clasp push→検収。
+- 2026-07-20: **Lv4 Q15/Q16＋列メモ**: TRACK未設定＝実行しない／amazon親＋子抽出は同一実装チケット必須／`AMAZON_REQUIREMENTS.md` に JAN・リードタイム・FBA の Lv4上書き注記。次は実装承認。
+- 2026-07-20: **Lv4 Q11–Q14反映**: inventoryMode同期・U1手動維持・部分失敗は親SKU単位・GTIN証跡は状態シート・配送=`送料無料パターン`・リードタイム初版なし。方針Q&A一通り閉じ。次は三点レビュー再実施。
+- 2026-07-20: **Lv4 Q7–Q10b反映**: 親＋子個別承認・3モール同一バッチ（Q9=A）・TRACK=BはASIN無視・出品者SKU=子SKU／メーカー型番=メーカー品番（空→子SKU）。
+- 2026-07-20: **Lv4社長Q&A反映**: 純正xlsm・D-1（GAS GENERATED＋ローカル PACKAGED）・BはマスタJAN残しGTIN列のみ空・M1バリエーションのみ・失敗後同一subBatchId上書き＋ログ追記。[LV4要件](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) §17。
+- 2026-07-20: **Lv4三点レビュー反映**: [org/LV4_THREE_REVIEW_MAJORITY.md](org/LV4_THREE_REVIEW_MAJORITY.md)＋要件更新。在庫マスタ書込禁止・`GENERATED`/`UPLOADED_OK`・親SKU抽出・GTIN着手ゲート。コード未実装・次は実装承認。
+- 2026-07-20: **Lv4要件ドラフト**: [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md)。M1=Bノーブランド新規（バリエーション＋画像）／M2=A既存ASIN。手動UP・自己配送既定。コード未実装・実装は別承認。
+- 2026-07-20: **Lv3人間検収完了**（本番 runId `LV3_20260720_112238_777998` / batch `A1_20260720_083227_1f0b30`・`childrenDone=7`）。在庫列は出品用「在庫数」に一本化（計算列は「在庫数計算」）。CURRENT_PHASE のフォーカスを Lv4 Amazon へ。
+- 2026-07-20: **Lv3実装**: `YahooApprovalExport.js`・Zメニュー20。案A（子のみレ点）・主25分／副ユニーク50・`runYahooExport` 呼出のみ。Property `APPROVAL_YAHOO_LV3_ENABLED` 既定 false。手動「▶ 出品実行」非改変。
+- 2026-07-20: **Lv3要件ドラフト**: [org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md)。`runYahooExport` 呼出のみ。分割は主25分・副ユニーク50（楽天運用揃え。Yahoo公式は10,000枚/時）。コード未実装・実装は別承認。
+- 2026-07-20: **Lv2人間検収完了**（runId `LV2_20260720_100744_244553` / batch `A1_20260720_083227_1f0b30`・`childrenOn=7`・MAKE/FTP成功）。Property `APPROVAL_RAKUTEN_LV2_ENABLED=false`。CURRENT_PHASE のフォーカスを Lv3 Yahoo へ。
+- 2026-07-17: **Lv1人間検収完了**（batch `A1_20260717_224813_ad7e65` → APPROVED）。
+- 2026-07-20: **Lv2案A修正**: 一時レ点を「承認済み親＋紐づく子」に変更（通常出品と同じ）。親だけONだとバリエーションがシングルSKU扱いになり32バイト超過で失敗していた。`generateRakutenCSV` 非改変。
+- 2026-07-19: **Lv2実装**: `RakutenApprovalExport.js`・Zメニュー19。案Aレ点・ユニーク画像50・25分レジューム。`generateRakutenCSV` 呼出のみ。Property `APPROVAL_RAKUTEN_LV2_ENABLED` 既定 false。手動「楽天CSV出力」非改変。
+- 2026-07-17: **Lv2要件ドラフト**: [org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md)（聖域呼出・ユニーク50／25分）。
+- 2026-07-17: **運用方針docs**: ハイブリッド承認・残リストA（ORPHAN非表示）・日中分割仮既定（GAS実働25分／ユニーク画像50枚）。[PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md) §4.2・§4.3・[AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md) §5。
 - 2026-07-17: **Lv1実装**: `ApprovalQueue.js`・Zメニュー18・Webは `?action=approval_queue`（Yahoo doGet分岐）。`APPROVAL_QUEUE_V1_ENABLED` 既定 false。EC書込なし。
 - 2026-07-17: **Lv1要件**: [org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)。
 - 2026-07-17: **Lv0最終承認**＋モール順 **楽天→Yahoo→Amazon**。レ点＝候補／スキップ＝販売中在庫>0の出品①除外／上書きは当面手動(U1)。[PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)。

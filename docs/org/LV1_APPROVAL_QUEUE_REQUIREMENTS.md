@@ -1,6 +1,6 @@
 # Lv1 承認キュー骨格 — 要件定義
 
-**文書種別**: 要件定義＋実装済み（コード）  
+**文書種別**: 要件定義＋実装済み＋**人間検収済み（2026-07-17）**  
 **最終更新**: 2026-07-17  
 **親**: [LEVELLED_IMPLEMENTATION_PLAN.md](LEVELLED_IMPLEMENTATION_PLAN.md) ・ [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [PHASE0_THREE_REVIEW_MAJORITY.md](PHASE0_THREE_REVIEW_MAJORITY.md)  
 **コード**: `ApprovalQueue.js`（本体）／`Yahoo.js` の `doGet` に `action=approval_queue` 分岐／メニュー 18-①②  
@@ -91,6 +91,16 @@
 | rejectReason | | 否認時 |
 
 **マスタ本体への書き戻しはしない**（レ点を外す／付けるのは人間。Lv1はキュー側のみ更新）。
+
+### 2.4 後続（Lv1範囲外・方針のみ）
+
+社長決定（2026-07-17）に基づき、**実装は別チケット**:
+
+| 項目 | 方針 |
+|------|------|
+| 残リスト | 明示取消まで残す。マスタに該当SKU無し → **画面非表示**、履歴は `ORPHANED` 等（物理削除しない・方式A） |
+| 紐づけ | parentSku / childSku（＋mall）優先 |
+| ハイブリッド／実行分割 | マトリクス・多数決メモを正。Lv1 Webは現状の承認①UIのまま検収可 |
 
 ---
 
@@ -210,6 +220,17 @@ REJECTED 行は APPROVED バッチ内に混在可（実行時は APPROVED 行の
 5. 一連の操作のあと、商品マスタの値・楽天／Yahoo／Amazon 側に **意図しない変更がない**（EC API・CSV未呼び出し）  
 6. `generateRakutenCSV` および Yahoo 出品関数が当該機能から呼ばれない（静的／実行ログで確認）  
 
+### 8.1 人間検収記録（2026-07-17）
+
+| 項目 | 結果 |
+|------|------|
+| 実施内容 | `clasp push` → Script Properties（`APPROVAL_QUEUE_V1_ENABLED=true`・許可メール）→ 既存Webアプリ新バージョン再デプロイ → メニュー18-① → Web `?action=approval_queue` で一括承認 |
+| 例 batchId | `A1_20260717_224813_ad7e65` |
+| HEADER | `status=APPROVED` / `approvedBy=contact@octas2301.com` / `sourceSummary=rakutenParents=1;yahooChildren=7` |
+| 明細 | LINE×8（楽天親1＋Yahoo子7）。Yahoo行に `MAY_SKIP_IN_STOCK` プレビューあり |
+| EC | 出品API・楽天CSVは当該フローから未起動（Lv1意図どおり） |
+| 判定 | **Lv1 完了**。次は Lv2 要件確認／実装承認 |
+
 ---
 
 ## 9. 復元・トグル
@@ -250,5 +271,7 @@ REJECTED 行は APPROVED バッチ内に混在可（実行時は APPROVED 行の
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-17 | **人間検収完了**（§8.1）。batch `A1_20260717_224813_ad7e65` → APPROVED。 |
+| 2026-07-17 | §2.4 追記: 残リストA（ORPHAN非表示）・ハイブリッド／分割は後続実装。Lv1検収範囲は現状のまま。 |
 | 2026-07-17 | 実装: ApprovalQueue.js・メニュー18・Webは `?action=approval_queue`。Property 既定オフ。 |
 | 2026-07-17 | 初版。Lv0承認後の Lv1 要件。レ点／承認／スキップ分離。EC書込なし。 |

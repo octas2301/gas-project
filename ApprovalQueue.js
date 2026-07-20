@@ -35,13 +35,15 @@ function menuApprovalQueueCreateCandidates() {
     Logger.log('[' + step + '] state=RUNNING');
     var result = approvalQueueCreateCandidates_();
     Logger.log('[' + step + '] state=DONE batchId=' + result.batchId +
-      ' rakuten=' + result.rakutenCount + ' yahoo=' + result.yahooCount);
+      ' rakuten=' + result.rakutenCount + ' yahoo=' + result.yahooCount +
+      ' amazon=' + result.amazonCount);
     try {
       SpreadsheetApp.getUi().alert(
         '承認候補を作成しました',
         'batchId=' + result.batchId +
           '\n楽天(親レ点)=' + result.rakutenCount +
           '\nYahoo(子レ点)=' + result.yahooCount +
+          '\nAmazon(親+子加算)=' + result.amazonCount +
           '\nシート「' + APPROVAL_QUEUE_SHEET_NAME + '」を確認し、Webで承認してください。' +
           '\n（モールへの出品はしていません）',
         SpreadsheetApp.getUi().ButtonSet.OK
@@ -91,11 +93,11 @@ function approvalQueueGetHtmlForWebApp() {
   return approvalQueueBuildHtml_();
 }
 
-/** @return {{batchId:string, rakutenCount:number, yahooCount:number}} */
+/** @return {{batchId:string, rakutenCount:number, yahooCount:number, amazonCount:number}} */
 function approvalQueueCreateCandidates_() {
   var extracted = approvalQueueExtractCandidates_();
   if (!extracted.lines.length) {
-    throw new Error('レ点付きの候補がありません（楽天=親レ点 / Yahoo=子レ点）。');
+    throw new Error('レ点付きの候補がありません（楽天=親レ点 / Yahoo=子レ点 / Amazon=親+子加算）。');
   }
   var batchId = approvalQueueNewBatchId_();
   var now = Utilities.formatDate(new Date(), 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX");
@@ -105,7 +107,9 @@ function approvalQueueCreateCandidates_() {
   } catch (e) {
     createdBy = 'menu';
   }
-  var summary = 'rakutenParents=' + extracted.rakutenCount + ';yahooChildren=' + extracted.yahooCount;
+  var summary = 'rakutenParents=' + extracted.rakutenCount +
+    ';yahooChildren=' + extracted.yahooCount +
+    ';amazonLines=' + extracted.amazonCount;
   var sh = approvalQueueEnsureSheet_();
   var headerRow = [
     'HEADER', batchId, now, createdBy, 'PENDING_APPROVAL',
@@ -131,7 +135,8 @@ function approvalQueueCreateCandidates_() {
   return {
     batchId: batchId,
     rakutenCount: extracted.rakutenCount,
-    yahooCount: extracted.yahooCount
+    yahooCount: extracted.yahooCount,
+    amazonCount: extracted.amazonCount
   };
 }
 
@@ -142,6 +147,57 @@ function approvalQueueCreateCandidates_() {
 function approvalQueueApiGetLatestPending() {
   approvalQueueAssertAllowedOrThrow_();
   return approvalQueueLoadLatestByStatus_('PENDING_APPROVAL');
+}
+
+/**
+ * Lv2用: 最新 APPROVED バッチのうち mall=rakuten かつ lineStatus=APPROVED のみ。
+ * @return {{found:boolean, batch:Object|null, lines:Array}}
+ */
+function approvalQueueGetLatestApprovedRakuten_() {
+  var res = approvalQueueLoadLatestByStatus_('APPROVED');
+  if (!res.found || !res.batch) return { found: false, batch: null, lines: [] };
+  var lines = [];
+  for (var i = 0; i < res.lines.length; i++) {
+    var L = res.lines[i];
+    if (String(L.mall) === 'rakuten' && String(L.lineStatus) === 'APPROVED') {
+      lines.push(L);
+    }
+  }
+  return { found: lines.length > 0, batch: res.batch, lines: lines };
+}
+
+/**
+ * Lv3用: 最新 APPROVED バッチのうち mall=yahoo かつ lineStatus=APPROVED のみ。
+ * @return {{found:boolean, batch:Object|null, lines:Array}}
+ */
+function approvalQueueGetLatestApprovedYahoo_() {
+  var res = approvalQueueLoadLatestByStatus_('APPROVED');
+  if (!res.found || !res.batch) return { found: false, batch: null, lines: [] };
+  var lines = [];
+  for (var i = 0; i < res.lines.length; i++) {
+    var L = res.lines[i];
+    if (String(L.mall) === 'yahoo' && String(L.lineStatus) === 'APPROVED') {
+      lines.push(L);
+    }
+  }
+  return { found: lines.length > 0, batch: res.batch, lines: lines };
+}
+
+/**
+ * Lv4用: 最新 APPROVED バッチのうち mall=amazon かつ lineStatus=APPROVED のみ。
+ * @return {{found:boolean, batch:Object|null, lines:Array}}
+ */
+function approvalQueueGetLatestApprovedAmazon_() {
+  var res = approvalQueueLoadLatestByStatus_('APPROVED');
+  if (!res.found || !res.batch) return { found: false, batch: null, lines: [] };
+  var lines = [];
+  for (var i = 0; i < res.lines.length; i++) {
+    var L = res.lines[i];
+    if (String(L.mall) === 'amazon' && String(L.lineStatus) === 'APPROVED') {
+      lines.push(L);
+    }
+  }
+  return { found: lines.length > 0, batch: res.batch, lines: lines };
 }
 
 /**
@@ -345,7 +401,7 @@ function approvalQueueEnsureSheet_() {
 }
 
 /**
- * @return {{lines:Array<Object>, rakutenCount:number, yahooCount:number}}
+ * @return {{lines:Array<Object>, rakutenCount:number, yahooCount:number, amazonCount:number}}
  */
 function approvalQueueExtractCandidates_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -389,6 +445,7 @@ function approvalQueueExtractCandidates_() {
   var lines = [];
   var rakutenCount = 0;
   var yahooCount = 0;
+  var amazonCount = 0;
   var lineSeq = 0;
 
   for (var i = headerRowIdx + 1; i < values.length; i++) {
@@ -416,6 +473,19 @@ function approvalQueueExtractCandidates_() {
         previewFlag: preview
       });
       rakutenCount++;
+      // Amazon: 親行を加算（同一バッチ・個別承認）
+      lineSeq++;
+      lines.push({
+        lineId: 'L' + lineSeq,
+        mall: 'amazon',
+        masterRow: masterRow,
+        parentSku: parentSku,
+        childSku: '',
+        productName: productName,
+        checkboxCol: ckName,
+        previewFlag: preview
+      });
+      amazonCount++;
     } else {
       // Yahoo: 子SKU行のレ点のみ
       lineSeq++;
@@ -430,10 +500,28 @@ function approvalQueueExtractCandidates_() {
         previewFlag: preview
       });
       yahooCount++;
+      // Amazon: 子行を加算（同一バッチ・個別承認）
+      lineSeq++;
+      lines.push({
+        lineId: 'L' + lineSeq,
+        mall: 'amazon',
+        masterRow: masterRow,
+        parentSku: parentSku,
+        childSku: childSku,
+        productName: productName,
+        checkboxCol: ckName,
+        previewFlag: preview
+      });
+      amazonCount++;
     }
   }
 
-  return { lines: lines, rakutenCount: rakutenCount, yahooCount: yahooCount };
+  return {
+    lines: lines,
+    rakutenCount: rakutenCount,
+    yahooCount: yahooCount,
+    amazonCount: amazonCount
+  };
 }
 
 /**
