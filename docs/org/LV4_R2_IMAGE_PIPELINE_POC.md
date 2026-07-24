@@ -45,11 +45,13 @@ Amazonも同じ習慣に揃えれば、**ローカルパスをGASが読めない
 |--------------|-----------|------|----------|
 | **04（根）** | `1K43z1vFW_QO41FN0m5Z_58qtdQY4ubor` | Amazon Drive 根 | — |
 | **01.GENERATED保存先** | `15aMcznDKvKD7xco-bdj_0sDF0XMdhO5p` | 21-①埋め用データ（既存Drive運用と統合可） | GAS |
-| **02.Amazonアップロード画像保存場所** | `1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84` | ★楽天02と同役割。人間が jpg を置く | **人間** |
+| **02.Amazonアップロード画像保存場所** | `1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84` | ★出口。`{sellerSku}.MAIN.jpg` 等。**本線は C（案α）GAS がコピー出力**。手置きは例外・復旧 | **GAS（U2後）**／例外時人間 |
 | **03.PACKAGED_xlsm保存先** | `11juFW8OE-7x_QDvCdok6zrbM_j4s27o1` | 完成 `.xlsm` の置き場 | 人間／Cursor／（将来）ローカル処理 |
 | **04.SC用画像ZIP保存先** | `1nGleQOSjcK47CEnR3cgVVjLkWNYfQRyq` | `{SKU}.MAIN.jpg` 等の ZIP | GAS（将来）または手作業 |
 | **05.処理レポート・ログ** | `1Z2iBeWSaT5UhERrInRkUr3Me67O5oG-s` | processing-summary 退避 | 人間 |
 | **06.テンプレ原本（純正xlsm）** | `1d8AEpOhx_1ymvskUeA5moZT_Si0SFGBS` | `HEALTH_PERSONAL_CARE.xlsm` / `FOOD.xlsm` 等・読取専用 | 人間（SCから取った純正を配置） |
+
+**白抜き候補（入力）**: 楽天ソースと分離した **Amazon 用ソースフォルダ**（Folder ID は実装承認・Script Properties）。`02` は出口であり候補置き場ではない。[D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md) が C 本線の正。
 
 **Script Properties への登録・GAS実装は別承認まで禁止**（キー案は `DRIVE_04_FOLDER_IDS.md`）。
 
@@ -72,12 +74,12 @@ Amazon MAINは **白抜き専用**のため楽天／Yahooと別。サブは多�
 
 | モード | いつ | MAIN | サブの出所 |
 |--------|------|------|------------|
-| **`REUSE_RAKUTEN`** | 楽天／Yahooに既にある・同時出品 | `04\02\{SKU}.MAIN.jpg`（白抜き） | マスタ「楽天サブ画像1〜n」または `03\02` → **PT01…へ番号マップ**（中身判定なし） |
-| **`AMAZON_ONLY`** | 楽天に無い／後からAmazonだけ | 同上 | `04\02\{SKU}.PT0n.jpg` のみ |
+| **`REUSE_RAKUTEN`** | 楽天／Yahooに既にある・同時出品 | `04\02\{SKU}.MAIN.jpg`（白抜き・C出力） | マスタ「楽天サブ画像1〜n」→ **PT01…**（中身判定なし）。`03\02` は補助参照可だがマスタ列優先 |
+| **`AMAZON_ONLY`** | 楽天に無い／後からAmazonだけ | 同上 | **マッチング sheet で PT 紐付け**（本線）→ `02` へコピー。`02` 手置きは例外 |
 
 **切替**: SKUまたは親単位の明示フラグ（マスタ列 or バッチ指定）。  
-**フォールバック**: `REUSE` だが楽天サブ0枚 → `AMAZON_ONLY` として `04` のPTを見る（ログに残す）。  
-**安定性**: 楽天CDN／Yahoo URLのAmazon直埋めはしない。Driveからコピー／改名して R2・ZIPへ（スナップショット推奨）。  
+**フォールバック**: `REUSE` だが楽天サブ0枚 → `AMAZON_ONLY`（ログ）。ONLY の PT は sheet 本線（U2）。  
+**安定性**: 楽天CDN／Yahoo URLのAmazon直埋めはしない。Driveから**コピー**して R2・ZIP・`02`へ。  
 **PT順番**: サブ画像1＝PT01候補、…。Amazonギャラリーは MAIN→PT01→PT02…。
 
 共通出口（モード差をここで吸収）:
@@ -92,26 +94,30 @@ MAIN必須（04） + SUB一覧（モード別） → {SKU}.MAIN / {SKU}.PT0n →
 
 ```text
 ① 人間
-   02 に画像を置く（楽天と同じ習慣）
+   白抜きを Amazon用ソースフォルダへ置く
+   マッチング sheet（案α）で子SKUごとに MAIN（必要なら ONLY の PT）を当てる
+   → マスタ列に永続化
 
-② GAS（将来メニュー・仮称）
-   21-⑥ Drive→R2 アップ＋URLをログ／シートへ
+② GAS（U2・実装承認後）
+   sheet／マスタから Drive 02 へ {sellerSku}.MAIN.jpg 等をコピー出力
+   （楽天 R-Cabinet アップとは別ボタン）
+
+③ GAS（既存・任意）
+   21-⑥ Drive→R2 アップ＋URLをログ／シートへ（PoC済・量産は別）
    21-⑦（任意）04 に SC用ZIP生成
 
-③ GAS（既存）
-   21-① GENERATED
-   （画像URL列に R2 URL を載せる／参照可能にする）
+④ GAS（既存）
+   21-① GENERATED（D または Z）
 
-④ xlsm 仕上げ（※§5・未確定）
+⑤ xlsm 仕上げ（※§5・未確定）
    当面: Cursor／手作業で 06純正＋GENERATED → 03 へ .xlsm
-   将来候補: ローカル短い処理（精度を見てから確定）
 
-⑤ 人間
-   SC で xlsm UP ＋ 必要なら 04 の ZIP
+⑥ 人間
+   SC で xlsm UP ＋ 必要なら 04 の ZIP（当面手ZIP＝正）
    21-③ UPLOADED_OK ／ ENABLED=false
 ```
 
-楽天より段が1つ多い理由: **Amazonは純正 `.xlsm` が必須**だから。画像まわりは楽天と同型にできる。
+**注**: 旧「① 人間が直接 02 に置く」は案α本線では廃止。`02` 手置きは例外・復旧のみ。[D_MENU_U2_…](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md) が正。
 
 ---
 
@@ -246,6 +252,7 @@ GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.x
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | U2三点＋社長回答に合わせ §2表・§2.1・§3 を案α整合（02＝出口、候補＝Amazon用フォルダ）。 |
 | 2026-07-25 | C: 案α本線・MAIN=sheet／02=出口・εバックログ（U2方針）を §7 相当に反映。 |
 | 2026-07-24 | T2実装: `AmazonDriveImageExport.js`＋21-⑥。人間手順 LV4_T2_HUMAN_RUN。 |
 | 2026-07-24 | T2済・T3保留（D要件§6.4）・C案αを §7 に反映。 |

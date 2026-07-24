@@ -181,15 +181,18 @@ flowchart TB
 | 項目 | 方針（確定） |
 |------|----------------|
 | MAIN 紐付け | **案α**: `★画像AIマッチング(操作用)` の **子SKU行**で人間が白抜きを当てる（数量セットごと） |
-| MAIN 出口 | Drive `04\02\{子SKU}.MAIN.jpg`（`02` は結果の置き場。フォルダ内紐付けは本線にしない） |
-| サブ | 楽天／Yahoo 併売 → **`REUSE_RAKUTEN`**。Amazon のみ → **`AMAZON_ONLY`** |
-| UI | **案α**（既存マッチング拡張）。将来 **ε**（自動＋修正のみ）はバックログ |
-| 詳細 | [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)（方針確定・実装は別承認） |
+| MAIN 出口 | Drive `04\02\{sellerSku}.MAIN.jpg`（GASコピー。手置きは例外） |
+| MAIN 永続 | **マスタ列**。sheet 再生成後はマスタ→sheet 復元 |
+| 白抜き候補 | **Amazon 用ソースフォルダ**（楽天と分離） |
+| サブ | REUSE＝マスタ楽天サブ。ONLY PT＝**sheet 本線** |
+| UI | **案α**。将来 **ε** はバックログ |
+| 詳細 | [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)（三点＋社長回答反映済） |
+| 多数決 | [D_MENU_U2_THREE_REVIEW_MAJORITY.md](D_MENU_U2_THREE_REVIEW_MAJORITY.md) |
 | 設計参照 | [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) §2.1 |
 
-C（sheet）→ `02` 出力 → D×Amazon の画像ゲート、が理想。
+C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 
-**現状**: U3 実機済。U2 は要件方針確定・GAS未。21-⑥ は MAIN1枚 R2 PoC のみ。Excel 自動反映は未（U4）。
+**現状**: U3 実機済。U2 要件は三点反映済・**GAS未**。次＝実装前承認。
 
 ---
 
@@ -211,7 +214,7 @@ C（sheet）→ `02` 出力 → D×Amazon の画像ゲート、が理想。
 |----|------|------|------|
 | **U0** | 本要件書 | — | **承認済＋3者反映済** |
 | **U1** | CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER／LV4・POC 相互リンク | U0 文書化 | **済** |
-| **U2** | C: Amazon MAIN／サブ（REUSE）詳細要件1枚 | U0 | **方針確定（案α／εバックログ）** → [D_MENU_U2_…](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md) |
+| **U2** | C: Amazon MAIN／サブ（REUSE）詳細要件1枚 | U0 | **三点＋社長回答反映済** → [U2要件](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)／[MAJORITY](D_MENU_U2_THREE_REVIEW_MAJORITY.md)。**次＝実装承認** |
 | **U3** | D UI: モール選択に Amazon・Da 完了メッセージ。裏は 21-① 等呼出 | U0＋3者反映 | **v1 実機合格**（2026-07-25。[HUMAN_RUN](D_MENU_U3_HUMAN_RUN.md)） |
 | **U4** | 画像量産 R2／GENERATED・xlsm への URL 書き | U2・T2 | 未 |
 | **U5** | T3 ZIP 自動 | §6.4（既存証跡＝§11.0 18320）＋**別実装承認** | **実装待ち** |
@@ -275,12 +278,15 @@ U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** �
 
 > **U2-0 方針（2026-07-25）**: 本線案α。MAIN＝マッチングsheet・子SKU行で人間紐付け。`02`＝出口。サブ REUSE／ONLY。ε＝バックログ。実装は別承認。
 
+> **U2 三点＋社長（2026-07-25）**: ONLY PT＝sheet（`02`手置き＝例外）。永続＝マスタ／再生成後復元。候補＝Amazon用フォルダ。MAJORITY保存＋要件・POC整合。
+
 ---
 
 ## 14. 更新履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | U2三点＋社長回答を§7・チケットに反映。MAJORITYリンク。 |
 | 2026-07-25 | U2 §7: MAIN紐付け＝案α・εバックログを反映。 |
 | 2026-07-25 | **U3 v1 実装＋実機合格**。U2要件へリンク。HUMAN_RUN追加。 |
 | 2026-07-25 | 三点多数決反映。PACKAGED明示・SCの2手定義・T3＝手ZIP正／自動化待ち・薄いファサード契約・Dc必須・ダイアログ最低仕様。 |

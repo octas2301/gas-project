@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-25（U2 方針確定: 案α／εバックログ）  
+**最終更新**: 2026-07-25（U2 三点＋社長回答反映。コミット待ち）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,11 +8,11 @@
 ## 0. セッション引き継ぎ（2026-07-25）
 
 **場所**: **自宅PC（ローカル）**。この節を最初に読むこと。  
-**コミット**: 指示があれば実施。  
+**コミット**: **指示まで待つ**（三点反映 docs 未コミットの可能性）。  
 **clasp push**: T2・U3 済。
 
 ### 自宅PC起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U3実機合格**。**U2方針確定**（MAIN紐付け＝マッチングsheet案α、`02`＝出口、ε＝バックログ）。次は **U2実装の別承認**（変更ファイル一覧）。T3／U7は各ゲート。
+> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U2 三点＋社長回答反映済**（マスタ永続／sheet復元、ONLY=sheet、候補=Amazon用フォルダ）。次は **コミット指示** → **U2実装前承認**。T3／ε／U7は各ゲート。
 
 ### いまの到達点（確定）
 | 項目 | 状態 |
@@ -20,25 +20,24 @@
 | Lv4 HPC／FOOD／T2 | **完了** |
 | D×Amazon 要件 U0 | **クローズ** |
 | **U3 D UI** | **v1 実機合格** |
-| **U2 C×Amazon** | **方針確定**（案α本線／εバックログ）。GAS未 |
-| T3 ZIP自動 | **実装待ち**（別承認） |
-| full_amazon 実機 | 機能あり・**任意** |
-| Dc API | **将来必須** |
+| **U2 C×Amazon** | **三点＋社長回答反映済**。GAS未。次＝実装承認 |
+| T3／ε／Dc | 各ゲート／バックログ |
 
 ### Amazon画像方針（要約）
 | 項目 | 方針 |
 |------|------|
-| MAIN紐付け | **マッチング sheet（案α）・子SKU行・人間** |
-| MAIN出口 | Drive `02\{子SKU}.MAIN.jpg` |
-| サブ | REUSE／ONLY |
-| 将来ε | 自動＋修正のみ（バックログ） |
-| SC投入 | 当面手ZIP。T3は別承認 |
-| 将来 | SC API（Dc）／楽天白背景へ同一MAIN |
+| MAIN紐付け | マッチング sheet・子SKU・人間 |
+| 永続 | **マスタ列**。再生成後はマスタ→sheet 復元 |
+| 候補 | **Amazon 用フォルダ**（楽天と分離） |
+| 出口 | Drive `02` へ**コピー** |
+| ONLY PT | sheet 本線（`02`手置き＝例外） |
+| ε | バックログ |
 
 ### 次にやること（優先順）
-1. **U2 実装承認**（変更ファイル一覧／概要／リスク）→ 実装  
-2. （任意）`full_amazon` 小規模スモーク  
-3. T3／U7(API)／M2／ε は各ゲート  
+1. **コミット**（指示時）— MAJORITY＋U2要件＋POC 等  
+2. **U2 実装前承認**（変更ファイル一覧／概要／リスク＋HUMAN_RUN）  
+3. 実装 → clasp push → 実機  
+4. T3／ε／U7 は各ゲート  
 
 ### IDs（常用）
 ```
@@ -51,6 +50,7 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ### 正本・手順リンク
 - [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)  
+- [org/D_MENU_U2_THREE_REVIEW_MAJORITY.md](org/D_MENU_U2_THREE_REVIEW_MAJORITY.md)  
 - [org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md](org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md)  
 - [org/D_MENU_U3_HUMAN_RUN.md](org/D_MENU_U3_HUMAN_RUN.md)  
 - [org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md](org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md)  
@@ -72,19 +72,19 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Lv4 — U2方針確定／次はU2実装承認**（§0）。  
+- **フォーカス領域**: **Lv4 — U2三点反映済／次はコミット→実装承認**（§0）。  
 - **Lv4（Amazonバルク）**:  
   - HPC／FOOD／T2: 完了。  
-  - 画像: MAIN紐付け＝案α（sheet）。`02`＝出口。ε＝バックログ。手ZIP＝SC当面の正。  
-  - 本線UX: U3 v1 **実機合格**。Cは [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。  
+  - 画像: マスタ永続／sheet復元、候補=Amazon用フォルダ、`02`=コピー出口、ONLY=sheet。ε＝バックログ。  
+  - 本線UX: U3 実機合格。Cは [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
 - **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
 - **Lv2（楽天）**: 2026-07-20 人間検収完了。  
 - **Lv1（承認キュー）**: 2026-07-17 人間検収完了。  
 
 - **このフェーズの完了条件（目安）**  
-  - HPC／FOOD／T2／D要件U0／**U3 v1 実機**／**U2-0 方針**: **達成**。  
-  - 次: U2 実装の別承認。  
+  - HPC／FOOD／T2／U0／U3／**U2-0 三点反映**: **達成**。  
+  - 次: コミット → U2 実装承認。  
 
 - **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／xlsm自動C1。  
 
@@ -106,9 +106,9 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 4. 次にやること（優先順）
 
-1. **U2 実装承認**（変更ファイル一覧／概要／リスク）→ 実装。  
-2. T3・ε・U7・M2 は各ゲート。  
-3. （任意）`full_amazon` 小規模スモーク。  
+1. **コミット**（指示時）。  
+2. **U2 実装前承認** → 実装。  
+3. T3・ε・U7・M2 は各ゲート。  
 4. Property トグルは実行時のみ true。  
 
 ---
@@ -131,6 +131,7 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | **U2三点＋社長回答反映**（MAJORITY新規）。コミット待ち。 |
 | 2026-07-25 | **U2方針確定**: 案α本線・MAIN=sheet／02=出口・εバックログ。 |
 | 2026-07-25 | **U3実機合格**＋**U2要件起草**。runId `LV4_20260725_072635_948892`。 |
 | 2026-07-25 | **D×Amazon U3 v1**: D `amazon`/`full_amazon`・即時ファサード。clasp push待ち。 |
