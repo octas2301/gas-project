@@ -68,8 +68,47 @@
 
 ---
 
+## 5.1 並行タスク：429／11-③ vs B Step7（実施チェックリスト・2026-07-24）
+
+**目的**: FOOD待機中でも本線AIの障害切り分けを進める。**コード改修は別承認**（本節は調査・運用確認）。
+
+### 現状の正（実装済・docsと一致）
+
+| 経路 | OpenAI 429時 | バリエーション |
+|------|--------------|----------------|
+| 11-③ `runProductNameProposalsForRows` | 商品名案は書けない | 既定でマスタ商品名があれば **継続**（`PRODUCT_NAME_PROPOSALS_CONTINUE_VARIATION_ON_OPENAI_FAIL` 未設定＝true） |
+| B Step7 | 商品名案失敗し得る | **variation まで進み得る**（単位・内容量のみ更新の可能性） |
+
+### 人間／Agent でやること（コードなし）
+
+1. [x] Script Properties で `PRODUCT_NAME_PROPOSALS_CONTINUE_VARIATION_ON_OPENAI_FAIL` の有無を確認（無＝継続ON）  
+   → **2026-07-24 人間確認: キー無し＝既定 true（継続ON）でOK**  
+2. [x] OpenAI ダッシュボードで quota／billing／429 直近を確認  
+   → **2026-07-24 人間確認: 問題なし**  
+3. [ ] 再現時は **11-③単独**と **B統合（Step7付近）**を別 runId で実行し、ログに `[商品名案]`／`[バリエーション書込]`／`[Step7][variation]` が出るか比較  
+4. [ ] 期待: 429でもバリエーション継続ログがある／キーワード案だけスキップ  
+5. [ ] 想定外（商品名も単位も全部止まる／マスタを壊す）なら **コード調査チケット**を切る（改修は承認後）
+
+### Agent静的確認（2026-07-24・コード読取のみ）
+
+| 項目 | 結果 |
+|------|------|
+| `PRODUCT_NAME_PROPOSALS_CONTINUE_VARIATION_ON_OPENAI_FAIL` 既定 | **true**（`コード.js` で確認） |
+| OpenAI失敗後 | バリエーション継続ログ分岐あり |
+| 人間残り | Property実値・OpenAIダッシュボード。429再現テストは任意 |
+
+### 改修が必要になったときの承認メモ（未実施）
+
+- 変更候補: `コード.js` の商品名案／Step7近傍のみ  
+- リスク: B統合の長時間・マスタ列の部分更新  
+- 復元: Property トグル＋`git revert`
+
+---
+
 ## 6. 更新履歴
 
+- **2026-07-24**: §5.1 に Agent静的確認結果を追記。
+- **2026-07-24**: §5.1 並行タスクチェックリスト追加（調査のみ・コード改修は別承認）。
 - **2026-03-19**: 初版。チャット引き継ぎで確定した仕様を docs 化。
 - **2026-03-22**: `runProductNameProposalsForRows` の **OpenAI 失敗時もバリエーション継続**（既定）と Script Property `PRODUCT_NAME_PROPOSALS_CONTINUE_VARIATION_ON_OPENAI_FAIL` を追記。
 - **2026-03-22**: **◎ 複数行の総合判断**（`pickPerSetContentFromCircleTitles_`）と `CIRCLE_COMBINED_PER_SET_CONTENT` を追記。

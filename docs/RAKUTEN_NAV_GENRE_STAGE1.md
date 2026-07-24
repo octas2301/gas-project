@@ -1,7 +1,7 @@
 # 楽天ジャンルID NavigationAPI — Stage1 要件（テストシート書込隔離）
 
 **文書種別**: 要件定義＋実装済み（コード）  
-**最終更新**: 2026-07-17  
+**最終更新**: 2026-07-24（§9.1 検収チェックリスト追加）  
 **コード**: `コード.js` の `menuDiagnoseRakutenNavigationGenreStage1Write` / `appendRakutenNavGenreStage1Rows_`  
 **メニュー**: Z → 17-⑥ / 99-⑩
 **前提**: Stage0 疎通完了（[RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)、`okCount=2/2`、endpoint `/es/2.0/navigation/genres/{id}`、名称は `nameJa` / `nameJaPath`）  
@@ -136,6 +136,23 @@ API:
 5. マスタシートが無変更であることを確認  
 6. 終わったら Property を `false` に戻してよい  
 
+### 9.1 検収チェックリスト（人間・FOOD待機中に実施可）
+
+**前提**: Stage1 コードは実装済・Property 既定オフ。Agent は clasp push しない。
+
+| # | 確認 | 合格条件 | 結果 |
+|---|------|----------|------|
+| 1 | Property オフで 17-⑥ | 書込せず終了メッセージ | **PASS** |
+| 2 | `RAKUTEN_NAV_GENRE_STAGE1_WRITE_ENABLED=true` | 明示オン | **PASS** |
+| 3 | 17-⑥ 実行 | `▼診断(楽天ジャンルNav)` に追記 | **PASS** |
+| 4 | genreId `101888` | `ok=TRUE` | **PASS** |
+| 5 | genreId `101535` | 同上 | **PASS** |
+| 6 | 商品マスタ・AI情報取得data | 値・書式に変化なし | ☐（目視済ならOK） |
+| 7 | `generateRakutenCSV` 差分 | 当該作業で本体が変わっていない | ☐（今回コード未変更ならOK） |
+| 8 | 終了処理 | Property を `false` に戻す | ☐ **いま実施** |
+
+不合格時: シート名／Property／ESA認証を切り分け。マスタへ書くな。Stage2（別SS）は別承認。
+
 ---
 
 ## 10. 復元
@@ -160,5 +177,6 @@ Stage1 **コード実装**に入るときは、本要件を満たす範囲でも
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-24 | §9.1 人間検収チェックリスト追加（FOOD待機中の並行タスク用）。 |
 | 2026-07-17 | 実装: 17-⑥/99-⑩・専用シート追記・Property 既定 false。マスタ/CSV非書込。 |
 | 2026-07-17 | 初版。Stage0完了を前提に、テストシート書込隔離の要件を定義。 |

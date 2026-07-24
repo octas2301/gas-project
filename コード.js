@@ -487,7 +487,8 @@ function createZSplitMenu(ui) {
       .addItem('21-① 承認済みAmazonをGENERATED出力', 'menuApprovalAmazonLv4Run')
       .addItem('21-② 実行状態をクリア', 'menuApprovalAmazonLv4ClearState')
       .addItem('21-③ アップロード成功を記録', 'menuApprovalAmazonLv4MarkUploadedOk')
-      .addItem('21-④ アップロード失敗を記録', 'menuApprovalAmazonLv4MarkUploadFailed'))
+      .addItem('21-④ アップロード失敗を記録', 'menuApprovalAmazonLv4MarkUploadFailed')
+      .addItem('21-⑥ Drive→R2画像PoC（MAIN1枚）', 'menuAmazonDriveR2UploadPoc'))
     .addSeparator()
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
@@ -1325,24 +1326,195 @@ function showBatchExportModal() {
   } catch (_) {}
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;padding:16px;">' +
     '<h3>一括出品実行</h3>' +
-    '<p>コースを選んで「実行」を押してください。予約後すぐにポップアップは閉じ、約1分後に裏で実行されます。完了時にシート上に通知が出ます。</p>' +
+    '<p>コースを選んで「実行」を押してください。<br>' +
+    '楽天／Yahoo は予約後すぐにポップアップを閉じ、約1分後に裏で実行されます。<br>' +
+    '<b>Amazon コースは即時実行</b>（トリガー裏実行には載せません。完了は Da＝準備完了／SC待ち）。</p>' +
     '<form id="f">' +
     '<label><input type="radio" name="course" value="full" checked> フル（楽天 → Yahoo! の順で実行）</label><br>' +
     '<label><input type="radio" name="course" value="rakuten"> 楽天のみ</label><br>' +
     '<label><input type="radio" name="course" value="yahoo"> Yahoo!のみ</label><br>' +
+    '<label><input type="radio" name="course" value="amazon"> Amazonのみ（Da・21-①呼出）</label><br>' +
+    '<label><input type="radio" name="course" value="full_amazon"> フル → Amazon Da（楽天→Yahoo後に Amazon。AmazonはSC待ちで止まる）</label><br>' +
     '</form>' +
     '<p style="margin-top:12px;font-size:13px;">' +
-    '<label><input type="checkbox" id="skipimg"> 画像アップロードをスキップ（マスタに楽天画像パスが既にある場合）</label><br>' +
-    '<label><input type="checkbox" id="besteffort"> ベストエフォート（画像エラーや楽天CSV失敗でも可能な限り続行）</label>' +
+    '<label><input type="checkbox" id="skipimg"> 画像アップロードをスキップ（マスタに楽天画像パスが既にある場合／楽天・Yahoo部のみ）</label><br>' +
+    '<label><input type="checkbox" id="besteffort"> ベストエフォート（画像エラーや楽天CSV失敗でも可能な限り続行／楽天・Yahoo部のみ）</label>' +
     '</p>' +
     '<p style="margin-top:16px;"><button id="run">実行</button> <button id="cancel">キャンセル</button></p>' +
     '<p id="msg" style="color:#666;font-size:12px;"></p>' +
-    '<p style="color:#888;font-size:11px;margin-top:12px;">※「1分ごと」のトリガーは登録しないでください。予約時に「1分後に1回」が自動作成されます。不要なトリガーはメニュー「一括出品トリガーをすべて削除」で削除できます。</p>' +
+    '<p style="color:#888;font-size:11px;margin-top:12px;">※「1分ごと」のトリガーは登録しないでください。楽天／Yahoo予約時に「1分後に1回」が自動作成されます。不要なトリガーはメニュー「一括出品トリガーをすべて削除」で削除できます。</p>' +
     '<script>' +
-    'document.getElementById("run").onclick=function(){ var c=document.querySelector("input[name=course]:checked").value; var sk=document.getElementById("skipimg").checked; var be=document.getElementById("besteffort").checked; document.getElementById("msg").textContent="予約しました。ポップアップを閉じます..."; google.script.run.withSuccessHandler(function(){ google.script.host.close(); }).withFailureHandler(function(e){ document.getElementById("msg").textContent="エラー: "+e.message; }).scheduleBatchExport(c, sk, be); };' +
+    'document.getElementById("run").onclick=function(){' +
+    ' var c=document.querySelector("input[name=course]:checked").value;' +
+    ' var sk=document.getElementById("skipimg").checked;' +
+    ' var be=document.getElementById("besteffort").checked;' +
+    ' var amazonNow=(c==="amazon"||c==="full_amazon");' +
+    ' document.getElementById("msg").textContent=amazonNow?"Amazonコースを即時実行します...":"予約しました。ポップアップを閉じます...";' +
+    ' var runner=google.script.run.withSuccessHandler(function(){ google.script.host.close(); })' +
+    '  .withFailureHandler(function(e){ document.getElementById("msg").textContent="エラー: "+e.message; });' +
+    ' if(amazonNow){ runner.runBatchExportAmazonFacade(c, sk, be); }' +
+    ' else { runner.scheduleBatchExport(c, sk, be); }' +
+    '};' +
     'document.getElementById("cancel").onclick=function(){ google.script.host.close(); };' +
     '</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(460).setHeight(340), '一括出品実行');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(520).setHeight(420), '一括出品実行');
+}
+
+/**
+ * D×Amazon（U3）薄いファサード。トリガー裏実行には載せない。
+ * amazon: 21-①のみ＋Daダイアログ。full_amazon: 同期でフル後に Amazon Da。
+ * @param {string} course - "amazon" | "full_amazon"
+ * @param {boolean} skipImageUpload - 楽天・Yahoo部のみ
+ * @param {boolean} bestEffort - 楽天・Yahoo部のみ
+ */
+function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort) {
+  var fn = 'runBatchExportAmazonFacade';
+  if (course !== 'amazon' && course !== 'full_amazon') {
+    throw new Error('不正なAmazonコースです: ' + course);
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('スプレッドシートを取得できません');
+  Logger.log('[' + fn + '] state=PENDING course=' + course +
+    ' skipImage=' + !!skipImageUpload + ' bestEffort=' + !!bestEffort);
+
+  if (course === 'full_amazon') {
+    logBatchExportProgress(ss, 'D×Amazon: フル（楽天→Yahoo）を同期実行（トリガー非使用）');
+    Logger.log('[' + fn + '] state=RUNNING step=full_sync');
+    runBatchExport('full', false, ss, {
+      skipImageUpload: !!skipImageUpload,
+      bestEffort: !!bestEffort
+    });
+    logBatchExportProgress(ss, 'D×Amazon: フル完了 → Amazon Da（準備完了／SC待ち）へ');
+  }
+
+  var gate = batchExportAmazonDrive02MainGate_();
+  Logger.log('[' + fn + '] Drive02gate ok=' + gate.ok + ' mode=' + (gate.mode || '') +
+    ' reason=' + (gate.reason || ''));
+  if (!gate.ok) {
+    var stopMsg = '【D×Amazon停止】Drive 02 MAINゲート: ' + gate.reason;
+    logBatchExportProgress(ss, stopMsg);
+    try { SpreadsheetApp.getUi().alert(stopMsg); } catch (eG) {}
+    Logger.log('[' + fn + '] state=FAILED ' + stopMsg);
+    throw new Error(stopMsg);
+  }
+
+  Logger.log('[' + fn + '] state=RUNNING step=menuApprovalAmazonLv4Run');
+  logBatchExportProgress(ss, 'D×Amazon: 21-① menuApprovalAmazonLv4Run 呼出');
+  var lv4 = menuApprovalAmazonLv4Run();
+  if (!lv4) lv4 = { ok: false, reason: 'menuApprovalAmazonLv4Run が結果を返しませんでした' };
+
+  if (lv4.cancelled) {
+    logBatchExportProgress(ss, 'D×Amazon: 21-①キャンセル');
+    Logger.log('[' + fn + '] state=DONE cancelled=1');
+    return;
+  }
+  if (!lv4.ok) {
+    var fail = lv4.reason || lv4.error || 'Lv4失敗';
+    logBatchExportProgress(ss, 'D×Amazon: 21-①失敗 ' + fail);
+    Logger.log('[' + fn + '] state=FAILED ' + fail);
+    throw new Error(fail);
+  }
+
+  showBatchExportAmazonDaDialog_(lv4, gate, course);
+  logBatchExportProgress(ss, 'D×Amazon Da完了 runId=' + (lv4.runId || '') +
+    '（掲載完了ではない・SC待ち）');
+  Logger.log('[' + fn + '] state=DONE runId=' + (lv4.runId || '') + ' course=' + course);
+}
+
+/**
+ * Drive 02 MAIN 最小ゲート（U3 v1）。
+ * AMAZON_DRIVE_R2_POC_SKU があればその MAIN.jpg 必須。無ければフォルダ到達のみ（個別は人間確認）。
+ * @return {{ok:boolean, mode?:string, reason?:string, folderId?:string, pocSku?:string, fileName?:string, note?:string}}
+ */
+function batchExportAmazonDrive02MainGate_() {
+  var props = PropertiesService.getScriptProperties();
+  var folderId = String(props.getProperty('AMAZON_DRIVE_IMAGE_FOLDER_ID') || '').trim() ||
+    '1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84';
+  try {
+    DriveApp.getFolderById(folderId);
+  } catch (e) {
+    return {
+      ok: false,
+      mode: 'folder',
+      folderId: folderId,
+      reason: 'Drive 02 フォルダを開けません（' + folderId + '）: ' + ((e && e.message) || e)
+    };
+  }
+  var pocSku = String(props.getProperty('AMAZON_DRIVE_R2_POC_SKU') || '').trim();
+  if (pocSku) {
+    var fileName = pocSku + '.MAIN.jpg';
+    var file = null;
+    try {
+      file = amazonDriveFindFileByName_(folderId, fileName);
+    } catch (eFind) {
+      return {
+        ok: false,
+        mode: 'poc_sku',
+        folderId: folderId,
+        pocSku: pocSku,
+        fileName: fileName,
+        reason: 'MAIN検索失敗: ' + ((eFind && eFind.message) || eFind)
+      };
+    }
+    if (!file) {
+      return {
+        ok: false,
+        mode: 'poc_sku',
+        folderId: folderId,
+        pocSku: pocSku,
+        fileName: fileName,
+        reason: fileName + ' が Drive 02 にありません'
+      };
+    }
+    return { ok: true, mode: 'poc_sku', folderId: folderId, pocSku: pocSku, fileName: fileName };
+  }
+  return {
+    ok: true,
+    mode: 'folder_only',
+    folderId: folderId,
+    note: 'AMAZON_DRIVE_R2_POC_SKU 未設定のため個別 MAIN 検証はスキップ（人間が 02 を確認）'
+  };
+}
+
+/**
+ * Da完了ダイアログ（要件 §6.1.1）
+ * @param {{ok:boolean, runId?:string, track?:string, summary?:Object}} lv4
+ * @param {{mode?:string, note?:string, fileName?:string, pocSku?:string}} gate
+ * @param {string} course
+ */
+function showBatchExportAmazonDaDialog_(lv4, gate, course) {
+  var summary = lv4.summary || {};
+  var subBatch = summary.lastSubBatchId || summary.subBatchId || '';
+  if (!subBatch && summary.subBatchesDone != null) {
+    subBatch = '(サブバッチ完了数=' + summary.subBatchesDone + ')';
+  }
+  var lines = [];
+  lines.push('【D×Amazon Da＝準備完了／掲載完了ではない】');
+  lines.push('course=' + course);
+  lines.push('runId=' + (lv4.runId || '(なし)'));
+  lines.push('batchId=' + (summary.batchId || '(なし)'));
+  lines.push('track=' + (lv4.track || ''));
+  lines.push('subBatchId=' + (subBatch || '（複数時は ▼Lv4実行ログ(Amazon)／直前ダイアログを参照）'));
+  lines.push('Drive02ゲート=' + (gate.mode || '') + (gate.fileName ? ' file=' + gate.fileName : ''));
+  if (gate.note) lines.push('注: ' + gate.note);
+  lines.push('');
+  lines.push('— 人間作業チェックリスト —');
+  lines.push('1. PACKAGED: 純正 .xlsm へ埋める（Drive 03 等／当面 C0＝Cursor／手）');
+  lines.push('2. 手 ZIP: Drive 04。命名例 {親SKU}_MAIN_images_for_SC.zip');
+  lines.push('3. SCの2手:');
+  lines.push('   ・PACKAGED .xlsm → SC「商品スプレッドシート」UP');
+  lines.push('   ・画像 ZIP → Upload Images UP');
+  lines.push('4. 親子目視後、21-③ UPLOADED_OK は当面 Z メニューから');
+  lines.push('5. Property を false に戻す:');
+  lines.push('   ・APPROVAL_AMAZON_LV4_ENABLED');
+  lines.push('   ・AMAZON_DRIVE_R2_UPLOAD_ENABLED（使った場合）');
+  lines.push('');
+  lines.push('21-③・T3・SC API は本ダイアログからは実行しません。');
+  try {
+    SpreadsheetApp.getUi().alert('D×Amazon Da 完了', lines.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (eUi) {
+    Logger.log('[showBatchExportAmazonDaDialog_] alert skip: ' + ((eUi && eUi.message) || eUi));
+  }
 }
 
 /**
@@ -1351,6 +1523,10 @@ function showBatchExportModal() {
  * トリガー作成に失敗した場合（編集者など）は、オーナーが手動で「runBatchExportFromTrigger」を1分後に1回のトリガーを追加する必要がある。
  */
 function scheduleBatchExport(course, skipImageUpload, bestEffort) {
+  // Amazon はトリガー裏実行禁止（U3: runBatchExportAmazonFacade で即時）
+  if (course === 'amazon' || course === 'full_amazon') {
+    throw new Error('Amazonコースはトリガー予約できません。Dモーダルから即時実行してください。');
+  }
   if (course !== 'full' && course !== 'rakuten' && course !== 'yahoo') throw new Error('不正なコースです: ' + course);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('スプレッドシートを取得できません');
@@ -1476,6 +1652,10 @@ function runBatchExportFromTriggerImpl(course, ssId, batchOpts) {
 
   var errMsg = null;
   try {
+    // 防御: Amazon をトリガー経路に載せない（U3）
+    if (course === 'amazon' || course === 'full_amazon') {
+      throw new Error('Amazonコースはトリガー実行対象外です（Dから即時実行してください）');
+    }
     runBatchExport(course, true, ssForToast, batchOpts || {});
     console.log('[一括出品] runBatchExport 完了');
   } catch (e) {

@@ -32,7 +32,7 @@
 | 順 | ファイル | 内容 |
 |----|----------|------|
 | 0 | [CURRENT_PHASE.md](CURRENT_PHASE.md) | **全体の位置づけと現在の開発フォーカス**（§2 に入る前に読む） |
-| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)・[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)・[org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md)・[org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md)・[org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md)・[org/LV4_THREE_REVIEW_MAJORITY.md](org/LV4_THREE_REVIEW_MAJORITY.md) | **一人社長＋AI部門**。Lv0〜3済。**Lv4は実装＋clasp push済・次はドライラン検収**（[CURRENT_PHASE.md](CURRENT_PHASE.md) §0） |
+| 0.5 | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)・[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)・[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)・[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)・[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)・[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)・[org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md)・[org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md)・[org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md)（**§11.0**）・[org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md](org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md)（**U3実機合格**）・[org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)・[org/D_MENU_U3_HUMAN_RUN.md](org/D_MENU_U3_HUMAN_RUN.md)・[org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md](org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md)・[org/LV4_R2_IMAGE_PIPELINE_POC.md](org/LV4_R2_IMAGE_PIPELINE_POC.md)・[org/LV4_T2_HUMAN_RUN.md](org/LV4_T2_HUMAN_RUN.md)・[org/LV4_THREE_REVIEW_MAJORITY.md](org/LV4_THREE_REVIEW_MAJORITY.md) | **Lv4**: U0クローズ。次はU3別承認。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0 |
 | 1 | [FLOW_AND_PRIORITY.md](FLOW_AND_PRIORITY.md) | フロー間の接続・必須要件・クリティカルパス・自動化優先順位・次のアクション・§8 以降の進め方 |
 | 2 | [REQUIREMENTS.md](REQUIREMENTS.md) | 6領域の要件定義・タスク・AI効率化・優先度。出庫・障がい者施設等の必須要件 |
 | 3 | [MASTER_LINKAGE_TASKS.md](MASTER_LINKAGE_TASKS.md) | 既存マスタ連携の Phase 1〜2 実施結果。価格列（販売価格amazon／楽天価格設定／Yahoo!価格設定）、在庫、同期対象列、確定値の運用、今後の方針 |
@@ -99,7 +99,31 @@
 
 ## 6. 更新履歴
 
-- 2026-07-21: **セッション終了（深夜）**: Lv4 clasp push成功。外出用は [CURRENT_PHASE.md](CURRENT_PHASE.md) **§0**。次はドライラン（SKIP_EXPORT=true）。未コミットの可能性あり・commitは指示まで禁止。
+- 2026-07-25: **U3実機合格**（runId `LV4_20260725_072635_948892`）＋**U2要件起草** [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。T3／full_amazonはゲート維持。
+- 2026-07-25: **D×Amazon U3 v1**: Dに `amazon`/`full_amazon`。裏は `menuApprovalAmazonLv4Run`＋Daダイアログ。トリガー非搭載。[org/D_MENU_U3_HUMAN_RUN.md](org/D_MENU_U3_HUMAN_RUN.md)。次は clasp push。
+- 2026-07-25: **D×Amazon U0クローズ**: 3者多数決反映＋社長回答（手ZIP正／T3実装待ち／将来API必須）。[org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md](org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md)。次はU3別承認。
+- 2026-07-24: **D×Amazon要件U0**: [org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md](org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md)（本線A〜D・Da・C案α）。コードなし。
+- 2026-07-24: **T2 PoC成功**: runId `R2T2_20260724_221107_7f9cf7`・SKU `lifec-4560151300139-oya`・公開URLで画像表示。HMAC Byte[]修正済。トグルfalseへ。**T3は保留**。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0。
+- 2026-07-24: **T2 clasp push済**: 8 files（`AmazonDriveImageExport.js`含む）。次は Property＋21-⑥→URL200→トグルoff。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0／[org/LV4_T2_HUMAN_RUN.md](org/LV4_T2_HUMAN_RUN.md)。
+- 2026-07-24: **帰宅引き継ぎ**: CURRENT_PHASE §0 を自宅PC続行用に全面更新。次は T2 `clasp push`＋21-⑥。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0／[org/LV4_T2_HUMAN_RUN.md](org/LV4_T2_HUMAN_RUN.md)。
+- 2026-07-24: **T2実装**: `AmazonDriveImageExport.js`＋メニュー21-⑥（Drive MAIN1枚→R2）。手順 [org/LV4_T2_HUMAN_RUN.md](org/LV4_T2_HUMAN_RUN.md)。人間が clasp push。T3は別承認。
+- 2026-07-24: **Nav Stage1実機PASS**: 2/2・runId `navS1_20260724_203812_a61c6b17`。Propertyはfalseへ戻す。次はAI枠確認→T2承認任意。
+- 2026-07-24: **並行 Nav→AI→T2**: Agent静的確認（Navコード／429継続既定）。人間実行メモ [RAKUTEN_NAV_STAGE1_HUMAN_RUN.md](RAKUTEN_NAV_STAGE1_HUMAN_RUN.md)。T2承認書 [org/LV4_T2_IMPLEMENTATION_APPROVAL.md](org/LV4_T2_IMPLEMENTATION_APPROVAL.md)（未実装）。
+- 2026-07-24: **FOOD v5成功**: 親＋子6バリエーション反映・在庫切れ。成功DBを Drive `05` に記録。CURRENT_PHASE §0。
+- 2026-07-24: **並行docs A→D**: HPC手順1枚 [org/LV4_HPC_M1_PACKAGED_RUNBOOK.md](org/LV4_HPC_M1_PACKAGED_RUNBOOK.md)／画像T2チケット（POC §7.1）／AI §5.1／Nav §9.1。コードなし。FOODは100521待機。
+- 2026-07-24: **FOOD v5 corrective準備**: SC確認で親＋`30s175`のみ登録。Drive `03/…_v5_corrective.xlsm`＋`04/…_MISSING5_MAIN_for_SC.zip`。人間がxlsm→ZIPを1回。CURRENT_PHASE §0。
+- 2026-07-24: **外出リモート引き継ぎ**: CURRENT_PHASE §0更新。画像はDrive起点＋サブ二モード（REUSE_RAKUTEN/AMAZON_ONLY）設計済・コード未実装。FOOD再UP禁止。GAS/R2実装は別承認。
+- 2026-07-24: **Drive起点GAS案を正に**: [org/LV4_R2_IMAGE_PIPELINE_POC.md](org/LV4_R2_IMAGE_PIPELINE_POC.md) 更新。`04.amazonカタログ作成` フォルダ構成。xlsm自動埋めは提案のみ（テンプレ変化で精度懸念→当面Cursor）。GAS実装は別承認。
+- 2026-07-24: **R2×Amazon画像PoC設計**: [org/LV4_R2_IMAGE_PIPELINE_POC.md](org/LV4_R2_IMAGE_PIPELINE_POC.md)（**Amazonのみ**／楽天・Yahoo対象外）。実装は別承認。
+- 2026-07-23: **帰宅引き継ぎ**: HPC `…_suburl_test.xlsm` UP結果待ち（子`…-40s10`にPT01〜05 URL）。FOOD v4ログ再解析（100521/100730/13013・再UP禁止・v5はZIP＋親価格）。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0。
+- 2026-07-23: **§11.0 HPCクローズ**: §11-1〜8・10＋U5。正本 titlefix＋在庫0。画像ZIP優先。FOOD／他PT／M2／21-⑤は別ゲート。[LV4要件](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) §11.0／[CURRENT_PHASE.md](CURRENT_PHASE.md)。
+- 2026-07-23: **外出・リモート引き継ぎ**: HPC titlefix SC 8/8 → 21-③ `UPLOADED_OK` 済・`ENABLED=false`。次は FOOD v4（100521/100730/13013待機）。成功値DB追記済（Downloads）。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0。
+- 2026-07-22: **帰宅引き継ぎ**: R2公開済（`pub-d974…r2.dev`）・8枚`{SKU}.MAIN.jpg`はHTTP200。次はcorrectiveへURL埋め→SC再UP→親子目視→21-③（`…_B2`）。[CURRENT_PHASE.md](CURRENT_PHASE.md) §0。
+- 2026-07-22: **外出記録**: corrective_link SCは18320/8007。中期は原本自社＋R2＋Amazon取り込み後が正（R2準備はその後完了）。
+- 2026-07-22: **Lv4 §6.1.2**: 修正登録（SKU維持）・親子未リンク時は親追加＋既存子紐づけ。メニュー21-⑤要件化。実データは7行目起点。
+- 2026-07-21: **Lv4 §11.5**: HEALTH PERSONAL CARE 列対応ドラフト。マスタAmazon手作業列＝必須登録候補（マスタ↔Excel先）。成功後カテゴリー別レポート辞書化は後続。
+- 2026-07-21: **自宅IDE引き継ぎ**: Lv4 DRY_RUN＋本GENERATED成功（runId `LV4_20260721_212702_217672`／subBatchId `A1_20260721_083100_06b90a_B2`）。カテゴリ・子価格フォールバックは clasp push済。次はPACKAGED→SC→21-③。[CURRENT_PHASE.md](CURRENT_PHASE.md) **§0**。未コミットあり・commitは指示まで禁止。
+- 2026-07-21: **セッション終了（深夜）**: Lv4 clasp push成功。当時の次はドライラン（その後完了）。
 - 2026-07-20: **Lv4 再レビュー採用修正**: DRY_RUN専用／冪等latest汚染除去／subBatchId単調増加／ブランド=ノーブランド品完全一致。次は修正後3者レビュー→clasp push。
 - 2026-07-20: **Lv4 実装レビュー修正**: レジューム二重スキップ解消・価格/画像はSKIPPED記録・GTIN空カテゴリ不合格・GENERATED冪等・ステータス追記専用。次は clasp push→ドライラン検収。
 - 2026-07-20: **Lv4 実装**: `AmazonApprovalExport.js` 新規、`ApprovalQueue.js` に amazon 親+子加算、`コード.js` メニュー21。マスタ在庫/JAN非書込・TRACK未設定は非実行・GTINは状態シート EXEMPTION。次は clasp push→検収。

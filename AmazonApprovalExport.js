@@ -41,13 +41,17 @@ var APPROVAL_AMAZON_LV4_LOG_HEADERS = [
 /**
  * メニュー 21-①: 最新 APPROVED の amazon を親単位サブバッチで GENERATED する。
  */
+/**
+ * メニュー 21-① / D×Amazon ファサード共用。
+ * @return {{ok:boolean, cancelled?:boolean, runId?:string, track?:string, summary?:Object, reason?:string, error?:string}}
+ */
 function menuApprovalAmazonLv4Run() {
   var fn = 'menuApprovalAmazonLv4Run';
   if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_PROP, false)) {
     var off = 'Lv4 Amazonは無効です。Script Properties の ' + APPROVAL_AMAZON_LV4_PROP + ' を true にしてください。';
     Logger.log('[' + fn + '] state=FAILED ' + off);
     try { SpreadsheetApp.getUi().alert(off); } catch (e0) {}
-    return;
+    return { ok: false, reason: off };
   }
   var track = amazonApprovalLv4NormalizeTrack_(
     PropertiesService.getScriptProperties().getProperty(APPROVAL_AMAZON_LV4_TRACK_PROP)
@@ -57,7 +61,7 @@ function menuApprovalAmazonLv4Run() {
       ' に A / B / BOTH のいずれかを設定してください（M1は B）。';
     Logger.log('[' + fn + '] state=FAILED ' + noTrack);
     try { SpreadsheetApp.getUi().alert(noTrack); } catch (eT) {}
-    return;
+    return { ok: false, reason: noTrack };
   }
   try {
     var ui = SpreadsheetApp.getUi();
@@ -74,7 +78,7 @@ function menuApprovalAmazonLv4Run() {
         '\n実行しますか？',
       ui.ButtonSet.OK_CANCEL
     );
-    if (res !== ui.Button.OK) return;
+    if (res !== ui.Button.OK) return { ok: false, cancelled: true };
   } catch (eUi) {}
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -98,10 +102,12 @@ function menuApprovalAmazonLv4Run() {
         SpreadsheetApp.getUi().ButtonSet.OK
       );
     } catch (e1) {}
+    return { ok: true, runId: runId, track: track, summary: summary };
   } catch (err) {
     Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' ' + ((err && err.message) || err));
     amazonApprovalLv4Mail_('【Lv4 Amazon】実行失敗', 'runId=' + runId + '\n' + ((err && err.message) || err));
     try { SpreadsheetApp.getUi().alert('Lv4失敗: ' + ((err && err.message) || err)); } catch (e2) {}
+    return { ok: false, runId: runId, track: track, error: String((err && err.message) || err) };
   }
 }
 
@@ -586,13 +592,13 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
     }
 
     if (resolvedTrack === 'B') {
-      var cat = amazonApprovalLv4Cell_(masterCtx, masterParent.rowIndex0, 'amazon カテゴリー');
-      if (!cat) cat = amazonApprovalLv4Cell_(masterCtx, masterParent.rowIndex0, 'amazonカテゴリー');
+      var catResolved = amazonApprovalLv4ResolveCategory_(masterCtx, masterParent.rowIndex0, g.parentSku);
+      var cat = catResolved.value;
       if (!cat) {
         skipped.push({
           parentSku: g.parentSku,
           reason: 'SKIPPED_NEED_HUMAN',
-          detail: 'amazonカテゴリ空（GTIN証跡照合不可）'
+          detail: 'amazonカテゴリ空（GTIN証跡照合不可） sourceTried=' + catResolved.sourceTried
         });
         continue;
       }
@@ -600,7 +606,7 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
         skipped.push({
           parentSku: g.parentSku,
           reason: 'SKIPPED_GTIN_EXEMPTION',
-          detail: 'カテゴリ未証跡:' + cat
+          detail: 'カテゴリ未証跡:' + cat + ' via=' + catResolved.source
         });
         continue;
       }
@@ -623,17 +629,7 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
       }
     }
 
-    var price = amazonApprovalLv4Cell_(masterCtx, masterParent.rowIndex0, '販売価格amazon');
-    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-      skipped.push({
-        parentSku: g.parentSku,
-        reason: 'SKIPPED_NEED_HUMAN',
-        detail: '販売価格amazon不正:' + price
-      });
-      continue;
-    }
-
-    // 子をマスタ照合
+    // 子をマスタ照合（価格フォールバックより先に解決）
     var children = [];
     var orphanChild = false;
     for (var c = 0; c < g.childLines.length; c++) {
@@ -654,12 +650,26 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
       continue;
     }
 
+    var priceRes = amazonApprovalLv4ResolvePriceAmazon_(
+      masterCtx, g.parentSku, masterParent.rowIndex0, children
+    );
+    if (!priceRes.value) {
+      skipped.push({
+        parentSku: g.parentSku,
+        reason: 'SKIPPED_NEED_HUMAN',
+        detail: '販売価格amazon不正 tried=' + priceRes.sourceTried
+      });
+      continue;
+    }
+
     parents.push({
       parentSku: g.parentSku,
       parentLine: g.parentLine,
       parentRowIndex0: masterParent.rowIndex0,
       children: children,
-      resolvedTrack: resolvedTrack
+      resolvedTrack: resolvedTrack,
+      priceAmazon: priceRes.value,
+      priceSource: priceRes.source
     });
   }
 
@@ -705,6 +715,113 @@ function amazonApprovalLv4Cell_(masterCtx, rowIndex0, colName) {
   return String(masterCtx.values[rowIndex0][idx] != null ? masterCtx.values[rowIndex0][idx] : '').trim();
 }
 
+/**
+ * 販売価格amazon 解決。親が空／不正なら承認済み子を順に見る。
+ * Logger: [Lv4Price]
+ * @param {Array<{rowIndex0:number, childSku:string}>} children
+ * @return {{value:string, source:string, sourceTried:string}}
+ */
+function amazonApprovalLv4ResolvePriceAmazon_(masterCtx, parentSku, parentRowIndex0, children) {
+  var tried = [];
+  var parentRaw = amazonApprovalLv4Cell_(masterCtx, parentRowIndex0, '販売価格amazon');
+  var parentNum = Number(parentRaw);
+  tried.push('parent(v=' + parentRaw + ')');
+  if (parentRaw !== '' && !isNaN(parentNum) && parentNum > 0) {
+    Logger.log('[Lv4Price] HIT parentSku=' + parentSku + ' source=parent value=' + parentRaw);
+    return { value: String(parentRaw), source: 'parent', sourceTried: tried.join(';') };
+  }
+  children = children || [];
+  for (var i = 0; i < children.length; i++) {
+    var ch = children[i];
+    var raw = amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, '販売価格amazon');
+    var n = Number(raw);
+    tried.push('child:' + String(ch.childSku || '') + '(v=' + raw + ')');
+    if (raw !== '' && !isNaN(n) && n > 0) {
+      Logger.log('[Lv4Price] HIT parentSku=' + parentSku +
+        ' source=child:' + String(ch.childSku || '') + ' value=' + raw);
+      return { value: String(raw), source: 'child:' + String(ch.childSku || ''), sourceTried: tried.join(';') };
+    }
+  }
+  Logger.log('[Lv4Price] EMPTY parentSku=' + parentSku + ' tried=' + tried.join(';'));
+  return { value: '', source: '', sourceTried: tried.join(';') };
+}
+
+/**
+ * Amazonカテゴリ解決。優先順:
+ * 1) amazon カテゴリー  2) amazonカテゴリー  3) カテゴリー（T列。見出しに改行※注記があっても可）
+ * Logger に source / 列index / 値プレビュー / 失敗時の候補ヘッダを残す。
+ * @return {{value:string, source:string, sourceTried:string}}
+ */
+function amazonApprovalLv4ResolveCategory_(masterCtx, rowIndex0, parentSku) {
+  var preferred = ['amazon カテゴリー', 'amazonカテゴリー', 'カテゴリー'];
+  var tried = [];
+  var i;
+  var name;
+  var colIdx;
+  var raw;
+  var val;
+
+  for (i = 0; i < preferred.length; i++) {
+    name = preferred[i];
+    colIdx = masterCtx.col[name];
+    raw = colIdx != null
+      ? String(masterCtx.values[rowIndex0][colIdx] != null ? masterCtx.values[rowIndex0][colIdx] : '')
+      : '';
+    val = String(raw || '').trim();
+    tried.push(name + '(exists=' + (colIdx != null) + ',idx=' + (colIdx != null ? colIdx : -1) +
+      ',len=' + raw.length + ',v=' + (val ? val.substring(0, 24) : '') + ')');
+    if (val) {
+      Logger.log('[Lv4Cat] HIT parentSku=' + parentSku + ' row1=' + (rowIndex0 + 1) +
+        ' source=' + name + ' colIndex0=' + colIdx + ' valuePreview=' + val.substring(0, 40));
+      return { value: val, source: name, sourceTried: tried.join(';') };
+    }
+  }
+
+  // 見出しが「カテゴリー\n※…」や「カテゴリー ※…」でも拾う（amazon系を優先）
+  var fuzzyAmazon = null;
+  var fuzzyPlain = null;
+  for (var k in masterCtx.col) {
+    if (!Object.prototype.hasOwnProperty.call(masterCtx.col, k)) continue;
+    var first = String(k).split(/\r?\n/)[0].trim();
+    var compact = first.replace(/\s+/g, ' ');
+    if (compact === 'amazon カテゴリー' || compact === 'amazonカテゴリー' ||
+        compact.indexOf('amazon') === 0 && compact.indexOf('カテゴリ') >= 0) {
+      if (!fuzzyAmazon) fuzzyAmazon = k;
+    } else if (compact === 'カテゴリー' || compact.indexOf('カテゴリー') === 0) {
+      if (!fuzzyPlain) fuzzyPlain = k;
+    }
+  }
+  var fuzzyOrder = [];
+  if (fuzzyAmazon) fuzzyOrder.push(fuzzyAmazon);
+  if (fuzzyPlain) fuzzyOrder.push(fuzzyPlain);
+
+  for (i = 0; i < fuzzyOrder.length; i++) {
+    name = fuzzyOrder[i];
+    colIdx = masterCtx.col[name];
+    raw = String(masterCtx.values[rowIndex0][colIdx] != null ? masterCtx.values[rowIndex0][colIdx] : '');
+    val = String(raw || '').trim();
+    tried.push('fuzzy:' + name.replace(/\r?\n/g, '\\n') + '(idx=' + colIdx + ',len=' + raw.length +
+      ',v=' + (val ? val.substring(0, 24) : '') + ')');
+    if (val) {
+      Logger.log('[Lv4Cat] HIT_FUZZY parentSku=' + parentSku + ' row1=' + (rowIndex0 + 1) +
+        ' sourceHeader=' + JSON.stringify(name) + ' colIndex0=' + colIdx +
+        ' valuePreview=' + val.substring(0, 40));
+      return { value: val, source: 'fuzzy:' + String(name).split(/\r?\n/)[0], sourceTried: tried.join(';') };
+    }
+  }
+
+  var catKeys = [];
+  for (var k2 in masterCtx.col) {
+    if (!Object.prototype.hasOwnProperty.call(masterCtx.col, k2)) continue;
+    if (String(k2).indexOf('カテゴリ') >= 0) {
+      catKeys.push(JSON.stringify(k2) + '@' + masterCtx.col[k2]);
+    }
+  }
+  Logger.log('[Lv4Cat] EMPTY parentSku=' + parentSku + ' row1=' + (rowIndex0 + 1) +
+    ' tried=' + tried.join(';') + ' headersWithカテゴリ=' + catKeys.join('|'));
+  return { value: '', source: '', sourceTried: tried.join(';') };
+}
+
 function amazonApprovalLv4BuildSubBatches_(parents, perSub) {
   var out = [];
   for (var i = 0; i < parents.length; i += perSub) {
@@ -739,22 +856,35 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
   for (var p = 0; p < parents.length; p++) {
     var parent = parents[p];
     var rTrack = parent.resolvedTrack || trackProp;
-    var price = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '販売価格amazon');
-    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+    var priceRes2 = parent.priceAmazon
+      ? { value: parent.priceAmazon, source: parent.priceSource || 'cached', sourceTried: '' }
+      : amazonApprovalLv4ResolvePriceAmazon_(
+          masterCtx, parent.parentSku, parent.parentRowIndex0, parent.children || []
+        );
+    var price = priceRes2.value;
+    if (!price) {
       skipped.push({
         parentSku: parent.parentSku,
         reason: 'SKIPPED_NEED_HUMAN',
-        detail: 'Build時:販売価格amazon不正'
+        detail: 'Build時:販売価格amazon不正 tried=' + priceRes2.sourceTried
       });
       continue;
     }
-    var cat = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'amazon カテゴリー');
-    if (!cat) cat = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'amazonカテゴリー');
+    var catResolved2 = amazonApprovalLv4ResolveCategory_(masterCtx, parent.parentRowIndex0, parent.parentSku);
+    var cat = catResolved2.value;
     var catalogName = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'オリジナルカタログ商品名');
     var asin = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'ASINコード');
     var mainImg = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '楽天メイン画像1');
 
     if (rTrack === 'B') {
+      if (!cat) {
+        skipped.push({
+          parentSku: parent.parentSku,
+          reason: 'SKIPPED_NEED_HUMAN',
+          detail: 'Build時:カテゴリ空 tried=' + catResolved2.sourceTried
+        });
+        continue;
+      }
       if (!mainImg) {
         skipped.push({
           parentSku: parent.parentSku,
