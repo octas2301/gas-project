@@ -180,15 +180,16 @@ flowchart TB
 
 | 項目 | 方針（確定） |
 |------|----------------|
-| MAIN | 常に Amazon 白抜き → `04\02\{SKU}.MAIN.jpg` |
-| サブ | 楽天／Yahoo 併売 → **楽天と同じサブ（`REUSE_RAKUTEN`）**。Amazon のみ → `02` の PT（`AMAZON_ONLY`） |
-| UI | **案α**: 既存「画像AIマッチング(操作用)」等を拡張（運用一本化） |
-| 詳細 | U2 で列・シート・命名を要件化。実装は別承認 |
+| MAIN 紐付け | **案α**: `★画像AIマッチング(操作用)` の **子SKU行**で人間が白抜きを当てる（数量セットごと） |
+| MAIN 出口 | Drive `04\02\{子SKU}.MAIN.jpg`（`02` は結果の置き場。フォルダ内紐付けは本線にしない） |
+| サブ | 楽天／Yahoo 併売 → **`REUSE_RAKUTEN`**。Amazon のみ → **`AMAZON_ONLY`** |
+| UI | **案α**（既存マッチング拡張）。将来 **ε**（自動＋修正のみ）はバックログ |
+| 詳細 | [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)（方針確定・実装は別承認） |
 | 設計参照 | [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) §2.1 |
 
-C の出力が `02` に揃う → D×Amazon の画像ゲートが通る、が理想。
+C（sheet）→ `02` 出力 → D×Amazon の画像ゲート、が理想。
 
-**現状**: `02` への配置は人間。21-⑥ は MAIN1枚の R2 PoC のみ。Excel 自動反映は未（U4）。
+**現状**: U3 実機済。U2 は要件方針確定・GAS未。21-⑥ は MAIN1枚 R2 PoC のみ。Excel 自動反映は未（U4）。
 
 ---
 
@@ -210,7 +211,7 @@ C の出力が `02` に揃う → D×Amazon の画像ゲートが通る、が理
 |----|------|------|------|
 | **U0** | 本要件書 | — | **承認済＋3者反映済** |
 | **U1** | CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER／LV4・POC 相互リンク | U0 文書化 | **済** |
-| **U2** | C: Amazon MAIN／サブ（REUSE）詳細要件1枚 | U0 | **要件起草** → [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md) |
+| **U2** | C: Amazon MAIN／サブ（REUSE）詳細要件1枚 | U0 | **方針確定（案α／εバックログ）** → [D_MENU_U2_…](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md) |
 | **U3** | D UI: モール選択に Amazon・Da 完了メッセージ。裏は 21-① 等呼出 | U0＋3者反映 | **v1 実機合格**（2026-07-25。[HUMAN_RUN](D_MENU_U3_HUMAN_RUN.md)） |
 | **U4** | 画像量産 R2／GENERATED・xlsm への URL 書き | U2・T2 | 未 |
 | **U5** | T3 ZIP 自動 | §6.4（既存証跡＝§11.0 18320）＋**別実装承認** | **実装待ち** |
@@ -272,12 +273,15 @@ U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** �
 
 > **U3 v1 承認（2026-07-25）**: Dに amazon コース追加。裏は menuApprovalAmazonLv4Run 呼出のみ＋Da完了ダイアログ（§6.1.1）。複合は任意でフル後に Amazon Da 止まり。21-③・T3・Yahoo.js・楽天CSV・B統合は触らない。トリガー裏実行に Amazon を載せない。
 
+> **U2-0 方針（2026-07-25）**: 本線案α。MAIN＝マッチングsheet・子SKU行で人間紐付け。`02`＝出口。サブ REUSE／ONLY。ε＝バックログ。実装は別承認。
+
 ---
 
 ## 14. 更新履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | U2 §7: MAIN紐付け＝案α・εバックログを反映。 |
 | 2026-07-25 | **U3 v1 実装＋実機合格**。U2要件へリンク。HUMAN_RUN追加。 |
 | 2026-07-25 | 三点多数決反映。PACKAGED明示・SCの2手定義・T3＝手ZIP正／自動化待ち・薄いファサード契約・Dc必須・ダイアログ最低仕様。 |
 | 2026-07-24 | 初版。Ask U0 案を要件定義化。コード実装なし。 |

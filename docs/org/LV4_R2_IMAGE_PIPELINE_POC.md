@@ -188,7 +188,7 @@ GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.x
 | T4 | GENERATED への画像URL連携 | T2 | 未着手（D要件 U4） |
 | T5 | xlsm自動（C1） | 精度レビュー後 | **当面スキップ** |
 
-**C（画像紐付け）**: 本線メニュー C を Amazon 向けに拡張する方針は **案α**（既存マッチング拡張）＋サブ `REUSE_RAKUTEN`（併売時）。詳細 [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §7。
+**C（画像紐付け）**: 本線は **案α**（既存 `★画像AIマッチング` 拡張）。Amazon MAIN は **子SKU行で人間紐付け** → Drive `02` 出力。サブは `REUSE_RAKUTEN`／`AMAZON_ONLY`。将来 **ε**（自動＋修正のみ）はバックログ。詳細 [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。親 [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §7。
 
 コード実装は各Tiで **変更ファイル一覧／概要／リスク**を提示してから。
 
@@ -246,6 +246,7 @@ GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.x
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | C: 案α本線・MAIN=sheet／02=出口・εバックログ（U2方針）を §7 相当に反映。 |
 | 2026-07-24 | T2実装: `AmazonDriveImageExport.js`＋21-⑥。人間手順 LV4_T2_HUMAN_RUN。 |
 | 2026-07-24 | T2済・T3保留（D要件§6.4）・C案αを §7 に反映。 |
 | 2026-07-24 | Drive起点＋サブ二モード。 |

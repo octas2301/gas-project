@@ -4,6 +4,7 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-25 | `D_MENU_U2_…REQUIREMENTS.md`／D要件§7／CURRENT_PHASE | U2方針: 案α本線・MAIN=sheet紐付け・02=出口・εバックログ。コードなし | **Git**: `git revert` |
 | 2026-07-25 | U3実機合格記録／`D_MENU_U2_…REQUIREMENTS.md`（新規）／CURRENT_PHASE 等 | U3クローズ＋U2起草。コード追加なし（本行） | **Git**: `git revert` |
 | 2026-07-25 | `コード.js`（D amazon／full_amazon・`runBatchExportAmazonFacade`）／`AmazonApprovalExport.js`（21-①戻り値）／`D_MENU_U3_HUMAN_RUN.md`／要件・CURRENT_PHASE／AGENT_HANDOVER | U3 v1: 薄いファサード。トリガーにAmazon非搭載 | **Git**: `git revert`。Property OFF |
 | 2026-07-24 | `D_MENU_AMAZON_FACADE_REQUIREMENTS.md`（新規）／CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER／LV4・POCリンク | D本線Amazonファサード要件U0。T3保留。コードなし | **Git**: `git revert` |

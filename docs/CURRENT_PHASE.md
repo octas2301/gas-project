@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-25（D×Amazon U3 実機合格／U2要件起草）  
+**最終更新**: 2026-07-25（U2 方針確定: 案α／εバックログ）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,37 +8,37 @@
 ## 0. セッション引き継ぎ（2026-07-25）
 
 **場所**: **自宅PC（ローカル）**。この節を最初に読むこと。  
-**コミット**: 本更新と同時に実施予定（指示済）。  
-**clasp push**: T2済。**U3 push＋実機合格済**。
+**コミット**: 指示があれば実施。  
+**clasp push**: T2・U3 済。
 
 ### 自宅PC起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U3 v1 実機合格**（runId `LV4_20260725_072635_948892`）。次は **U2要件レビュー**（[org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)）。T3／full_amazon実機／U7は各ゲート。コミット後は指示に従う。
+> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U3実機合格**。**U2方針確定**（MAIN紐付け＝マッチングsheet案α、`02`＝出口、ε＝バックログ）。次は **U2実装の別承認**（変更ファイル一覧）。T3／U7は各ゲート。
 
 ### いまの到達点（確定）
 | 項目 | 状態 |
 |------|------|
 | Lv4 HPC／FOOD／T2 | **完了** |
 | D×Amazon 要件 U0 | **クローズ** |
-| **U3 D UI** | **v1 実機合格**（2026-07-25） |
-| **U2 C×Amazon** | **要件起草**（レビュー待ち） |
+| **U3 D UI** | **v1 実機合格** |
+| **U2 C×Amazon** | **方針確定**（案α本線／εバックログ）。GAS未 |
 | T3 ZIP自動 | **実装待ち**（別承認） |
-| full_amazon 実機 | 機能あり・**任意スモーク**（タイムアウト注意） |
+| full_amazon 実機 | 機能あり・**任意** |
 | Dc API | **将来必須** |
 
 ### Amazon画像方針（要約）
 | 項目 | 方針 |
 |------|------|
-| 画像投入の正（当面） | **手ZIP** → SC Upload Images |
-| R2（T2） | ステージング／予備 |
-| T3 | ZIP作成の自動化（別承認） |
-| C（U2） | MAIN白抜き02＋サブ REUSE／ONLY |
-| 将来 | **SC API連携必須**（Dc） |
+| MAIN紐付け | **マッチング sheet（案α）・子SKU行・人間** |
+| MAIN出口 | Drive `02\{子SKU}.MAIN.jpg` |
+| サブ | REUSE／ONLY |
+| 将来ε | 自動＋修正のみ（バックログ） |
+| SC投入 | 当面手ZIP。T3は別承認 |
+| 将来 | SC API（Dc）／楽天白背景へ同一MAIN |
 
 ### 次にやること（優先順）
-1. **U2-0**: 要件レビュー → 承認コメント  
-2. U2 実装は別承認（変更ファイル一覧）  
-3. （任意）`full_amazon` 小規模スモーク  
-4. T3／U7(API)／M2 は各ゲート  
+1. **U2 実装承認**（変更ファイル一覧／概要／リスク）→ 実装  
+2. （任意）`full_amazon` 小規模スモーク  
+3. T3／U7(API)／M2／ε は各ゲート  
 
 ### IDs（常用）
 ```
@@ -72,19 +72,19 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Lv4 — U3実機合格／次はU2要件レビュー**（§0）。  
+- **フォーカス領域**: **Lv4 — U2方針確定／次はU2実装承認**（§0）。  
 - **Lv4（Amazonバルク）**:  
   - HPC／FOOD／T2: 完了。  
-  - 画像: 手ZIP＝当面の正。T3＝自動化実装待ち。将来API必須。  
-  - 本線UX: U3 v1 **実機合格**。C拡張は [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。  
+  - 画像: MAIN紐付け＝案α（sheet）。`02`＝出口。ε＝バックログ。手ZIP＝SC当面の正。  
+  - 本線UX: U3 v1 **実機合格**。Cは [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
 - **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
 - **Lv2（楽天）**: 2026-07-20 人間検収完了。  
 - **Lv1（承認キュー）**: 2026-07-17 人間検収完了。  
 
 - **このフェーズの完了条件（目安）**  
-  - HPC／FOOD／T2／D要件U0／**U3 v1 実機**: **達成**。  
-  - 次: U2-0 要件承認。  
+  - HPC／FOOD／T2／D要件U0／**U3 v1 実機**／**U2-0 方針**: **達成**。  
+  - 次: U2 実装の別承認。  
 
 - **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／xlsm自動C1。  
 
@@ -106,8 +106,8 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 4. 次にやること（優先順）
 
-1. **U2-0** 要件レビュー → 承認（[org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)）。  
-2. U2 実装・T3・U7・M2 は各ゲート（実装前に変更一覧＋承認）。  
+1. **U2 実装承認**（変更ファイル一覧／概要／リスク）→ 実装。  
+2. T3・ε・U7・M2 は各ゲート。  
 3. （任意）`full_amazon` 小規模スモーク。  
 4. Property トグルは実行時のみ true。  
 
@@ -131,6 +131,7 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | **U2方針確定**: 案α本線・MAIN=sheet／02=出口・εバックログ。 |
 | 2026-07-25 | **U3実機合格**＋**U2要件起草**。runId `LV4_20260725_072635_948892`。 |
 | 2026-07-25 | **D×Amazon U3 v1**: D `amazon`/`full_amazon`・即時ファサード。clasp push待ち。 |
 | 2026-07-25 | **D×Amazon U0クローズ**: 3者反映＋社長回答。手ZIP正／T3実装待ち／将来API必須。 |

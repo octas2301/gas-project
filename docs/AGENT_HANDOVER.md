@@ -99,6 +99,7 @@
 
 ## 6. 更新履歴
 
+- 2026-07-25: **U2方針確定**: 本線案α（MAIN＝マッチングsheet・子SKU行）、`02`＝出口、ε＝バックログ。[org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。次＝実装別承認。
 - 2026-07-25: **U3実機合格**（runId `LV4_20260725_072635_948892`）＋**U2要件起草** [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。T3／full_amazonはゲート維持。
 - 2026-07-25: **D×Amazon U3 v1**: Dに `amazon`/`full_amazon`。裏は `menuApprovalAmazonLv4Run`＋Daダイアログ。トリガー非搭載。[org/D_MENU_U3_HUMAN_RUN.md](org/D_MENU_U3_HUMAN_RUN.md)。次は clasp push。
 - 2026-07-25: **D×Amazon U0クローズ**: 3者多数決反映＋社長回答（手ZIP正／T3実装待ち／将来API必須）。[org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md](org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md)。次はU3別承認。
