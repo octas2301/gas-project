@@ -389,6 +389,10 @@ function onOpen() {
       .addItem('B-② 送料・競合価格修正後、価格を再設定（全モール）', 'menuRunPriceProposalOnly')
       .addItem('B-③ マスタレ点行の競合画像取得（必要時のみ実行）', 'menuB3MasterCheckedCompetitorImages')
       .addItem('C. 画像フォルダ保存⇒商品紐付け（少数推奨）', 'generateAiImageMatrix')
+      .addItem('C-Amazon① 枠追加＆マスタから復元', 'menuAmazonImageMatrixRestore')
+      .addItem('C-Amazon② Amazon候補を右に並べる', 'menuAmazonImageMatrixLoadCandidates')
+      .addItem('C-Amazon③ sheet→マスタ保存', 'menuAmazonImageMatrixPersist')
+      .addItem('C-Amazon④ Drive02へコピー出力', 'menuAmazonImageMatrixExportTo02')
       .addItem('D. 画像＋出品全モール一括アップロード（選択可）', 'showBatchExportModal')
       .addSubMenu(createZSplitMenu(ui))
       .addToUi();
@@ -20172,70 +20176,117 @@ function generateAiImageMatrix() {
     ui.alert('必須列（親SKU または 出品CK）が見つかりません'); return; 
   }
 
-  // --- 商品構造リスト作成 ---
-  const productGroups = {}; 
-  const displayRows = [];   
-  let currentPCode = "";
+  function isMasterCheckTrue_(v) {
+    return v === true || v === 1 || String(v).toUpperCase() === 'TRUE';
+  }
 
-  // ★追加: 候補エリアの上限数 (50枚)
+  // --- 商品構造リスト作成 ---
+  // 選定規則（2026-07-25）:
+  // ・子にレ点あり → その親＋レ点子のみ（兄弟セットは出さない）
+  // ・子レ点なし＆親のみレ点 → 従来どおり親＋全子（楽天運用互換）
+  const productGroups = {};
+  const displayRows = [];
   const CANDIDATE_LIMIT = 50;
-  
+  const parentMeta = {};
+
   for (let i = headerRowIdx + 1; i < mValues.length; i++) {
     const row = mValues[i];
     const pCode = String(row[idxP]).trim();
-    const cCode = (idxC !== undefined) ? String(row[idxC]).trim() : "";
-    
-    if (pCode === "") continue;
+    const cCode = (idxC !== undefined) ? String(row[idxC]).trim() : '';
+    if (pCode === '') continue;
 
-    if (cCode === "") {
-      const checkVal = row[idxCheck];
-      const isChecked = (checkVal === true || checkVal === 1 || String(checkVal).toUpperCase() === 'TRUE');
-      
-      if (isChecked) {
-        currentPCode = pCode;
-        const name = (idxName !== undefined) ? String(row[idxName]).trim() : "";
-        let refUrl = (idxRef !== -1) ? String(row[idxRef]).trim() : "";
-        
-        productGroups[pCode] = {
-          type: 'Parent',
-          pCode: pCode,
-          cCode: '',
-          name: name,
-          varName: '',
-          refImg: refUrl,
-          assignedMains: new Array(10).fill(''), 
-          assignedSubs: new Array(10).fill(''), 
-          assignedCandidates: new Array(CANDIDATE_LIMIT).fill(''), // ★候補枠を追加
-          children: [] 
-        };
-
-        
-        displayRows.push(productGroups[pCode]);
+    if (cCode === '') {
+      const name = (idxName !== undefined) ? String(row[idxName]).trim() : '';
+      let refUrl = (idxRef !== -1) ? String(row[idxRef]).trim() : '';
+      if (!parentMeta[pCode]) {
+        parentMeta[pCode] = { name: name, refImg: refUrl, parentChecked: false, children: [] };
       } else {
-        currentPCode = "";
+        if (name) parentMeta[pCode].name = name;
+        if (refUrl) parentMeta[pCode].refImg = refUrl;
       }
+      parentMeta[pCode].parentChecked = isMasterCheckTrue_(row[idxCheck]);
     } else {
-      // ★修正: 親が処理対象(レ点あり)の場合のみ子を追加。親が対象外ならスキップする安全装置
-      if (currentPCode === pCode && productGroups[pCode]) {
-        const varName = (idxVar !== undefined) ? String(row[idxVar]).trim() : "";
-        const childObj = {
-          type: 'Child',
-          pCode: pCode,
-          cCode: cCode,
-          name: productGroups[pCode].name,
-          varName: varName,
-          refImg: '', 
-          assignedMains: new Array(10).fill(''), 
-          assignedSubs: new Array(10).fill(''),
-          assignedCandidates: new Array(CANDIDATE_LIMIT).fill('') // ★候補枠を追加
-        };
-        productGroups[pCode].children.push(childObj);
-        displayRows.push(childObj);
+      if (!parentMeta[pCode]) {
+        parentMeta[pCode] = { name: '', refImg: '', parentChecked: false, children: [] };
       }
+      parentMeta[pCode].children.push({
+        cCode: cCode,
+        varName: (idxVar !== undefined) ? String(row[idxVar]).trim() : '',
+        checked: isMasterCheckTrue_(row[idxCheck])
+      });
     }
   }
 
-  if (displayRows.length === 0) { ui.alert('出品対象の商品がありません。'); return; }
+  function makeParentObj_(pCode, meta) {
+    return {
+      type: 'Parent',
+      pCode: pCode,
+      cCode: '',
+      name: meta.name || '',
+      varName: '',
+      refImg: meta.refImg || '',
+      assignedMains: new Array(10).fill(''),
+      assignedSubs: new Array(10).fill(''),
+      assignedCandidates: new Array(CANDIDATE_LIMIT).fill(''),
+      children: []
+    };
+  }
+
+  function makeChildObj_(parentObj, ch) {
+    return {
+      type: 'Child',
+      pCode: parentObj.pCode,
+      cCode: ch.cCode,
+      name: parentObj.name,
+      varName: ch.varName,
+      refImg: '',
+      assignedMains: new Array(10).fill(''),
+      assignedSubs: new Array(10).fill(''),
+      assignedCandidates: new Array(CANDIDATE_LIMIT).fill('')
+    };
+  }
+
+  Object.keys(parentMeta).forEach(function (pCode) {
+    const meta = parentMeta[pCode];
+    const checkedChildren = meta.children.filter(function (ch) { return ch.checked; });
+    let childrenToAdd = [];
+    let include = false;
+
+    if (checkedChildren.length > 0) {
+      include = true;
+      childrenToAdd = checkedChildren;
+    } else if (meta.parentChecked) {
+      include = true;
+      childrenToAdd = meta.children.slice();
+    }
+    if (!include) return;
+
+    const parentObj = makeParentObj_(pCode, meta);
+    productGroups[pCode] = parentObj;
+    displayRows.push(parentObj);
+    childrenToAdd.forEach(function (ch) {
+      const childObj = makeChildObj_(parentObj, ch);
+      parentObj.children.push(childObj);
+      displayRows.push(childObj);
+    });
+  });
+
+  Logger.log(
+    '[generateAiImageMatrix] selection parents=' +
+      Object.keys(productGroups).length +
+      ' displayRows=' +
+      displayRows.length +
+      ' (child-check優先 / 親のみレ点は全子)'
+  );
+
+  if (displayRows.length === 0) {
+    ui.alert(
+      '出品対象の商品がありません。\n' +
+        '・子SKU行に出品CKを付ける（推奨・その子だけ出ます）\n' +
+        '・または親行のみに出品CK（従来どおりその親の全子が出ます）'
+    );
+    return;
+  }
 
   // --- 2. 画像ファイルの準備 ---
   let sourceFolder, workFolder;
@@ -20404,7 +20455,14 @@ function generateAiImageMatrix() {
     sheet.getRange(3, 6, outputRows.length, 20).setBorder(true, true, true, true, true, true, '#0000ff', SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
   }
 
-  ui.alert('AI仕分け完了。\n・青枠内：アップロード対象\n・右側のグレー枠：候補・未整理\n\n必要な画像を右側から青枠内へドラッグ移動してください。');
+  // U2: Amazon 枠（col76+）＋マスタから復元（ENABLED時のみ）
+  try {
+    amazonImageMatrixOnAfterGenerate_(ss, sheet);
+  } catch (eAmz) {
+    console.warn('[generateAiImageMatrix] Amazon U2 hook: ' + ((eAmz && eAmz.message) || eAmz));
+  }
+
+  ui.alert('AI仕分け完了。\n・青枠内：アップロード対象（楽天）\n・右側のグレー枠：候補・未整理\n・列76以降：Amazon MAIN/PT（U2・Property有効時）\n\n必要な画像を右側から枠内へドラッグ移動してください。');
 }
 
 

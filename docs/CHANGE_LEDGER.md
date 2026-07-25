@@ -4,6 +4,9 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-25 | U2 HUMAN_RUN／CURRENT_PHASE／U2要件／AGENT_HANDOVER／CHANGE_LEDGER | **U2実機合格**記録（②③④・冪等D）。コード差分は同コミットの実装分 | **Git**: revert |
+| 2026-07-25 | `コード.js`（`generateAiImageMatrix` 選定）／U2 HUMAN_RUN／CURRENT_PHASE | C: 子レ点優先（親のみレ点は全子のまま）。候補=`07` Property済 | **Git**: revert 該当差分 |
+| 2026-07-25 | `AmazonImageMatrixExport.js`（新規）／`コード.js`（C-Amazonメニュー・フック）／U2 HUMAN_RUN／CURRENT_PHASE | U2 v1: sheet MAIN/PT・マスタ永続・02コピー。トグル既定false | **Property** OFF。**Git**: revert＋新規js削除 |
 | 2026-07-25 | `D_MENU_U2_THREE_REVIEW_MAJORITY.md`（新規）／U2要件／POC／D要件／CURRENT_PHASE 等 | 三点採用＋社長回答反映。コードなし | **Git**: `git revert` |
 | 2026-07-25 | `D_MENU_U2_…REQUIREMENTS.md`／D要件§7／CURRENT_PHASE | U2方針: 案α本線・MAIN=sheet紐付け・02=出口・εバックログ。コードなし | **Git**: `git revert` |
 | 2026-07-25 | U3実機合格記録／`D_MENU_U2_…REQUIREMENTS.md`（新規）／CURRENT_PHASE 等 | U3クローズ＋U2起草。コード追加なし（本行） | **Git**: `git revert` |

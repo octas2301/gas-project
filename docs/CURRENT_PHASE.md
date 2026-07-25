@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-25（U2 三点＋社長回答反映。コミット待ち）  
+**最終更新**: 2026-07-25（**U2 実機合格**）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,54 +8,28 @@
 ## 0. セッション引き継ぎ（2026-07-25）
 
 **場所**: **自宅PC（ローカル）**。この節を最初に読むこと。  
-**コミット**: **指示まで待つ**（三点反映 docs 未コミットの可能性）。  
-**clasp push**: T2・U3 済。
+**コミット**: U2 実機合格記録込みで実施可。  
+**clasp push**: U2 実機済（コードは GAS 反映済み前提）。
 
 ### 自宅PC起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U2 三点＋社長回答反映済**（マスタ永続／sheet復元、ONLY=sheet、候補=Amazon用フォルダ）。次は **コミット指示** → **U2実装前承認**。T3／ε／U7は各ゲート。
+> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U2 実機合格**（②③④・Drive `02` MAIN1件。D Amazonのみは `idempotentBlocked=1` 想定内／runId `LV4_20260725_094425_914290`）。Property `AMAZON_IMAGE_U2_ENABLED` は **false へ戻す**。次ゲートは T3／ε／U7（各承認）。
 
 ### いまの到達点（確定）
 | 項目 | 状態 |
 |------|------|
-| Lv4 HPC／FOOD／T2 | **完了** |
-| D×Amazon 要件 U0 | **クローズ** |
-| **U3 D UI** | **v1 実機合格** |
-| **U2 C×Amazon** | **三点＋社長回答反映済**。GAS未。次＝実装承認 |
-| T3／ε／Dc | 各ゲート／バックログ |
-
-### Amazon画像方針（要約）
-| 項目 | 方針 |
-|------|------|
-| MAIN紐付け | マッチング sheet・子SKU・人間 |
-| 永続 | **マスタ列**。再生成後はマスタ→sheet 復元 |
-| 候補 | **Amazon 用フォルダ**（楽天と分離） |
-| 出口 | Drive `02` へ**コピー** |
-| ONLY PT | sheet 本線（`02`手置き＝例外） |
-| ε | バックログ |
+| U3 D UI | **実機合格** |
+| U2 要件・三点 | **反映済** |
+| **U2 GAS v1** | **実機合格**（[HUMAN_RUN §0](org/D_MENU_U2_HUMAN_RUN.md)） |
 
 ### 次にやること（優先順）
-1. **コミット**（指示時）— MAJORITY＋U2要件＋POC 等  
-2. **U2 実装前承認**（変更ファイル一覧／概要／リスク＋HUMAN_RUN）  
-3. 実装 → clasp push → 実機  
-4. T3／ε／U7 は各ゲート  
-
-### IDs（常用）
-```
-U3 smoke runId: LV4_20260725_072635_948892
-T2 runId: R2T2_20260724_221107_7f9cf7
-subBatchId HPC: A1_20260721_083100_06b90a_B2
-Drive 02 ID: 1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84
-R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
-```
+1. Property: `AMAZON_IMAGE_U2_ENABLED=false`（未戻しなら）  
+2. T3／ε／U7 は各ゲート承認後  
+3. remote push は指示時  
 
 ### 正本・手順リンク
+- [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md)（**実機合格記録 §0**）  
 - [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)  
 - [org/D_MENU_U2_THREE_REVIEW_MAJORITY.md](org/D_MENU_U2_THREE_REVIEW_MAJORITY.md)  
-- [org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md](org/D_MENU_AMAZON_FACADE_REQUIREMENTS.md)  
-- [org/D_MENU_U3_HUMAN_RUN.md](org/D_MENU_U3_HUMAN_RUN.md)  
-- [org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md](org/D_MENU_AMAZON_FACADE_THREE_REVIEW_MAJORITY.md)  
-- [org/LV4_T2_HUMAN_RUN.md](org/LV4_T2_HUMAN_RUN.md)  
-- [org/LV4_R2_IMAGE_PIPELINE_POC.md](org/LV4_R2_IMAGE_PIPELINE_POC.md)  
 
 ---
 
@@ -72,21 +46,20 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Lv4 — U2三点反映済／次はコミット→実装承認**（§0）。  
+- **フォーカス領域**: **Lv4 — U2/U3 実機合格。次は T3／ε 等ゲート**（§0）。  
 - **Lv4（Amazonバルク）**:  
-  - HPC／FOOD／T2: 完了。  
-  - 画像: マスタ永続／sheet復元、候補=Amazon用フォルダ、`02`=コピー出口、ONLY=sheet。ε＝バックログ。  
-  - 本線UX: U3 実機合格。Cは [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。  
+  - HPC／FOOD／T2／U3／**U2**: 完了。  
+  - U2: `AmazonImageMatrixExport.js`＋C-Amazon①〜④＋C子レ点。  
+  - 本線UX記録: [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md) §0。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
 - **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
 - **Lv2（楽天）**: 2026-07-20 人間検収完了。  
 - **Lv1（承認キュー）**: 2026-07-17 人間検収完了。  
 
 - **このフェーズの完了条件（目安）**  
-  - HPC／FOOD／T2／U0／U3／**U2-0 三点反映**: **達成**。  
-  - 次: コミット → U2 実装承認。  
+  - U2: **実機合格達成**。  
 
-- **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／xlsm自動C1。  
+- **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／xlsm自動C1／ε。  
 
 - **スコープ外（次モール着手前）**  
   - 承認②、販売中SKU無人上書き、clasp push 自動化。  
@@ -106,10 +79,9 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 ## 4. 次にやること（優先順）
 
-1. **コミット**（指示時）。  
-2. **U2 実装前承認** → 実装。  
-3. T3・ε・U7・M2 は各ゲート。  
-4. Property トグルは実行時のみ true。  
+1. Property `AMAZON_IMAGE_U2_ENABLED=false`（未戻しなら）。  
+2. T3／ε／U7 は各ゲート承認後。  
+3. remote `git push` は指示時。  
 
 ---
 
@@ -131,6 +103,8 @@ R2 public: https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | **U2 実機合格**: ②③④・`02` MAIN1件。Dは冪等ブロック想定内（`LV4_20260725_094425_914290`）。 |
+| 2026-07-25 | **C子レ点選定**＋候補`07` Property済。次=clasp push→HUMAN_RUN。 |
 | 2026-07-25 | **U2三点＋社長回答反映**（MAJORITY新規）。コミット待ち。 |
 | 2026-07-25 | **U2方針確定**: 案α本線・MAIN=sheet／02=出口・εバックログ。 |
 | 2026-07-25 | **U3実機合格**＋**U2要件起草**。runId `LV4_20260725_072635_948892`。 |

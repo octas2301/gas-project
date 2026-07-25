@@ -1,8 +1,8 @@
 # U2 — C（画像）× Amazon MAIN／サブ（REUSE）要件
 
-**文書種別**: 要件定義（**コード未着手・実装は別承認**）  
+**文書種別**: 要件定義（**U2 v1 実機合格**）  
 **最終更新**: 2026-07-25  
-**状態**: **三点レビュー反映済＋社長回答反映済**（実装は別承認）  
+**状態**: **実機合格**（[HUMAN_RUN §0](D_MENU_U2_HUMAN_RUN.md)）
 **親**: [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §7 ・ [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) §2.1 ・ [BATCH_EXPORT_IMAGE_GATE_REQUIREMENTS.md](../BATCH_EXPORT_IMAGE_GATE_REQUIREMENTS.md)  
 **多数決**: [D_MENU_U2_THREE_REVIEW_MAJORITY.md](D_MENU_U2_THREE_REVIEW_MAJORITY.md)  
 **依存クローズ**: U3 v1 実機合格（2026-07-25）
@@ -157,11 +157,11 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 | ID | 内容 | 状態 |
 |----|------|------|
-| **U2-0** | 本要件＋三点＋社長回答 | **クローズ相当（実装前）** |
-| **U2-1** | sheet Amazon MAIN／PT 枠・モード・マスタ永続・再生成復元 | 未・要実装承認 |
-| **U2-2** | コピー → Drive `02`（上書きルール・フラット） | 未・要実装承認 |
-| **U2-3** | ログ（runId／stepName／state／mode／sku／枚数） | U2-1 と同時 |
-| **U2-HR** | HUMAN_RUN（実機検収手順） | 実装承認と同時推奨 |
+| **U2-0** | 本要件＋三点＋社長回答 | **クローズ** |
+| **U2-1** | sheet Amazon MAIN／PT 枠・モード・マスタ永続・再生成復元 | **実機合格**（`AmazonImageMatrixExport.js`） |
+| **U2-2** | コピー → Drive `02` | **実機合格**（MAIN成功=1） |
+| **U2-3** | ログ | **v1 実装**（Logger） |
+| **U2-HR** | HUMAN_RUN | **実機合格** → [D_MENU_U2_HUMAN_RUN.md](D_MENU_U2_HUMAN_RUN.md) §0 |
 | **U2-ε** | 自動＋修正のみ | **バックログ** |
 
 ### 実装承認パッケージ（必須添付）
@@ -178,15 +178,16 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 - [x] 本線α／εバックログ  
 - [x] 三点レビュー＋社長回答反映（[MAJORITY](D_MENU_U2_THREE_REVIEW_MAJORITY.md)）  
-- [ ] 実装前承認（§8 パッケージ）  
+- [x] 実装前承認（§8 パッケージ）— 2026-07-25「実装に進んで」  
+- [x] 人間: `clasp push` → [HUMAN_RUN](D_MENU_U2_HUMAN_RUN.md) 実機 — **2026-07-25 合格**  
 
 ### 実装フェーズ（案）
 
-- [ ] MAIN＝sheet＋マスタ永続＋再生成復元  
-- [ ] `02` コピー出力・命名  
-- [ ] ONLY PT＝sheet  
-- [ ] 楽天／Yahoo 経路退行なし  
-- [ ] HUMAN_RUN 実機合格  
+- [x] MAIN＝sheet＋マスタ永続＋再生成復元（③列追加・更新行=2）  
+- [x] `02` コピー出力・命名（④ MAIN成功=1）  
+- [ ] ONLY PT＝sheet（本試験は `REUSE_RAKUTEN`／PT=0。ONLY は別サンプルで可）  
+- [x] 楽天／Yahoo 経路退行なし（本試験範囲：楽天アップ未実行・Amazon枠のみ）  
+- [x] HUMAN_RUN 実機合格  
 
 ---
 
@@ -207,6 +208,8 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 > **三点＋社長（2026-07-25）**: ONLY PT＝sheet（`02`手置き＝例外）。永続＝マスタ列／再生成後はマスタ→sheet復元。白抜き候補＝Amazon用フォルダ分離。マトリクス制約・コピー出力・非退行検収を要件化。
 
+> **実機合格（2026-07-25）**: ②③④・Drive `02` に MAIN1件。D Amazonのみは `idempotentBlocked=1`（runId `LV4_20260725_094425_914290`）想定内。
+
 実装着手は別途「変更予定ファイル一覧／概要／リスク」承認が必要。
 
 ---
@@ -215,6 +218,8 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-25 | **実機合格**記録。C子レ点・候補`07`。 |
+| 2026-07-25 | U2 v1 実装: `AmazonImageMatrixExport.js`＋Cメニュー。HUMAN_RUN。 |
 | 2026-07-25 | 三点採用＋社長回答反映。マスタ永続／復元、ONLY=sheet、候補フォルダ分離、§3.2制約、POC整合。 |
 | 2026-07-25 | 本線α確定・MAIN＝sheet／`02`＝出口・εバックログ。 |
 | 2026-07-25 | 初版起草。 |
