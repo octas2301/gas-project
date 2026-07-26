@@ -30,6 +30,7 @@
 | `AMAZON_IMAGE_U2_ENABLED` | `true`（実行時のみ。終わったら **false**） |
 | `AMAZON_IMAGE_CANDIDATE_FOLDER_ID` | Drive `07.Amazon白抜き候補（入力）` の ID（例: `1IRWfwLtZOoacDmIUWWbuLBC9xcMbjQjf`）。楽天ソースと分離 |
 | `AMAZON_DRIVE_IMAGE_FOLDER_ID` | Drive `02`（空なら既定 ID・出口のみ） |
+| `AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED` | 未設定＝**有効**。④で02コピー成功した候補だけ `07/アップロード済み画像` へ退避。`false` でOFF |
 
 オフ推奨: `AMAZON_DRIVE_R2_UPLOAD_ENABLED=false`
 
@@ -66,7 +67,7 @@ Amazon 試験は **対象セットの子だけにレ点**を付ける。
 6. 各 **子SKU行**の `Amazon MAIN` に白抜きをドラッグ。モード列に `REUSE_RAKUTEN` / `AMAZON_ONLY`  
 7. ONLY なら `Amazon PT01…` にも  
 8. **C-Amazon③** sheet→マスタ保存  
-9. **C-Amazon④** Drive `02` へコピー（`{子SKU}.MAIN.jpg`）  
+9. **C-Amazon④** Drive `02` へコピー（`{子SKU}.MAIN.jpg`）。**コピー成功した候補画像だけ** `07/アップロード済み画像` へ自動退避（未使用は `07` 直下に残る）  
 10. （任意）D → Amazonのみ  
 
 ### 再生成後

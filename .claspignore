@@ -4,6 +4,9 @@ export-tax-list/**
 広告運用GAS/**
 inventory-app/**
 
+# ローカル専用ツール（GAS へ送らない。xlsm/CSVもここに置かない）
+tools/**
+
 # ドキュメント・参考資料（GAS コードではない。push 対象外）
 docs/**
 参考資料/**

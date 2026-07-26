@@ -992,6 +992,208 @@ function getYahooAccessToken(mapSheet) {
   return json.access_token;
 }
 
+/** SHPカテゴリ検索（プロダクトカテゴリ正本）。出品 editItem は触らない。 */
+var YAHOO_SHP_CATEGORY_LIST_URL = 'https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/getShopCategoryList';
+
+/**
+ * Yahooマッピングシートから SHP 用トークン＋seller_id を取得。
+ * @return {{error:string|null, token:string, sellerId:string}}
+ */
+function yahooGetShpAuthContext_() {
+  var out = { error: null, token: '', sellerId: '' };
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var mapSheet = ss.getSheetByName(SHEET_NAME_YAHOO_MAP);
+    if (!mapSheet) {
+      out.error = '▼設定(Yahooマッピング) なし';
+      return out;
+    }
+    out.sellerId = String(mapSheet.getRange('B15').getValue() || '').trim();
+    if (!out.sellerId) {
+      out.error = 'seller_id(B15) 空';
+      return out;
+    }
+    out.token = getYahooAccessToken(mapSheet);
+    if (!out.token) {
+      out.error = 'access_token 空';
+      return out;
+    }
+    return out;
+  } catch (e) {
+    out.error = (e && e.message) ? e.message : String(e);
+    return out;
+  }
+}
+
+/**
+ * getShopCategoryList を呼び、カテゴリ配列を返す。
+ * @param {string} token
+ * @param {string} sellerId
+ * @param {string} query 必須（空不可）
+ * @param {string} [categoryCode]
+ * @param {number} [results=25]
+ * @return {{error:string|null, categories:Array<{code:string,name:string,pathName:string}>}}
+ */
+function fetchYahooShpCategoryList_(token, sellerId, query, categoryCode, results) {
+  var result = { error: null, categories: [] };
+  var q = query != null ? String(query).trim() : '';
+  if (!q) {
+    result.error = 'query 必須';
+    return result;
+  }
+  if (!token || !sellerId) {
+    result.error = 'token/sellerId 不足';
+    return result;
+  }
+  var limit = Math.min(Math.max(Number(results) || 25, 1), 100);
+  var url = YAHOO_SHP_CATEGORY_LIST_URL +
+    '?seller_id=' + encodeURIComponent(sellerId) +
+    '&query=' + encodeURIComponent(q) +
+    '&results=' + limit;
+  if (categoryCode != null && String(categoryCode).trim() !== '') {
+    url += '&category_code=' + encodeURIComponent(String(categoryCode).trim());
+  }
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { Authorization: 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    var code = res.getResponseCode();
+    var text = res.getContentText() || '';
+    if (code !== 200) {
+      result.error = 'HTTP ' + code + ' ' + text.substring(0, 200);
+      Logger.log('[YahooSHP] getShopCategoryList ' + result.error);
+      return result;
+    }
+    result.categories = yahooParseShpCategoryListXml_(text);
+    return result;
+  } catch (e) {
+    result.error = (e && e.message) ? e.message : String(e);
+    Logger.log('[YahooSHP] 例外: ' + result.error);
+    return result;
+  }
+}
+
+/**
+ * getShopCategoryList の XML を配列に。Id/CategoryCode・Name/CategoryName・PathName 両対応。
+ * @param {string} xmlText
+ * @return {Array<{code:string,name:string,pathName:string}>}
+ */
+function yahooParseShpCategoryListXml_(xmlText) {
+  var out = [];
+  if (!xmlText) return out;
+  try {
+    var doc = XmlService.parse(xmlText);
+    var root = doc.getRootElement();
+    var results = root.getChildren('Result');
+    for (var i = 0; i < results.length; i++) {
+      var el = results[i];
+      var code = yahooXmlChildText_(el, 'CategoryCode') || yahooXmlChildText_(el, 'Id');
+      var name = yahooXmlChildText_(el, 'CategoryName') || yahooXmlChildText_(el, 'Name');
+      var pathName = yahooXmlChildText_(el, 'PathName') || '';
+      if (code) {
+        out.push({
+          code: String(code).trim(),
+          name: String(name || '').trim(),
+          pathName: String(pathName || '').trim()
+        });
+      }
+    }
+  } catch (e) {
+    Logger.log('[YahooSHP] XML parse fail: ' + ((e && e.message) || e));
+  }
+  return out;
+}
+
+function yahooXmlChildText_(parentEl, childName) {
+  if (!parentEl || !childName) return '';
+  var child = parentEl.getChild(childName);
+  if (!child) return '';
+  var t = child.getText();
+  return t != null ? String(t).trim() : '';
+}
+
+/** SHPブランドコード検索（正本）。出品 editItem は触らない。 */
+var YAHOO_SHP_BRAND_LIST_URL = 'https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/getShopBrandList';
+
+/**
+ * getShopBrandList を呼ぶ。
+ * @param {string} token
+ * @param {string} sellerId
+ * @param {string} query 必須
+ * @param {string} [type] all|code|name（既定 all）
+ * @param {number} [results=25]
+ * @return {{error:string|null, brands:Array<{code:string,name:string,jtitle:string,pathName:string}>}}
+ */
+function fetchYahooShpBrandList_(token, sellerId, query, type, results) {
+  var result = { error: null, brands: [] };
+  var q = query != null ? String(query).trim() : '';
+  if (!q) {
+    result.error = 'query 必須';
+    return result;
+  }
+  if (!token || !sellerId) {
+    result.error = 'token/sellerId 不足';
+    return result;
+  }
+  var limit = Math.min(Math.max(Number(results) || 25, 1), 100);
+  var searchType = type ? String(type).trim() : 'all';
+  var url = YAHOO_SHP_BRAND_LIST_URL +
+    '?seller_id=' + encodeURIComponent(sellerId) +
+    '&query=' + encodeURIComponent(q) +
+    '&type=' + encodeURIComponent(searchType) +
+    '&results=' + limit;
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { Authorization: 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+    var code = res.getResponseCode();
+    var text = res.getContentText() || '';
+    if (code !== 200) {
+      result.error = 'HTTP ' + code + ' ' + text.substring(0, 200);
+      Logger.log('[YahooSHP] getShopBrandList ' + result.error);
+      return result;
+    }
+    result.brands = yahooParseShpBrandListXml_(text);
+    return result;
+  } catch (e) {
+    result.error = (e && e.message) ? e.message : String(e);
+    Logger.log('[YahooSHP] brand 例外: ' + result.error);
+    return result;
+  }
+}
+
+function yahooParseShpBrandListXml_(xmlText) {
+  var out = [];
+  if (!xmlText) return out;
+  try {
+    var doc = XmlService.parse(xmlText);
+    var root = doc.getRootElement();
+    var results = root.getChildren('Result');
+    for (var i = 0; i < results.length; i++) {
+      var el = results[i];
+      var code = yahooXmlChildText_(el, 'BrandCode') || yahooXmlChildText_(el, 'Id');
+      var name = yahooXmlChildText_(el, 'BrandName') || yahooXmlChildText_(el, 'Name');
+      var jtitle = yahooXmlChildText_(el, 'BrandJtitle') || '';
+      var pathName = yahooXmlChildText_(el, 'PathName') || '';
+      if (code) {
+        out.push({
+          code: String(code).trim(),
+          name: String(name || '').trim(),
+          jtitle: String(jtitle || '').trim(),
+          pathName: String(pathName || '').trim()
+        });
+      }
+    }
+  } catch (e) {
+    Logger.log('[YahooSHP] brand XML parse fail: ' + ((e && e.message) || e));
+  }
+  return out;
+}
+
 function logYahooEvent(type, code, message, detail) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME_LOG);

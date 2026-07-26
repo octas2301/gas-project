@@ -1,35 +1,62 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-25（**U2 実機合格**）  
+**最終更新**: 2026-07-27（**安眠 C1→SC送信済・外出先確認待ち**）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-07-25）
+## 0. セッション引き継ぎ（2026-07-27）
 
-**場所**: **自宅PC（ローカル）**。この節を最初に読むこと。  
-**コミット**: U2 実機合格記録込みで実施可。  
-**clasp push**: U2 実機済（コードは GAS 反映済み前提）。
+**場所**: 外出先確認 → 帰宅後ローカル。この節を最初に読むこと。  
+**コミット**: 指示時。  
+**clasp push**: **メニューE**（`コード.js`）要（未 push なら E-5 前に自宅で）。
 
-### 自宅PC起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を最初に読め。**U2 実機合格**（②③④・Drive `02` MAIN1件。D Amazonのみは `idempotentBlocked=1` 想定内／runId `LV4_20260725_094425_914290`）。Property `AMAZON_IMAGE_U2_ENABLED` は **false へ戻す**。次ゲートは T3／ε／U7（各承認）。
+### 起動時に貼る一文
+> `docs/CURRENT_PHASE.md` §0 を読め。安眠は **SCキュー済** → 結果確認 → **E-5**（`A1_20260726_225610_4f0558_B2`）。ファイル名の `relax` は接頭辞のみ・中身は0924。
 
-### いまの到達点（確定）
+### いまの到達点（安眠・確定）
 | 項目 | 状態 |
 |------|------|
-| U3 D UI | **実機合格** |
-| U2 要件・三点 | **反映済** |
-| **U2 GAS v1** | **実機合格**（[HUMAN_RUN §0](org/D_MENU_U2_HUMAN_RUN.md)） |
+| E-0〜E-4 | **済**（GENERATED=`A1_20260726_225610_4f0558_B2`） |
+| C1 fetch／dry_run／prod | **済**（親`lifec-4560151300924-oya`／子`…-19s124`） |
+| SC 送信 | **済**（2026-07-27 01:16・`relax_PACKAGED_HPC_lifec-4560151300924-oya.xlsm`・Batch `182816020660`・当時はキュー） |
+| E-5／21-③ | **未**（SC成功後） |
+| U3／U2／T2／U4／C1(relax初回) | **実機合格**（別SKU） |
+| **メニューE** | **実装済・要 clasp push** |
 
-### 次にやること（優先順）
-1. Property: `AMAZON_IMAGE_U2_ENABLED=false`（未戻しなら）  
-2. T3／ε／U7 は各ゲート承認後  
-3. remote push は指示時  
+### 外出先でできること（スマホOK）— 優先順
+
+詳細: [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)
+
+1. **Seller Central**「アップロードのステータス」で同ファイル／Batch `182816020660` を確認  
+   - 成功／警告／失敗の件数をメモ（スクショ可）  
+   - 処理サマリ xlsm があれば Drive／SC から確認  
+2. **成功なら**（Sheets がモバイルでメニュー使える場合）: **E-5** に  
+   `A1_20260726_225610_4f0558_B2`  
+   （**`relax` は入れない**）  
+3. マスタで親・子の掲載／ASIN／在庫の見た目だけ確認（任意）  
+4. 失敗／大量警告なら: エラー文言をメモ → **自宅で再PACKAGED／再UP**（外出先では触らない）  
+5. Cursor／チャットに結果を貼るだけで翌日 Agent 継続可  
+
+### 外出先ではやらない（自宅PC）
+- `c1_packaged`／fetch／Python  
+- `clasp push`／Property トグル変更  
+- 失敗時の xlsm 再生成・再送信の本作業  
+
+### 帰宅後（自宅）
+1. E-5 未なら PC の Sheets で実行  
+2. SC 合格記録を [C1 HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md) に追記（指示時）  
+3. `config.generated_csv` を `{subBatchId}_GENERATED.csv` 形式へ（`relax` 固定をやめる・任意）  
+4. コミット／push は指示時  
 
 ### 正本・手順リンク
-- [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md)（**実機合格記録 §0**）  
-- [org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](org/D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)  
-- [org/D_MENU_U2_THREE_REVIEW_MAJORITY.md](org/D_MENU_U2_THREE_REVIEW_MAJORITY.md)  
+- [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)（**外出先・安眠SC確認**）  
+- [org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md](org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)  
+- [org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)／[org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)  
+- [YAHOO_CATEGORY_BRAND_STAGE.md](YAHOO_CATEGORY_BRAND_STAGE.md)／[org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md](org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md)／[org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)  
+- [org/D_MENU_C1_HUMAN_RUN.md](org/D_MENU_C1_HUMAN_RUN.md)  
+- [org/D_MENU_C1_MASTER_HPC_COLUMN_MAP.md](org/D_MENU_C1_MASTER_HPC_COLUMN_MAP.md)  
+- [org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md](org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)  
 
 ---
 
@@ -59,7 +86,7 @@
 - **このフェーズの完了条件（目安）**  
   - U2: **実機合格達成**。  
 
-- **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／xlsm自動C1／ε。  
+- **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／ε（C1は本線・§0優先）。  
 
 - **スコープ外（次モール着手前）**  
   - 承認②、販売中SKU無人上書き、clasp push 自動化。  
@@ -90,7 +117,7 @@
 | テーマ | ドキュメント |
 |--------|----------------|
 | **AI組織・承認** | [org/AI_ORG_CHARTER.md](org/AI_ORG_CHARTER.md)、[org/AI_APPROVAL_MATRIX.md](org/AI_APPROVAL_MATRIX.md)、[org/THREE_REVIEW_RUNBOOK.md](org/THREE_REVIEW_RUNBOOK.md)、[org/PHASE0_THREE_REVIEW_MAJORITY.md](org/PHASE0_THREE_REVIEW_MAJORITY.md)、[org/LEVELLED_IMPLEMENTATION_PLAN.md](org/LEVELLED_IMPLEMENTATION_PLAN.md)、[org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md](org/LV1_APPROVAL_QUEUE_REQUIREMENTS.md)、[org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](org/LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md)、[org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](org/LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md)、[org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md)、[org/LV4_THREE_REVIEW_MAJORITY.md](org/LV4_THREE_REVIEW_MAJORITY.md) |
-| 楽天ジャンル Nav（並行） | [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)（Stage0）、[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)（Stage1要件） |
+| 楽天ジャンル Nav（並行） | [RAKUTEN_NAV_GENRE_DIAG.md](RAKUTEN_NAV_GENRE_DIAG.md)（Stage0）、[RAKUTEN_NAV_GENRE_STAGE1.md](RAKUTEN_NAV_GENRE_STAGE1.md)（Stage1）、[RAKUTEN_NAV_GENRE_STAGE3.md](RAKUTEN_NAV_GENRE_STAGE3.md)（**Stage3都度API・実装済・要push**） |
 | Gemini / OpenAI・11-③ vs B Step7・429 | [AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md) |
 | 商品マスタ人間作業エリア | [商品マスタ_人間作業エリアとマスタエリア_要件定義.md](商品マスタ_人間作業エリアとマスタエリア_要件定義.md) |
 | 価格・送料・再③・B 統合 | [PRICING_V1_REQUIREMENTS.md](PRICING_V1_REQUIREMENTS.md)、AGENT_HANDOVER **§8** |
@@ -103,6 +130,18 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-26 | **メニュー8緊急修正**: sync除外。要 clasp push。 |
+| 2026-07-26 | **メニュー8 v1実装**: Z→7.5・空欄のみ採用。次＝clasp push→HUMAN_RUN。 |
+| 2026-07-26 | **メニュー8要件＋承認パッケージ**: Amazon AI生成＆一括採用（M-A・空欄のみ・要確認列ごと）。実装承認待ち。 |
+| 2026-07-26 | **C1-1b実装**（master_csv・必須列・タックスはマスタ）。次＝未送信SKUでSC。 |
+| 2026-07-26 | **C1列マップ下書き**（成功PACKAGED差分・SC必須列）。次＝C1-1b。 |
+| 2026-07-26 | **C1実装承認**（`tools/c1_hpc_packaged`・HUMAN_RUN手順）。次＝実機。 |
+| 2026-07-26 | **C1三点反映**（MAJORITY・URL空スキップ・親一式除外・指紋v1本番停止）。次＝実装承認。 |
+| 2026-07-26 | **C1要件起草**（ローカル本線・HPC・DRY_RUN・03新規）。次＝3者。 |
+| 2026-07-26 | **U4 実機合格**: 21-⑦ `U4_20260726_090920_1366af`・マスタ URL 確認。D冪等は想定内。 |
+| 2026-07-26 | **U4 v1 実装**: 21-⑦・GENERATED Amazon URL優先。次=clasp push＋HUMAN_RUN。 |
+| 2026-07-26 | **U4要件＋承認パッケージ起草**。次＝社長実装承認。 |
+| 2026-07-26 | **T2再検証合格**: `80s10` URL単独・18320なし・店頭OK。T3急がない。候補退避 clasp push済。 |
 | 2026-07-25 | **U2 実機合格**: ②③④・`02` MAIN1件。Dは冪等ブロック想定内（`LV4_20260725_094425_914290`）。 |
 | 2026-07-25 | **C子レ点選定**＋候補`07` Property済。次=clasp push→HUMAN_RUN。 |
 | 2026-07-25 | **U2三点＋社長回答反映**（MAJORITY新規）。コミット待ち。 |

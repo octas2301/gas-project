@@ -1,0 +1,3 @@
+track,parentSku,childSku,sellerSku,manufacturerPart,productName,brand,priceAmazon,inventory,gtin,asin,mainImageUrl,subImageUrls,amazonCategory,setCount,shippingTemplate,variationRole
+B,lifec-4560151300139-oya,,lifec-4560151300139-oya,,アルコール パッチテスト テスト親,ノーブランド品,999,0,,,https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev/lifec-4560151300139-oya.MAIN.jpg,,ドラッグストア,0,送料無料パターン,parent
+B,lifec-4560151300139-oya,lifec-4560151300139-80s10,lifec-4560151300139-80s10,ALCOHOL,アルコール パッチテスト テスト子,ノーブランド品,1379,0,,,https://pub-d974bd81c7d84f9bbc65f8479d3f85d4.r2.dev/lifec-4560151300139-80s10.MAIN.jpg,,ドラッグストア,2箱/6枚,送料無料パターン,child

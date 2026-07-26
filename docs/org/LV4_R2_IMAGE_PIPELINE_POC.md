@@ -151,25 +151,21 @@ R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET / R2_PUBLIC_
 
 ## 5. xlsm 仕上げ（⑤）— **提案のみ・実装は後確定**
 
-### 5.1 社長懸念（採用）
+### 5.1 社長懸念（採用・継続）
 
 Amazonバルクの **項目・選択肢・推奨値はテンプレ更新で変わり得る**。  
 固定スクリプトだけで毎回塗り続けると、列ずれ・許容値外れで **精度が落ちる**可能性がある。  
-よって **Cursor（都度テンプレ／成功DBを見ながら埋める）を当面の正**とし、完全自動ローカル埋めは急がない。
+よって **DRY_RUN・HPC限定・03新規のみ**を必須化し、完全無人は急がない。
 
-### 5.2 選択肢（後で精度を見て選ぶ）
+### 5.2 選択肢と状態（2026-07-26）
 
-| 案 | 内容 | 精度リスク | 備考 |
-|----|------|------------|------|
-| **C0（当面の正）** | Cursor／手作業で PACKAGED → 03へ保存 | 低い（都度確認） | いまの titlefix ルート |
-| **C1（提案）** | ローカル短い処理: 06純正＋GENERATED＋URL → 03 | 中〜高（テンプレ変更に弱い） | **精度観察後に採否** |
-| **C2（提案）** | C1＋`accepted_values_db`／最新純正の差分チェックを必須化 | 中 | 自動の前提条件が重い |
+| 案 | 内容 | 状態 |
+|----|------|------|
+| **C0** | Cursor／手作業で PACKAGED → 03 | 当面併用可（C1未完了時） |
+| **C1** | ローカル／Cursor: 06純正＋GENERATED＋U4 URL → 03新規。DRY_RUN必須。指紋v1／親一式除外 | **実装承認済** → [HUMAN_RUN](D_MENU_C1_HUMAN_RUN.md)／`tools/c1_hpc_packaged`。次＝実機 |
+| **C2** | C1＋accepted_values_db／純正差分チェック | 後続 |
 
-**確定ポリシー（2026-07-24）**:
-
-- ⑤の自動実装は **まだしない**  
-- C1/C2は提案として残す  
-- 採否は「SC成功率が手作業／Cursorと同等以上」を見てから  
+**方針ロック（2026-07-26）**: C1本線＝ローカル／Cursor。GASのxlsm直編集はv1外。06読取のみ・03新規・U4 URL優先・HPCのみ。
 
 GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.xlsm`（VBA・行5属性マップ）を安全に量産すること**。スプレッドシート／CSV／ZIPはGAS向き。
 
@@ -191,8 +187,8 @@ GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.x
 | T1 | `04` フォルダ01〜06＋Folder ID控え | — | **済**（Property未登録） |
 | T2 | GAS: Drive→R2（1SKU PoC）＋ログ | T1・R2キー | **済**（21-⑥・runId `R2T2_20260724_221107_7f9cf7`） |
 | T3 | GAS: ZIP生成→04 | T2 | **実装待ち**（手ZIP＝当面の正。§11.0 18320をT2不足証跡。[D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §6.4。別実装承認） |
-| T4 | GENERATED への画像URL連携 | T2 | 未着手（D要件 U4） |
-| T5 | xlsm自動（C1） | 精度レビュー後 | **当面スキップ** |
+| T4 | GENERATED／マスタへの画像URL連携（D要件 U4） | T2 | **実機合格** → [HUMAN_RUN §0](D_MENU_U4_HUMAN_RUN.md) |
+| T5 | xlsm自動（C1） | U4・精度 | **実装承認済** → [HUMAN_RUN](D_MENU_C1_HUMAN_RUN.md)／`tools/c1_hpc_packaged` |
 
 **C（画像紐付け）**: 本線は **案α**（既存 `★画像AIマッチング` 拡張）。Amazon MAIN は **子SKU行で人間紐付け** → Drive `02` 出力。サブは `REUSE_RAKUTEN`／`AMAZON_ONLY`。将来 **ε**（自動＋修正のみ）はバックログ。詳細 [D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)。親 [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §7。
 
@@ -252,6 +248,7 @@ GASが苦手なのは「Excelが一切できない」ではなく、**純正 `.x
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-26 | §5 C1本線化・要件リンク。T5＝要件起草／次＝3者。 |
 | 2026-07-25 | U2三点＋社長回答に合わせ §2表・§2.1・§3 を案α整合（02＝出口、候補＝Amazon用フォルダ）。 |
 | 2026-07-25 | C: 案α本線・MAIN=sheet／02=出口・εバックログ（U2方針）を §7 相当に反映。 |
 | 2026-07-24 | T2実装: `AmazonDriveImageExport.js`＋21-⑥。人間手順 LV4_T2_HUMAN_RUN。 |

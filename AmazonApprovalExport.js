@@ -43,10 +43,13 @@ var APPROVAL_AMAZON_LV4_LOG_HEADERS = [
  */
 /**
  * メニュー 21-① / D×Amazon ファサード共用。
+ * @param {{silent?:boolean}=} opts silent=true なら確認・成功ダイアログなし（エラー時のみ alert）
  * @return {{ok:boolean, cancelled?:boolean, runId?:string, track?:string, summary?:Object, reason?:string, error?:string}}
  */
-function menuApprovalAmazonLv4Run() {
+function menuApprovalAmazonLv4Run(opts) {
   var fn = 'menuApprovalAmazonLv4Run';
+  opts = (opts && typeof opts === 'object') ? opts : {};
+  var silent = !!opts.silent;
   if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_PROP, false)) {
     var off = 'Lv4 Amazonは無効です。Script Properties の ' + APPROVAL_AMAZON_LV4_PROP + ' を true にしてください。';
     Logger.log('[' + fn + '] state=FAILED ' + off);
@@ -63,45 +66,49 @@ function menuApprovalAmazonLv4Run() {
     try { SpreadsheetApp.getUi().alert(noTrack); } catch (eT) {}
     return { ok: false, reason: noTrack };
   }
-  try {
-    var ui = SpreadsheetApp.getUi();
-    var skip = getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SKIP_EXPORT_PROP, false);
-    var ship = amazonApprovalLv4ShippingTemplate_();
-    var res = ui.alert(
-      'Lv4 Amazonバルク（GENERATED）',
-      '最新の承認①（APPROVED）の Amazon 明細を対象に、埋め用データを Drive へ出力します。\n' +
-        '・TRACK=' + track + '\n' +
-        '・配送テンプレ=' + ship + '\n' +
-        '・マスタ在庫・JANは書き込みません\n' +
-        '・純正 .xlsm / Seller Central UP は人間作業です\n' +
-        (skip ? '・SKIP_EXPORT=true（ドライラン・Drive未書込）\n' : '') +
-        '\n実行しますか？',
-      ui.ButtonSet.OK_CANCEL
-    );
-    if (res !== ui.Button.OK) return { ok: false, cancelled: true };
-  } catch (eUi) {}
+  if (!silent) {
+    try {
+      var ui = SpreadsheetApp.getUi();
+      var skip = getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SKIP_EXPORT_PROP, false);
+      var ship = amazonApprovalLv4ShippingTemplate_();
+      var res = ui.alert(
+        'Lv4 Amazonバルク（GENERATED）',
+        '最新の承認①（APPROVED）の Amazon 明細を対象に、埋め用データを Drive へ出力します。\n' +
+          '・TRACK=' + track + '\n' +
+          '・配送テンプレ=' + ship + '\n' +
+          '・マスタ在庫・JANは書き込みません\n' +
+          '・純正 .xlsm / Seller Central UP は人間作業です\n' +
+          (skip ? '・SKIP_EXPORT=true（ドライラン・Drive未書込）\n' : '') +
+          '\n実行しますか？',
+        ui.ButtonSet.OK_CANCEL
+      );
+      if (res !== ui.Button.OK) return { ok: false, cancelled: true };
+    } catch (eUi) {}
+  }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var runId = 'LV4_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') + '_' +
     ('000000' + Math.floor(Math.random() * 1e6)).slice(-6);
-  Logger.log('[' + fn + '] state=RUNNING runId=' + runId + ' track=' + track);
+  Logger.log('[' + fn + '] state=RUNNING runId=' + runId + ' track=' + track + ' silent=' + silent);
   try {
     var summary = amazonApprovalLv4Run_(ss, runId, 0, null, track);
     Logger.log('[' + fn + '] state=DONE runId=' + runId + ' ' + JSON.stringify(summary));
-    try {
-      SpreadsheetApp.getUi().alert(
-        'Lv4 実行結果',
-        'runId=' + runId +
-          '\nbatchId=' + (summary.batchId || '') +
-          '\ntrack=' + track +
-          '\nサブバッチ完了=' + summary.subBatchesDone +
-          '\n親成功=' + summary.parentsDone +
-          '\nスキップ=' + summary.skipped +
-          '\n継続待ち=' + (summary.willResume ? 'YES' : 'NO') +
-          '\n' + (summary.message || ''),
-        SpreadsheetApp.getUi().ButtonSet.OK
-      );
-    } catch (e1) {}
+    if (!silent) {
+      try {
+        SpreadsheetApp.getUi().alert(
+          'Lv4 実行結果',
+          'runId=' + runId +
+            '\nbatchId=' + (summary.batchId || '') +
+            '\ntrack=' + track +
+            '\nサブバッチ完了=' + summary.subBatchesDone +
+            '\n親成功=' + summary.parentsDone +
+            '\nスキップ=' + summary.skipped +
+            '\n継続待ち=' + (summary.willResume ? 'YES' : 'NO') +
+            '\n' + (summary.message || ''),
+          SpreadsheetApp.getUi().ButtonSet.OK
+        );
+      } catch (e1) {}
+    }
     return { ok: true, runId: runId, track: track, summary: summary };
   } catch (err) {
     Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' ' + ((err && err.message) || err));
@@ -610,14 +617,24 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
         });
         continue;
       }
-      var mainImg = amazonApprovalLv4Cell_(masterCtx, masterParent.rowIndex0, '楽天メイン画像1');
+      var mainImg = amazonApprovalLv4ResolveMainImageUrl_(masterCtx, masterParent.rowIndex0);
       if (!mainImg) {
-        skipped.push({
-          parentSku: g.parentSku,
-          reason: 'SKIPPED_NEED_HUMAN',
-          detail: 'メイン画像URL空'
-        });
-        continue;
+        var anyChildImg = false;
+        for (var ci0 = 0; ci0 < g.childLines.length; ci0++) {
+          var mr0 = amazonApprovalLv4FindMasterRow_(masterCtx, g.parentSku, String(g.childLines[ci0].childSku || '').trim());
+          if (mr0 && amazonApprovalLv4ResolveMainImageUrl_(masterCtx, mr0.rowIndex0)) {
+            anyChildImg = true;
+            break;
+          }
+        }
+        if (!anyChildImg) {
+          skipped.push({
+            parentSku: g.parentSku,
+            reason: 'SKIPPED_NEED_HUMAN',
+            detail: 'メイン画像URL空'
+          });
+          continue;
+        }
       }
     }
 
@@ -874,7 +891,20 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
     var cat = catResolved2.value;
     var catalogName = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'オリジナルカタログ商品名');
     var asin = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'ASINコード');
-    var mainImg = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '楽天メイン画像1');
+    var mainImg = amazonApprovalLv4ResolveMainImageUrl_(masterCtx, parent.parentRowIndex0);
+    // Resolve と同様: 親空なら承認済み子の MAIN URL を親行用にフォールバック
+    if (!mainImg && parent.children && parent.children.length) {
+      var ciFb;
+      for (ciFb = 0; ciFb < parent.children.length; ciFb++) {
+        var chFb = parent.children[ciFb];
+        mainImg = amazonApprovalLv4ResolveMainImageUrl_(masterCtx, chFb.rowIndex0);
+        if (mainImg) {
+          Logger.log('[Lv4Build] parentMainFallback parentSku=' + parent.parentSku +
+            ' fromChild=' + String(chFb.childSku || ''));
+          break;
+        }
+      }
+    }
 
     if (rTrack === 'B') {
       if (!cat) {
@@ -889,7 +919,7 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
         skipped.push({
           parentSku: parent.parentSku,
           reason: 'SKIPPED_NEED_HUMAN',
-          detail: 'Build時:メイン画像空'
+          detail: 'Build時:メイン画像空（親・子とも Amazon MAIN URL／楽天メイン画像1 なし）'
         });
         continue;
       }
@@ -903,7 +933,7 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
       ]);
       for (var c = 0; c < parent.children.length; c++) {
         var ch = parent.children[c];
-        var childMain = amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, '楽天メイン画像1') || mainImg;
+        var childMain = amazonApprovalLv4ResolveMainImageUrl_(masterCtx, ch.rowIndex0) || mainImg;
         var mfr = amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, 'メーカー品番');
         if (!mfr) mfr = amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, '型番');
         if (!mfr) mfr = ch.childSku;
@@ -938,7 +968,7 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
           amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '商品名'),
           '', amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '販売価格amazon') || price,
           stockOut, jan, asin || amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'ASINコード'),
-          amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '楽天メイン画像1'),
+          amazonApprovalLv4ResolveMainImageUrl_(masterCtx, t.rowIndex0),
           amazonApprovalLv4SubImages_(masterCtx, t.rowIndex0),
           cat, amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'A.セット商品数'),
           shipping, 'offer'
@@ -959,12 +989,21 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
 }
 
 function amazonApprovalLv4SubImages_(masterCtx, rowIndex0) {
+  var amazonPt = amazonApprovalLv4Cell_(masterCtx, rowIndex0, 'Amazon PT URL');
+  if (amazonPt) return amazonPt;
   var urls = [];
   for (var i = 1; i <= 8; i++) {
     var u = amazonApprovalLv4Cell_(masterCtx, rowIndex0, '楽天サブ画像' + i);
     if (u) urls.push(u);
   }
   return urls.join('|');
+}
+
+/** U4: Amazon MAIN URL があれば優先、なければ楽天メイン画像1 */
+function amazonApprovalLv4ResolveMainImageUrl_(masterCtx, rowIndex0) {
+  var amz = amazonApprovalLv4Cell_(masterCtx, rowIndex0, 'Amazon MAIN URL');
+  if (amz) return amz;
+  return amazonApprovalLv4Cell_(masterCtx, rowIndex0, '楽天メイン画像1') || '';
 }
 
 function amazonApprovalLv4RowsToCsv_(headers, rows) {

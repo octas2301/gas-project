@@ -1,0 +1,9 @@
+# ローカル設定・成果物（Gitに載せない）
+config.local.json
+__pycache__/
+*.pyc
+out_*/
+input/
+secrets/
+credentials.json
+token.json

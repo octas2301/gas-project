@@ -289,3 +289,389 @@ function amazonR2BytesToHex_(bytes) {
   }
   return out;
 }
+
+// ----- U4: Drive02 → R2 → マスタ URL（2026-07-26 承認） -----
+var AMAZON_U4_URL_EMBED_PROP = 'AMAZON_U4_URL_EMBED_ENABLED';
+var AMAZON_U4_MAX_SKUS_PROP = 'AMAZON_U4_MAX_SKUS';
+var AMAZON_U4_SKU_LIST_PROP = 'AMAZON_U4_SKU_LIST';
+var AMAZON_U4_MASTER_COL_MAIN_URL = 'Amazon MAIN URL';
+var AMAZON_U4_MASTER_COL_PT_URL = 'Amazon PT URL';
+var AMAZON_U4_MAX_SKUS_DEFAULT = 20;
+
+/**
+ * メニュー 21-⑦: 対象子SKUの MAIN（＋ONLY時PT）を R2 へ上げ、マスタに URL を書く。
+ */
+function menuAmazonU4UrlEmbed() {
+  var stepName = 'AmazonU4UrlEmbed';
+  var functionName = 'menuAmazonU4UrlEmbed';
+  var runId = 'U4_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') +
+    '_' + String(Utilities.getUuid()).replace(/-/g, '').substring(0, 6);
+  Logger.log('[' + stepName + '] runId=' + runId + ' functionName=' + functionName + ' state=PENDING');
+
+  if (!getBoolScriptProperty_(AMAZON_U4_URL_EMBED_PROP, false)) {
+    var off = 'U4 は無効です。Script Properties の ' + AMAZON_U4_URL_EMBED_PROP + ' を true にしてください（既定は無効）。';
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED ' + off);
+    try { SpreadsheetApp.getUi().alert(off); } catch (e0) {}
+    return;
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var folderId = String(props.getProperty(AMAZON_DRIVE_IMAGE_FOLDER_ID_PROP) || '').trim() ||
+    AMAZON_DRIVE_IMAGE_FOLDER_ID_DEFAULT;
+  var accountId = String(props.getProperty('R2_ACCOUNT_ID') || '').trim();
+  var accessKey = String(props.getProperty('R2_ACCESS_KEY_ID') || '').trim();
+  var secretKey = String(props.getProperty('R2_SECRET_ACCESS_KEY') || '').trim();
+  var bucket = String(props.getProperty('R2_BUCKET') || '').trim() || AMAZON_R2_BUCKET_DEFAULT;
+  var publicBase = String(props.getProperty('R2_PUBLIC_BASE') || '').trim() || AMAZON_R2_PUBLIC_BASE_DEFAULT;
+  publicBase = publicBase.replace(/\/$/, '');
+  var maxSkus = parseInt(String(props.getProperty(AMAZON_U4_MAX_SKUS_PROP) || ''), 10);
+  if (!(maxSkus > 0)) maxSkus = AMAZON_U4_MAX_SKUS_DEFAULT;
+
+  if (!accountId || !accessKey || !secretKey) {
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED authMissing=true');
+    try {
+      SpreadsheetApp.getUi().alert('R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY のいずれかが未設定です。');
+    } catch (e1) {}
+    return;
+  }
+
+  var targets = amazonU4CollectTargetSkus_(maxSkus);
+  if (!targets.length) {
+    var msg =
+      '対象SKUがありません。\n' +
+      '・マッチングsheetの子行に Amazon MAIN がある\n' +
+      '・またはマスタに Amazon MAIN 参照がある子\n' +
+      '・または Property ' + AMAZON_U4_SKU_LIST_PROP + '（カンマ区切り）';
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED noTargets');
+    try { SpreadsheetApp.getUi().alert(msg); } catch (e2) {}
+    return;
+  }
+
+  try {
+    var ui = SpreadsheetApp.getUi();
+    var conf = ui.alert(
+      '21-⑦ U4 Drive02→R2→マスタURL',
+      '対象SKU数=' + targets.length + '（上限' + maxSkus + '）\n' +
+        '例: ' + targets.slice(0, 3).join(', ') + (targets.length > 3 ? '…' : '') + '\n' +
+        'マスタに「' + AMAZON_U4_MASTER_COL_MAIN_URL + '」等を書きます（在庫・JANは触りません）。\n' +
+        'xlsm直編集・ZIP・楽天CSVはしません。\n実行しますか？',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (conf !== ui.Button.OK) {
+      Logger.log('[' + stepName + '] runId=' + runId + ' state=CANCELLED');
+      return;
+    }
+  } catch (eUi) {}
+
+  Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING n=' + targets.length);
+  var summary = amazonU4EmbedUrls_(runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase);
+  Logger.log('[' + stepName + '] runId=' + runId + ' state=DONE ' + JSON.stringify(summary));
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      'U4 完了',
+      'runId=' + runId +
+        '\nMAIN成功=' + summary.mainOk +
+        '\nPT成功=' + summary.ptOk +
+        '\n失敗=' + summary.failed +
+        '\nマスタ更新SKU=' + summary.masterUpdated +
+        '\n' + (summary.message || '') +
+        '\n\n終わったら ' + AMAZON_U4_URL_EMBED_PROP + ' を false に戻してください。\n' +
+        '次: 21-①／D Amazon で GENERATED（Amazon URL優先）。',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (e3) {}
+}
+
+/**
+ * U4 コア（確認・成功ダイアログなし）。Eコース用。
+ * @return {{ok:boolean, runId?:string, summary?:Object, error?:string}}
+ */
+function amazonU4UrlEmbedSilent_() {
+  var stepName = 'AmazonU4UrlEmbedSilent';
+  var runId = 'U4_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') +
+    '_' + String(Utilities.getUuid()).replace(/-/g, '').substring(0, 6);
+  Logger.log('[' + stepName + '] runId=' + runId + ' state=PENDING');
+
+  if (!getBoolScriptProperty_(AMAZON_U4_URL_EMBED_PROP, false)) {
+    var off = 'U4 は無効です。Script Properties の ' + AMAZON_U4_URL_EMBED_PROP + ' を true にしてください（既定は無効）。';
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED ' + off);
+    return { ok: false, runId: runId, error: off };
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var folderId = String(props.getProperty(AMAZON_DRIVE_IMAGE_FOLDER_ID_PROP) || '').trim() ||
+    AMAZON_DRIVE_IMAGE_FOLDER_ID_DEFAULT;
+  var accountId = String(props.getProperty('R2_ACCOUNT_ID') || '').trim();
+  var accessKey = String(props.getProperty('R2_ACCESS_KEY_ID') || '').trim();
+  var secretKey = String(props.getProperty('R2_SECRET_ACCESS_KEY') || '').trim();
+  var bucket = String(props.getProperty('R2_BUCKET') || '').trim() || AMAZON_R2_BUCKET_DEFAULT;
+  var publicBase = String(props.getProperty('R2_PUBLIC_BASE') || '').trim() || AMAZON_R2_PUBLIC_BASE_DEFAULT;
+  publicBase = publicBase.replace(/\/$/, '');
+  var maxSkus = parseInt(String(props.getProperty(AMAZON_U4_MAX_SKUS_PROP) || ''), 10);
+  if (!(maxSkus > 0)) maxSkus = AMAZON_U4_MAX_SKUS_DEFAULT;
+
+  if (!accountId || !accessKey || !secretKey) {
+    var authErr = 'R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY のいずれかが未設定です。';
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED authMissing=true');
+    return { ok: false, runId: runId, error: authErr };
+  }
+
+  var targets = amazonU4CollectTargetSkus_(maxSkus);
+  if (!targets.length) {
+    var msg =
+      '対象SKUがありません。マッチングsheetの子に Amazon MAIN／マスタ Amazon MAIN 参照／' +
+      AMAZON_U4_SKU_LIST_PROP + ' を確認してください。';
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED noTargets');
+    return { ok: false, runId: runId, error: msg };
+  }
+
+  Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING n=' + targets.length);
+  try {
+    var summary = amazonU4EmbedUrls_(runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase);
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=DONE ' + JSON.stringify(summary));
+    if (summary && Number(summary.failed) > 0 && !(Number(summary.mainOk) > 0)) {
+      return {
+        ok: false,
+        runId: runId,
+        summary: summary,
+        error: 'U4失敗: MAIN成功=0 失敗=' + summary.failed + ' ' + (summary.message || '')
+      };
+    }
+    return { ok: true, runId: runId, summary: summary };
+  } catch (eRun) {
+    var err = String((eRun && eRun.message) || eRun);
+    Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED ' + err);
+    return { ok: false, runId: runId, error: err };
+  }
+}
+
+/**
+ * @param {number} maxSkus
+ * @return {string[]}
+ */
+function amazonU4CollectTargetSkus_(maxSkus) {
+  var seen = {};
+  var out = [];
+  function add(sku) {
+    sku = String(sku || '').trim();
+    if (!sku || seen[sku]) return;
+    if (out.length >= maxSkus) return;
+    seen[sku] = true;
+    out.push(sku);
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var listProp = String(props.getProperty(AMAZON_U4_SKU_LIST_PROP) || '').trim();
+  if (listProp) {
+    listProp.split(/[,，\s]+/).forEach(function (s) { add(s); });
+    if (out.length) return out;
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var matrixName = (typeof SHEET_NAME_MATRIX !== 'undefined') ? SHEET_NAME_MATRIX : '★画像AIマッチング(操作用)';
+  var mx = ss.getSheetByName(matrixName);
+  if (mx && mx.getLastRow() >= 3) {
+    var num = mx.getLastRow() - 2;
+    var keys = mx.getRange(3, 1, num, 2).getValues();
+    var mainF = mx.getRange(3, 76, num, 1).getFormulas();
+    var i;
+    for (i = 0; i < keys.length && out.length < maxSkus; i++) {
+      var cCode = String(keys[i][1] || '').trim();
+      if (!cCode) continue;
+      if (String(mainF[i][0] || '').trim()) add(cCode);
+    }
+    if (out.length) return out;
+  }
+
+  var masterName = (typeof MASTER_SHEET_NAME !== 'undefined') ? MASTER_SHEET_NAME : '▼商品マスタ(人間作業用)';
+  var master = ss.getSheetByName(masterName);
+  if (!master) return out;
+  var mValues = master.getDataRange().getValues();
+  var headerRowIdx = getAnchorRowIndex(mValues);
+  var colMap = getColumnIndexMap(mValues[headerRowIdx]);
+  var idxC = colMap['子SKU'];
+  var idxRef = colMap['Amazon MAIN 参照'];
+  if (idxC === undefined) return out;
+  var r;
+  for (r = headerRowIdx + 1; r < mValues.length && out.length < maxSkus; r++) {
+    var child = String(mValues[r][idxC] || '').trim();
+    if (!child) continue;
+    if (idxRef !== undefined && String(mValues[r][idxRef] || '').trim()) add(child);
+  }
+  return out;
+}
+
+/**
+ * @return {{mainOk:number, ptOk:number, failed:number, masterUpdated:number, message:string}}
+ */
+function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretKey, bucket, publicBase) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterName = (typeof MASTER_SHEET_NAME !== 'undefined') ? MASTER_SHEET_NAME : '▼商品マスタ(人間作業用)';
+  var master = ss.getSheetByName(masterName);
+  var mValues = master.getDataRange().getValues();
+  var headerRowIdx = getAnchorRowIndex(mValues);
+  var ensure = amazonU4EnsureMasterUrlColumns_(master, headerRowIdx);
+  mValues = master.getDataRange().getValues();
+  headerRowIdx = getAnchorRowIndex(mValues);
+  var colMap = getColumnIndexMap(mValues[headerRowIdx]);
+  var idxP = colMap['親SKU'];
+  var idxC = colMap['子SKU'];
+  var idxMode = colMap['Amazon画像モード'];
+  var idxMainUrl = colMap[AMAZON_U4_MASTER_COL_MAIN_URL];
+  var idxPtUrl = colMap[AMAZON_U4_MASTER_COL_PT_URL];
+  var idxPtRef = colMap['Amazon PT 参照'];
+
+  var mainOk = 0;
+  var ptOk = 0;
+  var failed = 0;
+  var masterUpdated = 0;
+  var notes = [];
+  if (ensure.added.length) notes.push('列追加=' + ensure.added.join(','));
+
+  var s;
+  for (s = 0; s < skus.length; s++) {
+    var sku = skus[s];
+    var mainName = sku + '.MAIN.jpg';
+    var file = amazonDriveFindFileByName_(folderId, mainName);
+    if (!file) {
+      failed++;
+      notes.push(sku + ': MAINファイルなし');
+      Logger.log('[U4] runId=' + runId + ' sku=' + sku + ' state=FAILED noMainFile');
+      continue;
+    }
+    var bytes = file.getBlob().getBytes();
+    var putMain = amazonR2PutObject_(accountId, accessKey, secretKey, bucket, mainName, bytes, 'image/jpeg');
+    var mainUrl = publicBase + '/' + mainName;
+    Logger.log(
+      '[U4] runId=' + runId + ' sku=' + sku + ' http=' + putMain.code +
+        ' url=' + mainUrl + ' state=' + (putMain.ok ? 'DONE' : 'FAILED')
+    );
+    if (!putMain.ok) {
+      failed++;
+      notes.push(sku + ' MAIN Put http=' + putMain.code);
+      continue;
+    }
+    mainOk++;
+
+    var ptUrls = [];
+    var mRow = amazonU4FindMasterChildRow_(mValues, headerRowIdx, idxP, idxC, sku);
+    var mode = '';
+    if (mRow >= 0 && idxMode !== undefined) mode = String(mValues[mRow][idxMode] || '').trim().toUpperCase();
+    if (mode.indexOf('ONLY') >= 0 && mRow >= 0 && idxPtRef !== undefined) {
+      var ptRefs = String(mValues[mRow][idxPtRef] || '').split('|');
+      var pi;
+      var ptSeq = 0;
+      for (pi = 0; pi < ptRefs.length; pi++) {
+        var ptId = String(ptRefs[pi] || '').trim();
+        if (!ptId) continue;
+        ptSeq++;
+        var ptName = sku + '.PT' + ('0' + ptSeq).slice(-2) + '.jpg';
+        try {
+          var ptFile = DriveApp.getFileById(ptId);
+          var ptBytes = ptFile.getBlob().getBytes();
+          var putPt = amazonR2PutObject_(accountId, accessKey, secretKey, bucket, ptName, ptBytes, 'image/jpeg');
+          if (putPt.ok) {
+            ptOk++;
+            ptUrls.push(publicBase + '/' + ptName);
+          } else {
+            failed++;
+            notes.push(sku + ' ' + ptName + ' http=' + putPt.code);
+          }
+        } catch (ePt) {
+          failed++;
+          notes.push(sku + ' PT: ' + ((ePt && ePt.message) || ePt));
+        }
+      }
+    }
+
+    if (mRow >= 0 && idxMainUrl !== undefined) {
+      master.getRange(mRow + 1, idxMainUrl + 1).setValue(mainUrl);
+      if (idxPtUrl !== undefined) master.getRange(mRow + 1, idxPtUrl + 1).setValue(ptUrls.join('|'));
+      masterUpdated++;
+    } else {
+      notes.push(sku + ': マスタ子行なし（R2のみ成功）');
+    }
+  }
+
+  // 子に書いた MAIN URL を、同じ親の親行（子SKU空）へ空欄時のみコピー（Lv4 Build / C1 用）
+  var prop = amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP, idxC, idxMainUrl);
+  if (prop && prop.copied > 0) {
+    masterUpdated += prop.copied;
+    notes.push('親MAIN URLコピー=' + prop.copied);
+    Logger.log('[U4] runId=' + runId + ' parentMainUrlCopied=' + prop.copied);
+  }
+
+  return {
+    mainOk: mainOk,
+    ptOk: ptOk,
+    failed: failed,
+    masterUpdated: masterUpdated,
+    message: notes.slice(0, 10).join('\n') + (notes.length > 10 ? '\n…' : ''),
+    parentMainUrlCopied: prop ? prop.copied : 0
+  };
+}
+
+/**
+ * 親行の Amazon MAIN URL が空のとき、同一親の子行から先頭の非空URLをコピーする。
+ * @return {{copied:number}}
+ */
+function amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP, idxC, idxMainUrl) {
+  var out = { copied: 0 };
+  if (idxP == null || idxC == null || idxMainUrl == null || !master) return out;
+  // 子への setValue 直後は引数 mValues が古いことがあるので再読込
+  mValues = master.getDataRange().getValues();
+  var byParent = {};
+  var r;
+  for (r = headerRowIdx + 1; r < mValues.length; r++) {
+    var p = String(mValues[r][idxP] != null ? mValues[r][idxP] : '').trim();
+    if (!p) continue;
+    var c = String(mValues[r][idxC] != null ? mValues[r][idxC] : '').trim();
+    var url = String(mValues[r][idxMainUrl] != null ? mValues[r][idxMainUrl] : '').trim();
+    if (!byParent[p]) byParent[p] = { parentRow: -1, parentUrl: '', childUrl: '' };
+    if (!c) {
+      byParent[p].parentRow = r;
+      byParent[p].parentUrl = url;
+    } else if (url && !byParent[p].childUrl) {
+      byParent[p].childUrl = url;
+    }
+  }
+  var keys = Object.keys(byParent);
+  var k;
+  for (k = 0; k < keys.length; k++) {
+    var g = byParent[keys[k]];
+    if (g.parentRow < 0 || !g.childUrl) continue;
+    if (g.parentUrl) continue;
+    master.getRange(g.parentRow + 1, idxMainUrl + 1).setValue(g.childUrl);
+    out.copied++;
+    Logger.log('[U4] parentMainUrlCopy parentSku=' + keys[k] + ' row1=' + (g.parentRow + 1));
+  }
+  return out;
+}
+
+function amazonU4EnsureMasterUrlColumns_(masterSheet, headerRowIdx) {
+  var headers = masterSheet.getRange(headerRowIdx + 1, 1, 1, masterSheet.getLastColumn()).getValues()[0];
+  var colMap = getColumnIndexMap(headers);
+  var needed = [AMAZON_U4_MASTER_COL_MAIN_URL, AMAZON_U4_MASTER_COL_PT_URL];
+  var added = [];
+  var lastCol = headers.length;
+  var i;
+  for (i = 0; i < needed.length; i++) {
+    if (colMap[needed[i]] === undefined) {
+      lastCol++;
+      masterSheet.getRange(headerRowIdx + 1, lastCol).setValue(needed[i]).setFontWeight('bold');
+      added.push(needed[i]);
+      colMap[needed[i]] = lastCol - 1;
+    }
+  }
+  return { added: added, colMap: colMap };
+}
+
+function amazonU4FindMasterChildRow_(mValues, headerRowIdx, idxP, idxC, childSku) {
+  if (idxC === undefined) return -1;
+  var r;
+  for (r = headerRowIdx + 1; r < mValues.length; r++) {
+    if (String(mValues[r][idxC] || '').trim() === childSku) return r;
+  }
+  return -1;
+}

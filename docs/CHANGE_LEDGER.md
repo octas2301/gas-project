@@ -4,6 +4,35 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-27 | `tools/c1_hpc_packaged/c1_fetch_inputs.py`／要件／HUMAN_RUN | **C1入力案A**: Drive GENERATED＋マスタCSV自動取得（OAuth読取） | **Git**: revert。secrets は追跡しない |
+| 2026-07-27 | `AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／`コード.js`／E・C1 HUMAN_RUN | **親MAIN URL**: U4子→親コピー＋Lv4 Build子フォールバック | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`／`AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／E HUMAN_RUN | **Eコース silent**: 成功時OKなし・エラー時のみ停止。U4/Lv4 silent | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`／`D_MENU_E_AMAZON_COURSE_HUMAN_RUN` | **メニューE**: Amazonコース（E-0〜E-5）薄いファサード | **Git**: revert。要 clasp push |
+| 2026-07-26 | `Yahoo.js`／`コード.js`／STAGE | **ブランド正本=getShopBrandList**（検証＋メーカー名API取得） | **Git**: revert。要 clasp push |
+| 2026-07-26 | `Yahoo.js`（SHP読取）／`コード.js`／YAHOO_CATEGORY_BRAND_STAGE | **正本=getShopCategoryList**: 書込前検証・無効ID却下／名前解決 | **Git**: revert。要 clasp push（Yahoo.js含む） |
+| 2026-07-26 | `コード.js`（Yahooフォールバック）／YAHOO_CATEGORY_BRAND_STAGE | **競合ゼロ時**: AI推奨列→DriveマスタCSV選定 | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／YAHOO_CATEGORY_BRAND_STAGE／AI_ADOPT docs | **v1.8**: Yahooカテゴリ／ブランド都度API（売れ筋＋自社最安）をメニュー8へ | **Property**: `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED=false`。**Git**: revert。要 clasp push |
+| 2026-07-26 | `YAHOO_CATEGORY_BRAND_STAGE`／承認包／AI_ADOPT | **Yahooカテゴリ選定改定**: 売れ筋＋自社最安優先（docsのみ） | **Git**: revert |
+| 2026-07-26 | `YAHOO_CATEGORY_BRAND_STAGE`／承認包／HUMAN_RUN／AI_ADOPT docs／CURRENT_PHASE | **Yahooカテゴリ／ブランド Stage 要件起草**（都度API・`:`階層名・実装未） | **Git**: revert（コード差分なし） |
+| 2026-07-26 | `コード.js`（メニュー8）／RAKUTEN_NAV_GENRE_STAGE3／AI_ADOPT docs | **Stage3**: 楽天ジャンル都度API（Ichiba投票→Nav）をメニュー8へ。AI推奨不使用 | **Property**: `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED=false`。**Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT docs | **v1.6**: バリエーションテーマ選定（HPCサイズ／食品パッケージサイズ＋Amazon裏マップ）をメニュー8へ | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT docs | **v1.5**: 下限=上限−5・半角0.5・容量1語・特徴/用途不適なら空 | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT 要件・HUMAN_RUN | **v1.4**: 楽天・Yahoo横断dedupe＋最終名上限（75/120/75）。検索KWから弱語削除 | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT 要件・HUMAN_RUN | **v1.3**: 最終商品名amazon式の左優先・完全一致横断dedupe（部分一致なし） | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT 要件・HUMAN_RUN | **v1.2**: 再生成停止。KW9選択＋dedupeのみ | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー8）／AI_ADOPT 要件・HUMAN_RUN | **緊急**: syncAiDataToMaster をメニュー8から除外（レ点外破壊防止） | **Git**: revert。要 clasp push |
+| 2026-07-26 | `コード.js`（メニュー7.5・AI一括採用）／要件・HUMAN_RUN・承認包 | Amazon AI生成→空欄のみ採用→要確認。トグル既定false | **Property** OFF。**Git**: revert |
+| 2026-07-26 | `コード.js`（MASTER_TO_WORKAREA／AI_COLUMN_MAP）／商品マスタ要件／RESEARCH／C1 HUMAN_RUN | 市場価格調査→定価転記を廃止。定価＝数値／式専用 | **Git**: revert。**clasp push** 反映後は再pushで戻す |
+| 2026-07-26 | `tools/c1_hpc_packaged/**`（C1-1b）／HUMAN_RUN／要件 | マスタCSV併読・必須列。Propertyなし | **Git**: revert |
+| 2026-07-26 | `D_MENU_C1_MASTER_HPC_COLUMN_MAP`／C1要件・HUMAN_RUN・CURRENT_PHASE | マスタ→HPC付け合わせ下書き。コードなし | **Git**: revert |
+| 2026-07-26 | `tools/c1_hpc_packaged/**`／C1 HUMAN_RUN／承認包／`.claspignore` | C1実装承認＋ローカルPACKAGEDツール | **Git**: revert。成果xlsmはDownloads削除 |
+| 2026-07-26 | `D_MENU_C1_THREE_REVIEW_MAJORITY`／C1要件／`LV4_C1_IMPLEMENTATION_APPROVAL` §6／CURRENT_PHASE 等 | C1三点＋社長決定反映。コードなし。次＝実装承認 | **Git**: revert |
+| 2026-07-26 | `D_MENU_C1_…REQUIREMENTS`／`LV4_C1_IMPLEMENTATION_APPROVAL`／POC§5／CURRENT_PHASE 等 | C1方針ロック＋要件起草。コードなし。次＝3者 | **Git**: revert |
+| 2026-07-26 | U4 HUMAN_RUN／CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER | **U4実機合格**記録（21-⑦・マスタURL） | **Git**: revert |
+| 2026-07-26 | `AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／`コード.js`／U4 HUMAN_RUN 等 | **U4 v1**: 21-⑦ R2→マスタURL＋GENERATED優先 | Property OFF。**Git**: revert |
+| 2026-07-26 | `D_MENU_U4_…REQUIREMENTS`／`LV4_U4_IMPLEMENTATION_APPROVAL`／CURRENT_PHASE 等 | U4要件＋承認パッケージ起草。コードなし | **Git**: revert |
+| 2026-07-26 | LV4_T2_HUMAN_RUN／CURRENT_PHASE／AGENT_HANDOVER | T2再検証合格（80s10・URL単独・18320なし）記録 | **Git**: revert |
+| 2026-07-26 | `AmazonImageMatrixExport.js`／U2 HUMAN_RUN | ④成功MAIN/PTのみ `07/アップロード済み画像` へ退避 | Property `AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED=false` または git revert |
 | 2026-07-25 | U2 HUMAN_RUN／CURRENT_PHASE／U2要件／AGENT_HANDOVER／CHANGE_LEDGER | **U2実機合格**記録（②③④・冪等D）。コード差分は同コミットの実装分 | **Git**: revert |
 | 2026-07-25 | `コード.js`（`generateAiImageMatrix` 選定）／U2 HUMAN_RUN／CURRENT_PHASE | C: 子レ点優先（親のみレ点は全子のまま）。候補=`07` Property済 | **Git**: revert 該当差分 |
 | 2026-07-25 | `AmazonImageMatrixExport.js`（新規）／`コード.js`（C-Amazonメニュー・フック）／U2 HUMAN_RUN／CURRENT_PHASE | U2 v1: sheet MAIN/PT・マスタ永続・02コピー。トグル既定false | **Property** OFF。**Git**: revert＋新規js削除 |

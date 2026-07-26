@@ -144,7 +144,7 @@ D×Amazon 完了時に少なくとも次を示す:
 
 - R2 URL → xlsm／GENERATED への自動埋め（U4）  
 - ZIP 自動（U5＝T3。**実装承認待ち**・§6.4）  
-- xlsm 自動（C1・急がない）  
+- xlsm 自動（C1・[要件起草](D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)。次＝3者）  
 - 日中トリガーで Da の GAS 側まで無人  
 
 ### 6.3 Dc（必須・将来）
@@ -192,7 +192,7 @@ flowchart TB
 
 C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 
-**現状**: U3 実機済。U2 要件は三点反映済・**GAS未**。次＝実装前承認。
+**現状**: U2／U3 実機済。T2再検証合格。次＝**U4 実装承認**（[U4要件](D_MENU_U4_R2_URL_EMBED_REQUIREMENTS.md)）。
 
 ---
 
@@ -216,8 +216,9 @@ C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 | **U1** | CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER／LV4・POC 相互リンク | U0 文書化 | **済** |
 | **U2** | C: Amazon MAIN／サブ（REUSE）詳細要件1枚 | U0 | **三点＋社長回答反映済** → [U2要件](D_MENU_U2_C_AMAZON_IMAGE_REQUIREMENTS.md)／[MAJORITY](D_MENU_U2_THREE_REVIEW_MAJORITY.md)。**次＝実装承認** |
 | **U3** | D UI: モール選択に Amazon・Da 完了メッセージ。裏は 21-① 等呼出 | U0＋3者反映 | **v1 実機合格**（2026-07-25。[HUMAN_RUN](D_MENU_U3_HUMAN_RUN.md)） |
-| **U4** | 画像量産 R2／GENERATED・xlsm への URL 書き | U2・T2 | 未 |
-| **U5** | T3 ZIP 自動 | §6.4（既存証跡＝§11.0 18320）＋**別実装承認** | **実装待ち** |
+| **U4** | 画像量産 R2／GENERATED・マスタへの URL 書き（xlsm直編集はC1） | U2・T2・T2再検証合格 | **実機合格** → [HUMAN_RUN §0](D_MENU_U4_HUMAN_RUN.md) |
+| **C1** | PACKAGED xlsm ほぼ自動（ローカル／Cursor） | U4・HPC | **要件起草** → [C1要件](D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)／[承認包](LV4_C1_IMPLEMENTATION_APPROVAL.md)。**次＝3者** |
+| **U5** | T3 ZIP 自動 | §6.4。T2再検証後は **急がない** | 保留 |
 | **U6** | M2／21-⑤ 等 | 別ゲート | 未 |
 | **U7** | Dc: SC API 連携（将来必須） | Da運用安定後 | 未 |
 
@@ -286,6 +287,8 @@ U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** �
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-26 | **C1要件リンク**（ローカル本線・次＝3者）。 |
+| 2026-07-26 | **U4要件＋承認パッケージ**リンク。U2/U3済・T2再検証後。T3急がない。 |
 | 2026-07-25 | U2三点＋社長回答を§7・チケットに反映。MAJORITYリンク。 |
 | 2026-07-25 | U2 §7: MAIN紐付け＝案α・εバックログを反映。 |
 | 2026-07-25 | **U3 v1 実装＋実機合格**。U2要件へリンク。HUMAN_RUN追加。 |

@@ -76,6 +76,59 @@ const COL_VARIATION_PREFIX = 'バリエーション接頭辞';
 const COL_VARIATION_SUFFIX = 'バリエーション接尾辞';
 /** バリエーション名 16文字まで: 計算式で組み立てる出力先。コードでは計算式を書かず人間が管理。 */
 const COL_VARIATION_NAME_16 = 'バリエーション名 16文字まで';
+/** メニュー8（Amazon AI一括採用）: Script Properties。docs/org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md */
+var AMAZON_AI_AUTO_ADOPT_ENABLED_PROP = 'AMAZON_AI_AUTO_ADOPT_ENABLED';
+var AMAZON_AI_ADOPT_REQUIRE_LISTING_CK_PROP = 'AMAZON_AI_ADOPT_REQUIRE_LISTING_CK';
+var AMAZON_AI_ADOPT_MAX_PARENTS_PROP = 'AMAZON_AI_ADOPT_MAX_PARENTS';
+/** メニュー8: 楽天ジャンル都度API（Ichiba投票→Nav確認）。既定 false。docs/RAKUTEN_NAV_GENRE_STAGE3.md */
+var AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP = 'AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED';
+/** 楽天ジャンル投票: 最少票数（これ未満は要確認） */
+var AMAZON_AI_ADOPT_RAKUTEN_GENRE_MIN_VOTES = 3;
+/** メニュー8: Yahooカテゴリ／ブランド都度API。既定 false。docs/YAHOO_CATEGORY_BRAND_STAGE.md */
+var AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP = 'AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED';
+/** Yahooカテゴリ: 最安プローブする候補数上限（Property 上書き可） */
+var AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K_PROP = 'AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K';
+var AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K_DEFAULT = 3;
+/** Yahooブランド投票: 最少票数 */
+var AMAZON_AI_ADOPT_YAHOO_BRAND_MIN_VOTES = 3;
+/** Yahoo売れ筋近似: 上位何件に重みを付けるか（sold非対応・review_count近似） */
+var AMAZON_AI_ADOPT_YAHOO_POPULAR_TOP_N = 15;
+/** 商品名採用時の文字数上限（全角1文字＝JS length 1） */
+var AMAZON_AI_ADOPT_NAME_MAX_AMAZON = 75;
+var AMAZON_AI_ADOPT_NAME_MAX_RAKUTEN = 127;
+var AMAZON_AI_ADOPT_NAME_MAX_YAHOO = 75;
+/** 最終商品名（連結後）の文字数上限。超えたら検索KW等から弱語を削る。 */
+var AMAZON_AI_ADOPT_FINAL_NAME_MAX_AMAZON = 75;
+var AMAZON_AI_ADOPT_FINAL_NAME_MAX_RAKUTEN = 120;
+var AMAZON_AI_ADOPT_FINAL_NAME_MAX_YAHOO = 75;
+/** 最終名の下限 = 上限 − この値。上限超過のトリムは下限を下回らない範囲で最小限に止める。 */
+var AMAZON_AI_ADOPT_FINAL_NAME_MIN_SLACK = 5;
+var AMAZON_AI_ADOPT_SEARCH_KW_MAX = 150;
+/**
+ * バリエーションテーマ: マスタへ書く日本語（3モール共通の作業値）。
+ * Amazon出品写像は AMAZON_AI_ADOPT_THEME_AMAZON_EXPORT_MAP_（裏）。
+ */
+var AMAZON_AI_ADOPT_THEME_LABEL_HPC_SIZE_ = 'サイズ';
+var AMAZON_AI_ADOPT_THEME_LABEL_FOOD_SIZE_ = 'パッケージサイズ';
+var AMAZON_AI_ADOPT_THEME_LABEL_COLOR_ = '色';
+var AMAZON_AI_ADOPT_THEME_LABEL_FLAVOR_ = '味';
+var AMAZON_AI_ADOPT_THEME_LABEL_SCENT_ = '香り';
+/** Amazon C1/xlsm 向け裏マップ（マスタ日本語 → Amazon値）。他カテゴリは後回し。 */
+var AMAZON_AI_ADOPT_THEME_AMAZON_EXPORT_MAP_ = {
+  HPC: {
+    'サイズ': 'サイズ',
+    '色': '色',
+    '味': '味',
+    '香り': '香り'
+  },
+  FOOD: {
+    'パッケージサイズ': 'PACKAGE_SIZE_NAME',
+    'サイズ': 'PACKAGE_SIZE_NAME',
+    '色': '色',
+    '味': '味',
+    '香り': '香り'
+  }
+};
 const COL_COMPETITOR_URL_AMAZON = '競合AmazonページURL';
 /** Yahoo! セット別競合: 商品ページURL・要確認・メモ（▼商品マスタ(人間作業用)）。 */
 const COL_COMPETITOR_URL_YAHOO = '競合URLYahoo!';
@@ -283,7 +336,7 @@ const TITLE_DROPDOWN_PAIRS = {
   'カラー': { optionsNames: ['▼マスタ(カラー)', 'カラー'], targetNames: ['(カラー)'] },
   'その他スペック': { optionsNames: ['▼マスタ(その他スペック)', 'その他スペック'], targetNames: ['(その他スペック)'] },
   'シリーズ': { optionsNames: ['▼マスタ(シリーズ)', 'シリーズ'], targetNames: ['マスタシリーズ'] },
-  '市場価格調査': { optionsNames: ['▼マスタ(市場価格調査)', '市場価格調査'], targetNames: ['定価、市場価格', '▼マスタ(市場価格調査)'] },
+  '市場価格調査': { optionsNames: ['▼マスタ(市場価格調査)', '市場価格調査'], targetNames: ['▼マスタ(市場価格調査)'] },
   '危険物規制の種類': { optionsNames: ['▼マスタ(Amz:危険物規制)', '危険物規制の種類'], targetNames: ['危険物規制の種類'] },
   '原産国': { optionsNames: ['▼マスタ(原産国)', '原産国'], targetNames: ['原産国/地域'] },
   'Amz:一人分単位': { optionsNames: ['▼マスタ(Amz:一人分単位)', 'Amz:一人分単位'], targetNames: ['一人分の数量単位'] },
@@ -378,7 +431,7 @@ function onOpen() {
   } catch (_) {}
 
   try {
-    // AI出品ツールメニュー（A/Z=2階層、B/C/D=階層なし。§9 要件定義に準拠）
+    // AI出品ツールメニュー（A/E/Z=サブ、B/C/D=階層なし。Eは一時Amazonコース）
     ui.createMenu('AI出品ツール')
       .addSubMenu(ui.createMenu('A. ASIN貼付⇒Keepa抽出（token制限注意）')
         .addItem('1. Keepa取得（20件）', 'menuKeepaFetchAsinPasteSheet20')
@@ -394,6 +447,7 @@ function onOpen() {
       .addItem('C-Amazon③ sheet→マスタ保存', 'menuAmazonImageMatrixPersist')
       .addItem('C-Amazon④ Drive02へコピー出力', 'menuAmazonImageMatrixExportTo02')
       .addItem('D. 画像＋出品全モール一括アップロード（選択可）', 'showBatchExportModal')
+      .addSubMenu(createEAmazonCourseMenu(ui))
       .addSubMenu(createZSplitMenu(ui))
       .addToUi();
 
@@ -406,6 +460,23 @@ function onOpen() {
   } catch (e) {
     console.warn('[onOpen] メニュー作成失敗: ' + (e && e.message));
   }
+}
+
+/**
+ * E. Amazon出品コース（一時）— フロー順・人間クリック最少。
+ * 裏は既存 C-Amazon／18／21／U4 を呼ぶ薄いファサード。将来は D に吸収予定。
+ * docs/org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md
+ */
+function createEAmazonCourseMenu(ui) {
+  return ui.createMenu('E. Amazon出品コース（一時）')
+    .addItem('E-0 前提チェック（Property・MAIN URL等）', 'menuAmazonCourseE0Precheck')
+    .addItem('E-1 画像：枠＋候補まで（次はMAINドラッグ）', 'menuAmazonCourseE1ImagePrep')
+    .addItem('E-2 画像→URL自動（③→④→U4）', 'menuAmazonCourseE2ImageToUrl')
+    .addItem('E-3 承認候補作成（次はWebで承認①）', 'menuAmazonCourseE3ApprovalCandidates')
+    .addItem('E-4 GENERATED（21-①）', 'menuAmazonCourseE4Generated')
+    .addItem('E-5 UP成功を記録（21-③・SC確認後）', 'menuAmazonCourseE5UploadedOk')
+    .addSeparator()
+    .addItem('（案内）分割実行は Z→18/21・C-Amazon', 'menuAmazonCourseEHelpSplit');
 }
 
 /**
@@ -423,6 +494,7 @@ function createZSplitMenu(ui) {
     .addItem('5. AI出品取得', 'generateListingDataComparison')
     .addItem('6. 取得dataのマスタsheet同期', 'syncAiDataToMaster')
     .addItem('7. 商品名案を生成＆プルダウン設定', 'menuProductNameAndDropdownForCheckedParentRows')
+    .addItem('7.5 Amazon向け KW選択・重複削除（メニュー8）', 'menuAmazonAiGenerateAndAdoptForCheckedParents')
     .addItem('8. 楽天CSV出力', 'generateRakutenCSV')
     .addItem('9. 一括出品実行', 'showBatchExportModal')
     .addItem('10. 出品CKをクリア', 'menuClearShippingCheckForSelection')
@@ -492,7 +564,8 @@ function createZSplitMenu(ui) {
       .addItem('21-② 実行状態をクリア', 'menuApprovalAmazonLv4ClearState')
       .addItem('21-③ アップロード成功を記録', 'menuApprovalAmazonLv4MarkUploadedOk')
       .addItem('21-④ アップロード失敗を記録', 'menuApprovalAmazonLv4MarkUploadFailed')
-      .addItem('21-⑥ Drive→R2画像PoC（MAIN1枚）', 'menuAmazonDriveR2UploadPoc'))
+      .addItem('21-⑥ Drive→R2画像PoC（MAIN1枚）', 'menuAmazonDriveR2UploadPoc')
+      .addItem('21-⑦ U4 Drive02→R2→マスタURL', 'menuAmazonU4UrlEmbed'))
     .addSeparator()
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
@@ -1425,6 +1498,320 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort) {
   Logger.log('[' + fn + '] state=DONE runId=' + (lv4.runId || '') + ' course=' + course);
 }
 
+// ==========================================
+// E. Amazon出品コース（一時ファサード）
+// docs/org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md
+// ==========================================
+
+/** E-0: Property と出品CK行のざっくり前提チェック（書込なし） */
+function menuAmazonCourseE0Precheck() {
+  var fn = 'menuAmazonCourseE0Precheck';
+  Logger.log('[' + fn + '] state=RUNNING');
+  var ui = SpreadsheetApp.getUi();
+  var props = PropertiesService.getScriptProperties();
+  function propOn(key) {
+    return getBoolScriptProperty_(key, false) ? 'ON' : 'off';
+  }
+  var lines = [];
+  lines.push('【Script Properties】');
+  lines.push('AMAZON_IMAGE_U2_ENABLED=' + propOn('AMAZON_IMAGE_U2_ENABLED') + '（E-1/E-2 に必要）');
+  lines.push('AMAZON_U4_URL_EMBED_ENABLED=' + propOn('AMAZON_U4_URL_EMBED_ENABLED') + '（E-2 に必要）');
+  lines.push('APPROVAL_QUEUE_V1_ENABLED=' + propOn('APPROVAL_QUEUE_V1_ENABLED') + '（E-3 に必要）');
+  lines.push('APPROVAL_AMAZON_LV4_ENABLED=' + propOn('APPROVAL_AMAZON_LV4_ENABLED') + '（E-4 に必要）');
+  lines.push('APPROVAL_AMAZON_LV4_TRACK=' + String(props.getProperty('APPROVAL_AMAZON_LV4_TRACK') || '(未設定)'));
+  lines.push('');
+  var scan = amazonCourseEScanCheckedMaster_();
+  lines.push('【出品CK付き行の概況】');
+  lines.push(scan.summary);
+  if (scan.warnings.length) {
+    lines.push('');
+    lines.push('【注意】');
+    for (var i = 0; i < Math.min(scan.warnings.length, 12); i++) {
+      lines.push('- ' + scan.warnings[i]);
+    }
+    if (scan.warnings.length > 12) lines.push('…他 ' + (scan.warnings.length - 12) + ' 件');
+  }
+  lines.push('');
+  lines.push('次: E-1（画像候補）→ MAINドラッグ → E-2 → E-3 → Web承認① → E-4 → C1/SC → E-5');
+  Logger.log('[' + fn + '] state=DONE checked=' + scan.checkedRows + ' warn=' + scan.warnings.length);
+  ui.alert('E-0 前提チェック', lines.join('\n'), ui.ButtonSet.OK);
+}
+
+/**
+ * 出品CK行の Amazon MAIN URL／楽天メイン／価格／カテゴリをざっくり集計。
+ * @return {{checkedRows:number, summary:string, warnings:string[]}}
+ */
+function amazonCourseEScanCheckedMaster_() {
+  var out = { checkedRows: 0, summary: '', warnings: [] };
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) {
+    out.summary = 'マスタシート無し';
+    return out;
+  }
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  var r;
+  for (r = 0; r < Math.min(20, values.length); r++) {
+    if (values[r] && values[r].indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = r;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) {
+    out.summary = 'ヘッダー行（ASINコード）無し';
+    return out;
+  }
+  var col = {};
+  values[headerRowIdx].forEach(function (name, i) {
+    col[String(name).trim()] = i;
+  });
+  var iCk = col[CHECKBOX_HEADER_NAME];
+  var iParent = col['親SKU'];
+  var iChild = col['子SKU'];
+  var iMainUrl = col['Amazon MAIN URL'];
+  var iRakutenMain = col['楽天メイン画像1'];
+  var iPrice = col['販売価格amazon'];
+  var iCat = col['amazon カテゴリー'] != null ? col['amazon カテゴリー']
+    : (col['amazonカテゴリー'] != null ? col['amazonカテゴリー'] : col['カテゴリー']);
+  if (iCk == null || iParent == null) {
+    out.summary = '出品CKまたは親SKU列無し';
+    return out;
+  }
+  var checked = 0;
+  var withAmzUrl = 0;
+  var withAnyMain = 0;
+  var withPrice = 0;
+  var withCat = 0;
+  for (r = headerRowIdx + 1; r < values.length; r++) {
+    var row = values[r];
+    var ck = row[iCk];
+    if (!(ck === true || String(ck).toUpperCase() === 'TRUE')) continue;
+    checked++;
+    var parent = String(row[iParent] != null ? row[iParent] : '').trim();
+    var child = iChild != null ? String(row[iChild] != null ? row[iChild] : '').trim() : '';
+    var label = parent + (child ? '/' + child : '(親)');
+    var amzUrl = iMainUrl != null ? String(row[iMainUrl] != null ? row[iMainUrl] : '').trim() : '';
+    var rakMain = iRakutenMain != null ? String(row[iRakutenMain] != null ? row[iRakutenMain] : '').trim() : '';
+    if (amzUrl) withAmzUrl++;
+    if (amzUrl || rakMain) withAnyMain++;
+    else out.warnings.push(label + ': MAIN画像なし（Amazon MAIN URL／楽天メイン画像1）');
+    var price = iPrice != null ? String(row[iPrice] != null ? row[iPrice] : '').trim() : '';
+    if (price && !isNaN(Number(price)) && Number(price) > 0) withPrice++;
+    else if (!child) out.warnings.push(label + ': 販売価格amazon 不正または空');
+    var cat = iCat != null ? String(row[iCat] != null ? row[iCat] : '').trim() : '';
+    if (cat) withCat++;
+    else if (!child) out.warnings.push(label + ': amazonカテゴリ空');
+  }
+  out.checkedRows = checked;
+  out.summary = '出品CK行=' + checked +
+    ' / Amazon MAIN URLあり=' + withAmzUrl +
+    ' / いずれかMAINあり=' + withAnyMain +
+    ' / 価格OK行≈' + withPrice +
+    ' / カテゴリあり行≈' + withCat;
+  return out;
+}
+
+/** Eコース: 成功は toast（OK不要）、失敗のみ alert */
+function amazonCourseEToast_(title, msg) {
+  try {
+    SpreadsheetApp.getActiveSpreadsheet().toast(String(msg || ''), String(title || 'E'), 8);
+  } catch (eT) {}
+  Logger.log('[AmazonCourseE] ' + title + ' ' + msg);
+}
+
+function amazonCourseEFail_(fn, msg) {
+  Logger.log('[' + fn + '] state=FAILED ' + msg);
+  try {
+    SpreadsheetApp.getUi().alert('停止: ' + fn, String(msg || '不明なエラー'), SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (eA) {}
+}
+
+/** E-1: C-Amazon①→②。人間ゲート= MAIN ドラッグ（成功ダイアログなし） */
+function menuAmazonCourseE1ImagePrep() {
+  var fn = 'menuAmazonCourseE1ImagePrep';
+  Logger.log('[' + fn + '] state=RUNNING');
+  try {
+    if (!getBoolScriptProperty_('AMAZON_IMAGE_U2_ENABLED', false)) {
+      amazonCourseEFail_(fn, 'AMAZON_IMAGE_U2_ENABLED=true にしてください。');
+      return;
+    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME_MATRIX);
+    if (!sheet) {
+      amazonCourseEFail_(fn, '「' + SHEET_NAME_MATRIX + '」がありません。先に C でマトリクスを作成してください。');
+      return;
+    }
+    var folderId = String(PropertiesService.getScriptProperties().getProperty('AMAZON_IMAGE_CANDIDATE_FOLDER_ID') || '').trim();
+    if (!folderId) {
+      amazonCourseEFail_(fn, 'AMAZON_IMAGE_CANDIDATE_FOLDER_ID が未設定です。');
+      return;
+    }
+    amazonImageMatrixEnsureZone_(sheet);
+    var nRestored = amazonImageMatrixRestoreFromMaster_(ss, sheet, { silent: true });
+    var nCand = amazonImageMatrixLoadCandidates_(sheet, folderId);
+    Logger.log('[' + fn + '] state=DONE restored=' + nRestored + ' candidates=' + nCand);
+    amazonCourseEToast_('E-1 完了', '候補' + nCand + '枚。MAINにドラッグしてから E-2');
+  } catch (e) {
+    amazonCourseEFail_(fn, (e && e.message) || e);
+  }
+}
+
+/** E-2: ③→④→U4（確認・成功OKなし。エラー時のみ停止） */
+function menuAmazonCourseE2ImageToUrl() {
+  var fn = 'menuAmazonCourseE2ImageToUrl';
+  Logger.log('[' + fn + '] state=RUNNING');
+  try {
+    if (!getBoolScriptProperty_('AMAZON_IMAGE_U2_ENABLED', false)) {
+      amazonCourseEFail_(fn, 'AMAZON_IMAGE_U2_ENABLED=true にしてください。');
+      return;
+    }
+    if (!getBoolScriptProperty_('AMAZON_U4_URL_EMBED_ENABLED', false)) {
+      amazonCourseEFail_(fn, 'AMAZON_U4_URL_EMBED_ENABLED=true にしてください。');
+      return;
+    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME_MATRIX);
+    if (!sheet) {
+      amazonCourseEFail_(fn, 'マトリクスシートがありません。先に C → E-1。');
+      return;
+    }
+
+    var persist = amazonImageMatrixPersistToMaster_(ss, sheet);
+    Logger.log('[' + fn + '] persist updated=' + persist.updated + ' skipped=' + persist.skipped);
+
+    var exp = amazonImageMatrixExportTo02_(ss, sheet);
+    Logger.log('[' + fn + '] export02 ' + JSON.stringify(exp));
+    if (exp && Number(exp.failed) > 0 && !(Number(exp.mainOk) > 0)) {
+      amazonCourseEFail_(fn, 'Drive02出力失敗: MAIN成功=0 失敗=' + exp.failed + ' ' + (exp.message || ''));
+      return;
+    }
+
+    var u4 = amazonU4UrlEmbedSilent_();
+    if (!u4 || !u4.ok) {
+      amazonCourseEFail_(fn, (u4 && u4.error) ? u4.error : 'U4 失敗');
+      return;
+    }
+    // U4内でも親コピーするが、既存子URLのみの場合にも念のため再実行
+    try {
+      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+      var master2 = ss2.getSheetByName(MASTER_SHEET_NAME);
+      if (master2 && typeof amazonU4PropagateMainUrlToParents_ === 'function') {
+        var mv2 = master2.getDataRange().getValues();
+        var h2 = -1;
+        var ri;
+        for (ri = 0; ri < Math.min(20, mv2.length); ri++) {
+          if (mv2[ri] && mv2[ri].indexOf(ANCHOR_HEADER_NAME) !== -1) { h2 = ri; break; }
+        }
+        if (h2 >= 0) {
+          var cmap = {};
+          mv2[h2].forEach(function (name, ix) { cmap[String(name).trim()] = ix; });
+          var prop2 = amazonU4PropagateMainUrlToParents_(
+            master2, mv2, h2, cmap['親SKU'], cmap['子SKU'], cmap['Amazon MAIN URL']
+          );
+          Logger.log('[' + fn + '] parentMainUrlCopy extra=' + (prop2 && prop2.copied));
+        }
+      }
+    } catch (eProp) {
+      Logger.log('[' + fn + '] parentMainUrlCopy WARN ' + ((eProp && eProp.message) || eProp));
+    }
+    Logger.log('[' + fn + '] state=DONE u4=' + JSON.stringify(u4.summary || {}));
+    amazonCourseEToast_(
+      'E-2 完了',
+      'U4 runId=' + (u4.runId || '') +
+        ' MAIN成功=' + ((u4.summary && u4.summary.mainOk) != null ? u4.summary.mainOk : '?') +
+        ' 親URLコピー=' + ((u4.summary && u4.summary.parentMainUrlCopied) != null ? u4.summary.parentMainUrlCopied : '?') +
+        ' → 次は E-3 または承認済なら E-4'
+    );
+  } catch (e) {
+    amazonCourseEFail_(fn, (e && e.message) || e);
+  }
+}
+
+/** E-3: 18-①（成功OKなし。次はWeb承認①） */
+function menuAmazonCourseE3ApprovalCandidates() {
+  var fn = 'menuAmazonCourseE3ApprovalCandidates';
+  Logger.log('[' + fn + '] state=RUNNING');
+  try {
+    if (!getBoolScriptProperty_('APPROVAL_QUEUE_V1_ENABLED', false)) {
+      amazonCourseEFail_(fn, 'APPROVAL_QUEUE_V1_ENABLED=true にしてください。');
+      return;
+    }
+    var result = approvalQueueCreateCandidates_();
+    Logger.log('[' + fn + '] state=DONE batchId=' + result.batchId +
+      ' amazon=' + result.amazonCount);
+    amazonCourseEToast_(
+      'E-3 完了',
+      'batchId=' + result.batchId + ' amazon=' + result.amazonCount + ' → Webで承認①してから E-4'
+    );
+  } catch (e) {
+    amazonCourseEFail_(fn, (e && e.message) || e);
+  }
+}
+
+/** E-4: 21-① silent（結果は toast。失敗・親0は停止表示） */
+function menuAmazonCourseE4Generated() {
+  var fn = 'menuAmazonCourseE4Generated';
+  Logger.log('[' + fn + '] state=RUNNING');
+  try {
+    var result = menuApprovalAmazonLv4Run({ silent: true });
+    if (!result || result.cancelled) {
+      amazonCourseEFail_(fn, 'キャンセルまたは未実行');
+      return;
+    }
+    if (!result.ok) {
+      amazonCourseEFail_(fn, result.error || result.reason || 'Lv4 失敗');
+      return;
+    }
+    var sum = result.summary || {};
+    var parentsDone = Number(sum.parentsDone) || 0;
+    var msg =
+      'runId=' + (result.runId || '') +
+      ' batchId=' + (sum.batchId || '') +
+      ' 親成功=' + parentsDone +
+      ' スキップ=' + (sum.skipped != null ? sum.skipped : '') +
+      ' ' + (sum.message || '');
+    Logger.log('[' + fn + '] state=DONE ' + msg);
+    if (parentsDone < 1) {
+      amazonCourseEFail_(
+        fn,
+        'GENERATED 対象親が0件です。\n' + msg +
+          '\n（MAIN URL・カテゴリ・承認①・冪等を確認。ログ ▼Lv4実行ログ）'
+      );
+      return;
+    }
+    amazonCourseEToast_('E-4 完了', msg + ' → C1/SC 後に E-5（subBatchId）');
+  } catch (e) {
+    amazonCourseEFail_(fn, (e && e.message) || e);
+  }
+}
+
+/** E-5: 21-③ UPLOADED_OK（subBatchId入力は必要） */
+function menuAmazonCourseE5UploadedOk() {
+  var fn = 'menuAmazonCourseE5UploadedOk';
+  Logger.log('[' + fn + '] state=RUNNING');
+  try {
+    menuApprovalAmazonLv4MarkUploadedOk();
+    Logger.log('[' + fn + '] state=DONE');
+  } catch (e) {
+    amazonCourseEFail_(fn, (e && e.message) || e);
+  }
+}
+
+/** E 案内: 分割メニューの逃げ道 */
+function menuAmazonCourseEHelpSplit() {
+  SpreadsheetApp.getUi().alert(
+    'E と分割メニュー',
+    'E は一時コース入口です。細かい再実行・PoC・状態クリアは従来どおり:\n' +
+      '・C-Amazon①〜④（トップ）\n' +
+      '・Z → 18（承認）／19・20（楽天・Yahoo）／21（Lv4分割）\n' +
+      '・D（楽天・Yahoo・Amazon Da）\n' +
+      'E-1〜E-4 は成功時にOKダイアログを出しません（エラー時のみ）。\n' +
+      '将来は E を D に吸収予定です。',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
 /**
  * Drive 02 MAIN 最小ゲート（U3 v1）。
  * AMAZON_DRIVE_R2_POC_SKU があればその MAIN.jpg 必須。無ければフォルダ到達のみ（個別は人間確認）。
@@ -2307,7 +2694,8 @@ function syncAiDataToMaster() {
     for (var k in colMap) { if (colMap.hasOwnProperty(k) && String(k).trim() === n) return colMap[k]; }
     return undefined;
   }
-  /** マスタ列に書き込んだ値を作業エリア列へ転記する対応（列名がマスタに存在する場合のみ）。値が配列の場合は複数列に同じ値を転記。setValuesで計算式も上書き。 */
+  /** マスタ列に書き込んだ値を作業エリア列へ転記する対応（列名がマスタに存在する場合のみ）。値が配列の場合は複数列に同じ値を転記。setValuesで計算式も上書き。
+   * 市場価格調査 → 定価、市場価格 はしない（2026-07-26確定: 定価は数値／計算式専用。調査文言は ▼マスタ(市場価格調査) のみ）。 */
   var MASTER_TO_WORKAREA = {
     '★Amazon検索KW(150字)': '検索キーワード',
     '原材料(食品)': '特記すべき原材料',
@@ -2317,13 +2705,12 @@ function syncAiDataToMaster() {
     '商品本体サイズ': '(商品本体サイズ)',
     'カラー': '(カラー)',
     'その他スペック': '(その他スペック)',
-    'シリーズ': 'マスタシリーズ',
-    '市場価格調査': '定価、市場価格'
+    'シリーズ': 'マスタシリーズ'
   };
   /** 転記先列の表記ゆれ。コード上の名前で見つからない場合に、この別名を順に試す（スペースなし想定）。
    * 転記先として参照する列名（スプシ1行目と完全一致させるか、ここに別名を追加）:
    * 検索キーワード, 特記すべき原材料, (賞味期限(食品)) or 賞味期限等, (保存方法(食品)) or 保存方法等,
-   * (素材・材質), (商品本体サイズ), (カラー), (その他スペック), マスタシリーズ, 定価、市場価格 */
+   * (素材・材質), (商品本体サイズ), (カラー), (その他スペック), マスタシリーズ */
   var WORKAREA_COL_ALIASES = {
     '(賞味期限(食品))': ['賞味期限等'],
     '(保存方法(食品))': ['保存方法等']
@@ -4573,6 +4960,2603 @@ function menuProductNameProposalsOnlyForCheckedParentRows() {
   Logger.log('[商品名案のみ・テスト用] 対象行(1-based): ' + checkedParentRows.join(', ') + ' (計' + checkedParentRows.length + '行)');
   runProductNameProposalsForRows(masterSheet, masterValues, headerRowIdx, masterColMap, checkedParentRows);
   SpreadsheetApp.getActive().toast('商品名案のみ生成しました（テスト用） ' + checkedParentRows.length + ' 親行', '完了', 5);
+}
+
+/**
+ * Zメニュー「7.5 / メニュー8」: 既存候補からの選択＋重複削除（再生成しない）。
+ * 対象: KW作業エリア9列のみ。商品名案・カテゴリ自動・バリエーション再推論・ブランド・定価は触らない。
+ * 要件: docs/org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md
+ * トグル AMAZON_AI_AUTO_ADOPT_ENABLED 既定 false。B統合・楽天CSV・Yahoo.js 非干渉。
+ */
+function menuAmazonAiGenerateAndAdoptForCheckedParents() {
+  var fn = 'menuAmazonAiGenerateAndAdoptForCheckedParents';
+  var runId = 'AI8_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') + '_' +
+    ('000000' + Math.floor(Math.random() * 1e6)).slice(-6);
+  Logger.log('[' + fn + '] state=PENDING runId=' + runId);
+  if (!getBoolScriptProperty_(AMAZON_AI_AUTO_ADOPT_ENABLED_PROP, false)) {
+    var off = 'メニュー8は無効です。Script Properties の ' + AMAZON_AI_AUTO_ADOPT_ENABLED_PROP +
+      ' を true にしてから実行してください（終わったら false に戻す）。';
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' ' + off);
+    try { SpreadsheetApp.getUi().alert(off); } catch (e0) {}
+    return;
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) {
+    try { SpreadsheetApp.getUi().alert('▼商品マスタ(人間作業用) シートが見つかりません。'); } catch (e1) {}
+    return;
+  }
+  var masterValues = masterSheet.getDataRange().getValues();
+  var headerRowIdx = amazonAiFindHeaderRowIdx_(masterValues);
+  if (headerRowIdx < 0) {
+    try { SpreadsheetApp.getUi().alert('マスタのヘッダー行（' + ANCHOR_HEADER_NAME + '）が見つかりません。'); } catch (e2) {}
+    return;
+  }
+  var masterColMap = getColumnIndexMap(masterValues[headerRowIdx]);
+  var parentRows = amazonAiCollectTargetParentRows_(masterValues, headerRowIdx, masterColMap);
+  if (!parentRows.length) {
+    var msgEmpty = '対象のレ点付き親行がありません。';
+    if (getBoolScriptProperty_(AMAZON_AI_ADOPT_REQUIRE_LISTING_CK_PROP, false)) {
+      msgEmpty += '\n（厳格モード: 配下に出品CK付き子が必要）';
+    }
+    try { SpreadsheetApp.getUi().alert(msgEmpty); } catch (e3) {}
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' no parents');
+    return;
+  }
+  var maxParents = getNumberScriptProperty_(AMAZON_AI_ADOPT_MAX_PARENTS_PROP, 0);
+  if (maxParents > 0 && parentRows.length > maxParents) {
+    Logger.log('[' + fn + '] runId=' + runId + ' truncate parents ' + parentRows.length + '→' + maxParents);
+    parentRows = parentRows.slice(0, maxParents);
+  }
+  Logger.log('[' + fn + '] state=RUNNING runId=' + runId + ' parents=' + parentRows.length +
+    ' rows=' + parentRows.join(',') + ' mode=select_fix_kw9_v18_yahoo');
+  try {
+    SpreadsheetApp.getActive().toast('メニュー8: v1.8 KW＋テーマ＋ジャンル＋Yahoo（' + parentRows.length + '親）...', 'AI一括採用', 5);
+  } catch (t0) {}
+
+  // 再生成なし。KW→テーマ→（任意）楽天ジャンル→（任意）Yahooカテゴリ／ブランド
+  var stats = {
+    adoptedEmpty: 0,
+    dedupedExisting: 0,
+    crossDeduped: 0,
+    skippedUnchanged: 0,
+    reviewFlags: 0,
+    candidatesMissing: 0,
+    tokensRemovedCross: 0,
+    trimmedForMax: 0,
+    tokensRemovedTrim: 0,
+    featureUsageSkipped: 0,
+    capacityRemoved: 0,
+    theme1Written: 0,
+    theme2Written: 0,
+    theme2Cleared: 0,
+    themeSkippedUnchanged: 0,
+    genreWritten: 0,
+    genreSkipped: 0,
+    genreReview: 0,
+    genreDisabled: 0,
+    yahooCatWritten: 0,
+    yahooCatSkipped: 0,
+    yahooCatReview: 0,
+    yahooBrandWritten: 0,
+    yahooBrandSkipped: 0,
+    yahooBrandReview: 0,
+    yahooDisabled: 0
+  };
+  try {
+    amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats);
+  } catch (eAdopt) {
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' adopt ' + ((eAdopt && eAdopt.message) || eAdopt));
+    try { SpreadsheetApp.getUi().alert('KW選択・修正失敗: ' + ((eAdopt && eAdopt.message) || eAdopt)); } catch (eA2) {}
+    return;
+  }
+  try {
+    amazonAiSelectVariationThemesForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats);
+  } catch (eTheme) {
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' theme ' + ((eTheme && eTheme.message) || eTheme));
+    try { SpreadsheetApp.getUi().alert('バリエーションテーマ選定失敗: ' + ((eTheme && eTheme.message) || eTheme)); } catch (eT2) {}
+    return;
+  }
+  try {
+    amazonAiSelectRakutenGenreForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats);
+  } catch (eGenre) {
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' genre ' + ((eGenre && eGenre.message) || eGenre));
+    try { SpreadsheetApp.getUi().alert('楽天ジャンル選定失敗: ' + ((eGenre && eGenre.message) || eGenre)); } catch (eG2) {}
+    return;
+  }
+  try {
+    amazonAiSelectYahooCategoryBrandForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats);
+  } catch (eYahoo) {
+    Logger.log('[' + fn + '] state=FAILED runId=' + runId + ' yahoo ' + ((eYahoo && eYahoo.message) || eYahoo));
+    try { SpreadsheetApp.getUi().alert('Yahooカテゴリ／ブランド選定失敗: ' + ((eYahoo && eYahoo.message) || eYahoo)); } catch (eY2) {}
+    return;
+  }
+
+  Logger.log('[' + fn + '] state=DONE runId=' + runId + ' ' + JSON.stringify(stats));
+  var yahooOn = getBoolScriptProperty_(AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP, false);
+  var genreOn = getBoolScriptProperty_(AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP, false);
+  var summary =
+    'メニュー8 完了（v1.8: KW＋テーマ＋楽天ジャンル＋Yahooカテゴリ／ブランド）\nrunId=' + runId +
+    '\n対象親=' + parentRows.length +
+    '\n空欄→候補採用=' + stats.adoptedEmpty +
+    '\n既存の重複削除=' + stats.dedupedExisting +
+    '\n横断dedupeセル=' + stats.crossDeduped +
+    '\n横断除去トークン=' + stats.tokensRemovedCross +
+    '\n文字数調整セル=' + stats.trimmedForMax +
+    '\n文字数調整で除去=' + stats.tokensRemovedTrim +
+    '\n特徴用途スキップ=' + (stats.featureUsageSkipped || 0) +
+    '\n容量語除去=' + (stats.capacityRemoved || 0) +
+    '\nテーマ1書込=' + (stats.theme1Written || 0) +
+    '\nテーマ2書込=' + (stats.theme2Written || 0) +
+    '\nテーマ2クリア=' + (stats.theme2Cleared || 0) +
+    '\nテーマ変更なし=' + (stats.themeSkippedUnchanged || 0) +
+    '\n楽天ジャンル書込=' + (stats.genreWritten || 0) +
+    '\n楽天ジャンルスキップ=' + (stats.genreSkipped || 0) +
+    '\n楽天ジャンル要確認=' + (stats.genreReview || 0) +
+    (stats.genreDisabled ? '\n（ジャンルトグルOFF）' : '') +
+    '\nYahooカテゴリ書込=' + (stats.yahooCatWritten || 0) +
+    '\nYahooカテゴリスキップ=' + (stats.yahooCatSkipped || 0) +
+    '\nYahooカテゴリ要確認=' + (stats.yahooCatReview || 0) +
+    '\nYahooブランド書込=' + (stats.yahooBrandWritten || 0) +
+    '\nYahooブランドスキップ=' + (stats.yahooBrandSkipped || 0) +
+    '\nYahooブランド要確認=' + (stats.yahooBrandReview || 0) +
+    (stats.yahooDisabled ? '\n（YahooトグルOFF）' : '') +
+    '\n変更なし=' + stats.skippedUnchanged +
+    '\n候補0件=' + stats.candidatesMissing +
+    '\n要確認フラグ=' + stats.reviewFlags +
+    '\n\nYahoo: 候補→SHPカテゴリ/ブランド正本検証（getShopCategoryList/getShopBrandList）' +
+    '\n終わったら ' + AMAZON_AI_AUTO_ADOPT_ENABLED_PROP + '=false' +
+    (genreOn ? (' と ' + AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP + '=false') : '') +
+    (yahooOn ? (' と ' + AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP + '=false') : '') +
+    ' に戻してください。';
+  try { SpreadsheetApp.getUi().alert(summary); } catch (eSum) {}
+  try { SpreadsheetApp.getActive().toast('メニュー8完了 ' + parentRows.length + '親', 'AI一括採用', 8); } catch (t1) {}
+}
+
+/**
+ * 最終商品名式の列字母順（実シートの計算式正本）。ヘッダ名は実行時に8行目から解決。
+ * CTR列は letter が FR の想定（【】付き連結）。
+ */
+var AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_ = {
+  amazon: ['FQ', 'J', 'FS', 'FR', 'FJ', 'FK', 'FT', 'FW'],
+  rakuten: ['FQ', 'J', 'FS', 'GP', 'FT', 'FJ', 'FK', 'FU', 'FX', 'FR'],
+  yahoo: ['FQ', 'J', 'FS', 'GP', 'FR', 'FT', 'FJ', 'FK', 'FV', 'FY']
+};
+
+/** 共有作業列（1回だけ横断）。TITLE_DROPDOWN キー・Amazon式に近い順。 */
+var AMAZON_AI_ADOPT_SHARED_CROSS_LOGICAL_COLS_ = [
+  'メインKW(3つ)',
+  'CTRコピー',
+  '特徴キーワード',
+  '用途キーワード'
+];
+
+var AMAZON_AI_ADOPT_FINAL_NAME_SEED_COLS_ = ['メーカー名', '商品名ベース', 'メーカー品番'];
+
+/** ヘッダ名 → TITLE_DROPDOWN 論理キー */
+var AMAZON_AI_ADOPT_HEADER_TO_LOGICAL_ = {
+  'メインキーワード（一つ）[商品を示すkw]': 'メインKW(3つ)',
+  'メインKW(3つ)': 'メインKW(3つ)',
+  '[CTR,CVRを上げるコピー]': 'CTRコピー',
+  'CTRコピー': 'CTRコピー',
+  '特徴キーワード': '特徴キーワード',
+  '用途キーワード': '用途キーワード',
+  '楽天 補足KW': '楽天 補足KW',
+  'Yahoo! 補足KW': 'Yahoo! 補足KW',
+  '商品名検索キーワードamazon': '商品名検索キーワードamazon',
+  '商品名検索キーワード楽天': '商品名検索キーワード楽天',
+  '商品名検索キーワードYahoo!': '商品名検索キーワードYahoo!'
+};
+
+/**
+ * KW選択・重複削除（v1.5）:
+ * 1) 共有列をメーカー等に対し横断（特徴・用途は商品名酷似なら不採用可）
+ * 2) モール別に補足・検索KWを横断（容量語は全体で1つ）
+ * 3) 最終名が上限超なら検索KWから弱語削除（半角0.5換算・下限=上限−5）
+ */
+function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var LOG = '[メニュー8][kw9]';
+  var headerRow = masterValues[headerRowIdx] || [];
+  var letterMap = amazonAiBuildColLetterHeaderMap_(headerRow);
+  var malls = [
+    {
+      id: 'amazon',
+      letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.amazon,
+      maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_AMAZON,
+      writeLogical: { '商品名検索キーワードamazon': true },
+      trimLogicalOrder: ['商品名検索キーワードamazon']
+    },
+    {
+      id: 'rakuten',
+      letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.rakuten,
+      maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_RAKUTEN,
+      writeLogical: { '楽天 補足KW': true, '商品名検索キーワード楽天': true },
+      trimLogicalOrder: ['商品名検索キーワード楽天', '楽天 補足KW']
+    },
+    {
+      id: 'yahoo',
+      letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.yahoo,
+      maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_YAHOO,
+      writeLogical: { 'Yahoo! 補足KW': true, '商品名検索キーワードYahoo!': true },
+      trimLogicalOrder: ['商品名検索キーワードYahoo!', 'Yahoo! 補足KW']
+    }
+  ];
+
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    var capacityState = { keys: {} };
+
+    var seenShared = {};
+    for (var si = 0; si < AMAZON_AI_ADOPT_FINAL_NAME_SEED_COLS_.length; si++) {
+      var seedHeader = AMAZON_AI_ADOPT_FINAL_NAME_SEED_COLS_[si];
+      var seedTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, seedHeader));
+      amazonAiAddTokensToSeen_(seedTokens, seenShared);
+      amazonAiRegisterCapacityKeys_(seedTokens, capacityState);
+      if (seedTokens.length) {
+        Logger.log(LOG + ' 行' + row1Based + ' seed[' + seedHeader + '] tokens=' + seedTokens.length);
+      }
+    }
+    var gpHeader = letterMap.GP || letterMap.gp;
+    if (gpHeader) {
+      var gpTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, gpHeader));
+      amazonAiAddTokensToSeen_(gpTokens, seenShared);
+      amazonAiRegisterCapacityKeys_(gpTokens, capacityState);
+      if (gpTokens.length) {
+        Logger.log(LOG + ' 行' + row1Based + ' seed[GP=' + gpHeader + '] tokens=' + gpTokens.length);
+      }
+    }
+
+    for (var ci = 0; ci < AMAZON_AI_ADOPT_SHARED_CROSS_LOGICAL_COLS_.length; ci++) {
+      var sharedCol = AMAZON_AI_ADOPT_SHARED_CROSS_LOGICAL_COLS_[ci];
+      if (sharedCol === '特徴キーワード' || sharedCol === '用途キーワード') {
+        amazonAiProcessFeatureUsageCol_(
+          masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
+          sharedCol, seenShared, capacityState, stats, LOG
+        );
+      } else {
+        amazonAiProcessKwLogicalCol_(
+          masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
+          sharedCol, seenShared, true, capacityState, stats, LOG
+        );
+      }
+    }
+
+    for (var mi = 0; mi < malls.length; mi++) {
+      var mall = malls[mi];
+      var seenMall = {};
+      for (var li = 0; li < mall.letters.length; li++) {
+        var letter = mall.letters[li];
+        var headerName = letterMap[letter] || letterMap[String(letter).toUpperCase()] || '';
+        if (!headerName) {
+          Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' letter=' + letter + ' ヘッダ未解決スキップ');
+          continue;
+        }
+        var logical = amazonAiHeaderToLogical_(headerName);
+        if (logical && mall.writeLogical[logical]) {
+          amazonAiProcessKwLogicalCol_(
+            masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
+            logical, seenMall, true, capacityState, stats, LOG
+          );
+        } else {
+          var cellText = amazonAiGetCellByHeader_(row, masterColMap, headerName);
+          if (!cellText && logical) {
+            var resolvedTmp = getTitleDropdownColPair(masterColMap, logical);
+            if (resolvedTmp && resolvedTmp.targetIdx !== undefined) {
+              var tv = row[resolvedTmp.targetIdx];
+              cellText = tv != null ? String(tv).trim() : '';
+            }
+          }
+          var readTokens = amazonAiSplitSpaceTokens_(cellText);
+          amazonAiAddTokensToSeen_(readTokens, seenMall);
+          amazonAiRegisterCapacityKeys_(readTokens, capacityState);
+        }
+      }
+      amazonAiTrimMallFinalNameToMax_(
+        masterSheet, headerRowIdx, masterColMap, row1Based, row, mall, letterMap, stats, LOG
+      );
+    }
+  }
+}
+
+function amazonAiBuildColLetterHeaderMap_(headerRow) {
+  var map = {};
+  if (!headerRow || !headerRow.length) return map;
+  for (var i = 0; i < headerRow.length; i++) {
+    var name = headerRow[i] != null ? String(headerRow[i]).trim() : '';
+    if (!name) continue;
+    map[columnToLetter(i + 1)] = name;
+  }
+  return map;
+}
+
+function amazonAiHeaderToLogical_(headerName) {
+  if (!headerName) return '';
+  if (AMAZON_AI_ADOPT_HEADER_TO_LOGICAL_[headerName]) return AMAZON_AI_ADOPT_HEADER_TO_LOGICAL_[headerName];
+  return '';
+}
+
+function amazonAiIsCtrHeader_(headerName) {
+  var logical = amazonAiHeaderToLogical_(headerName);
+  return logical === 'CTRコピー' || String(headerName).indexOf('CTR') !== -1;
+}
+
+/**
+ * 最終商品名の概算文字列（式と同様に空欄スキップ・CTRは【】・項目間スペース）。
+ */
+function amazonAiBuildFinalNamePreview_(row, masterColMap, letters, letterMap) {
+  var chunks = [];
+  for (var i = 0; i < letters.length; i++) {
+    var letter = letters[i];
+    var headerName = letterMap[letter] || letterMap[String(letter).toUpperCase()] || '';
+    if (!headerName) continue;
+    var text = amazonAiGetCellByHeader_(row, masterColMap, headerName);
+    if (!text) {
+      var logical = amazonAiHeaderToLogical_(headerName);
+      if (logical) {
+        var resolved = getTitleDropdownColPair(masterColMap, logical);
+        if (resolved && resolved.targetIdx !== undefined) {
+          var v = row[resolved.targetIdx];
+          text = v != null ? String(v).trim() : '';
+        }
+      }
+    }
+    if (!text) continue;
+    if (amazonAiIsCtrHeader_(headerName)) {
+      chunks.push('【' + text + '】');
+    } else {
+      chunks.push(text);
+    }
+  }
+  return chunks.join(' ').replace(/[\s\u3000]+/g, ' ').replace(/^\s+|\s+$/g, '');
+}
+
+/**
+ * 出品向け文字数（シートの LEN 系に合わせる）: 半角 0.5・全角 1。
+ */
+function amazonAiListingCharLen_(str) {
+  var s = String(str || '');
+  var n = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    if (c <= 0x7f) {
+      n += 0.5;
+    } else if (c >= 0xff61 && c <= 0xff9f) {
+      n += 0.5;
+    } else {
+      n += 1;
+    }
+  }
+  return n;
+}
+
+/**
+ * 容量・数量トークンか（3枚 / 3枚入 / 3枚セット / 10個入り 等）。
+ */
+function amazonAiIsCapacityToken_(t) {
+  var s = String(t || '').replace(/[\s\u3000]/g, '');
+  if (!s) return false;
+  if (/^\d+(枚|個|本|袋|箱|組|缶|瓶|パック|セット)/.test(s)) return true;
+  if (/^\d+(枚|個|本|袋|箱).*(入|入り|セット)/.test(s)) return true;
+  if (/^(枚|個|本)(入|入り)$/.test(s)) return true;
+  return false;
+}
+
+/** 容量の正規化キー（3枚入・3枚セット → 3枚）。 */
+function amazonAiCapacityKey_(t) {
+  if (!amazonAiIsCapacityToken_(t)) return '';
+  var s = String(t || '').replace(/[\s\u3000]/g, '');
+  var m = s.match(/(\d+)(枚|個|本|袋|箱|組|缶|瓶|パック)/);
+  if (m) return m[1] + m[2];
+  return 'cap:' + s;
+}
+
+function amazonAiRegisterCapacityKeys_(tokens, capacityState) {
+  if (!capacityState || !capacityState.keys || !tokens) return;
+  for (var i = 0; i < tokens.length; i++) {
+    var k = amazonAiCapacityKey_(tokens[i]);
+    if (k) capacityState.keys[k] = true;
+  }
+}
+
+/** 商品名っぽい語幹（快眠/安眠/熟睡 を除く）。 */
+function amazonAiProductishStem_(t) {
+  return String(t || '').replace(/^(快眠|安眠|熟睡)/, '');
+}
+
+/**
+ * 特徴・用途候補が商品名ベースと役割重複しすぎないか。
+ * @return {number} スコア。不適は -1
+ */
+function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens) {
+  var tokens = amazonAiSplitSpaceTokens_(text);
+  if (!tokens.length) return -1;
+  var nonCap = [];
+  var i;
+  for (i = 0; i < tokens.length; i++) {
+    if (!amazonAiIsCapacityToken_(tokens[i])) nonCap.push(tokens[i]);
+  }
+  if (!nonCap.length) return -1;
+
+  var baseSet = {};
+  amazonAiAddTokensToSeen_(baseTokens || [], baseSet);
+  var makerSet = {};
+  amazonAiAddTokensToSeen_(makerTokens || [], makerSet);
+
+  for (i = 0; i < nonCap.length; i++) {
+    var c = nonCap[i];
+    if (baseSet[c]) return -1;
+    var cStem = amazonAiProductishStem_(c);
+    for (var j = 0; j < (baseTokens || []).length; j++) {
+      var b = baseTokens[j];
+      if (amazonAiIsCapacityToken_(b)) continue;
+      var bStem = amazonAiProductishStem_(b);
+      if (cStem && bStem && cStem.length >= 3 && cStem === bStem) return -1;
+    }
+  }
+
+  var novel = 0;
+  for (i = 0; i < nonCap.length; i++) {
+    var t = nonCap[i];
+    if (makerSet[t]) continue;
+    if (baseSet[t]) continue;
+    novel++;
+  }
+  if (novel === 0) return -1;
+  var score = novel * 10;
+  for (i = 0; i < tokens.length; i++) {
+    if (amazonAiIsCapacityToken_(tokens[i])) score -= 3;
+  }
+  return score;
+}
+
+function amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens) {
+  var best = '';
+  var bestScore = -1;
+  if (!options || !options.length) return '';
+  for (var i = 0; i < options.length; i++) {
+    var opt = String(options[i] || '').trim();
+    if (!opt) continue;
+    var sc = amazonAiScoreFeatureUsageCandidate_(opt, baseTokens, makerTokens);
+    if (sc > bestScore) {
+      bestScore = sc;
+      best = opt;
+    }
+  }
+  return bestScore >= 0 ? best : '';
+}
+
+/**
+ * 特徴・用途: 商品名と酷似／特徴になっていない候補は選ばない。適当なものがなければ空でよい。
+ */
+function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
+  colName, seen, capacityState, stats, LOG) {
+  var resolved = getTitleDropdownColPair(masterColMap, colName);
+  if (!resolved || resolved.targetIdx === undefined) {
+    Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' 列解決失敗スキップ');
+    return;
+  }
+  var tidx = resolved.targetIdx;
+  var optionsColIdx = resolved.optionsIdx;
+  var valueForOptions = (optionsColIdx !== undefined && row[optionsColIdx] != null)
+    ? String(row[optionsColIdx]).trim() : '';
+  var options = [];
+  if (optionsColIdx !== undefined && valueForOptions) {
+    options = buildTitleDropdownOptions(
+      valueForOptions, false, false, false, false, false
+    );
+  }
+  var baseTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, '商品名ベース'));
+  var makerTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, 'メーカー名'));
+  var pick = amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens);
+  var cur = row[tidx];
+  var curStr = cur != null ? String(cur).trim() : '';
+  var wasEmpty = amazonAiCellIsEmpty_(cur);
+  var curScore = wasEmpty ? -1 : amazonAiScoreFeatureUsageCandidate_(curStr, baseTokens, makerTokens);
+
+  var raw = '';
+  var mode = '';
+  if (pick) {
+    raw = pick;
+    mode = (!wasEmpty && curStr === pick) ? 'keep_suitable' : (wasEmpty ? 'adopt_empty' : 'replace_unsuitable');
+  } else if (curScore >= 0) {
+    raw = curStr;
+    mode = 'keep_suitable';
+  } else {
+    if (!wasEmpty) {
+      var clearRange = masterSheet.getRange(row1Based, tidx + 1);
+      if (options.length > 0) {
+        clearRange.setDataValidation(
+          SpreadsheetApp.newDataValidation().requireValueInList(options, true).setAllowInvalid(true).build()
+        );
+      }
+      clearRange.setValue('');
+      try { clearRange.setNote('特徴/用途: 商品名と役割重複のため空欄（適当な候補なし）'); } catch (eN0) {}
+      row[tidx] = '';
+      stats.featureUsageSkipped++;
+      stats.dedupedExisting++;
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=clear_unsuitable was="' + curStr + '"');
+    } else {
+      stats.featureUsageSkipped++;
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=skip_no_suitable_candidate');
+    }
+    return;
+  }
+
+  var filtered = amazonAiFilterTokensAgainstSeen_(amazonAiSplitSpaceTokens_(raw), seen, capacityState, stats);
+  var nextVal = filtered.text;
+  if (!nextVal) {
+    if (!wasEmpty || mode.indexOf('adopt') === 0 || mode === 'replace_unsuitable') {
+      masterSheet.getRange(row1Based, tidx + 1).setValue('');
+      row[tidx] = '';
+      stats.featureUsageSkipped++;
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=empty_after_filter');
+    }
+    return;
+  }
+  if (nextVal === curStr && mode === 'keep_suitable') {
+    stats.skippedUnchanged++;
+    return;
+  }
+  var targetRange = masterSheet.getRange(row1Based, tidx + 1);
+  if (options.length > 0) {
+    targetRange.setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(options, true).setAllowInvalid(true).build()
+    );
+  }
+  targetRange.setValue(nextVal);
+  row[tidx] = nextVal;
+  if (mode === 'adopt_empty') {
+    stats.adoptedEmpty++;
+  } else if (mode === 'replace_unsuitable' || filtered.removed.length) {
+    stats.dedupedExisting++;
+    try {
+      targetRange.setNote('特徴/用途選定: ' + curStr + ' → ' + nextVal);
+    } catch (eN1) {}
+  } else {
+    stats.skippedUnchanged++;
+  }
+  if (filtered.removed.length) {
+    stats.crossDeduped++;
+    stats.tokensRemovedCross += filtered.removed.length;
+  }
+  Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=' + mode +
+    ' → "' + String(nextVal).substring(0, 80) + '"');
+}
+
+/**
+ * 強語（メイン・特徴・用途・商品名ベース・メーカー名）以外を優先して末尾側から削除。
+ * @return {number} 削除する index。無ければ -1
+ */
+function amazonAiPickWeakTokenIndexToRemove_(tokens, strongSet) {
+  if (!tokens || !tokens.length) return -1;
+  for (var i = tokens.length - 1; i >= 0; i--) {
+    if (!strongSet[tokens[i]]) return i;
+  }
+  return tokens.length - 1;
+}
+
+function amazonAiBuildStrongTokenSet_(row, masterColMap) {
+  var strong = {};
+  var headers = ['メーカー名', '商品名ベース', 'メインキーワード（一つ）[商品を示すkw]', '特徴キーワード', '用途キーワード'];
+  for (var i = 0; i < headers.length; i++) {
+    amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, headers[i])), strong);
+  }
+  var mainLogical = getTitleDropdownColPair(masterColMap, 'メインKW(3つ)');
+  if (mainLogical && mainLogical.targetIdx !== undefined) {
+    var mv = row[mainLogical.targetIdx];
+    amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(mv != null ? String(mv) : ''), strong);
+  }
+  return strong;
+}
+
+/**
+ * 最終名が maxChars 超なら trimLogicalOrder の列から弱語を削除。
+ * 文字数は半角0.5換算。下限 = max − MIN_SLACK を下回る余分な削除はしない。
+ */
+function amazonAiTrimMallFinalNameToMax_(masterSheet, headerRowIdx, masterColMap, row1Based, row, mall, letterMap, stats, LOG) {
+  var minChars = mall.maxChars - AMAZON_AI_ADOPT_FINAL_NAME_MIN_SLACK;
+  if (minChars < 0) minChars = 0;
+  var preview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
+  var len = amazonAiListingCharLen_(preview);
+  if (len <= mall.maxChars) {
+    Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' finalLen=' + len +
+      ' ok band=[' + minChars + ',' + mall.maxChars + ']');
+    return;
+  }
+  var strongSet = amazonAiBuildStrongTokenSet_(row, masterColMap);
+  var removedTotal = 0;
+  var guard = 0;
+  while (len > mall.maxChars && guard < 200) {
+    guard++;
+    var removedOne = false;
+    for (var ti = 0; ti < mall.trimLogicalOrder.length; ti++) {
+      var logical = mall.trimLogicalOrder[ti];
+      var resolved = getTitleDropdownColPair(masterColMap, logical);
+      if (!resolved || resolved.targetIdx === undefined) continue;
+      var tidx = resolved.targetIdx;
+      var curStr = row[tidx] != null ? String(row[tidx]).trim() : '';
+      var tokens = amazonAiSplitSpaceTokens_(curStr);
+      if (!tokens.length) continue;
+
+      var bestIdx = -1;
+      var bestTrialLen = null;
+      for (var k = tokens.length - 1; k >= 0; k--) {
+        if (strongSet[tokens[k]] && bestIdx >= 0) continue;
+        var trialTokens = tokens.slice();
+        trialTokens.splice(k, 1);
+        var saved = row[tidx];
+        row[tidx] = trialTokens.join(' ');
+        var trialPreview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
+        var trialLen = amazonAiListingCharLen_(trialPreview);
+        row[tidx] = saved;
+        if (trialLen <= mall.maxChars && trialLen >= minChars) {
+          bestIdx = k;
+          bestTrialLen = trialLen;
+          break;
+        }
+        if (bestIdx < 0 || (trialLen < len && (bestTrialLen === null || trialLen > bestTrialLen))) {
+          if (!strongSet[tokens[k]] || bestIdx < 0) {
+            bestIdx = k;
+            bestTrialLen = trialLen;
+          }
+        }
+      }
+      if (bestIdx < 0) {
+        bestIdx = amazonAiPickWeakTokenIndexToRemove_(tokens, strongSet);
+      }
+      if (bestIdx < 0) continue;
+
+      var trialTokens2 = tokens.slice();
+      var removedTok = trialTokens2.splice(bestIdx, 1)[0];
+      row[tidx] = trialTokens2.join(' ');
+      var nextPreview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
+      var nextLen = amazonAiListingCharLen_(nextPreview);
+      if (nextLen < minChars && len > mall.maxChars && nextLen > 0) {
+        // 下限を大きく割り込むなら、まだ他トークンで調整できるか続けるが、上限超過の解消は優先
+      }
+      var nextVal = trialTokens2.join(' ');
+      masterSheet.getRange(row1Based, tidx + 1).setValue(nextVal);
+      try {
+        masterSheet.getRange(row1Based, tidx + 1).setNote(
+          '文字数上限(' + mall.maxChars + ')/下限(' + minChars + ')調整: 除去 ' + removedTok
+        );
+      } catch (eN) {}
+      row[tidx] = nextVal;
+      removedTotal++;
+      removedOne = true;
+      Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' trim ' + logical +
+        ' -"' + removedTok + '" len ' + len + '→' + nextLen);
+      preview = nextPreview;
+      len = nextLen;
+      break;
+    }
+    if (!removedOne) break;
+    if (len <= mall.maxChars) break;
+  }
+  if (removedTotal > 0) {
+    stats.trimmedForMax++;
+    stats.tokensRemovedTrim += removedTotal;
+  }
+  if (len > mall.maxChars) {
+    amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+      '最終名' + mall.id, '文字数上限' + mall.maxChars + '超過のまま len=' + len, stats);
+    Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' FINAL_OVER len=' + len + ' max=' + mall.maxChars);
+  } else {
+    Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' trimDone finalLen=' + len +
+      ' band=[' + minChars + ',' + mall.maxChars + '] removed=' + removedTotal);
+  }
+}
+
+function amazonAiGetCellByHeader_(row, masterColMap, headerName) {
+  var idx = masterColMap[headerName];
+  if (idx === undefined) return '';
+  var v = row[idx];
+  return v != null ? String(v).trim() : '';
+}
+
+function amazonAiSplitSpaceTokens_(str) {
+  if (!str || !String(str).trim()) return [];
+  return String(str).split(/[\s\u3000]+/).map(function (s) { return String(s).trim(); }).filter(function (s) { return !!s; });
+}
+
+function amazonAiAddTokensToSeen_(tokens, seen) {
+  if (!seen || !tokens) return;
+  for (var i = 0; i < tokens.length; i++) {
+    seen[tokens[i]] = true;
+  }
+}
+
+/**
+ * 完全一致の seen 除去＋容量キーは全体で1回だけ残す。
+ * @return {{text: string, removed: string[]}}
+ */
+function amazonAiFilterTokensAgainstSeen_(tokens, seen, capacityState, stats) {
+  var kept = [];
+  var removed = [];
+  var local = {};
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    var capKey = amazonAiCapacityKey_(t);
+    if (capKey && capacityState && capacityState.keys && capacityState.keys[capKey]) {
+      removed.push(t);
+      if (stats) stats.capacityRemoved++;
+      continue;
+    }
+    if ((seen && seen[t]) || local[t]) {
+      removed.push(t);
+      continue;
+    }
+    local[t] = true;
+    kept.push(t);
+    if (capKey && capacityState && capacityState.keys) {
+      capacityState.keys[capKey] = true;
+    }
+  }
+  if (seen) {
+    amazonAiAddTokensToSeen_(kept, seen);
+  }
+  return { text: kept.join(' '), removed: removed };
+}
+
+/**
+ * @param {Object|null} seen 横断用。null ならセル内 dedupe のみ
+ * @param {boolean} useCross true=横断（seen必須）
+ * @param {Object|null} capacityState { keys: {} }
+ */
+function amazonAiProcessKwLogicalCol_(masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
+  colName, seen, useCross, capacityState, stats, LOG) {
+  var resolved = getTitleDropdownColPair(masterColMap, colName);
+  if (!resolved || resolved.targetIdx === undefined) {
+    Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' 列解決失敗スキップ');
+    return;
+  }
+  var targetIndices = resolved.targetIndices || [resolved.targetIdx];
+  var optionsColIdx = resolved.optionsIdx;
+  var valueForOptions = (optionsColIdx !== undefined && row[optionsColIdx] != null)
+    ? String(row[optionsColIdx]).trim() : '';
+  var options = [];
+  if (optionsColIdx !== undefined && valueForOptions) {
+    options = buildTitleDropdownOptions(
+      valueForOptions, resolved.isCtr, resolved.isMainKw, resolved.isVariation,
+      resolved.isGenreCategoryId, resolved.isGenreCategoryName
+    );
+  }
+  var pickFromCandidates = '';
+  if (resolved.isCtr) {
+    pickFromCandidates = getCtrRecommendedFirstLine(valueForOptions) || (options.length ? options[0] : '');
+  } else if (options.length) {
+    pickFromCandidates = options[0];
+  }
+
+  for (var ti = 0; ti < targetIndices.length; ti++) {
+    var tidx = targetIndices[ti];
+    var cur = row[tidx];
+    var curStr = cur != null ? String(cur).trim() : '';
+    var wasEmpty = amazonAiCellIsEmpty_(cur);
+    var raw = '';
+    var mode = '';
+
+    if (wasEmpty) {
+      if (!pickFromCandidates) {
+        stats.candidatesMissing++;
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          amazonAiReviewShortNameForDropdown_(colName), '候補0件（' + colName + '）', stats);
+        continue;
+      }
+      raw = pickFromCandidates;
+      mode = 'adopt_empty';
+    } else {
+      raw = curStr;
+      mode = 'dedupe_existing';
+    }
+
+    var tokens = amazonAiSplitSpaceTokens_(raw);
+    var filtered = amazonAiFilterTokensAgainstSeen_(
+      tokens, (useCross && seen) ? seen : null, capacityState, stats
+    );
+    var nextVal = filtered.text;
+    var removed = filtered.removed || [];
+
+    if (wasEmpty && !nextVal) {
+      stats.candidatesMissing++;
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        amazonAiReviewShortNameForDropdown_(colName),
+        '候補はあるが既出トークンのみ（' + colName + '）', stats);
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=adopt_empty_all_cross_removed');
+      continue;
+    }
+    if (!wasEmpty && nextVal === curStr) {
+      stats.skippedUnchanged++;
+      continue;
+    }
+
+    var targetRange = masterSheet.getRange(row1Based, tidx + 1);
+    if (options.length > 0) {
+      var rule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(options, true)
+        .setAllowInvalid(true)
+        .build();
+      targetRange.setDataValidation(rule);
+    }
+    targetRange.setValue(nextVal);
+    row[tidx] = nextVal;
+
+    var hadCrossRemove = useCross && removed.length > 0;
+    if (hadCrossRemove) {
+      stats.crossDeduped++;
+      stats.tokensRemovedCross += removed.length;
+    }
+    if (mode === 'adopt_empty') {
+      stats.adoptedEmpty++;
+    } else {
+      stats.dedupedExisting++;
+      try {
+        var note = hadCrossRemove
+          ? ('横断重複削除: ' + curStr + ' → ' + nextVal)
+          : ('重複削除: ' + curStr + ' → ' + nextVal);
+        targetRange.setNote(note);
+      } catch (eN) {}
+    }
+    Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=' + mode +
+      (hadCrossRemove ? ' cross=1' : ' cross=0') +
+      ' removed=' + removed.length +
+      ' → "' + String(nextVal).substring(0, 80) + '"');
+  }
+}
+
+/**
+ * amazon カテゴリーから PT バケット（当面 HPC / FOOD のみ）。
+ * @return {'FOOD'|'HPC'}
+ */
+function amazonAiDetectAmazonPtBucket_(categoryStr) {
+  var s = String(categoryStr || '');
+  if (/食品|FOOD|フード|Grocery/i.test(s)) return 'FOOD';
+  return 'HPC';
+}
+
+/**
+ * 親行配下の子行インデックス（0-based）を返す。
+ */
+function amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, parentRow1Based) {
+  var childSkuIdx = masterColMap['子SKU'];
+  var parentSkuIdx = masterColMap['親SKU'];
+  if (childSkuIdx === undefined) return [];
+  var parentRow = masterValues[parentRow1Based - 1] || [];
+  var parentSku = parentSkuIdx !== undefined
+    ? String(parentRow[parentSkuIdx] != null ? parentRow[parentSkuIdx] : '').trim() : '';
+  var out = [];
+  for (var r = parentRow1Based; r < masterValues.length; r++) {
+    var row = masterValues[r] || [];
+    var childSku = row[childSkuIdx];
+    if (childSku === undefined || childSku === null || String(childSku).trim() === '') break;
+    if (parentSkuIdx !== undefined && parentSku) {
+      var cParent = String(row[parentSkuIdx] != null ? row[parentSkuIdx] : '').trim();
+      if (cParent && cParent !== parentSku) break;
+    }
+    out.push(r);
+  }
+  return out;
+}
+
+/**
+ * 子差分から論理軸を推定。
+ * @return {{axis1: string, axis2: string}} axis = QUANTITY|COLOR|FLAVOR|SCENT|'' 
+ */
+function amazonAiInferCanonicalVariationAxes_(masterValues, masterColMap, childIndices0) {
+  var colVarVal = masterColMap['バリエーション値'];
+  var colVarName16 = masterColMap[COL_VARIATION_NAME_16];
+  var colSetQty = masterColMap[COL_MASTER_TOTAL_QTY];
+  var colUnit = masterColMap[COL_VARIATION_UNIT];
+  var setKeys = {};
+  var varKeys = {};
+  var colorHits = 0;
+  var flavorHits = 0;
+  var scentHits = 0;
+  var qtyHits = 0;
+  var colorRe = /(色|カラー|黒|白|赤|青|緑|黄|ピンク|ベージュ|グレー|灰色|ブラウン|茶|紫|橙|オレンジ|ネイビー)/;
+  var flavorRe = /(味|フレーバー|塩|辛|甘|酢|醤油|味噌|カレー|チョコ|バニラ|抹茶|紅茶|緑茶)/;
+  var scentRe = /(香|アロマ|フレグランス|無香|微香|ローズ|ラベンダー|ミント)/;
+  var qtyRe = /(\d+)\s*(枚|個|本|袋|箱|食|セット|入)/;
+
+  for (var i = 0; i < childIndices0.length; i++) {
+    var row = masterValues[childIndices0[i]] || [];
+    var varVal = '';
+    if (colVarVal !== undefined && row[colVarVal] != null) varVal = String(row[colVarVal]).trim();
+    if (!varVal && colVarName16 !== undefined && row[colVarName16] != null) {
+      varVal = String(row[colVarName16]).trim();
+    }
+    if (varVal) varKeys[varVal] = true;
+    if (colSetQty !== undefined && row[colSetQty] != null && String(row[colSetQty]).trim() !== '') {
+      setKeys[String(row[colSetQty]).trim()] = true;
+    }
+    var unit = (colUnit !== undefined && row[colUnit] != null) ? String(row[colUnit]).trim() : '';
+    var blob = varVal + ' ' + unit;
+    if (qtyRe.test(blob) || amazonAiIsCapacityToken_(varVal)) qtyHits++;
+    if (colorRe.test(blob)) colorHits++;
+    if (flavorRe.test(blob)) flavorHits++;
+    if (scentRe.test(blob)) scentHits++;
+  }
+
+  var distinctSets = Object.keys(setKeys).length;
+  var distinctVars = Object.keys(varKeys).length;
+  var axes = [];
+  if (distinctSets > 1 || qtyHits >= 2 || (distinctVars > 1 && qtyHits >= 1)) {
+    axes.push('QUANTITY');
+  }
+  if (colorHits >= 2) axes.push('COLOR');
+  if (flavorHits >= 2) axes.push('FLAVOR');
+  if (scentHits >= 2) axes.push('SCENT');
+  if (!axes.length && distinctVars > 1) axes.push('QUANTITY');
+  if (!axes.length) axes.push('QUANTITY');
+
+  return { axis1: axes[0] || 'QUANTITY', axis2: axes[1] || '' };
+}
+
+/**
+ * 論理軸 → マスタ日本語ラベル（PT別）。
+ */
+function amazonAiThemeLabelForAxis_(ptBucket, axis) {
+  if (!axis) return '';
+  if (axis === 'QUANTITY' || axis === 'SIZE') {
+    return ptBucket === 'FOOD'
+      ? AMAZON_AI_ADOPT_THEME_LABEL_FOOD_SIZE_
+      : AMAZON_AI_ADOPT_THEME_LABEL_HPC_SIZE_;
+  }
+  if (axis === 'COLOR') return AMAZON_AI_ADOPT_THEME_LABEL_COLOR_;
+  if (axis === 'FLAVOR') return AMAZON_AI_ADOPT_THEME_LABEL_FLAVOR_;
+  if (axis === 'SCENT') return AMAZON_AI_ADOPT_THEME_LABEL_SCENT_;
+  return ptBucket === 'FOOD'
+    ? AMAZON_AI_ADOPT_THEME_LABEL_FOOD_SIZE_
+    : AMAZON_AI_ADOPT_THEME_LABEL_HPC_SIZE_;
+}
+
+/**
+ * Amazon出品用への裏写像（参照用。メニュー8はマスタ日本語のみ書く）。
+ */
+function amazonAiMapThemeToAmazonExport_(ptBucket, japaneseTheme) {
+  var map = AMAZON_AI_ADOPT_THEME_AMAZON_EXPORT_MAP_[ptBucket] || AMAZON_AI_ADOPT_THEME_AMAZON_EXPORT_MAP_.HPC;
+  if (map[japaneseTheme]) return map[japaneseTheme];
+  return japaneseTheme;
+}
+
+/**
+ * AI候補にあればそれを優先採用（完全一致）。なければ推奨ラベルを返す。
+ */
+function amazonAiPickThemePreferringCandidates_(options, preferredLabel) {
+  if (!preferredLabel) return '';
+  if (options && options.length) {
+    for (var i = 0; i < options.length; i++) {
+      if (String(options[i] || '').trim() === preferredLabel) return preferredLabel;
+    }
+    // 部分: 候補が「1. サイズ」形式
+    for (var j = 0; j < options.length; j++) {
+      var o = String(options[j] || '').replace(/^\d+[\.\s、．]+/, '').trim();
+      if (o === preferredLabel) return preferredLabel;
+    }
+  }
+  return preferredLabel;
+}
+
+function amazonAiWriteThemeCell_(masterSheet, row, row1Based, tidx, nextVal, options, note) {
+  var range = masterSheet.getRange(row1Based, tidx + 1);
+  if (options && options.length > 0) {
+    var list = options.slice();
+    if (nextVal && list.indexOf(nextVal) === -1) list.unshift(nextVal);
+    range.setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true).build()
+    );
+  }
+  range.setValue(nextVal);
+  if (note) {
+    try { range.setNote(note); } catch (eN) {}
+  }
+  row[tidx] = nextVal;
+}
+
+/**
+ * メニュー8: バリエーションテーマ／テーマ2 を子差分＋PT（HPC/FOOD）で選定し日本語で書く。
+ * HPCは軸1をサイズ優先。食品はパッケージサイズ。軸2は独立差があるときだけ。不適ならテーマ2は空。
+ */
+function amazonAiSelectVariationThemesForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var LOG = '[メニュー8][theme]';
+  var colCat = masterColMap[COL_AMAZON_CATEGORY] !== undefined
+    ? masterColMap[COL_AMAZON_CATEGORY] : masterColMap['amazon カテゴリー'];
+
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    var childIdx = amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, row1Based);
+
+    var catVal = '';
+    if (colCat !== undefined && row[colCat] != null) catVal = String(row[colCat]).trim();
+    if (!catVal && childIdx.length && colCat !== undefined) {
+      for (var ci = 0; ci < childIdx.length; ci++) {
+        var crow = masterValues[childIdx[ci]] || [];
+        if (crow[colCat] != null && String(crow[colCat]).trim()) {
+          catVal = String(crow[colCat]).trim();
+          break;
+        }
+      }
+    }
+    var ptBucket = amazonAiDetectAmazonPtBucket_(catVal);
+    var inferred = amazonAiInferCanonicalVariationAxes_(masterValues, masterColMap, childIdx);
+
+    // HPC: 軸1はサイズ固定優先。FOOD: 数量/サイズ系ならパッケージサイズ。第2軸のみ子差分の別種を採用。
+    var axis1 = 'QUANTITY';
+    var axis2 = '';
+    if (ptBucket === 'HPC') {
+      axis1 = 'QUANTITY';
+      if (inferred.axis1 && inferred.axis1 !== 'QUANTITY' && inferred.axis1 !== 'SIZE') {
+        axis2 = inferred.axis1;
+      } else if (inferred.axis2) {
+        axis2 = inferred.axis2;
+      }
+    } else {
+      // FOOD
+      if (inferred.axis1 === 'COLOR' || inferred.axis1 === 'FLAVOR' || inferred.axis1 === 'SCENT') {
+        axis1 = inferred.axis1;
+        axis2 = (inferred.axis2 === 'QUANTITY' || inferred.axis2 === 'SIZE') ? 'QUANTITY' : (inferred.axis2 || '');
+        // 食品は数量差があれば軸1をパッケージサイズに寄せる（成功例 PACKAGE_SIZE_NAME）
+        if (inferred.axis2 === 'QUANTITY' || inferred.axis1 === 'QUANTITY' || childIdx.length > 1) {
+          if (inferred.axis1 === 'QUANTITY' || inferred.axis2 === 'QUANTITY' || inferred.axis2 === 'SIZE') {
+            axis1 = 'QUANTITY';
+            axis2 = (inferred.axis1 !== 'QUANTITY' && inferred.axis1 !== 'SIZE')
+              ? inferred.axis1
+              : ((inferred.axis2 !== 'QUANTITY' && inferred.axis2 !== 'SIZE') ? inferred.axis2 : '');
+          }
+        }
+      } else {
+        axis1 = 'QUANTITY';
+        axis2 = (inferred.axis2 && inferred.axis2 !== 'QUANTITY' && inferred.axis2 !== 'SIZE')
+          ? inferred.axis2 : '';
+      }
+    }
+
+    var label1 = amazonAiThemeLabelForAxis_(ptBucket, axis1);
+    var label2 = axis2 ? amazonAiThemeLabelForAxis_(ptBucket, axis2) : '';
+    if (label2 && label2 === label1) label2 = '';
+
+    var export1 = amazonAiMapThemeToAmazonExport_(ptBucket, label1);
+    var export2 = label2 ? amazonAiMapThemeToAmazonExport_(ptBucket, label2) : '';
+    Logger.log(LOG + ' 行' + row1Based + ' pt=' + ptBucket + ' cat="' + catVal.substring(0, 40) +
+      '" axis=' + axis1 + '/' + (axis2 || '-') +
+      ' label=' + label1 + '/' + (label2 || '-') +
+      ' amazonExport=' + export1 + '/' + (export2 || '-'));
+
+    var pairs = [
+      { logical: '推奨バリ項目名(軸1)', label: label1, statKey: 'theme1Written' },
+      { logical: '推奨バリ項目名(軸2)', label: label2, statKey: 'theme2Written', clearStat: 'theme2Cleared' }
+    ];
+    for (var pi = 0; pi < pairs.length; pi++) {
+      var pair = pairs[pi];
+      var resolved = getTitleDropdownColPair(masterColMap, pair.logical);
+      if (!resolved || resolved.targetIdx === undefined) {
+        // フォールバック: 直接ヘッダ
+        var directName = pair.logical === '推奨バリ項目名(軸1)' ? 'バリエーションテーマ' : 'バリエーションテーマ2';
+        var dIdx = masterColMap[directName];
+        if (dIdx === undefined) {
+          Logger.log(LOG + ' 行' + row1Based + ' ' + pair.logical + ' 列なしスキップ');
+          continue;
+        }
+        resolved = { targetIdx: dIdx, optionsIdx: undefined };
+      }
+      var tidx = resolved.targetIdx;
+      var options = [];
+      if (resolved.optionsIdx !== undefined && row[resolved.optionsIdx] != null) {
+        options = buildTitleDropdownOptions(
+          String(row[resolved.optionsIdx]), false, false, true, false, false
+        );
+      }
+      var curStr = row[tidx] != null ? String(row[tidx]).trim() : '';
+      var nextVal = pair.label
+        ? amazonAiPickThemePreferringCandidates_(options, pair.label)
+        : '';
+
+      if (!pair.label) {
+        if (!curStr) {
+          stats.themeSkippedUnchanged++;
+          continue;
+        }
+        amazonAiWriteThemeCell_(masterSheet, row, row1Based, tidx, '', options,
+          'テーマ2: 独立軸なしのため空欄');
+        stats[pair.clearStat] = (stats[pair.clearStat] || 0) + 1;
+        Logger.log(LOG + ' 行' + row1Based + ' theme2 cleared was="' + curStr + '"');
+        continue;
+      }
+
+      if (curStr === nextVal) {
+        stats.themeSkippedUnchanged++;
+        continue;
+      }
+      amazonAiWriteThemeCell_(masterSheet, row, row1Based, tidx, nextVal, options,
+        'メニュー8テーマ選定 pt=' + ptBucket + ' → ' + nextVal +
+        '（Amazon裏写像: ' + amazonAiMapThemeToAmazonExport_(ptBucket, nextVal) + '）');
+      stats[pair.statKey] = (stats[pair.statKey] || 0) + 1;
+      Logger.log(LOG + ' 行' + row1Based + ' ' + pair.logical + ' "' + curStr + '" → "' + nextVal + '"');
+    }
+  }
+}
+
+/**
+ * メニュー8 Stage3: 楽天ジャンルを都度APIで選定（AI推奨は使わない）。
+ * Ichiba Item Search で genreId 投票 → NavigationAPI で名称確定 → 親行へ書込。
+ * docs/RAKUTEN_NAV_GENRE_STAGE3.md
+ */
+function amazonAiSelectRakutenGenreForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var LOG = '[メニュー8][genre]';
+  if (!getBoolScriptProperty_(AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP, false)) {
+    stats.genreDisabled = 1;
+    Logger.log(LOG + ' skipped prop=' + AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP + ' off');
+    return;
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var appId = (props.getProperty('RAKUTEN_APP_ID') || '').trim();
+  var accessKey = (props.getProperty('RAKUTEN_ACCESS_KEY') || '').trim();
+  var secret = (getRakutenServiceSecret() || '').trim();
+  var license = (getRakutenLicenseKey() || '').trim();
+  if (!appId || !accessKey) {
+    Logger.log(LOG + ' FAIL missing RAKUTEN_APP_ID/ACCESS_KEY');
+    try {
+      SpreadsheetApp.getUi().alert('楽天ジャンル都度API: Script Properties に RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY が必要です。');
+    } catch (eA) {}
+    for (var pi0 = 0; pi0 < parentRows.length; pi0++) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, parentRows[pi0],
+        '楽天ジャンル', 'Ichiba認証未設定', stats);
+      stats.genreReview++;
+    }
+    return;
+  }
+  if (!secret || !license) {
+    Logger.log(LOG + ' FAIL missing ESA secret/license');
+    try {
+      SpreadsheetApp.getUi().alert('楽天ジャンル都度API: RAKUTEN_SERVICE_SECRET / RAKUTEN_LICENSE_KEY が必要です。');
+    } catch (eB) {}
+    for (var pi1 = 0; pi1 < parentRows.length; pi1++) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, parentRows[pi1],
+        '楽天ジャンル', 'Nav ESA認証未設定', stats);
+      stats.genreReview++;
+    }
+    return;
+  }
+
+  var colId = masterColMap['楽天ジャンルID'];
+  var colName = masterColMap['楽天ジャンルID名'];
+  if (colId === undefined) {
+    Logger.log(LOG + ' 列「楽天ジャンルID」なし');
+    return;
+  }
+
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    var queries = amazonAiBuildRakutenGenreQueries_(masterValues, masterColMap, row1Based, headerRowIdx);
+    if (!queries.length) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        '楽天ジャンル', '検索クエリなし（JAN/商品名ベース空）', stats);
+      stats.genreReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' no query');
+      continue;
+    }
+
+    var vote = null;
+    var usedQuery = '';
+    for (var qi = 0; qi < queries.length; qi++) {
+      var q = queries[qi];
+      Logger.log(LOG + ' 行' + row1Based + ' ichiba query="' + String(q).substring(0, 40) + '"');
+      vote = amazonAiVoteRakutenGenreIdFromIchiba_(appId, accessKey, q);
+      usedQuery = q;
+      if (vote && vote.genreId && vote.accepted) break;
+      try { Utilities.sleep(200); } catch (eSl) {}
+    }
+
+    if (!vote || !vote.genreId || !vote.accepted) {
+      var reason = (vote && vote.reason) ? vote.reason : '投票不成立';
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        '楽天ジャンル', reason + ' query=' + String(usedQuery).substring(0, 30), stats);
+      stats.genreReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' voteFail ' + reason +
+        ' top=' + (vote && vote.genreId ? vote.genreId : '-') +
+        ' count=' + (vote ? vote.count : 0) + '/' + (vote ? vote.total : 0));
+      continue;
+    }
+
+    var nav = diagnoseRakutenNavigationGenreGetOne_(vote.genreId, '');
+    if (!nav || !nav.ok) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        '楽天ジャンル', 'Nav検証失敗 id=' + vote.genreId, stats);
+      stats.genreReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' navFail id=' + vote.genreId +
+        ' err=' + ((nav && nav.errorSummary) || ''));
+      continue;
+    }
+
+    var nameOut = String(nav.nameJaPath || nav.nameJa || '').trim();
+    if (!nameOut) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        '楽天ジャンル', 'Nav名称空 id=' + vote.genreId, stats);
+      stats.genreReview++;
+      continue;
+    }
+
+    var curId = row[colId] != null ? String(row[colId]).trim() : '';
+    var curName = (colName !== undefined && row[colName] != null) ? String(row[colName]).trim() : '';
+    if (curId === vote.genreId && curName === nameOut) {
+      stats.genreSkipped++;
+      Logger.log(LOG + ' 行' + row1Based + ' unchanged id=' + vote.genreId);
+      continue;
+    }
+
+    masterSheet.getRange(row1Based, colId + 1).setValue(vote.genreId);
+    row[colId] = vote.genreId;
+    try {
+      masterSheet.getRange(row1Based, colId + 1).setNote(
+        'メニュー8都度API: Ichiba投票 ' + vote.count + '/' + vote.total +
+        ' query=' + String(usedQuery).substring(0, 40)
+      );
+    } catch (eN0) {}
+    if (colName !== undefined) {
+      masterSheet.getRange(row1Based, colName + 1).setValue(nameOut);
+      row[colName] = nameOut;
+    }
+    stats.genreWritten++;
+    Logger.log(LOG + ' 行' + row1Based + ' WRITE id=' + vote.genreId +
+      ' name="' + nameOut.substring(0, 60) + '" votes=' + vote.count + '/' + vote.total);
+    try { Utilities.sleep(250); } catch (eSl2) {}
+  }
+}
+
+/**
+ * JAN → 商品名ベース の順で検索クエリを返す。
+ * @return {string[]}
+ */
+function amazonAiBuildRakutenGenreQueries_(masterValues, masterColMap, parentRow1Based, headerRowIdx) {
+  var row = masterValues[parentRow1Based - 1] || [];
+  var colJan = masterColMap['JANコード'];
+  var colName = masterColMap['商品名ベース'] !== undefined
+    ? masterColMap['商品名ベース']
+    : (masterColMap['商品名'] !== undefined ? masterColMap['商品名'] : masterColMap['商品名amazon']);
+  var out = [];
+  var jan = '';
+  if (colJan !== undefined && row[colJan] != null) jan = String(row[colJan]).trim();
+  if (!jan) {
+    var kids = amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, parentRow1Based);
+    for (var i = 0; i < kids.length; i++) {
+      var crow = masterValues[kids[i]] || [];
+      if (colJan !== undefined && crow[colJan] != null && String(crow[colJan]).trim()) {
+        jan = String(crow[colJan]).trim();
+        break;
+      }
+    }
+  }
+  if (jan) out.push(jan);
+  var name = (colName !== undefined && row[colName] != null) ? String(row[colName]).trim() : '';
+  if (name && name !== jan) out.push(name);
+  return out;
+}
+
+/**
+ * Ichiba Item Search 生レスポンスから genreId を投票。
+ * @return {{genreId:string, count:number, total:number, accepted:boolean, reason:string}}
+ */
+function amazonAiVoteRakutenGenreIdFromIchiba_(appId, accessKey, keyword) {
+  var empty = { genreId: '', count: 0, total: 0, accepted: false, reason: 'no_hits' };
+  var raw = fetchRakutenIchibaSearchRaw_(appId, accessKey, keyword, { hits: 30 });
+  if (raw.error) {
+    return { genreId: '', count: 0, total: 0, accepted: false, reason: 'ichiba_error:' + String(raw.error).substring(0, 80) };
+  }
+  var counts = {};
+  var total = 0;
+  var items = raw.rawItems || [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i] || {};
+    var gid = amazonAiExtractGenreIdFromIchibaItem_(it);
+    if (!gid) continue;
+    counts[gid] = (counts[gid] || 0) + 1;
+    total++;
+  }
+  if (!total) return empty;
+
+  var bestId = '';
+  var bestCount = 0;
+  var tie = false;
+  for (var id in counts) {
+    if (!counts.hasOwnProperty(id)) continue;
+    if (counts[id] > bestCount) {
+      bestCount = counts[id];
+      bestId = id;
+      tie = false;
+    } else if (counts[id] === bestCount) {
+      tie = true;
+    }
+  }
+  if (!bestId) return empty;
+  if (tie) {
+    return { genreId: bestId, count: bestCount, total: total, accepted: false, reason: '同率首位' };
+  }
+  var majority = bestCount * 2 > total;
+  var minVotes = AMAZON_AI_ADOPT_RAKUTEN_GENRE_MIN_VOTES;
+  var accepted = majority || (bestCount >= minVotes);
+  return {
+    genreId: bestId,
+    count: bestCount,
+    total: total,
+    accepted: accepted,
+    reason: accepted ? 'ok' : ('票不足 count=' + bestCount + ' total=' + total + ' min=' + minVotes)
+  };
+}
+
+function amazonAiExtractGenreIdFromIchibaItem_(it) {
+  if (!it || typeof it !== 'object') return '';
+  var candidates = [
+    it.genreId, it.genreID, it.GenreId,
+    it.genre_id,
+    (it.genre && it.genre.genreId),
+    (it.Genre && it.Genre.genreId)
+  ];
+  for (var i = 0; i < candidates.length; i++) {
+    var s = candidates[i] != null ? String(candidates[i]).trim() : '';
+    if (/^\d{6,}$/.test(s)) return s;
+  }
+  return '';
+}
+
+/**
+ * メニュー8 Yahoo Stage: カテゴリID／(Yahooカテゴリ名)／ブランドコードを都度APIで選定。
+ * 売れ筋近似(sort=-review_count)＋自社 Yahoo!価格設定 が最安になりやすいカテゴリ優先。
+ * docs/YAHOO_CATEGORY_BRAND_STAGE.md
+ */
+function amazonAiSelectYahooCategoryBrandForParents_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var LOG = '[メニュー8][yahooCat]';
+  if (!getBoolScriptProperty_(AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP, false)) {
+    stats.yahooDisabled = 1;
+    Logger.log(LOG + ' skipped prop=' + AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP + ' off');
+    return;
+  }
+
+  var clientId = (PropertiesService.getScriptProperties().getProperty('YAHOO_SHOPPING_CLIENT_ID') || '').trim();
+  if (!clientId) {
+    Logger.log(LOG + ' YAHOO_SHOPPING_CLIENT_ID missing → AI/Driveマスタのみで選定');
+  }
+
+  var colCatId = masterColMap['YahooカテゴリID'];
+  var colCatName = masterColMap['(Yahooカテゴリ名)'];
+  var colBrand = masterColMap['Yahooブランドコード'];
+  if (colCatId === undefined && colCatName === undefined && colBrand === undefined) {
+    Logger.log(LOG + ' Yahooカテゴリ／ブランド列なし');
+    return;
+  }
+
+  var candK = getNumberScriptProperty_(
+    AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K_PROP,
+    AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K_DEFAULT
+  );
+  if (!(candK > 0)) candK = AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K_DEFAULT;
+  Logger.log(LOG + ' sold非対応・review_count近似 candidateK=' + candK);
+
+  var shpAuth = null;
+  try {
+    shpAuth = yahooGetShpAuthContext_();
+    if (shpAuth && shpAuth.error) {
+      Logger.log(LOG + ' SHP auth warn: ' + shpAuth.error);
+    } else {
+      Logger.log(LOG + ' SHP auth ok seller=' + (shpAuth && shpAuth.sellerId ? 'set' : '?'));
+    }
+  } catch (eAuth) {
+    shpAuth = { error: (eAuth && eAuth.message) || String(eAuth), token: '', sellerId: '' };
+    Logger.log(LOG + ' SHP auth exception: ' + shpAuth.error);
+  }
+
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    var ownPrice = null;
+    var catPick = null;
+    var brandPick = null;
+    var usedQuery = '';
+    var usedMode = '';
+
+    if (!clientId) {
+      Logger.log(LOG + ' 行' + row1Based + ' no clientId → AI/Driveフォールバック');
+      var fbNoApi = amazonAiFallbackYahooFromAiAndDriveMaster_(
+        masterValues, masterColMap, row1Based, headerRowIdx, LOG
+      );
+      catPick = fbNoApi.cat;
+      brandPick = fbNoApi.brand;
+      if ((!catPick || !catPick.categoryId) && (!brandPick || !brandPick.accepted)) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          'Yahooカテゴリ', 'YAHOO_SHOPPING_CLIENT_ID未設定かつAI/マスタフォールバック失敗', stats);
+        stats.yahooCatReview++;
+        continue;
+      }
+    } else {
+    var queries = amazonAiBuildRakutenGenreQueries_(masterValues, masterColMap, row1Based, headerRowIdx);
+    if (!queries.length) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        'Yahooカテゴリ', '検索クエリなし（JAN/商品名ベース空）', stats);
+      stats.yahooCatReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' no query');
+      continue;
+    }
+
+    var popular = null;
+    for (var qi = 0; qi < queries.length; qi++) {
+      var q = queries[qi];
+      var mode = (qi === 0 && /^\d{8,}$/.test(String(q).trim())) ? 'jan' : 'query';
+      Logger.log(LOG + ' 行' + row1Based + ' popular search mode=' + mode +
+        ' q="' + String(q).substring(0, 40) + '" sort=-review_count');
+      popular = fetchYahooShoppingItemSearchRich_(clientId, {
+        mode: mode,
+        value: q,
+        results: 30,
+        sort: '-review_count'
+      });
+      usedQuery = q;
+      usedMode = mode;
+      if (popular && !popular.error && popular.hits && popular.hits.length) break;
+      try { Utilities.sleep(200); } catch (eSl0) {}
+    }
+
+    if (!popular || popular.error || !popular.hits || !popular.hits.length) {
+      var errPop = (popular && popular.error) ? popular.error : 'hits空';
+      Logger.log(LOG + ' 行' + row1Based + ' popularFail ' + errPop + ' → AI/Driveマスタフォールバック');
+      var fb = amazonAiFallbackYahooFromAiAndDriveMaster_(
+        masterValues, masterColMap, row1Based, headerRowIdx, LOG
+      );
+      if ((!fb.cat || !fb.cat.categoryId) && (!fb.brand || !fb.brand.brandId || !fb.brand.accepted)) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          'Yahooカテゴリ', '競合0＋AI/マスタフォールバック失敗: ' + String(errPop).substring(0, 60), stats);
+        stats.yahooCatReview++;
+        Logger.log(LOG + ' 行' + row1Based + ' fallbackFail');
+        continue;
+      }
+      catPick = fb.cat;
+      brandPick = fb.brand;
+    } else {
+      ownPrice = amazonAiGetYahooOwnPrice_(masterValues, masterColMap, row1Based, headerRowIdx);
+      catPick = amazonAiPickYahooCategoryFromPopularHits_(
+        clientId, usedMode, usedQuery, popular.hits, ownPrice, candK, LOG, row1Based
+      );
+      brandPick = amazonAiVoteYahooBrandFromHits_(popular.hits);
+      if ((!brandPick || !brandPick.accepted) && colBrand !== undefined) {
+        var fbBrandOnly = amazonAiFallbackYahooFromAiAndDriveMaster_(
+          masterValues, masterColMap, row1Based, headerRowIdx, LOG
+        );
+        if (fbBrandOnly.brand && fbBrandOnly.brand.accepted) {
+          brandPick = fbBrandOnly.brand;
+          Logger.log(LOG + ' 行' + row1Based + ' brand from AI/Drive fallback');
+        }
+      }
+    }
+    } // end else clientId
+
+    // 正本: getShopCategoryList で検証（無効IDは書かない／名前解決で差し替え）
+    if (catPick && catPick.categoryId) {
+      catPick = amazonAiValidateYahooCatPickViaShp_(catPick, shpAuth, LOG, row1Based);
+      try { Utilities.sleep(1100); } catch (eShpSl) {}
+    }
+
+    if (catPick && catPick.categoryId && colCatId !== undefined) {
+      var pathOut = catPick.path || '';
+      var curId = row[colCatId] != null ? String(row[colCatId]).trim() : '';
+      var curPath = (colCatName !== undefined && row[colCatName] != null)
+        ? String(row[colCatName]).trim() : '';
+      if (curId === String(catPick.categoryId) && curPath === pathOut) {
+        stats.yahooCatSkipped++;
+        Logger.log(LOG + ' 行' + row1Based + ' cat unchanged id=' + catPick.categoryId);
+      } else {
+        masterSheet.getRange(row1Based, colCatId + 1).setValue(String(catPick.categoryId));
+        row[colCatId] = String(catPick.categoryId);
+        if (colCatName !== undefined && pathOut) {
+          masterSheet.getRange(row1Based, colCatName + 1).setValue(pathOut);
+          row[colCatName] = pathOut;
+        }
+        try {
+          masterSheet.getRange(row1Based, colCatId + 1).setNote(
+            'メニュー8 Yahoo: ' + catPick.reason +
+            ' own=' + (ownPrice != null ? ownPrice : '-') +
+            ' min=' + (catPick.minPrice != null ? catPick.minPrice : '-') +
+            ' w=' + (catPick.weight != null ? catPick.weight : '-')
+          );
+        } catch (eN1) {}
+        stats.yahooCatWritten++;
+        Logger.log(LOG + ' 行' + row1Based + ' CAT WRITE id=' + catPick.categoryId +
+          ' reason=' + catPick.reason +
+          ' own=' + ownPrice + ' min=' + catPick.minPrice +
+          ' path="' + String(pathOut).substring(0, 80) + '"');
+      }
+      if (catPick.needsReview) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          'Yahooカテゴリ', catPick.reason + ' own=' + ownPrice + ' min=' + catPick.minPrice, stats);
+        stats.yahooCatReview++;
+      }
+    } else {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        'Yahooカテゴリ', (catPick && catPick.reason) ? catPick.reason : 'カテゴリ選定不可', stats);
+      stats.yahooCatReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' catFail ' + ((catPick && catPick.reason) || 'none'));
+    }
+
+    // ブランド: 候補（市場/AI）→ SHP getShopBrandList で正本取得・検証
+    if (colBrand !== undefined) {
+      brandPick = amazonAiResolveYahooBrandViaShp_(
+        brandPick, masterValues, masterColMap, row1Based, headerRowIdx, shpAuth, LOG
+      );
+      try { Utilities.sleep(1100); } catch (eBrSl) {}
+    }
+
+    if (brandPick && brandPick.brandId && brandPick.accepted && colBrand !== undefined) {
+      var curBrand = row[colBrand] != null ? String(row[colBrand]).trim() : '';
+      if (curBrand === String(brandPick.brandId)) {
+        stats.yahooBrandSkipped++;
+        Logger.log(LOG + ' 行' + row1Based + ' brand unchanged id=' + brandPick.brandId);
+      } else {
+        masterSheet.getRange(row1Based, colBrand + 1).setValue(String(brandPick.brandId));
+        row[colBrand] = String(brandPick.brandId);
+        try {
+          masterSheet.getRange(row1Based, colBrand + 1).setNote(
+            'メニュー8 Yahoo brand: ' + (brandPick.reason || '') +
+            (brandPick.name ? (' name=' + brandPick.name) : '')
+          );
+        } catch (eN2) {}
+        stats.yahooBrandWritten++;
+        Logger.log(LOG + ' 行' + row1Based + ' BRAND WRITE id=' + brandPick.brandId +
+          ' reason=' + brandPick.reason);
+      }
+      if (brandPick.needsReview) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          'Yahooブランド', brandPick.reason || '要確認', stats);
+        stats.yahooBrandReview++;
+      }
+    } else if (colBrand !== undefined) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        'Yahooブランド', (brandPick && brandPick.reason) ? brandPick.reason : 'ブランドSHP未解決', stats);
+      stats.yahooBrandReview++;
+      Logger.log(LOG + ' 行' + row1Based + ' brandFail ' +
+        ((brandPick && brandPick.reason) ? brandPick.reason : 'no_brand'));
+    }
+
+    try { Utilities.sleep(250); } catch (eSl1) {}
+  }
+}
+
+/**
+ * 候補カテゴリを SHP getShopCategoryList で検証・解決。
+ * docs/YAHOO_CATEGORY_BRAND_STAGE.md §2.8
+ * @param {object} catPick
+ * @param {{error:string|null, token:string, sellerId:string}|null} shpAuth
+ * @return {object} categoryId 空＝非書込
+ */
+function amazonAiValidateYahooCatPickViaShp_(catPick, shpAuth, LOG, row1Based) {
+  var pick = catPick || {
+    categoryId: '',
+    path: '',
+    reason: '',
+    weight: 0,
+    minPrice: null,
+    needsReview: true
+  };
+  var candId = pick.categoryId != null ? String(pick.categoryId).trim() : '';
+  if (!candId) return pick;
+
+  if (!shpAuth || shpAuth.error || !shpAuth.token || !shpAuth.sellerId) {
+    Logger.log(LOG + ' 行' + row1Based + ' shp_auth_fail → カテゴリ非書込');
+    return {
+      categoryId: '',
+      path: '',
+      reason: (pick.reason || '') + '|shp_auth_fail',
+      weight: pick.weight || 0,
+      minPrice: pick.minPrice != null ? pick.minPrice : null,
+      needsReview: true
+    };
+  }
+
+  var leaf = amazonAiYahooPathLeaf_(pick.path);
+  var queryForId = leaf || candId;
+  var byCode = fetchYahooShpCategoryList_(
+    shpAuth.token, shpAuth.sellerId, queryForId, candId, 25
+  );
+  if (byCode && !byCode.error && byCode.categories && byCode.categories.length) {
+    var exact = null;
+    for (var i = 0; i < byCode.categories.length; i++) {
+      if (String(byCode.categories[i].code) === candId) {
+        exact = byCode.categories[i];
+        break;
+      }
+    }
+    if (exact) {
+      var pathOk = amazonAiNormalizeYahooPath_(exact.pathName || exact.name || pick.path || '');
+      Logger.log(LOG + ' 行' + row1Based + ' shp_validated id=' + candId);
+      return {
+        categoryId: candId,
+        path: pathOk || pick.path || '',
+        reason: (pick.reason || '') + '|shp_validated',
+        weight: pick.weight || 0,
+        minPrice: pick.minPrice != null ? pick.minPrice : null,
+        needsReview: !!pick.needsReview
+      };
+    }
+  } else if (byCode && byCode.error) {
+    Logger.log(LOG + ' 行' + row1Based + ' shp byCode err: ' + byCode.error);
+  }
+
+  // IDがSCに無い → 葉名で検索して差し替え（45944→43065 等）
+  var searchQ = leaf;
+  if (!searchQ && pick.path) searchQ = String(pick.path).split(':').pop();
+  if (!searchQ) searchQ = candId;
+  try { Utilities.sleep(1100); } catch (e1) {}
+  var byName = fetchYahooShpCategoryList_(
+    shpAuth.token, shpAuth.sellerId, String(searchQ).trim(), '', 25
+  );
+  if (byName && !byName.error && byName.categories && byName.categories.length) {
+    var best = amazonAiPickBestShpCategoryMatch_(byName.categories, searchQ, leaf);
+    if (best && best.code) {
+      var pathResolved = amazonAiNormalizeYahooPath_(best.pathName || best.name || '');
+      Logger.log(LOG + ' 行' + row1Based + ' shp_resolved ' + candId + ' → ' + best.code +
+        ' name="' + String(best.name).substring(0, 40) + '"');
+      return {
+        categoryId: String(best.code),
+        path: pathResolved,
+        reason: (pick.reason || '') + '|shp_resolved_from_' + candId,
+        weight: pick.weight || 0,
+        minPrice: pick.minPrice != null ? pick.minPrice : null,
+        needsReview: true
+      };
+    }
+  } else if (byName && byName.error) {
+    Logger.log(LOG + ' 行' + row1Based + ' shp byName err: ' + byName.error);
+  }
+
+  Logger.log(LOG + ' 行' + row1Based + ' shp_reject id=' + candId + ' q="' + searchQ + '"');
+  return {
+    categoryId: '',
+    path: '',
+    reason: (pick.reason || '') + '|shp_reject:' + candId,
+    weight: pick.weight || 0,
+    minPrice: pick.minPrice != null ? pick.minPrice : null,
+    needsReview: true
+  };
+}
+
+function amazonAiYahooPathLeaf_(path) {
+  var s = String(path || '').trim();
+  if (!s) return '';
+  var parts = s.split(':');
+  var leaf = parts[parts.length - 1];
+  return leaf ? String(leaf).trim() : '';
+}
+
+/**
+ * SHP検索結果から最も近い1件を選ぶ。
+ */
+function amazonAiPickBestShpCategoryMatch_(categories, searchQ, leafPrefer) {
+  if (!categories || !categories.length) return null;
+  var q = String(searchQ || '').trim();
+  var leaf = String(leafPrefer || q).trim();
+  var i;
+  for (i = 0; i < categories.length; i++) {
+    var n = String(categories[i].name || '').trim();
+    if (leaf && n === leaf) return categories[i];
+  }
+  for (i = 0; i < categories.length; i++) {
+    var n2 = String(categories[i].name || '').trim();
+    if (leaf && n2.indexOf(leaf) !== -1) return categories[i];
+  }
+  for (i = 0; i < categories.length; i++) {
+    var pn = String(categories[i].pathName || '');
+    if (leaf && pn.indexOf(leaf) !== -1) return categories[i];
+  }
+  return categories[0];
+}
+
+/**
+ * Yahooブランドを SHP getShopBrandList で検証・取得（正本）。
+ * 候補IDがあれば code 検証 → 無ければ メーカー名で name 検索。
+ * docs/YAHOO_CATEGORY_BRAND_STAGE.md §2.9
+ * @return {{brandId:string, name:string, count:number, total:number, accepted:boolean, reason:string, needsReview:boolean}}
+ */
+function amazonAiResolveYahooBrandViaShp_(brandPick, masterValues, masterColMap, row1Based, headerRowIdx, shpAuth, LOG) {
+  var empty = {
+    brandId: '',
+    name: '',
+    count: 0,
+    total: 0,
+    accepted: false,
+    reason: 'shp_brand_none',
+    needsReview: true
+  };
+  var row = masterValues[row1Based - 1] || [];
+  var maker = amazonAiGetCellByHeader_(row, masterColMap, 'メーカー名') ||
+    amazonAiGetCellByHeader_(row, masterColMap, 'ブランド') || '';
+  if (!maker) {
+    var kids = amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, row1Based);
+    for (var ki = 0; ki < kids.length && !maker; ki++) {
+      var crow = masterValues[kids[ki]] || [];
+      maker = amazonAiGetCellByHeader_(crow, masterColMap, 'メーカー名') ||
+        amazonAiGetCellByHeader_(crow, masterColMap, 'ブランド') || '';
+    }
+  }
+  maker = String(maker || '').trim();
+
+  var candId = (brandPick && brandPick.brandId) ? String(brandPick.brandId).trim() : '';
+  var baseReason = (brandPick && brandPick.reason) ? String(brandPick.reason) : '';
+
+  if (!shpAuth || shpAuth.error || !shpAuth.token || !shpAuth.sellerId) {
+    Logger.log(LOG + ' 行' + row1Based + ' shp_brand_auth_fail');
+    // 認証失敗時は候補があっても書かない（カテゴリと同方針）
+    return {
+      brandId: '',
+      name: '',
+      count: 0,
+      total: 0,
+      accepted: false,
+      reason: baseReason + '|shp_brand_auth_fail',
+      needsReview: true
+    };
+  }
+
+  // 1) 候補コードを type=code で検証
+  if (candId && /^\d+$/.test(candId)) {
+    var byCode = fetchYahooShpBrandList_(
+      shpAuth.token, shpAuth.sellerId, candId, 'code', 25
+    );
+    if (byCode && !byCode.error && byCode.brands && byCode.brands.length) {
+      var exact = null;
+      for (var i = 0; i < byCode.brands.length; i++) {
+        if (String(byCode.brands[i].code) === candId) {
+          exact = byCode.brands[i];
+          break;
+        }
+      }
+      if (!exact) exact = byCode.brands[0];
+      if (exact && exact.code) {
+        Logger.log(LOG + ' 行' + row1Based + ' shp_brand_validated id=' + exact.code);
+        return {
+          brandId: String(exact.code),
+          name: exact.name || '',
+          count: brandPick && brandPick.count ? brandPick.count : 1,
+          total: brandPick && brandPick.total ? brandPick.total : 1,
+          accepted: true,
+          reason: baseReason + '|shp_brand_validated',
+          needsReview: false
+        };
+      }
+    } else if (byCode && byCode.error) {
+      Logger.log(LOG + ' 行' + row1Based + ' shp brand byCode err: ' + byCode.error);
+    }
+    try { Utilities.sleep(1100); } catch (eSlB1) {}
+  }
+
+  // 2) メーカー名で type=name 検索（APIから取得）
+  if (maker) {
+    var byName = fetchYahooShpBrandList_(
+      shpAuth.token, shpAuth.sellerId, maker, 'name', 25
+    );
+    if (byName && !byName.error && byName.brands && byName.brands.length) {
+      var best = amazonAiPickBestShpBrandMatch_(byName.brands, maker);
+      if (best && best.code) {
+        Logger.log(LOG + ' 行' + row1Based + ' shp_brand_from_maker id=' + best.code +
+          ' name="' + String(best.name).substring(0, 40) + '"');
+        return {
+          brandId: String(best.code),
+          name: best.name || '',
+          count: 1,
+          total: 1,
+          accepted: true,
+          reason: (candId ? (baseReason + '|shp_brand_resolved_from_' + candId) : 'shp_brand_from_maker'),
+          needsReview: !!candId
+        };
+      }
+    } else if (byName && byName.error) {
+      Logger.log(LOG + ' 行' + row1Based + ' shp brand byName err: ' + byName.error);
+    }
+  }
+
+  Logger.log(LOG + ' 行' + row1Based + ' shp_brand_reject cand=' + candId + ' maker="' +
+    String(maker).substring(0, 30) + '"');
+  return empty;
+}
+
+function amazonAiPickBestShpBrandMatch_(brands, maker) {
+  if (!brands || !brands.length) return null;
+  var m = String(maker || '').trim().toLowerCase();
+  var i;
+  for (i = 0; i < brands.length; i++) {
+    var n = String(brands[i].name || '').trim().toLowerCase();
+    if (m && n === m) return brands[i];
+  }
+  for (i = 0; i < brands.length; i++) {
+    var n2 = String(brands[i].name || '').trim().toLowerCase();
+    var jt = String(brands[i].jtitle || '').trim().toLowerCase();
+    if (m && (n2.indexOf(m) !== -1 || m.indexOf(n2) !== -1 || jt.indexOf(m) !== -1)) {
+      return brands[i];
+    }
+  }
+  return brands[0];
+}
+
+/**
+ * 競合ゼロ（またはブランド票不足）時: AI推奨列 → Drive YahooマスタCSV 逆引きで選定。
+ * docs/YAHOO_CATEGORY_BRAND_STAGE.md §2.7
+ * @return {{cat:{categoryId:string,path:string,reason:string,weight:number,minPrice:null,needsReview:boolean}, brand:{brandId:string,count:number,total:number,accepted:boolean,reason:string}}}
+ */
+function amazonAiFallbackYahooFromAiAndDriveMaster_(masterValues, masterColMap, row1Based, headerRowIdx, LOG) {
+  var row = masterValues[row1Based - 1] || [];
+  var catOut = {
+    categoryId: '',
+    path: '',
+    reason: 'fallback_none',
+    weight: 0,
+    minPrice: null,
+    needsReview: true
+  };
+  var brandOut = { brandId: '', count: 0, total: 0, accepted: false, reason: 'fallback_none' };
+
+  // 1) AI推奨列（▼マスタ ★推奨Yahoo*）から先頭候補
+  var aiCatId = amazonAiFirstGenreIdFromOptionsCol_(row, masterColMap, '★推奨YahooカテゴリID');
+  var aiCatPath = amazonAiFirstYahooPathFromOptionsCol_(row, masterColMap, 'Yahooカテゴリ名');
+  var aiBrandId = amazonAiFirstGenreIdFromOptionsCol_(row, masterColMap, '★推奨Yahooブランドコード');
+
+  if (aiCatId) {
+    catOut.categoryId = aiCatId;
+    catOut.path = aiCatPath || '';
+    catOut.reason = 'ai_recommend_col';
+    Logger.log(LOG + ' 行' + row1Based + ' fallback cat from AI col id=' + aiCatId);
+  }
+  if (aiBrandId) {
+    brandOut = {
+      brandId: aiBrandId,
+      count: 1,
+      total: 1,
+      accepted: true,
+      reason: 'ai_recommend_col'
+    };
+    Logger.log(LOG + ' 行' + row1Based + ' fallback brand from AI col id=' + aiBrandId);
+  }
+
+  // 2) Drive CSV（API連携マスタ）を商品名ベース＋メーカーで検索
+  var productName = amazonAiGetCellByHeader_(row, masterColMap, '商品名ベース') ||
+    amazonAiGetCellByHeader_(row, masterColMap, '商品名') || '';
+  var makerName = amazonAiGetCellByHeader_(row, masterColMap, 'メーカー名') || '';
+  if (!productName) {
+    var kids = amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, row1Based);
+    for (var ki = 0; ki < kids.length && !productName; ki++) {
+      var crow = masterValues[kids[ki]] || [];
+      productName = amazonAiGetCellByHeader_(crow, masterColMap, '商品名ベース') ||
+        amazonAiGetCellByHeader_(crow, masterColMap, '商品名') || '';
+    }
+  }
+
+  if (!catOut.categoryId && productName) {
+    try {
+      var catHit = searchCandidatesWithScore(
+        productName, makerName, YAHOO_CATEGORY_FOLDER_ID, '', false, 2
+      );
+      var parsedCat = amazonAiParseIdNameCandidateLine_(catHit);
+      if (parsedCat && parsedCat.id) {
+        catOut.categoryId = parsedCat.id;
+        catOut.path = amazonAiNormalizeYahooPath_(parsedCat.name || '');
+        catOut.reason = 'drive_master_csv';
+        Logger.log(LOG + ' 行' + row1Based + ' fallback cat from Drive CSV id=' + parsedCat.id);
+      } else {
+        Logger.log(LOG + ' 行' + row1Based + ' Drive cat miss: ' + String(catHit).substring(0, 80));
+      }
+    } catch (eCat) {
+      Logger.log(LOG + ' 行' + row1Based + ' Drive cat err ' + ((eCat && eCat.message) || eCat));
+    }
+  } else if (catOut.categoryId && !catOut.path && productName) {
+    // IDはあるが path が空 → Drive で名称補完を試す
+    try {
+      var catHit2 = searchCandidatesWithScore(
+        productName, makerName, YAHOO_CATEGORY_FOLDER_ID, '', false, 2
+      );
+      var parsedCat2 = amazonAiParseIdNameCandidateLine_(catHit2);
+      if (parsedCat2 && String(parsedCat2.id) === String(catOut.categoryId) && parsedCat2.name) {
+        catOut.path = amazonAiNormalizeYahooPath_(parsedCat2.name);
+      } else if (aiCatPath) {
+        catOut.path = aiCatPath;
+      }
+    } catch (eCat2) {}
+  }
+
+  if (!brandOut.accepted && (productName || makerName)) {
+    try {
+      var brandHit = searchCandidatesWithScore(
+        productName || makerName, makerName, YAHOO_BRAND_FOLDER_ID, '', true, 1
+      );
+      var parsedBrand = amazonAiParseIdNameCandidateLine_(brandHit);
+      if (parsedBrand && parsedBrand.id) {
+        brandOut = {
+          brandId: parsedBrand.id,
+          count: 1,
+          total: 1,
+          accepted: true,
+          reason: 'drive_master_csv'
+        };
+        Logger.log(LOG + ' 行' + row1Based + ' fallback brand from Drive CSV id=' + parsedBrand.id);
+      }
+    } catch (eBr) {
+      Logger.log(LOG + ' 行' + row1Based + ' Drive brand err ' + ((eBr && eBr.message) || eBr));
+    }
+  }
+
+  if (catOut.categoryId && !catOut.path && aiCatPath) {
+    catOut.path = aiCatPath;
+  }
+  return { cat: catOut, brand: brandOut };
+}
+
+/** TITLE_DROPDOWN のジャンルID系オプション先頭（数字ID） */
+function amazonAiFirstGenreIdFromOptionsCol_(row, masterColMap, logicalColName) {
+  var resolved = getTitleDropdownColPair(masterColMap, logicalColName);
+  if (!resolved || resolved.optionsIdx === undefined) return '';
+  var raw = row[resolved.optionsIdx];
+  var opts = buildTitleDropdownOptions(raw != null ? String(raw) : '', false, false, false, true, false);
+  if (!opts.length) return '';
+  var id = String(opts[0]).trim();
+  return /^\d+$/.test(id) ? id : '';
+}
+
+/** Yahooカテゴリ名オプション先頭を path（:区切り）に正規化 */
+function amazonAiFirstYahooPathFromOptionsCol_(row, masterColMap, logicalColName) {
+  var resolved = getTitleDropdownColPair(masterColMap, logicalColName);
+  if (!resolved || resolved.optionsIdx === undefined) return '';
+  var raw = row[resolved.optionsIdx];
+  var opts = buildTitleDropdownOptions(raw != null ? String(raw) : '', false, false, false, false, true);
+  if (!opts.length) return '';
+  return amazonAiNormalizeYahooPath_(opts[0]);
+}
+
+/**
+ * searchCandidatesWithScore の先頭行 "id: name" をパース。
+ * @return {{id:string, name:string}|null}
+ */
+function amazonAiParseIdNameCandidateLine_(hitText) {
+  if (hitText == null) return null;
+  var s = String(hitText);
+  if (s.indexOf('一致候補なし') !== -1 || s.indexOf('検索エラー') !== -1 || s.indexOf('フォルダ設定なし') !== -1) {
+    return null;
+  }
+  var first = s.split(/\r\n|\n/)[0].trim();
+  var m = first.match(/^(\d+)\s*:\s*(.*)$/);
+  if (!m) return null;
+  return { id: m[1], name: (m[2] || '').trim() };
+}
+
+/** 「2502: 食品＞あられ」や「食品 ＞ あられ」を `:` path に */
+function amazonAiNormalizeYahooPath_(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  s = s.replace(/^\s*\d+[．.]\s*/, '').trim();
+  if (/^\d+\s*[:\t]/.test(s)) {
+    var cut = s.search(/[:\t]/);
+    s = s.substring(cut + 1).trim();
+  }
+  s = s.replace(/[＞>]/g, ':');
+  s = s.replace(/\s*:\s*/g, ':');
+  s = s.replace(/^:+|:+$/g, '');
+  return s;
+}
+
+/**
+ * 売れ筋ヒットから候補を重み付けし、自社最安になりやすいカテゴリを選ぶ。
+ * @return {{categoryId:string, path:string, reason:string, weight:number, minPrice:number|null, needsReview:boolean}|null}
+ */
+function amazonAiPickYahooCategoryFromPopularHits_(clientId, mode, queryValue, hits, ownPrice, candK, LOG, row1Based) {
+  var topN = AMAZON_AI_ADOPT_YAHOO_POPULAR_TOP_N;
+  var weights = {};
+  var samples = {};
+  var ranked = [];
+  for (var i = 0; i < hits.length && i < topN; i++) {
+    var h = hits[i] || {};
+    var cid = h.genreCategoryId != null ? String(h.genreCategoryId).trim() : '';
+    if (!cid || !/^\d+$/.test(cid)) continue;
+    var w = (topN - i);
+    weights[cid] = (weights[cid] || 0) + w;
+    if (!samples[cid]) samples[cid] = h;
+  }
+  for (var id in weights) {
+    if (!weights.hasOwnProperty(id)) continue;
+    ranked.push({ id: id, weight: weights[id], hit: samples[id] });
+  }
+  ranked.sort(function(a, b) {
+    if (b.weight !== a.weight) return b.weight - a.weight;
+    return Number(a.id) - Number(b.id);
+  });
+  if (!ranked.length) {
+    return { categoryId: '', path: '', reason: 'genreCategory無し', weight: 0, minPrice: null, needsReview: true };
+  }
+
+  var probeN = Math.min(candK, ranked.length);
+  var probed = [];
+  for (var pi = 0; pi < probeN; pi++) {
+    var cand = ranked[pi];
+    var minPrice = null;
+    var probe = fetchYahooShoppingItemSearchRich_(clientId, {
+      mode: mode,
+      value: queryValue,
+      results: 5,
+      sort: '+price',
+      genreCategoryId: cand.id
+    });
+    if (probe && !probe.error && probe.hits && probe.hits.length) {
+      for (var hi = 0; hi < probe.hits.length; hi++) {
+        var pr = probe.hits[hi].price;
+        if (pr != null && !isNaN(pr) && pr > 0) {
+          if (minPrice == null || pr < minPrice) minPrice = pr;
+        }
+      }
+    }
+    probed.push({
+      id: cand.id,
+      weight: cand.weight,
+      hit: cand.hit,
+      minPrice: minPrice
+    });
+    Logger.log(LOG + ' 行' + row1Based + ' probe cat=' + cand.id +
+      ' w=' + cand.weight + ' min=' + minPrice);
+    try { Utilities.sleep(180); } catch (eSlP) {}
+  }
+
+  var pathOf = function(hit) {
+    return amazonAiBuildYahooCategoryPathFromHit_(hit);
+  };
+
+  if (ownPrice == null) {
+    var top = probed[0];
+    return {
+      categoryId: top.id,
+      path: pathOf(top.hit),
+      reason: 'popular_only_no_own_price',
+      weight: top.weight,
+      minPrice: top.minPrice,
+      needsReview: false
+    };
+  }
+
+  var cheapestOk = [];
+  for (var ci = 0; ci < probed.length; ci++) {
+    if (probed[ci].minPrice != null && ownPrice < probed[ci].minPrice) {
+      cheapestOk.push(probed[ci]);
+    }
+  }
+  if (cheapestOk.length) {
+    cheapestOk.sort(function(a, b) { return b.weight - a.weight; });
+    var win = cheapestOk[0];
+    return {
+      categoryId: win.id,
+      path: pathOf(win.hit),
+      reason: 'cheapest_in_popular',
+      weight: win.weight,
+      minPrice: win.minPrice,
+      needsReview: false
+    };
+  }
+
+  var best = null;
+  for (var di = 0; di < probed.length; di++) {
+    var d = probed[di];
+    if (d.minPrice == null) continue;
+    var disadvantage = ownPrice - d.minPrice;
+    if (!best || disadvantage < best.disadvantage ||
+      (disadvantage === best.disadvantage && d.weight > best.weight)) {
+      best = { id: d.id, weight: d.weight, hit: d.hit, minPrice: d.minPrice, disadvantage: disadvantage };
+    }
+  }
+  if (best) {
+    return {
+      categoryId: best.id,
+      path: pathOf(best.hit),
+      reason: 'least_disadvantage',
+      weight: best.weight,
+      minPrice: best.minPrice,
+      needsReview: true
+    };
+  }
+
+  var fb = probed[0];
+  return {
+    categoryId: fb.id,
+    path: pathOf(fb.hit),
+    reason: 'popular_fallback_no_minprice',
+    weight: fb.weight,
+    minPrice: null,
+    needsReview: true
+  };
+}
+
+/**
+ * parentGenreCategories(depth昇順) + 葉 name を ":" 連結。
+ */
+function amazonAiBuildYahooCategoryPathFromHit_(hit) {
+  if (!hit) return '';
+  var names = [];
+  var parents = hit.parentGenreCategories || [];
+  var sorted = parents.slice();
+  sorted.sort(function(a, b) {
+    return (Number(a && a.depth) || 0) - (Number(b && b.depth) || 0);
+  });
+  for (var i = 0; i < sorted.length; i++) {
+    var n = sorted[i] && sorted[i].name != null ? String(sorted[i].name).trim() : '';
+    if (n) names.push(n);
+  }
+  var leaf = hit.genreCategoryName != null ? String(hit.genreCategoryName).trim() : '';
+  if (leaf) names.push(leaf);
+  return names.join(':');
+}
+
+/**
+ * 自社 Yahoo!価格設定（親→子）。複数値は最小の正数。
+ * @return {number|null}
+ */
+function amazonAiGetYahooOwnPrice_(masterValues, masterColMap, parentRow1Based, headerRowIdx) {
+  var col = masterColMap[COL_PRICE_YAHOO];
+  if (col === undefined) col = masterColMap['Yahoo!価格設定'];
+  if (col === undefined) return null;
+  var tryParse = function(v) {
+    return amazonAiParseMinPositivePrice_(v);
+  };
+  var parentRow = masterValues[parentRow1Based - 1] || [];
+  var p = tryParse(parentRow[col]);
+  if (p != null) return p;
+  var kids = amazonAiCollectChildRowIndices0_(masterValues, headerRowIdx, masterColMap, parentRow1Based);
+  var min = null;
+  for (var i = 0; i < kids.length; i++) {
+    var crow = masterValues[kids[i]] || [];
+    var c = tryParse(crow[col]);
+    if (c != null && (min == null || c < min)) min = c;
+  }
+  return min;
+}
+
+function amazonAiParseMinPositivePrice_(v) {
+  if (v === undefined || v === null || v === '') return null;
+  if (typeof v === 'number' && !isNaN(v) && v > 0) return Math.round(v);
+  var s = String(v).replace(/[￥¥,\s]/g, ' ').trim();
+  if (!s) return null;
+  var parts = s.split(/[,、\s]+/);
+  var min = null;
+  for (var i = 0; i < parts.length; i++) {
+    var n = parseInt(String(parts[i]).replace(/[^\d]/g, ''), 10);
+    if (!isNaN(n) && n > 0 && (min == null || n < min)) min = n;
+  }
+  return min;
+}
+
+/**
+ * 売れ筋ヒットから brand.id を投票。
+ * @return {{brandId:string, count:number, total:number, accepted:boolean, reason:string}}
+ */
+function amazonAiVoteYahooBrandFromHits_(hits) {
+  var empty = { brandId: '', count: 0, total: 0, accepted: false, reason: 'no_hits' };
+  if (!hits || !hits.length) return empty;
+  var counts = {};
+  var total = 0;
+  for (var i = 0; i < hits.length; i++) {
+    var bid = hits[i] && hits[i].brandId != null ? String(hits[i].brandId).trim() : '';
+    if (!bid || !/^\d+$/.test(bid)) continue;
+    counts[bid] = (counts[bid] || 0) + 1;
+    total++;
+  }
+  if (!total) return { brandId: '', count: 0, total: 0, accepted: false, reason: 'brand無し' };
+  var bestId = '';
+  var bestCount = 0;
+  var tie = false;
+  for (var id in counts) {
+    if (!counts.hasOwnProperty(id)) continue;
+    if (counts[id] > bestCount) {
+      bestCount = counts[id];
+      bestId = id;
+      tie = false;
+    } else if (counts[id] === bestCount) {
+      tie = true;
+    }
+  }
+  if (!bestId) return empty;
+  if (tie) {
+    return { brandId: bestId, count: bestCount, total: total, accepted: false, reason: '同率首位' };
+  }
+  var majority = bestCount * 2 > total;
+  var accepted = majority || (bestCount >= AMAZON_AI_ADOPT_YAHOO_BRAND_MIN_VOTES);
+  return {
+    brandId: bestId,
+    count: bestCount,
+    total: total,
+    accepted: accepted,
+    reason: accepted ? 'ok' : ('票不足 count=' + bestCount + ' total=' + total)
+  };
+}
+
+/** @return {number} header 0-based or -1 */
+function amazonAiFindHeaderRowIdx_(masterValues) {
+  for (var r = 0; r < Math.min(masterValues.length, 25); r++) {
+    if ((masterValues[r] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) return r;
+  }
+  return -1;
+}
+
+function amazonAiCheckboxIsTrue_(v) {
+  return v === true || v === 'TRUE' || v === 'true' || v === '1' ||
+    String(v).trim() === '✓' || String(v).trim() === 'レ';
+}
+
+/**
+ * M-A: レ点付き親行。REQUIRE_LISTING_CK=true なら配下に出品CK付き子がある親のみ。
+ * @return {number[]} 1-based row indices
+ */
+function amazonAiCollectTargetParentRows_(masterValues, headerRowIdx, masterColMap) {
+  var colCheck = masterColMap[CHECKBOX_HEADER_NAME];
+  var childSkuIdx = masterColMap['子SKU'];
+  var parentSkuIdx = masterColMap['親SKU'];
+  if (colCheck === undefined || childSkuIdx === undefined) return [];
+  var requireChildCk = getBoolScriptProperty_(AMAZON_AI_ADOPT_REQUIRE_LISTING_CK_PROP, false);
+  var out = [];
+  for (var r = headerRowIdx + 1; r < masterValues.length; r++) {
+    var row = masterValues[r] || [];
+    var childSku = row[childSkuIdx];
+    if (childSku !== undefined && childSku !== null && String(childSku).trim() !== '') continue;
+    if (!amazonAiCheckboxIsTrue_(row[colCheck])) continue;
+    if (requireChildCk) {
+      var parentSkuVal = parentSkuIdx !== undefined ? String(row[parentSkuIdx] != null ? row[parentSkuIdx] : '').trim() : '';
+      var hasChildCk = false;
+      for (var c = r + 1; c < masterValues.length; c++) {
+        var crow = masterValues[c] || [];
+        var cChild = crow[childSkuIdx];
+        if (cChild === undefined || cChild === null || String(cChild).trim() === '') break;
+        if (parentSkuIdx !== undefined) {
+          var cParent = String(crow[parentSkuIdx] != null ? crow[parentSkuIdx] : '').trim();
+          if (parentSkuVal && cParent !== parentSkuVal) break;
+        }
+        if (amazonAiCheckboxIsTrue_(crow[colCheck])) { hasChildCk = true; break; }
+      }
+      if (!hasChildCk) continue;
+    }
+    out.push(r + 1);
+  }
+  return out;
+}
+
+function amazonAiCollectJansForParents_(masterSheet, headerRowIdx, masterColMap, parentRows1Based) {
+  var values = masterSheet.getDataRange().getValues();
+  var colJan = masterColMap['JANコード'];
+  if (colJan === undefined) return [];
+  var set = {};
+  var out = [];
+  for (var i = 0; i < parentRows1Based.length; i++) {
+    var row = values[parentRows1Based[i] - 1] || [];
+    var jan = String(row[colJan] != null ? row[colJan] : '').trim();
+    if (jan && !set[jan]) { set[jan] = true; out.push(jan); }
+  }
+  return out;
+}
+
+function amazonAiCellIsEmpty_(v) {
+  if (v === undefined || v === null) return true;
+  if (typeof v === 'string' && String(v).trim() === '') return true;
+  return false;
+}
+
+/**
+ * TITLE_DROPDOWN 対象を空欄の作業エリアへ先頭候補で採用。要確認は候補0件時。
+ */
+function amazonAiAdoptDropdownEmptyOnly_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var LOG = '[メニュー8][dropdownAdopt]';
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    for (var ci = 0; ci < TITLE_DROPDOWN_MASTER_COLUMNS.length; ci++) {
+      var colName = TITLE_DROPDOWN_MASTER_COLUMNS[ci];
+      var resolved = getTitleDropdownColPair(masterColMap, colName);
+      if (!resolved || resolved.optionsIdx === undefined || resolved.targetIdx === undefined) continue;
+      var optionsColIdx = resolved.optionsIdx;
+      var valueForOptions = row[optionsColIdx];
+      valueForOptions = valueForOptions != null ? String(valueForOptions).trim() : '';
+      var options = buildTitleDropdownOptions(
+        valueForOptions, resolved.isCtr, resolved.isMainKw, resolved.isVariation,
+        resolved.isGenreCategoryId, resolved.isGenreCategoryName
+      );
+      var targetIndices = resolved.targetIndices || [resolved.targetIdx];
+      if (!options.length) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+          amazonAiReviewShortNameForDropdown_(colName), '候補0件（' + colName + '）', stats);
+        continue;
+      }
+      var recommendedValue = options[0];
+      if (resolved.isCtr) {
+        var ctrRec = getCtrRecommendedFirstLine(valueForOptions);
+        if (ctrRec) recommendedValue = ctrRec;
+      }
+      for (var ti = 0; ti < targetIndices.length; ti++) {
+        var tidx = targetIndices[ti];
+        var cur = row[tidx];
+        if (!amazonAiCellIsEmpty_(cur)) continue;
+        var targetRange = masterSheet.getRange(row1Based, tidx + 1);
+        var rule = SpreadsheetApp.newDataValidation()
+          .requireValueInList(options, true)
+          .setAllowInvalid(true)
+          .build();
+        targetRange.setDataValidation(rule);
+        targetRange.setValue(recommendedValue);
+        row[tidx] = recommendedValue;
+        stats.dropdownAdopted++;
+        Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' → "' + String(recommendedValue).substring(0, 40) + '"');
+      }
+    }
+  }
+}
+
+function amazonAiReviewShortNameForDropdown_(colName) {
+  var map = {
+    'メインKW(3つ)': 'メインKW',
+    'CTRコピー': 'CTR',
+    '特徴キーワード': '特徴KW',
+    '用途キーワード': '用途KW',
+    '楽天 補足KW': '楽天補足',
+    'Yahoo! 補足KW': 'Yahoo補足',
+    '商品名検索キーワードamazon': '検索KWamz',
+    '商品名検索キーワード楽天': '検索KWrak',
+    '商品名検索キーワードYahoo!': '検索KWyho',
+    '推奨バリ項目名(軸1)': 'テーマ1',
+    '推奨バリ項目名(軸2)': 'テーマ2',
+    '★Amazon検索KW(150字)': '検索KW150'
+  };
+  return map[colName] || String(colName).substring(0, 10);
+}
+
+/**
+ * 商品名案(Amazon/楽天/Yahoo!) から推奨案を取り、dedupe＋切り詰めで 商品名* へ空欄のみ採用。
+ */
+function amazonAiAdoptProductNamesEmptyOnly_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var pairs = [
+    { proposal: COL_PRODUCT_NAME_PROPOSAL_AMAZON, target: '商品名amazon', max: AMAZON_AI_ADOPT_NAME_MAX_AMAZON, review: '商品名Amz' },
+    { proposal: COL_PRODUCT_NAME_PROPOSAL_RAKUTEN, target: '商品名楽天', max: AMAZON_AI_ADOPT_NAME_MAX_RAKUTEN, review: '商品名楽' },
+    { proposal: COL_PRODUCT_NAME_PROPOSAL_YAHOO, target: '商品名Yahoo!', max: AMAZON_AI_ADOPT_NAME_MAX_YAHOO, review: '商品名Yho' }
+  ];
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    for (var i = 0; i < pairs.length; i++) {
+      var pair = pairs[i];
+      var colTarget = masterColMap[pair.target];
+      var colProposal = masterColMap[pair.proposal];
+      if (colTarget === undefined) continue;
+      if (!amazonAiCellIsEmpty_(row[colTarget])) continue;
+      if (colProposal === undefined) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based, pair.review, '商品名案列なし', stats);
+        continue;
+      }
+      var raw = String(row[colProposal] != null ? row[colProposal] : '');
+      var picked = amazonAiPickRecommendedProductName_(raw);
+      if (!picked) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based, pair.review, '商品名案が空', stats);
+        continue;
+      }
+      var beforeDedupe = picked;
+      var afterDedupe = dedupeSpaceSeparated(picked);
+      var removed = amazonAiDedupeRemovedTokens_(beforeDedupe, afterDedupe);
+      var finalName = amazonAiTruncateChars_(afterDedupe, pair.max);
+      masterSheet.getRange(row1Based, colTarget + 1).setValue(finalName);
+      row[colTarget] = finalName;
+      stats.nameAdopted++;
+      if (removed.length) {
+        stats.nameDedupeNotes++;
+        try {
+          masterSheet.getRange(row1Based, colTarget + 1).setNote('除去: ' + removed.join(', ') + '（dedupe）');
+        } catch (eN) {}
+        Logger.log('[メニュー8][nameAdopt] 行' + row1Based + ' ' + pair.target + ' dedupe除去=' + removed.join(','));
+      }
+    }
+  }
+}
+
+function amazonAiPickRecommendedProductName_(raw) {
+  if (!raw || !String(raw).trim()) return '';
+  var lines = String(raw).split(/\r\n|\n|\r/);
+  var first = '';
+  for (var i = 0; i < lines.length; i++) {
+    var t = String(lines[i] || '').trim();
+    if (!t) continue;
+    if (t.indexOf('【推奨】') === 0) {
+      return t.replace(/^【推奨】\s*/, '').trim();
+    }
+    if (!first) first = t.replace(/^案\d+[:：]\s*/, '').replace(/^【推奨】\s*/, '').trim();
+  }
+  return first;
+}
+
+function amazonAiDedupeRemovedTokens_(before, after) {
+  var b = String(before || '').split(/[\s\u3000]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+  var aSet = {};
+  String(after || '').split(/[\s\u3000]+/).forEach(function(s) {
+    var t = s.trim();
+    if (t) aSet[t] = (aSet[t] || 0) + 1;
+  });
+  var removed = [];
+  var seen = {};
+  for (var i = 0; i < b.length; i++) {
+    var w = b[i];
+    if (!aSet[w]) {
+      if (!seen[w]) { removed.push(w); seen[w] = true; }
+    } else {
+      aSet[w]--;
+      if (aSet[w] <= 0) delete aSet[w];
+    }
+  }
+  // tokens that appeared >1 in before: after keeps one; extras are "removed" duplicates
+  var countB = {};
+  for (var j = 0; j < b.length; j++) countB[b[j]] = (countB[b[j]] || 0) + 1;
+  for (var k in countB) {
+    if (countB[k] > 1 && removed.indexOf(k) < 0) removed.push(k + '(重複)');
+  }
+  return removed;
+}
+
+function amazonAiTruncateChars_(str, maxLen) {
+  var s = String(str || '');
+  if (!maxLen || s.length <= maxLen) return s;
+  return s.substring(0, maxLen);
+}
+
+/** 検索キーワード（作業エリア）超過は切り詰め・要確認なし */
+function amazonAiAdoptSearchKw150Trim_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var col = masterColMap['検索キーワード'];
+  if (col === undefined) return;
+  for (var p = 0; p < parentRows.length; p++) {
+    var row1Based = parentRows[p];
+    var row = masterValues[row1Based - 1] || [];
+    var v = row[col];
+    if (amazonAiCellIsEmpty_(v)) {
+      // ▼マスタから空欄採用
+      var pair = getTitleDropdownColPair(masterColMap, '★Amazon検索KW(150字)');
+      if (pair && pair.optionsIdx !== undefined) {
+        var opts = buildTitleDropdownOptions(String(row[pair.optionsIdx] || ''), false, false, false, false, false);
+        if (opts.length) {
+          var adopted = amazonAiTruncateChars_(opts[0], AMAZON_AI_ADOPT_SEARCH_KW_MAX);
+          masterSheet.getRange(row1Based, col + 1).setValue(adopted);
+          row[col] = adopted;
+          stats.dropdownAdopted++;
+          if (String(opts[0]).length > AMAZON_AI_ADOPT_SEARCH_KW_MAX) stats.searchKwTrimmed++;
+        } else {
+          amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based, '検索KW150', '候補0件', stats);
+        }
+      }
+      continue;
+    }
+    var s = String(v);
+    if (s.length > AMAZON_AI_ADOPT_SEARCH_KW_MAX) {
+      var trimmed = amazonAiTruncateChars_(s, AMAZON_AI_ADOPT_SEARCH_KW_MAX);
+      masterSheet.getRange(row1Based, col + 1).setValue(trimmed);
+      row[col] = trimmed;
+      stats.searchKwTrimmed++;
+    }
+  }
+}
+
+/**
+ * バリエーション値（子・空欄）へ「バリエーション名 16文字まで」の表示値をコピー。
+ */
+function amazonAiAdoptVariationValuesEmptyOnly_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var colVarVal = masterColMap['バリエーション値'];
+  var colName16 = masterColMap[COL_VARIATION_NAME_16];
+  var childSkuIdx = masterColMap['子SKU'];
+  var parentSkuIdx = masterColMap['親SKU'];
+  var colUnit = masterColMap[COL_VARIATION_UNIT];
+  var colContent = masterColMap[COL_CONTENT_PER_ITEM];
+  if (colVarVal === undefined || childSkuIdx === undefined || parentSkuIdx === undefined) return;
+
+  for (var p = 0; p < parentRows.length; p++) {
+    var parentRow1 = parentRows[p];
+    var parentRow = masterValues[parentRow1 - 1] || [];
+    var parentSkuVal = String(parentRow[parentSkuIdx] != null ? parentRow[parentSkuIdx] : '').trim();
+    if (colUnit !== undefined && amazonAiCellIsEmpty_(parentRow[colUnit])) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, parentRow1, 'バリ単位', 'バリエーション単位が空', stats);
+    }
+    if (colContent !== undefined && amazonAiCellIsEmpty_(parentRow[colContent])) {
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, parentRow1, '内容量', '1個当たり内容量が空', stats);
+    }
+    for (var ci = parentRow1; ci < masterValues.length; ci++) {
+      var crow2 = masterValues[ci] || [];
+      var childSku = crow2[childSkuIdx];
+      if (childSku === undefined || childSku === null || String(childSku).trim() === '') break;
+      var cParent = String(crow2[parentSkuIdx] != null ? crow2[parentSkuIdx] : '').trim();
+      if (parentSkuVal && cParent !== parentSkuVal) break;
+      var childRow1Based = ci + 1;
+      if (!amazonAiCellIsEmpty_(crow2[colVarVal])) continue;
+      var displayVal = '';
+      if (colName16 !== undefined) {
+        try {
+          displayVal = String(masterSheet.getRange(childRow1Based, colName16 + 1).getDisplayValue() || '').trim();
+        } catch (eD) {
+          displayVal = String(crow2[colName16] != null ? crow2[colName16] : '').trim();
+        }
+      }
+      if (!displayVal) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, childRow1Based, 'バリ値', '16文字式の表示値が空', stats);
+        continue;
+      }
+      masterSheet.getRange(childRow1Based, colVarVal + 1).setValue(displayVal);
+      crow2[colVarVal] = displayVal;
+      stats.variationValueAdopted++;
+    }
+  }
+}
+
+/** カテゴリ空などの追加フラグ */
+function amazonAiFlagReviewNeeds_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
+  var colCat = masterColMap[COL_AMAZON_CATEGORY] !== undefined ? masterColMap[COL_AMAZON_CATEGORY] : masterColMap['amazon カテゴリー'];
+  var childSkuIdx = masterColMap['子SKU'];
+  var parentSkuIdx = masterColMap['親SKU'];
+  if (colCat === undefined || childSkuIdx === undefined || parentSkuIdx === undefined) return;
+  for (var p = 0; p < parentRows.length; p++) {
+    var parentRow1 = parentRows[p];
+    var parentRow = masterValues[parentRow1 - 1] || [];
+    var parentSkuVal = String(parentRow[parentSkuIdx] != null ? parentRow[parentSkuIdx] : '').trim();
+    for (var ci = parentRow1; ci < masterValues.length; ci++) {
+      var crow = masterValues[ci] || [];
+      var childSku = crow[childSkuIdx];
+      if (childSku === undefined || childSku === null || String(childSku).trim() === '') break;
+      var cParent = String(crow[parentSkuIdx] != null ? crow[parentSkuIdx] : '').trim();
+      if (parentSkuVal && cParent !== parentSkuVal) break;
+      if (amazonAiCellIsEmpty_(crow[colCat])) {
+        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, ci + 1, 'カテゴリ', 'amazon カテゴリーが空', stats);
+      }
+    }
+  }
+}
+
+/**
+ * 要確認_{short} 列を確保し、値=要確認・濃い赤白字・メモを付ける。
+ */
+function amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based, shortName, reason, stats) {
+  var colName = '要確認_' + shortName;
+  var colIdx = masterColMap[colName];
+  if (colIdx === undefined) {
+    colIdx = amazonAiEnsureReviewColumn_(masterSheet, headerRowIdx, masterColMap, colName);
+  }
+  if (colIdx === undefined) return;
+  var cell = masterSheet.getRange(row1Based, colIdx + 1);
+  cell.setValue('要確認');
+  cell.setBackground('#8B0000');
+  cell.setFontColor('#ffffff');
+  try { cell.setNote(String(reason || '')); } catch (e) {}
+  if (stats) stats.reviewFlags++;
+  Logger.log('[メニュー8][要確認] 行' + row1Based + ' ' + colName + ' ' + reason);
+}
+
+function amazonAiEnsureReviewColumn_(masterSheet, headerRowIdx, masterColMap, colName) {
+  if (masterColMap[colName] !== undefined) return masterColMap[colName];
+  var lastCol = masterSheet.getLastColumn();
+  var newCol1Based = lastCol + 1;
+  masterSheet.getRange(headerRowIdx + 1, newCol1Based).setValue(colName);
+  masterColMap[colName] = newCol1Based - 1;
+  var firstData = headerRowIdx + 2;
+  var lastRow = Math.max(masterSheet.getLastRow(), firstData);
+  var numRows = lastRow - firstData + 1;
+  if (numRows > 0) {
+    var range = masterSheet.getRange(firstData, newCol1Based, numRows, 1);
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['要確認', '確認OK'], true)
+      .setAllowInvalid(true)
+      .build();
+    range.setDataValidation(rule);
+    var rules = masterSheet.getConditionalFormatRules() || [];
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('要確認')
+      .setBackground('#8B0000')
+      .setFontColor('#ffffff')
+      .setRanges([range])
+      .build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo('確認OK')
+      .setBackground('#1a73e8')
+      .setFontColor('#ffffff')
+      .setRanges([range])
+      .build());
+    masterSheet.setConditionalFormatRules(rules);
+  }
+  Logger.log('[メニュー8] 列追加: ' + colName + ' col=' + newCol1Based);
+  return masterColMap[colName];
 }
 
 /**
@@ -8183,6 +11167,89 @@ function fetchYahooShoppingItemsByQuery(clientId, query, maxResults) {
   } catch (e) {
     result.error = e.message || String(e);
     Logger.log('[Yahoo!セット数] API 例外 query="' + (String(query).substring(0, 30) + '...") ') + result.error);
+    return result;
+  }
+}
+
+/**
+ * Yahoo! ショッピング API v3 itemSearch（カテゴリ／ブランド選定用）。
+ * genreCategory / parentGenreCategories / brand / price / review を返す。
+ * sort 例: -review_count（売れ筋近似） / +price（安い順）。sold 順は API 非対応。
+ * @param {string} clientId
+ * @param {{mode:string, value:string, results?:number, sort?:string, genreCategoryId?:string|number}} opts
+ * @return {{error:string|null, hits:Array}}
+ */
+function fetchYahooShoppingItemSearchRich_(clientId, opts) {
+  var result = { error: null, hits: [] };
+  opts = opts || {};
+  if (!clientId || !String(clientId).trim()) {
+    result.error = 'YAHOO_SHOPPING_CLIENT_ID が未設定です。';
+    return result;
+  }
+  var value = opts.value != null ? String(opts.value).trim() : '';
+  if (!value) {
+    result.error = 'query/jan が空です。';
+    return result;
+  }
+  var limit = Math.min(Math.max(Number(opts.results) || 20, 1), 50);
+  var url = 'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch?appid=' +
+    encodeURIComponent(String(clientId).trim());
+  if (opts.mode === 'jan') {
+    url += '&jan_code=' + encodeURIComponent(value);
+  } else {
+    url += '&query=' + encodeURIComponent(value);
+  }
+  url += '&results=' + limit;
+  if (opts.sort) {
+    url += '&sort=' + encodeURIComponent(String(opts.sort));
+  }
+  if (opts.genreCategoryId != null && String(opts.genreCategoryId).trim() !== '') {
+    url += '&genre_category_id=' + encodeURIComponent(String(opts.genreCategoryId).trim());
+  }
+  try {
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var code = res.getResponseCode();
+    var text = res.getContentText();
+    if (code !== 200) {
+      result.error = 'HTTP ' + code + ' ' + (text ? text.substring(0, 200) : '');
+      Logger.log('[Yahoo!Rich] ' + result.error);
+      return result;
+    }
+    var json = JSON.parse(text);
+    var rawHits = json.hits || [];
+    for (var i = 0; i < rawHits.length; i++) {
+      var h = rawHits[i] || {};
+      var price = (h.price != null) ? parseInt(h.price, 10) : null;
+      if (isNaN(price)) price = null;
+      var gc = h.genreCategory || {};
+      var brand = h.brand || {};
+      var review = h.review || {};
+      var parents = [];
+      var rawParents = h.parentGenreCategories || [];
+      for (var pi = 0; pi < rawParents.length; pi++) {
+        var pg = rawParents[pi] || {};
+        parents.push({
+          depth: pg.depth != null ? Number(pg.depth) : 0,
+          id: pg.id != null ? String(pg.id) : '',
+          name: pg.name != null ? String(pg.name) : ''
+        });
+      }
+      result.hits.push({
+        name: h.name != null ? String(h.name) : '',
+        price: price,
+        genreCategoryId: gc.id != null ? String(gc.id) : '',
+        genreCategoryName: gc.name != null ? String(gc.name) : '',
+        genreCategoryDepth: gc.depth != null ? Number(gc.depth) : 0,
+        parentGenreCategories: parents,
+        brandId: brand.id != null ? String(brand.id) : '',
+        brandName: brand.name != null ? String(brand.name) : '',
+        reviewCount: review.count != null ? Number(review.count) : 0
+      });
+    }
+    return result;
+  } catch (e) {
+    result.error = e.message || String(e);
+    Logger.log('[Yahoo!Rich] 例外: ' + result.error);
     return result;
   }
 }

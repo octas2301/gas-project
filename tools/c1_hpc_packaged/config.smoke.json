@@ -1,0 +1,13 @@
+{
+  "template_path": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/A1_20260721_083100_06b90a_B2_PACKAGED_corrective_link.xlsm",
+  "generated_csv": "testdata/sample_GENERATED.csv",
+  "output_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_03_c1_smoke",
+  "log_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_05_c1_smoke",
+  "fingerprint_path": "fingerprints/hpc_header_r3_r5.json",
+  "column_map_path": "hpc_column_map.json",
+  "mode": "dry_run",
+  "write_dryrun_xlsm": true,
+  "parent_sku_filter": ["lifec-4560151300139-oya"],
+  "size_map": {},
+  "url_override_map": {}
+}

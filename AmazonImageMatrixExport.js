@@ -10,12 +10,15 @@
  *   AMAZON_IMAGE_U2_ENABLED … 既定 false
  *   AMAZON_IMAGE_CANDIDATE_FOLDER_ID … 白抜き候補（楽天ソースと分離）
  *   AMAZON_DRIVE_IMAGE_FOLDER_ID … 02 出口（空なら既定 ID）
+ *   AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED … ④成功分を 07/アップロード済み画像 へ退避（未設定=true／false でOFF）
  */
 
 var AMAZON_IMAGE_U2_PROP = 'AMAZON_IMAGE_U2_ENABLED';
 var AMAZON_IMAGE_CANDIDATE_FOLDER_PROP = 'AMAZON_IMAGE_CANDIDATE_FOLDER_ID';
 var AMAZON_IMAGE_DRIVE02_PROP = 'AMAZON_DRIVE_IMAGE_FOLDER_ID';
 var AMAZON_IMAGE_DRIVE02_DEFAULT = '1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84';
+var AMAZON_IMAGE_CANDIDATE_ARCHIVE_PROP = 'AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED';
+var AMAZON_IMAGE_CANDIDATE_ARCHIVE_FOLDER_NAME = 'アップロード済み画像';
 
 /** 1-based。楽天候補は 26〜75 → Amazon は 76 以降 */
 var AMAZON_MX_COL_MAIN = 76;
@@ -110,6 +113,7 @@ function menuAmazonImageMatrixExportTo02() {
     'Drive 02 出力完了\nMAIN成功=' + summary.mainOk +
       '\nPT成功=' + summary.ptOk +
       '\n失敗=' + summary.failed +
+      '\n候補退避=' + (summary.archived != null ? summary.archived : 0) +
       '\n' + (summary.message || '')
   );
 }
@@ -327,6 +331,7 @@ function amazonImageMatrixExportTo02_(ss, matrixSheet) {
   var ptOk = 0;
   var failed = 0;
   var notes = [];
+  var usedIds = {};
   var i;
   for (i = 0; i < keys.length; i++) {
     var pCode = String(keys[i][0] || '').trim();
@@ -353,6 +358,7 @@ function amazonImageMatrixExportTo02_(ss, matrixSheet) {
     try {
       amazonImageCopyTo02_(dest, mainId, sellerSku + '.MAIN.jpg');
       mainOk++;
+      usedIds[mainId] = true;
     } catch (eM) {
       failed++;
       notes.push(sellerSku + ' MAIN: ' + ((eM && eM.message) || eM));
@@ -370,6 +376,7 @@ function amazonImageMatrixExportTo02_(ss, matrixSheet) {
         try {
           amazonImageCopyTo02_(dest, ptId, ptName);
           ptOk++;
+          usedIds[ptId] = true;
         } catch (eP) {
           failed++;
           notes.push(sellerSku + ' ' + ptName + ': ' + ((eP && eP.message) || eP));
@@ -378,12 +385,96 @@ function amazonImageMatrixExportTo02_(ss, matrixSheet) {
     }
   }
 
+  var archiveResult = amazonImageArchiveUsedCandidates_(Object.keys(usedIds));
+  if (archiveResult.note) notes.push(archiveResult.note);
+  Logger.log(
+    '[amazonImageMatrixExportTo02_] archive moved=' +
+      archiveResult.moved +
+      ' skipped=' +
+      archiveResult.skipped +
+      ' err=' +
+      archiveResult.errors
+  );
+
   return {
     mainOk: mainOk,
     ptOk: ptOk,
     failed: failed,
+    archived: archiveResult.moved,
     message: notes.slice(0, 8).join('\n') + (notes.length > 8 ? '\n…' : '')
   };
+}
+
+/**
+ * ④で 02 コピー成功したファイルだけ、候補フォルダ(07)直下にあれば「アップロード済み画像」へ退避。
+ * Property AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED=false で無効（未設定=有効）。
+ */
+function amazonImageArchiveUsedCandidates_(fileIds) {
+  var out = { moved: 0, skipped: 0, errors: 0, note: '' };
+  if (!fileIds || !fileIds.length) return out;
+  if (!getBoolScriptProperty_(AMAZON_IMAGE_CANDIDATE_ARCHIVE_PROP, true)) {
+    out.note = '候補退避スキップ(Property OFF)';
+    return out;
+  }
+  var candId = String(PropertiesService.getScriptProperties().getProperty(AMAZON_IMAGE_CANDIDATE_FOLDER_PROP) || '').trim();
+  if (!candId) {
+    out.note = '候補退避スキップ(候補フォルダ未設定)';
+    return out;
+  }
+  var candFolder;
+  try {
+    candFolder = DriveApp.getFolderById(candId);
+  } catch (eF) {
+    out.note = '候補退避失敗: フォルダID無効';
+    out.errors++;
+    return out;
+  }
+  var archiveFolder = amazonImageGetOrCreateArchiveFolder_(candFolder);
+  if (!archiveFolder) {
+    out.note = '候補退避失敗: 退避フォルダ作成不可';
+    out.errors++;
+    return out;
+  }
+  var archiveId = archiveFolder.getId();
+  var i;
+  for (i = 0; i < fileIds.length; i++) {
+    var fid = fileIds[i];
+    if (!fid) continue;
+    try {
+      var file = DriveApp.getFileById(fid);
+      var parents = file.getParents();
+      var inCandRoot = false;
+      var alreadyArchived = false;
+      while (parents.hasNext()) {
+        var p = parents.next();
+        var pid = p.getId();
+        if (pid === candId) inCandRoot = true;
+        if (pid === archiveId) alreadyArchived = true;
+      }
+      if (alreadyArchived || !inCandRoot) {
+        out.skipped++;
+        continue;
+      }
+      file.moveTo(archiveFolder);
+      out.moved++;
+    } catch (eA) {
+      out.errors++;
+      Logger.log('[amazonImageArchiveUsedCandidates_] id=' + fid + ' err=' + ((eA && eA.message) || eA));
+    }
+  }
+  if (out.errors) out.note = '候補退避エラー=' + out.errors;
+  return out;
+}
+
+function amazonImageGetOrCreateArchiveFolder_(candFolder) {
+  var it = candFolder.getFoldersByName(AMAZON_IMAGE_CANDIDATE_ARCHIVE_FOLDER_NAME);
+  if (it.hasNext()) return it.next();
+  try {
+    return candFolder.createFolder(AMAZON_IMAGE_CANDIDATE_ARCHIVE_FOLDER_NAME);
+  } catch (eC) {
+    Logger.log('[amazonImageGetOrCreateArchiveFolder_] ' + ((eC && eC.message) || eC));
+    return null;
+  }
 }
 
 function amazonImageCopyTo02_(destFolder, fileId, destName) {
