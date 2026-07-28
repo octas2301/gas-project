@@ -1,5 +1,5 @@
 {
-  "comment": "コピーして config.local.json。秘密は Git 禁止。認証は spapi_smoke と同じ3点＋seller_id。v1.1は items_csv で複数行。",
+  "comment": "コピーして config.local.json。秘密は Git 禁止。v1.3は drive.* で Drive 取得可。",
   "lwa_client_id": "REPLACE",
   "lwa_client_secret": "REPLACE",
   "refresh_token": "REPLACE_Atzr|...",
@@ -15,8 +15,17 @@
   "condition_type": "new_new",
   "fulfillment_channel_code": "DEFAULT",
   "currency": "JPY",
-  "user_agent": "OctasSpapiListingsWrite/1.1 (Language=Python)",
+  "user_agent": "OctasSpapiListingsWrite/1.3 (Language=Python)",
   "mode": "dry_run",
   "allow_prod": false,
-  "auth_config_path": "../spapi_smoke/config.local.json"
+  "auth_config_path": "../spapi_smoke/config.local.json",
+  "drive": {
+    "comment": "v1.3。C1 の credentials.json 流用可。folder_id は 21-⑧ 出力先（空なら Drive 全体で SPAPI_ITEMS 最新）。",
+    "credentials_path": "../c1_hpc_packaged/secrets/credentials.json",
+    "token_path": "secrets/token_drive.json",
+    "folder_id": "",
+    "file_id": "",
+    "name_contains": "SPAPI_ITEMS",
+    "dest_csv": "items.csv"
+  }
 }

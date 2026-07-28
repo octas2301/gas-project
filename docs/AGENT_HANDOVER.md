@@ -99,8 +99,11 @@
 
 ## 6. 更新履歴
 
-- 2026-07-28: **SP-API スプシ橋渡し v1.2 実機合格**: 21-⑧→Drive CSV→ローカル dry_run/prod→SC確認。安眠`…0924-ride01`／アルコール`…0139-ride01`・1000/0。Property・allow_prod false戻し済。次＝v1.3/v1.2b（要承認）。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
-- 2026-07-28: **SP-API スプシ橋渡し v1.2**: `AmazonSpapiExport.js`＋メニュー21-⑧（選択行→Drive CSV）。GASからSP-API直呼びなし。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)。
+- 2026-07-29: **SP-API v1.2c／v1.3 実機合格**: 子レ点→Drive→`--fetch-drive` dry_run／prod。SKU`lifec-4560151300924-48s11`／`B00A0J0D30` ACCEPTED。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)／[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-07-28: **SP-API v1.2c**: 21-⑧＝マスタ**子SKU＋出品CK**のみ→Drive CSV。選択行完全廃止。親レ点のみ出さない。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)／[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。
+- 2026-07-28: **SP-API v1.3／v1.2b／v1.2a**: Drive自動取得（`--fetch-drive`）・21-⑨承認①済一括CSV・UTF-8/cp932。GAS直呼びなし。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[DRIVE承認](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)。要 clasp push。
+- 2026-07-28: **SP-API スプシ橋渡し v1.2 実機合格**: 21-⑧→Drive CSV→ローカル dry_run/prod→SC確認。安眠`…0924-ride01`／アルコール`…0139-ride01`・1000/0。Property・allow_prod false戻し済（当時は選択行。のち v1.2c でレ点化）。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-07-28: **SP-API スプシ橋渡し v1.2**: `AmazonSpapiExport.js`＋メニュー21-⑧（当初選択行→Drive CSV）。GASからSP-API直呼びなし。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)。
 - 2026-07-28: **SP-API Listings v1.1 複数行バッチ**: `items_csv`／`max_items`／行単位。試験=安眠`B00A0J0D30`・アルコール`B0091G3AHY`・ride01・1000/0。GAS直結なし。prod実機合格。[HUMAN_RUN](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／[BATCH承認](org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md)。
 - 2026-07-28: **SP-API Listings書込 v1**: `tools/spapi_listings_write`（putListingsItem LISTING_OFFER_ONLY／dry_run=VALIDATION_PREVIEW／prodは allow_prod）。発汗1SKU prod合格。[HUMAN_RUN](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_LISTINGS_WRITE_IMPLEMENTATION_APPROVAL.md)。
 - 2026-07-28: **SP-API読取スモーク合格**: LWA＋Catalog／`B07YND44VN`＝発汗チェッカー1500。レポート `SPAPI_SMOKE_20260728_115740`。書込は[承認包](org/LV4_SPAPI_LISTINGS_WRITE_IMPLEMENTATION_APPROVAL.md)。[HUMAN_RUN](org/D_MENU_SPAPI_SMOKE_HUMAN_RUN.md)。

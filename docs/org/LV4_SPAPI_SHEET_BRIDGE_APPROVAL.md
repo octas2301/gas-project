@@ -12,6 +12,8 @@
 マスタ選択行から **SP-API用 items CSV** を Drive に出し、既存ローカル `spapi_listings_write` で dry_run→prod。  
 **GAS から SP-API は呼ばない。全件ループ・在庫>0無人は対象外。**
 
+> **追記（v1.2c）**: 21-⑧ の対象は **選択行 → 子SKU＋出品CK（レ点）のみ** に変更。選択行モードは廃止。[CHECKBOX_EXPORT](LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)
+
 ---
 
 ## 2. 変更ファイル

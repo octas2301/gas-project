@@ -59,10 +59,11 @@ copy items.example.csv items.csv
 
 ---
 
-## 2.5 Drive CSV から（スプシ橋渡し v1.2）
+## 2.5 Drive CSV から（スプシ橋渡し）
 
-マスタ選択 → **21-⑧** → Drive の `*_SPAPI_ITEMS.csv` をダウンロードし、本フォルダの `items.csv` に置き換えてから §3 を実行。  
-手順正本: [D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)
+- **推奨（v1.3）**: `python spapi_listings_write.py --fetch-drive --mode dry_run`  
+- 手動: Drive の `*_SPAPI_ITEMS.csv` を本フォルダの `items.csv` に置き換えてから §3  
+- 正本: [D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)（21-⑧＝**子SKUレ点**／選択行廃止＝v1.2c）
 
 ---
 
@@ -114,6 +115,8 @@ python spapi_listings_write.py --mode dry_run
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-28 | **v1.2c＋v1.3 実機**: `--fetch-drive` dry_run／prod（`…48s11`／`B00A0J0D30` ACCEPTED）。 |
+| 2026-07-28 | **v1.3**: `--fetch-drive`／**v1.2a** UTF-8・cp932。 |
 | 2026-07-28 | **実機合格**記録（v1発汗／v1.1 ride01／v1.2橋渡し）。 |
 | 2026-07-28 | **v1.2橋渡し**: Drive CSV 手順を §2.5 に追加。 |
 | 2026-07-28 | **v1.1**: CSV複数行・max_items・安眠/アルコール相乗り（1000/0）。 |

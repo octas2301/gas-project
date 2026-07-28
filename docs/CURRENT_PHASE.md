@@ -1,39 +1,38 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-28（M2／SP-API読取・書込v1.1／**スプシ橋渡し v1.2 実機合格**）  
+**最終更新**: 2026-07-29（SP-API **v1.2c／v1.3 実機合格**）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-07-28）
+## 0. セッション引き継ぎ（2026-07-29）
 
 **場所**: 自宅PC。  
-**コミット**: 指示時（本セッションで復元用 commit）。  
-**clasp**: 21-⑧（`AmazonSpapiExport.js`）push 済認識。メニュー8 v1.10 等も push 済み認識。  
-**Property**: `APPROVAL_AMAZON_SPAPI_EXPORT_ENABLED`／ローカル `allow_prod` とも **false 戻し済**。
+**コミット**: 本セッションで v1.2c 合格反映。  
+**clasp**: v1.2c push 済認識（21-⑧子レ点→Drive成功）。  
+**Property**: `APPROVAL_AMAZON_SPAPI_EXPORT_ENABLED`／ローカル `allow_prod` とも作業後 **false**。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **スプシ橋渡し v1.2 実機合格**（21-⑧→Drive CSV→ローカル dry_run/prod→SC反映）。次＝v1.3 Drive自動取得 or v1.2b 承認行一括CSV（要承認）。GAS直呼びは v1.4。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.2c（子SKUレ点）＋v1.3（`--fetch-drive`）実機合格**。安眠`…48s11`／`B00A0J0D30` prod ACCEPTED。次＝21-⑨実機／v1.4は別承認。GAS直呼びなし。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
 |------|------|
 | 安眠 E〜E-5／C1 | **済** |
 | **メニュー8** | v1.10＋キャッチ1行化（push済み認識） |
-| **M2** | **実機合格**。subBatch=`A1_20260727_224939_b7a053_A2`／E-5・片付け済 |
-| M2 PACKAGED | 簡易CSV中間＋**`m2_listing_loader_fill.py`→公式 xlsm**が正 |
-| **SP-API読取** | **スモーク合格** |
-| **SP-API書込 v1** | **1SKU prod 合格**（発汗 `…48s11`／`B07YND44VN`） |
-| **SP-API書込 v1.1** | **複数行 prod 合格**（安眠/アルコール相乗り・ride01・1000/0） |
-| **SP-API橋渡し v1.2** | **実機合格**（21-⑧ CSV→ローカル→SC）。[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md) |
-| 試験SKU（SC確認済） | 発汗出品中／安眠・アルコール `…ride01`・価格1000・在庫0 |
+| **M2** | **実機合格** |
+| **SP-API読取／書込 v1・v1.1** | **実機合格** |
+| **SP-API橋渡し v1.2** | **実機合格**（当時は選択行） |
+| **SP-API v1.2c** | **実機合格**（21-⑧＝子SKUレ点のみ・選択行廃止）。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md) |
+| **SP-API v1.3** | **実機合格**（`--fetch-drive` dry_run／prod）。[DRIVE承認](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md) |
+| **SP-API v1.2b／v1.2a** | **実装済**（21-⑨・文字コード。21-⑨実機は未）。[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md) |
+| 試験SKU（SC確認済） | 発汗／安眠・アルコール ride01・`…48s11`（v1.2c） |
 
 ### 次にやること（優先順）
-1. ~~読取~~／~~1SKU~~／~~複数行~~／~~橋渡し実装~~／~~橋渡し実機~~／~~Property・allow_prod false~~  
-2. （任意）UTF-8/SJIS 自動判別（v1.2a・軽微）  
-3. **次開発候補**: v1.3 Drive自動取得／v1.2b 承認行一括CSV（いずれも **別承認**）  
-4. GAS からの SP-API 直呼びは **別承認（v1.4）**  
-5. Frontier／Sandbox は触らない  
+1. ~~v1〜v1.2c／v1.3 実機~~  
+2. **任意**: 21-⑨実機／親レ点のみ0件の確認  
+3. GAS 直呼びは **別承認（v1.4）**  
+4. Frontier／Sandbox は触らない  
 
 ### M2 正本リンク
 - [org/D_MENU_M2_HUMAN_RUN.md](org/D_MENU_M2_HUMAN_RUN.md)  
@@ -44,6 +43,8 @@
 - [org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／`tools/spapi_listings_write/`  
 - [org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md](org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md)（v1.1）  
 - [org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)  
+- [org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)（v1.2c）  
+- [org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)  
 
 ### 外出先チェックリスト
 [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
@@ -131,6 +132,8 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **SP-API v1.2c／v1.3 実機合格**: 子レ点→Drive→fetch-drive prod（`…48s11`）。 |
+| 2026-07-28 | **SP-API v1.2c**: 21-⑧＝子SKUレ点のみ（選択行廃止）。 |
 | 2026-07-26 | **メニュー8緊急修正**: sync除外。要 clasp push。 |
 | 2026-07-26 | **メニュー8 v1実装**: Z→7.5・空欄のみ採用。次＝clasp push→HUMAN_RUN。 |
 | 2026-07-26 | **メニュー8要件＋承認パッケージ**: Amazon AI生成＆一括採用（M-A・空欄のみ・要確認列ごと）。実装承認待ち。 |

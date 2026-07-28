@@ -4,6 +4,9 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-29 | CHECKBOX／BRIDGE／CURRENT_PHASE／HANDOVER | **v1.2c／v1.3 実機合格記録**（`…48s11` prod） | **Git**: revert docs |
+| 2026-07-28 | `AmazonSpapiExport.js`／`コード.js` 21-⑧／CHECKBOX承認 | **v1.2c: 子SKUレ点のみ→Drive CSV（選択行廃止）** | **Git**: revert。Property false。要 clasp push |
+| 2026-07-28 | `spapi_fetch_drive_csv.py`／listings_write／21-⑨／DRIVE・APPROVED承認 | **v1.3 Drive取得＋v1.2b承認一括＋v1.2a文字コード** | **Git**: revert。Property false。要 clasp push |
 | 2026-07-28 | CURRENT_PHASE／HANDOVER／BRIDGE・WRITE HUMAN_RUN／承認包 | **橋渡し v1.2 実機合格を正本反映**（ride01 SC確認・Property false） | **Git**: revert docs |
 | 2026-07-28 | `AmazonSpapiExport.js`／`コード.js` 21-⑧／BRIDGE docs | **スプシ→Drive CSV**（SP-API直呼びなし） | **Git**: revert。Property false。要 clasp push |
 | 2026-07-28 | `spapi_listings_write` v1.1／BATCH承認／HUMAN_RUN | **複数行CSV**（max_items・安眠/アルコール相乗り1000/0） | **Git**: revert。items.csv・config.local は追跡しない |

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-SP-API Listings Items 書込 v1.1（既存 ASIN・offer only・1行 or CSV複数行）
+SP-API Listings Items 書込 v1.3（既存 ASIN・offer only・CSV／Drive取得）
 
 - dry_run: putListingsItem ?mode=VALIDATION_PREVIEW（永続化しない）
 - prod: 実送信（config.allow_prod=true 必須）
 - items_csv があれば複数行（max_items 上限）。無ければ config の sku/asin 1件
+- --fetch-drive: Drive 最新 *_SPAPI_ITEMS.csv を取得してから実行（v1.3）
+- CSV 文字コード: UTF-8 / cp932 自動判別（v1.2a）
 
 正本: docs/org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md
-承認: docs/org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md
+承認: docs/org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md
 公式: https://developer-docs.amazon.com/sp-api/docs/submit-listings-data
 """
 
@@ -217,6 +219,23 @@ def put_listings_item(
     )
 
 
+def open_csv_text(path: Path):
+    """UTF-8（BOM可）→ cp932（Excel日本語）の順で開けるテキストストリーム。"""
+    import io
+
+    raw = path.read_bytes()
+    for enc in ("utf-8-sig", "utf-8", "cp932"):
+        try:
+            text = raw.decode(enc)
+            LOG.info("items_csv 文字コード=%s path=%s", enc, path)
+            return io.StringIO(text)
+        except UnicodeDecodeError:
+            continue
+    raise SystemExit(
+        "items_csv を UTF-8 / cp932 で読めません: %s（メモ帳で UTF-8 保存推奨）" % path
+    )
+
+
 def load_items(cfg: Dict[str, Any], base: Path, max_items: int) -> List[Dict[str, Any]]:
     """items_csv 優先。無ければ config の単一行。"""
     rel = str(cfg.get("items_csv") or "").strip()
@@ -227,7 +246,7 @@ def load_items(cfg: Dict[str, Any], base: Path, max_items: int) -> List[Dict[str
         if not csv_path.is_file():
             raise SystemExit("items_csv がありません: %s" % csv_path)
         rows: List[Dict[str, Any]] = []
-        with csv_path.open(encoding="utf-8-sig", newline="") as f:
+        with open_csv_text(csv_path) as f:
             reader = csv.DictReader(f)
             if not reader.fieldnames:
                 raise SystemExit("items_csv にヘッダがありません")
@@ -399,9 +418,19 @@ def process_one_item(
     return result
 
 
-def run(config_path: Path, mode_override: Optional[str]) -> int:
+def run(
+    config_path: Path,
+    mode_override: Optional[str],
+    fetch_drive: bool = False,
+) -> int:
     cfg = _load_json(config_path)
     cfg = merge_auth_from_path(cfg, config_path.parent)
+
+    if fetch_drive:
+        from spapi_fetch_drive_csv import fetch_to_local
+
+        dest = fetch_to_local(cfg, config_path.parent)
+        LOG.info("Drive 取得完了 → %s", dest)
 
     mode = (mode_override or cfg.get("mode") or "dry_run").strip().lower()
     if mode not in ("dry_run", "prod"):
@@ -438,7 +467,7 @@ def run(config_path: Path, mode_override: Optional[str]) -> int:
     ).strip()
     currency = str(cfg.get("currency") or "JPY").strip()
     user_agent = str(
-        cfg.get("user_agent") or "OctasSpapiListingsWrite/1.1 (Language=Python)"
+        cfg.get("user_agent") or "OctasSpapiListingsWrite/1.3 (Language=Python)"
     ).strip()
 
     items = load_items(cfg, config_path.parent, max_items)
@@ -446,8 +475,9 @@ def run(config_path: Path, mode_override: Optional[str]) -> int:
     run_id = "SPAPI_LISTINGS_WRITE_%s" % _utc_stamp()
     report: Dict[str, Any] = {
         "runId": run_id,
-        "version": "spapi-listings-write-v1.1",
+        "version": "spapi-listings-write-v1.3",
         "mode": mode,
+        "fetchDrive": bool(fetch_drive),
         "itemCount": len(items),
         "maxItems": max_items,
         "marketplaceId": marketplace_id,
@@ -502,13 +532,18 @@ def run(config_path: Path, mode_override: Optional[str]) -> int:
 
 def main(argv: Optional[list] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="SP-API Listings 書込 v1.1（CSV複数行可・offer only・dry_run/prod）"
+        description="SP-API Listings 書込 v1.3（CSV／Drive取得・offer only・dry_run/prod）"
     )
     parser.add_argument(
         "--config",
         default=str(SCRIPT_DIR / "config.local.json"),
     )
     parser.add_argument("--mode", choices=["dry_run", "prod"], default=None)
+    parser.add_argument(
+        "--fetch-drive",
+        action="store_true",
+        help="実行前に Drive 最新 SPAPI_ITEMS.csv を取得（v1.3）",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
     logging.basicConfig(
@@ -521,7 +556,7 @@ def main(argv: Optional[list] = None) -> int:
             "config がありません: %s\ncopy config.example.json config.local.json"
             % config_path
         )
-    return run(config_path, args.mode)
+    return run(config_path, args.mode, fetch_drive=bool(args.fetch_drive))
 
 
 if __name__ == "__main__":
