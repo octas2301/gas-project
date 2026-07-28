@@ -1,6 +1,6 @@
 # SP-API スプシ橋渡し（人間手順）
 
-**状態**: **v1.2／v1.2c／v1.3 実機合格**／**v1.2b・v1.2a 実装済**（2026-07-28／29）  
+**状態**: **v1.2／v1.2b／v1.2c／v1.3 実機合格**／**v1.2a 実装済**（2026-07-28／29）  
 **承認**: [SHEET_BRIDGE](LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[DRIVE_FETCH](LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[APPROVED_EXPORT](LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)／[CHECKBOX_EXPORT v1.2c](LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)  
 **書込本体**: [D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md](D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)
 
@@ -94,14 +94,14 @@ Drive CSV を手で `items.csv` に置き → `python spapi_listings_write.py --
 ### v1.2c（実機合格）
 
 - [x] 子レ点のみで CSV 出る  
-- [ ] 親レ点のみでは 0 件メッセージ（実装済・専用実機未）  
+- [x] 親レ点のみでは出さない（社長完了扱い・2026-07-29。親行スキップは 21-⑨ でも `…oya` スキップを確認）  
 - [x] 行選択なしで動作  
 
-### v1.3／v1.2b（一部合格）
+### v1.3／v1.2b（実機合格※v1.2a除く）
 
 - [x] `--fetch-drive` で最新 CSV 取得 → dry_run／prod  
-- [ ] 21-⑨ で承認①済から CSV  
-- [ ] cp932 CSV でも dry_run 可能（v1.2a）  
+- [x] 21-⑨ で承認①済から CSV → dry_run／prod  
+- [ ] cp932 CSV でも dry_run 可能（v1.2a・専用実機未）  
 
 ### 4.1 実機記録（2026-07-28・v1.2）
 
@@ -122,12 +122,24 @@ Drive CSV を手で `items.csv` に置き → `python spapi_listings_write.py --
 | prod | ACCEPTED・ok=1（レポート `…145928`） |
 | 経路 | 21-⑧子レ点 → `--fetch-drive` → prod |
 
+### 4.3 実機記録（2026-07-29・v1.2b）
+
+| 項目 | 結果 |
+|------|------|
+| Drive CSV | `SPAPI_EXPORT_APPR_20260729_001815_127e8a_SPAPI_ITEMS.csv` |
+| batch | `A1_20260727_224939_b7a053`（件数1／スキップ1＝親 `…0832-oya`） |
+| SKU／ASIN | `lifec-4560151300832-48s11`／`B07YND44VN` |
+| dry_run | VALID・ok=1（GET 200） |
+| prod | ACCEPTED・ok=1（レポート `…152611`） |
+| 経路 | 21-⑨承認①済 → `--fetch-drive` → prod |
+
 ---
 
 ## 5. 更新履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **v1.2b 実機合格**＋親レ点0件を完了扱い。21-⑨ APPR→prod（`…0832-48s11`）。 |
 | 2026-07-28 | **v1.2c／v1.3 実機合格**: 子レ点→Drive→fetch-drive dry_run／prod（安眠 `…48s11`）。 |
 | 2026-07-28 | **v1.2c**: 21-⑧＝子SKUレ点のみ。選択行完全廃止。親レ点のみ出さない。 |
 | 2026-07-28 | 21-⑧/⑨: スキップ理由をダイアログに列名付きで表示。 |

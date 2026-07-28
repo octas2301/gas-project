@@ -4,6 +4,7 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-29 | APPROVED／BRIDGE／CHECKBOX／CURRENT_PHASE／HANDOVER | **v1.2b実機合格＋親レ点完了扱い** | **Git**: revert docs |
 | 2026-07-29 | CHECKBOX／BRIDGE／CURRENT_PHASE／HANDOVER | **v1.2c／v1.3 実機合格記録**（`…48s11` prod） | **Git**: revert docs |
 | 2026-07-28 | `AmazonSpapiExport.js`／`コード.js` 21-⑧／CHECKBOX承認 | **v1.2c: 子SKUレ点のみ→Drive CSV（選択行廃止）** | **Git**: revert。Property false。要 clasp push |
 | 2026-07-28 | `spapi_fetch_drive_csv.py`／listings_write／21-⑨／DRIVE・APPROVED承認 | **v1.3 Drive取得＋v1.2b承認一括＋v1.2a文字コード** | **Git**: revert。Property false。要 clasp push |

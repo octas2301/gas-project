@@ -115,6 +115,7 @@ python spapi_listings_write.py --mode dry_run
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-28 | **v1.2b 実機**: 21-⑨ APPR→`--fetch-drive` prod（`…0832-48s11`／`B07YND44VN`）。 |
 | 2026-07-28 | **v1.2c＋v1.3 実機**: `--fetch-drive` dry_run／prod（`…48s11`／`B00A0J0D30` ACCEPTED）。 |
 | 2026-07-28 | **v1.3**: `--fetch-drive`／**v1.2a** UTF-8・cp932。 |
 | 2026-07-28 | **実機合格**記録（v1発汗／v1.1 ride01／v1.2橋渡し）。 |

@@ -49,7 +49,7 @@
 ## 5. 合格条件
 
 - [x] clasp push 後、子レ点のみで Drive CSV が出る（`SPAPI_EXPORT_20260728_235455_52100a`）  
-- [ ] 親レ点のみでは 0 件メッセージ（コード実装済・専用実機は未実施）  
+- [x] 親レ点のみでは出さない（**社長完了扱い** 2026-07-29。21-⑧専用0件ダイアログの単独試験は省略）  
 - [x] `--fetch-drive --mode dry_run`（VALID）→ **prod ACCEPTED**  
 
 **実機**（2026-07-28）: SKU `lifec-4560151300924-48s11`／ASIN `B00A0J0D30`／レポート `SPAPI_LISTINGS_WRITE_20260728_145928`。Property／`allow_prod` 作業後 false。

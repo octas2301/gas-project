@@ -1,7 +1,7 @@
 # SP-API v1.2b 承認①済一括CSV — 実装承認パッケージ
 
 **日付**: 2026-07-28  
-**状態**: **承認済・実装済**（社長「おすすめの順で進めて」）  
+**状態**: **承認済・実装済・実機合格**（2026-07-29・21-⑨→`--fetch-drive` dry_run／prod）  
 **前提**: 橋渡し v1.2／Drive取得 v1.3  
 **手順**: [D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)
 
@@ -39,3 +39,9 @@
 
 - [x] **承認する**（おすすめ順・v1.2b／2026-07-28）  
 - [ ] 却下／条件付き
+
+## 5. 実機合格（2026-07-29）
+
+- [x] 21-⑨ → `SPAPI_EXPORT_APPR_20260729_001815_127e8a`（batch `A1_20260727_224939_b7a053`・親 `…oya` スキップ）  
+- [x] dry_run VALID → prod ACCEPTED（`lifec-4560151300832-48s11`／`B07YND44VN`・レポート `…152611`）  
+- [x] Property／`allow_prod` 作業後 false  

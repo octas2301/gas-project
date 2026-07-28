@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-29（SP-API **v1.2c／v1.3 実機合格**）  
+**最終更新**: 2026-07-29（SP-API **v1.2b／v1.2c／v1.3 実機合格**）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,12 +8,12 @@
 ## 0. セッション引き継ぎ（2026-07-29）
 
 **場所**: 自宅PC。  
-**コミット**: 本セッションで v1.2c 合格反映。  
-**clasp**: v1.2c push 済認識（21-⑧子レ点→Drive成功）。  
+**コミット**: 本セッションで v1.2b 合格＋親レ点完了扱い反映。  
+**clasp**: v1.2c／21-⑨ push 済認識。  
 **Property**: `APPROVAL_AMAZON_SPAPI_EXPORT_ENABLED`／ローカル `allow_prod` とも作業後 **false**。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.2c（子SKUレ点）＋v1.3（`--fetch-drive`）実機合格**。安眠`…48s11`／`B00A0J0D30` prod ACCEPTED。次＝21-⑨実機／v1.4は別承認。GAS直呼びなし。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.2b（21-⑨）／v1.2c（子レ点）／v1.3（fetch-drive）実機合格**。次＝v1.4 GAS直呼びは別承認。任意で v1.2a cp932。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
@@ -23,14 +23,15 @@
 | **M2** | **実機合格** |
 | **SP-API読取／書込 v1・v1.1** | **実機合格** |
 | **SP-API橋渡し v1.2** | **実機合格**（当時は選択行） |
-| **SP-API v1.2c** | **実機合格**（21-⑧＝子SKUレ点のみ・選択行廃止）。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md) |
-| **SP-API v1.3** | **実機合格**（`--fetch-drive` dry_run／prod）。[DRIVE承認](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md) |
-| **SP-API v1.2b／v1.2a** | **実装済**（21-⑨・文字コード。21-⑨実機は未）。[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md) |
-| 試験SKU（SC確認済） | 発汗／安眠・アルコール ride01・`…48s11`（v1.2c） |
+| **SP-API v1.2c** | **実機合格**（子SKUレ点・親レ点出さない＝社長完了扱い）。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md) |
+| **SP-API v1.3** | **実機合格**（`--fetch-drive`）。[DRIVE承認](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md) |
+| **SP-API v1.2b** | **実機合格**（21-⑨ APPR→prod）。[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md) |
+| **SP-API v1.2a** | **実装済**（cp932・専用実機未） |
+| 試験SKU（SC確認済） | 発汗／安眠・アルコール ride01・`…0924-48s11`（v1.2c）／`…0832-48s11`（v1.2b） |
 
 ### 次にやること（優先順）
-1. ~~v1〜v1.2c／v1.3 実機~~  
-2. **任意**: 21-⑨実機／親レ点のみ0件の確認  
+1. ~~v1〜v1.2c／v1.2b／v1.3 実機~~  
+2. **任意**: v1.2a cp932 実機  
 3. GAS 直呼びは **別承認（v1.4）**  
 4. Frontier／Sandbox は触らない  
 
@@ -132,6 +133,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **SP-API v1.2b 実機合格**＋親レ点出さないを完了扱い。 |
 | 2026-07-29 | **SP-API v1.2c／v1.3 実機合格**: 子レ点→Drive→fetch-drive prod（`…48s11`）。 |
 | 2026-07-28 | **SP-API v1.2c**: 21-⑧＝子SKUレ点のみ（選択行廃止）。 |
 | 2026-07-26 | **メニュー8緊急修正**: sync除外。要 clasp push。 |
