@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "comment": "SC公式 ListingLoader（テンプレートシート）列キー↔案L/GENERATED。列番号ではなく行5のフィールド名で照合。",
+  "template_sheet": "テンプレート",
+  "header_key_row": 5,
+  "data_start_row": 7,
+  "defaults": {
+    "::record_action": "商品を追加する",
+    "condition_type#1.value": "新品",
+    "fulfillment_availability#1.fulfillment_channel_code": "出品者出荷（デフォルト）"
+  },
+  "offer_csv_to_field": {
+    "contribution_sku#1.value": "sku",
+    "merchant_suggested_asin#1.value": "product-id",
+    "::your_search_term": "product-id",
+    "fulfillment_availability#1.quantity": "quantity",
+    "purchasable_offer[marketplace_id=A1VC38T7YXB528][audience=ALL]#1.our_price#1.schedule#1.value_with_tax": "price",
+    "merchant_shipping_group[marketplace_id=A1VC38T7YXB528]#1.value": "shipping-template"
+  },
+  "generated_to_field": {
+    "contribution_sku#1.value": "sellerSku",
+    "merchant_suggested_asin#1.value": "asin",
+    "::your_search_term": "asin",
+    "fulfillment_availability#1.quantity": "inventory",
+    "purchasable_offer[marketplace_id=A1VC38T7YXB528][audience=ALL]#1.our_price#1.schedule#1.value_with_tax": "priceAmazon",
+    "merchant_shipping_group[marketplace_id=A1VC38T7YXB528]#1.value": "shippingTemplate"
+  }
+}

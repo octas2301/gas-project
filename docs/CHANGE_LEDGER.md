@@ -4,6 +4,21 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-28 | CURRENT_PHASE／HANDOVER／BRIDGE・WRITE HUMAN_RUN／承認包 | **橋渡し v1.2 実機合格を正本反映**（ride01 SC確認・Property false） | **Git**: revert docs |
+| 2026-07-28 | `AmazonSpapiExport.js`／`コード.js` 21-⑧／BRIDGE docs | **スプシ→Drive CSV**（SP-API直呼びなし） | **Git**: revert。Property false。要 clasp push |
+| 2026-07-28 | `spapi_listings_write` v1.1／BATCH承認／HUMAN_RUN | **複数行CSV**（max_items・安眠/アルコール相乗り1000/0） | **Git**: revert。items.csv・config.local は追跡しない |
+| 2026-07-28 | `tools/spapi_listings_write/*`／WRITE HUMAN_RUN／承認包 | **Listings書込 v1**（1SKU offer／dry_run・prod） | **Git**: revert。config.local は追跡しない |
+| 2026-07-28 | SPAPI SMOKE／CURRENT_PHASE／書込承認包 | **読取スモーク合格反映**＋書込は承認待ち docs | **Git**: revert docs |
+| 2026-07-28 | `tools/spapi_smoke/*`／D_MENU_SPAPI_SMOKE_HUMAN_RUN | **SP-API読取スモーク**（LWA＋Catalog）。秘密は local | **Git**: revert。config.local は追跡しない |
+| 2026-07-28 | `tools/m2_offer_packaged/m2_listing_loader_fill.py` 等／M2 docs | **公式 ListingLoader 自動埋め**（人手DL＋fill） | **Git**: revert 当該ファイル |
+| 2026-07-28 | M2／CURRENT_PHASE／HANDOVER／GAP docs | **M2実機合格＋SP-API認証完了を正本反映**。公式LoaderがSC正 | **Git**: revert docs |
+| 2026-07-27 | `コード.js`（E-3）／`ApprovalQueue.js`／E HUMAN_RUN | **E-3完了時**: 承認Web URL付きダイアログ（`approvalQueueBuildWebUrl_`） | **Git**: revert。要 clasp push |
+| 2026-07-27 | `コード.js`（メニュー8）／AI_ADOPT docs | **v1.10**: 共有4列の類似横断dedupe（品/用・包含） | **Git**: revert。要 clasp push |
+| 2026-07-27 | `コード.js`（`syncAiDataToMaster`）／商品マスタ作業エリア要件 | **キャッチ1行化**: 楽天／Yahooキャッチ作業エリアへは先頭1案のみ（全文転記禁止） | **Git**: revert。要 clasp push |
+| 2026-07-27 | `コード.js`（メニュー8）／AI_ADOPT docs | **v1.9**: 区切り＝半角スペースのみ／メインKW1語／最終名は式の後ろ列・後ろワードから厳格trim | **Git**: revert。要 clasp push |
+| 2026-07-27 | `AmazonApprovalExport.js`／`tools/m2_offer_packaged`／M2 docs | **M2 v1**: 案L CSV・競合ASIN・manual_ok。試験=発汗 | **Git**: revert。Property false／BRAND_GATE 削除 |
+| 2026-07-27 | `docs/org/LV4_M2_*`／`D_MENU_M2_HUMAN_RUN`／CURRENT_PHASE／Facade U6 | **M2キックオフ**: ギャップ＋承認下書き（コードなし） | **Git**: revert docs |
+| 2026-07-27 | `c1_packaged.py`／`config.example.json`／C1 HUMAN_RUN | **C1-clean**: `{subBatchId}`＋`--sub-batch`／`relax`固定廃止 | **Git**: revert `c1_packaged.py`。local は gitignore |
 | 2026-07-27 | `tools/c1_hpc_packaged/c1_fetch_inputs.py`／要件／HUMAN_RUN | **C1入力案A**: Drive GENERATED＋マスタCSV自動取得（OAuth読取） | **Git**: revert。secrets は追跡しない |
 | 2026-07-27 | `AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／`コード.js`／E・C1 HUMAN_RUN | **親MAIN URL**: U4子→親コピー＋Lv4 Build子フォールバック | **Git**: revert。要 clasp push |
 | 2026-07-26 | `コード.js`／`AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／E HUMAN_RUN | **Eコース silent**: 成功時OKなし・エラー時のみ停止。U4/Lv4 silent | **Git**: revert。要 clasp push |

@@ -1,56 +1,57 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-27（**安眠 C1→SC送信済・外出先確認待ち**）  
+**最終更新**: 2026-07-28（M2／SP-API読取・書込v1.1／**スプシ橋渡し v1.2 実機合格**）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-07-27）
+## 0. セッション引き継ぎ（2026-07-28）
 
-**場所**: 外出先確認 → 帰宅後ローカル。この節を最初に読むこと。  
-**コミット**: 指示時。  
-**clasp push**: **メニューE**（`コード.js`）要（未 push なら E-5 前に自宅で）。
+**場所**: 自宅PC。  
+**コミット**: 指示時（本セッションで復元用 commit）。  
+**clasp**: 21-⑧（`AmazonSpapiExport.js`）push 済認識。メニュー8 v1.10 等も push 済み認識。  
+**Property**: `APPROVAL_AMAZON_SPAPI_EXPORT_ENABLED`／ローカル `allow_prod` とも **false 戻し済**。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。安眠は **SCキュー済** → 結果確認 → **E-5**（`A1_20260726_225610_4f0558_B2`）。ファイル名の `relax` は接頭辞のみ・中身は0924。
+> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **スプシ橋渡し v1.2 実機合格**（21-⑧→Drive CSV→ローカル dry_run/prod→SC反映）。次＝v1.3 Drive自動取得 or v1.2b 承認行一括CSV（要承認）。GAS直呼びは v1.4。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。
 
-### いまの到達点（安眠・確定）
+### いまの到達点
 | 項目 | 状態 |
 |------|------|
-| E-0〜E-4 | **済**（GENERATED=`A1_20260726_225610_4f0558_B2`） |
-| C1 fetch／dry_run／prod | **済**（親`lifec-4560151300924-oya`／子`…-19s124`） |
-| SC 送信 | **済**（2026-07-27 01:16・`relax_PACKAGED_HPC_lifec-4560151300924-oya.xlsm`・Batch `182816020660`・当時はキュー） |
-| E-5／21-③ | **未**（SC成功後） |
-| U3／U2／T2／U4／C1(relax初回) | **実機合格**（別SKU） |
-| **メニューE** | **実装済・要 clasp push** |
+| 安眠 E〜E-5／C1 | **済** |
+| **メニュー8** | v1.10＋キャッチ1行化（push済み認識） |
+| **M2** | **実機合格**。subBatch=`A1_20260727_224939_b7a053_A2`／E-5・片付け済 |
+| M2 PACKAGED | 簡易CSV中間＋**`m2_listing_loader_fill.py`→公式 xlsm**が正 |
+| **SP-API読取** | **スモーク合格** |
+| **SP-API書込 v1** | **1SKU prod 合格**（発汗 `…48s11`／`B07YND44VN`） |
+| **SP-API書込 v1.1** | **複数行 prod 合格**（安眠/アルコール相乗り・ride01・1000/0） |
+| **SP-API橋渡し v1.2** | **実機合格**（21-⑧ CSV→ローカル→SC）。[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md) |
+| 試験SKU（SC確認済） | 発汗出品中／安眠・アルコール `…ride01`・価格1000・在庫0 |
 
-### 外出先でできること（スマホOK）— 優先順
+### 次にやること（優先順）
+1. ~~読取~~／~~1SKU~~／~~複数行~~／~~橋渡し実装~~／~~橋渡し実機~~／~~Property・allow_prod false~~  
+2. （任意）UTF-8/SJIS 自動判別（v1.2a・軽微）  
+3. **次開発候補**: v1.3 Drive自動取得／v1.2b 承認行一括CSV（いずれも **別承認**）  
+4. GAS からの SP-API 直呼びは **別承認（v1.4）**  
+5. Frontier／Sandbox は触らない  
 
-詳細: [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)
+### M2 正本リンク
+- [org/D_MENU_M2_HUMAN_RUN.md](org/D_MENU_M2_HUMAN_RUN.md)  
+- [org/LV4_M2_IMPLEMENTATION_APPROVAL.md](org/LV4_M2_IMPLEMENTATION_APPROVAL.md)  
+- [org/LV4_M2_TRACK_A_GAP_ANALYSIS.md](org/LV4_M2_TRACK_A_GAP_ANALYSIS.md)  
+- `tools/m2_offer_packaged/`  
+- [org/D_MENU_SPAPI_SMOKE_HUMAN_RUN.md](org/D_MENU_SPAPI_SMOKE_HUMAN_RUN.md)／`tools/spapi_smoke/`  
+- [org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／`tools/spapi_listings_write/`  
+- [org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md](org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md)（v1.1）  
+- [org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)  
 
-1. **Seller Central**「アップロードのステータス」で同ファイル／Batch `182816020660` を確認  
-   - 成功／警告／失敗の件数をメモ（スクショ可）  
-   - 処理サマリ xlsm があれば Drive／SC から確認  
-2. **成功なら**（Sheets がモバイルでメニュー使える場合）: **E-5** に  
-   `A1_20260726_225610_4f0558_B2`  
-   （**`relax` は入れない**）  
-3. マスタで親・子の掲載／ASIN／在庫の見た目だけ確認（任意）  
-4. 失敗／大量警告なら: エラー文言をメモ → **自宅で再PACKAGED／再UP**（外出先では触らない）  
-5. Cursor／チャットに結果を貼るだけで翌日 Agent 継続可  
-
-### 外出先ではやらない（自宅PC）
-- `c1_packaged`／fetch／Python  
-- `clasp push`／Property トグル変更  
-- 失敗時の xlsm 再生成・再送信の本作業  
-
-### 帰宅後（自宅）
-1. E-5 未なら PC の Sheets で実行  
-2. SC 合格記録を [C1 HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md) に追記（指示時）  
-3. `config.generated_csv` を `{subBatchId}_GENERATED.csv` 形式へ（`relax` 固定をやめる・任意）  
-4. コミット／push は指示時  
+### 外出先チェックリスト
+[org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
 
 ### 正本・手順リンク
-- [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)（**外出先・安眠SC確認**）  
+- [org/LV4_M2_IMPLEMENTATION_APPROVAL.md](org/LV4_M2_IMPLEMENTATION_APPROVAL.md)（**M2 v1・実機合格**）  
+- [org/LV4_M2_TRACK_A_GAP_ANALYSIS.md](org/LV4_M2_TRACK_A_GAP_ANALYSIS.md)／[org/D_MENU_M2_HUMAN_RUN.md](org/D_MENU_M2_HUMAN_RUN.md)（**公式Loader正**）  
+- [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)（安眠完了・履歴）  
 - [org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md](org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)  
 - [org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)／[org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)  
 - [YAHOO_CATEGORY_BRAND_STAGE.md](YAHOO_CATEGORY_BRAND_STAGE.md)／[org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md](org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md)／[org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)  

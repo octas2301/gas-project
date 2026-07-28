@@ -1,0 +1,18 @@
+{
+  "generated_csv": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/input/{subBatchId}_GENERATED.csv",
+  "sub_batch_id": "REPLACE_WITH_SUB_BATCH",
+  "output_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_03",
+  "log_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_05",
+  "column_map_path": "column_map.json",
+  "mode": "dry_run",
+  "parent_sku_filter": ["lifec-4560151300832-oya"],
+  "seller_sku_filter": ["lifec-4560151300832-48s11"],
+  "comment": "発汗チェッカー試験。Git禁止。TRACK=A GENERATED の offer 行のみ。",
+  "listing_loader_fill": {
+    "comment": "公式 ListingLoader 埋め（m2_listing_loader_fill.py）。templateはSCから都度DL。",
+    "template": "C:/Users/takuy/Downloads/ListingLoader_prefilled_with_1_search_results.xlsx.xlsm",
+    "output": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_03/{subBatchId}_M2_ListingLoader_FILLED.xlsm",
+    "map": "listing_loader_map.json",
+    "example_cmd": "python m2_listing_loader_fill.py --template ... --offer-csv ..._M2_OFFER_LOADER.csv --output ..._FILLED.xlsm --mode prod"
+  }
+}

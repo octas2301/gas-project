@@ -1,0 +1,9 @@
+{
+  "generated_csv": "testdata/sample_A_GENERATED.csv",
+  "output_dir": "out_smoke",
+  "log_dir": "out_smoke",
+  "column_map_path": "column_map.json",
+  "mode": "dry_run",
+  "parent_sku_filter": ["lifec-4560151300832-oya"],
+  "seller_sku_filter": ["lifec-4560151300832-48s11"]
+}

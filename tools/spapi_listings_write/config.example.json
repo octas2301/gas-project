@@ -1,0 +1,22 @@
+{
+  "comment": "コピーして config.local.json。秘密は Git 禁止。認証は spapi_smoke と同じ3点＋seller_id。v1.1は items_csv で複数行。",
+  "lwa_client_id": "REPLACE",
+  "lwa_client_secret": "REPLACE",
+  "refresh_token": "REPLACE_Atzr|...",
+  "seller_id": "REPLACE_Axxxxxxxxxxxx",
+  "marketplace_id": "A1VC38T7YXB528",
+  "endpoint": "https://sellingpartnerapi-fe.amazon.com",
+  "items_csv": "items.csv",
+  "max_items": 5,
+  "sku": "lifec-4560151300832-48s11",
+  "asin": "B07YND44VN",
+  "price": 981,
+  "quantity": 0,
+  "condition_type": "new_new",
+  "fulfillment_channel_code": "DEFAULT",
+  "currency": "JPY",
+  "user_agent": "OctasSpapiListingsWrite/1.1 (Language=Python)",
+  "mode": "dry_run",
+  "allow_prod": false,
+  "auth_config_path": "../spapi_smoke/config.local.json"
+}

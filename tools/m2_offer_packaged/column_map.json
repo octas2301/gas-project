@@ -1,0 +1,58 @@
+{
+
+  "version": 1,
+
+  "comment": "案L: Listing Loader / 在庫ファイル系。SC公式テンプレの列名に合わせて output_headers を調整可",
+
+  "output_headers": [
+
+    "sku",
+
+    "product-id",
+
+    "product-id-type",
+
+    "price",
+
+    "item-condition",
+
+    "quantity",
+
+    "add-delete",
+
+    "fulfillment-channel",
+
+    "shipping-template"
+
+  ],
+
+  "defaults": {
+
+    "product-id-type": "ASIN",
+
+    "item-condition": "New",
+
+    "add-delete": "a",
+
+    "fulfillment-channel": "DEFAULT",
+
+    "shipping-template": "送料無料パターン"
+
+  },
+
+  "generated_to_output": {
+
+    "sku": "sellerSku",
+
+    "product-id": "asin",
+
+    "price": "priceAmazon",
+
+    "quantity": "inventory",
+
+    "shipping-template": "shippingTemplate"
+
+  }
+
+}
+

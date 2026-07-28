@@ -565,7 +565,8 @@ function createZSplitMenu(ui) {
       .addItem('21-③ アップロード成功を記録', 'menuApprovalAmazonLv4MarkUploadedOk')
       .addItem('21-④ アップロード失敗を記録', 'menuApprovalAmazonLv4MarkUploadFailed')
       .addItem('21-⑥ Drive→R2画像PoC（MAIN1枚）', 'menuAmazonDriveR2UploadPoc')
-      .addItem('21-⑦ U4 Drive02→R2→マスタURL', 'menuAmazonU4UrlEmbed'))
+      .addItem('21-⑦ U4 Drive02→R2→マスタURL', 'menuAmazonU4UrlEmbed')
+      .addItem('21-⑧ SP-API用items CSV出力（選択行→Drive）', 'menuAmazonSpapiExportItemsCsv'))
     .addSeparator()
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
@@ -1728,7 +1729,7 @@ function menuAmazonCourseE2ImageToUrl() {
   }
 }
 
-/** E-3: 18-①（成功OKなし。次はWeb承認①） */
+/** E-3: 18-①相当。完了時に承認Web URL付きダイアログ（次の承認①へ誘導） */
 function menuAmazonCourseE3ApprovalCandidates() {
   var fn = 'menuAmazonCourseE3ApprovalCandidates';
   Logger.log('[' + fn + '] state=RUNNING');
@@ -1742,8 +1743,30 @@ function menuAmazonCourseE3ApprovalCandidates() {
       ' amazon=' + result.amazonCount);
     amazonCourseEToast_(
       'E-3 完了',
-      'batchId=' + result.batchId + ' amazon=' + result.amazonCount + ' → Webで承認①してから E-4'
+      'batchId=' + result.batchId + ' amazon=' + result.amazonCount + ' → Webで承認①'
     );
+    var webUrl = '';
+    try {
+      webUrl = (typeof approvalQueueBuildWebUrl_ === 'function') ? approvalQueueBuildWebUrl_() : '';
+    } catch (eUrl) {
+      webUrl = '';
+    }
+    var body =
+      '承認候補を作成しました。\n\n' +
+      'batchId=' + result.batchId + '\n' +
+      'amazon=' + (result.amazonCount != null ? result.amazonCount : '') +
+      ' / rakuten=' + (result.rakutenCount != null ? result.rakutenCount : '') +
+      ' / yahoo=' + (result.yahooCount != null ? result.yahooCount : '') +
+      '\n\n' +
+      '次: Webで承認①（APPROVED）してから E-4 / 21-①\n\n' +
+      (webUrl
+        ? ('承認Web URL:\n' + webUrl)
+        : '承認Web URLを取得できませんでした。Z → 18-② で確認するか、Webアプリを再デプロイしてください。');
+    try {
+      SpreadsheetApp.getUi().alert('E-3 完了 → Web承認①', body, SpreadsheetApp.getUi().ButtonSet.OK);
+    } catch (eAlert) {
+      Logger.log('[' + fn + '] alert skipped ' + ((eAlert && eAlert.message) || eAlert));
+    }
   } catch (e) {
     amazonCourseEFail_(fn, (e && e.message) || e);
   }
@@ -2803,6 +2826,21 @@ function syncAiDataToMaster() {
           var masterCtrCell = (masterCtrIdxForCtr !== undefined && row[masterCtrIdxForCtr] != null) ? String(row[masterCtrIdxForCtr]) : '';
           valToWrite = getCtrRecommendedFirstLine(valToWrite || masterCtrCell);
           if (!valToWrite && geminiVal != null && geminiVal !== '') valToWrite = getCtrRecommendedFirstLine(String(geminiVal));
+        } else if (ww.item === '楽天キャッチ(60-80字)' || ww.item === 'Yahooキャッチ(20-30字)') {
+          // 作業エリアは1案のみ。複数案（改行）は ▼マスタ 側に残し、先頭案だけ転記（赤セル・文字数超過防止）
+          var catchRaw = gemStr || gptStr;
+          if (!catchRaw && aiIdxForWw !== undefined && aiRow[aiIdxForWw] != null) {
+            catchRaw = String(aiRow[aiIdxForWw]).trim();
+          }
+          if (!catchRaw) {
+            var masterCatchCell = (optColIdx !== undefined && row[optColIdx] != null) ? String(row[optColIdx]).trim() : '';
+            catchRaw = masterCatchCell;
+          }
+          valToWrite = getFirstDropdownOptionLine_(catchRaw);
+          if (catchRaw && /[\r\n]/.test(catchRaw) && valToWrite) {
+            Logger.log('[syncAiDataToMaster] 行' + (i + 1) + ' ' + ww.item +
+              ' 作業エリアへ1案化 rawLen=' + catchRaw.length + ' → "' + String(valToWrite).substring(0, 40) + '"');
+          }
         } else {
           valToWrite = gemStr;
         }
@@ -4466,6 +4504,17 @@ function getCtrRecommendedFirstLine(rawValue) {
 }
 
 /**
+ * 改行区切りの複数案から先頭1件を返す（楽天／Yahooキャッチ等。[char_N]処理なし）。
+ * @param {string} rawValue
+ * @return {string}
+ */
+function getFirstDropdownOptionLine_(rawValue) {
+  if (rawValue == null || String(rawValue).trim() === '') return '';
+  var options = buildTitleDropdownOptions(String(rawValue).trim(), false, false);
+  return options.length > 0 ? options[0] : '';
+}
+
+/**
  * キーワード案の書き込み先（候補元列）を解決する。▼マスタ(〇〇) を優先し、全角括弧のヘッダーにも対応。
  * @param {Object.<string, number>} masterColMap - ヘッダー名 → 0-based 列インデックス
  * @param {string} masterName - 候補元列のヘッダー（例: '▼マスタ(特徴キーワード)'）
@@ -5009,9 +5058,9 @@ function menuAmazonAiGenerateAndAdoptForCheckedParents() {
     parentRows = parentRows.slice(0, maxParents);
   }
   Logger.log('[' + fn + '] state=RUNNING runId=' + runId + ' parents=' + parentRows.length +
-    ' rows=' + parentRows.join(',') + ' mode=select_fix_kw9_v18_yahoo');
+    ' rows=' + parentRows.join(',') + ' mode=select_fix_kw9_v110_near_dedupe');
   try {
-    SpreadsheetApp.getActive().toast('メニュー8: v1.8 KW＋テーマ＋ジャンル＋Yahoo（' + parentRows.length + '親）...', 'AI一括採用', 5);
+    SpreadsheetApp.getActive().toast('メニュー8: v1.10 類似横断dedupe＋厳格trim（' + parentRows.length + '親）...', 'AI一括採用', 5);
   } catch (t0) {}
 
   // 再生成なし。KW→テーマ→（任意）楽天ジャンル→（任意）Yahooカテゴリ／ブランド
@@ -5025,6 +5074,9 @@ function menuAmazonAiGenerateAndAdoptForCheckedParents() {
     tokensRemovedCross: 0,
     trimmedForMax: 0,
     tokensRemovedTrim: 0,
+    delimiterNormalized: 0,
+    mainKwForcedSingle: 0,
+    nearDupRemoved: 0,
     featureUsageSkipped: 0,
     capacityRemoved: 0,
     theme1Written: 0,
@@ -5076,14 +5128,17 @@ function menuAmazonAiGenerateAndAdoptForCheckedParents() {
   var yahooOn = getBoolScriptProperty_(AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED_PROP, false);
   var genreOn = getBoolScriptProperty_(AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED_PROP, false);
   var summary =
-    'メニュー8 完了（v1.8: KW＋テーマ＋楽天ジャンル＋Yahooカテゴリ／ブランド）\nrunId=' + runId +
+    'メニュー8 完了（v1.10: 4列類似横断dedupe＋KW区切り・メイン1語・厳格trim＋テーマ＋ジャンル＋Yahoo）\nrunId=' + runId +
     '\n対象親=' + parentRows.length +
     '\n空欄→候補採用=' + stats.adoptedEmpty +
     '\n既存の重複削除=' + stats.dedupedExisting +
     '\n横断dedupeセル=' + stats.crossDeduped +
     '\n横断除去トークン=' + stats.tokensRemovedCross +
+    '\n類似横断除去=' + (stats.nearDupRemoved || 0) +
     '\n文字数調整セル=' + stats.trimmedForMax +
     '\n文字数調整で除去=' + stats.tokensRemovedTrim +
+    '\n区切り正規化=' + (stats.delimiterNormalized || 0) +
+    '\nメインKW1語化=' + (stats.mainKwForcedSingle || 0) +
     '\n特徴用途スキップ=' + (stats.featureUsageSkipped || 0) +
     '\n容量語除去=' + (stats.capacityRemoved || 0) +
     '\nテーマ1書込=' + (stats.theme1Written || 0) +
@@ -5149,10 +5204,11 @@ var AMAZON_AI_ADOPT_HEADER_TO_LOGICAL_ = {
 };
 
 /**
- * KW選択・重複削除（v1.5）:
- * 1) 共有列をメーカー等に対し横断（特徴・用途は商品名酷似なら不採用可）
+ * KW選択・重複削除（v1.10）:
+ * 1) 共有4列（メイン/CTR/特徴/用途）を横断。完全一致＋類似dedupe
  * 2) モール別に補足・検索KWを横断（容量語は全体で1つ）
- * 3) 最終名が上限超なら検索KWから弱語削除（半角0.5換算・下限=上限−5）
+ * 3) 最終名が上限超なら式の後ろ列・後ろワードから厳格削除（半角0.5換算）
+ * 区切りは半角スペースのみ。メインKWは1語。
  */
 function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
   var LOG = '[メニュー8][kw9]';
@@ -5163,22 +5219,19 @@ function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerR
       id: 'amazon',
       letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.amazon,
       maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_AMAZON,
-      writeLogical: { '商品名検索キーワードamazon': true },
-      trimLogicalOrder: ['商品名検索キーワードamazon']
+      writeLogical: { '商品名検索キーワードamazon': true }
     },
     {
       id: 'rakuten',
       letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.rakuten,
       maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_RAKUTEN,
-      writeLogical: { '楽天 補足KW': true, '商品名検索キーワード楽天': true },
-      trimLogicalOrder: ['商品名検索キーワード楽天', '楽天 補足KW']
+      writeLogical: { '楽天 補足KW': true, '商品名検索キーワード楽天': true }
     },
     {
       id: 'yahoo',
       letters: AMAZON_AI_ADOPT_MALL_FORMULA_LETTERS_.yahoo,
       maxChars: AMAZON_AI_ADOPT_FINAL_NAME_MAX_YAHOO,
-      writeLogical: { 'Yahoo! 補足KW': true, '商品名検索キーワードYahoo!': true },
-      trimLogicalOrder: ['商品名検索キーワードYahoo!', 'Yahoo! 補足KW']
+      writeLogical: { 'Yahoo! 補足KW': true, '商品名検索キーワードYahoo!': true }
     }
   ];
 
@@ -5365,10 +5418,10 @@ function amazonAiProductishStem_(t) {
 }
 
 /**
- * 特徴・用途候補が商品名ベースと役割重複しすぎないか。
+ * 特徴・用途候補が商品名ベースと役割重複しすぎないか。先行列(seen)と類似も不適。
  * @return {number} スコア。不適は -1
  */
-function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens) {
+function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens, seen) {
   var tokens = amazonAiSplitSpaceTokens_(text);
   if (!tokens.length) return -1;
   var nonCap = [];
@@ -5386,6 +5439,7 @@ function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens) {
   for (i = 0; i < nonCap.length; i++) {
     var c = nonCap[i];
     if (baseSet[c]) return -1;
+    if (seen && amazonAiTokenNearSeen_(c, seen)) return -1;
     var cStem = amazonAiProductishStem_(c);
     for (var j = 0; j < (baseTokens || []).length; j++) {
       var b = baseTokens[j];
@@ -5400,6 +5454,7 @@ function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens) {
     var t = nonCap[i];
     if (makerSet[t]) continue;
     if (baseSet[t]) continue;
+    if (seen && amazonAiTokenNearSeen_(t, seen)) continue;
     novel++;
   }
   if (novel === 0) return -1;
@@ -5410,14 +5465,14 @@ function amazonAiScoreFeatureUsageCandidate_(text, baseTokens, makerTokens) {
   return score;
 }
 
-function amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens) {
+function amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens, seen) {
   var best = '';
   var bestScore = -1;
   if (!options || !options.length) return '';
   for (var i = 0; i < options.length; i++) {
     var opt = String(options[i] || '').trim();
     if (!opt) continue;
-    var sc = amazonAiScoreFeatureUsageCandidate_(opt, baseTokens, makerTokens);
+    var sc = amazonAiScoreFeatureUsageCandidate_(opt, baseTokens, makerTokens, seen);
     if (sc > bestScore) {
       bestScore = sc;
       best = opt;
@@ -5448,11 +5503,11 @@ function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx
   }
   var baseTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, '商品名ベース'));
   var makerTokens = amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, 'メーカー名'));
-  var pick = amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens);
+  var pick = amazonAiPickBestFeatureUsageOption_(options, baseTokens, makerTokens, seen);
   var cur = row[tidx];
   var curStr = cur != null ? String(cur).trim() : '';
   var wasEmpty = amazonAiCellIsEmpty_(cur);
-  var curScore = wasEmpty ? -1 : amazonAiScoreFeatureUsageCandidate_(curStr, baseTokens, makerTokens);
+  var curScore = wasEmpty ? -1 : amazonAiScoreFeatureUsageCandidate_(curStr, baseTokens, makerTokens, seen);
 
   var raw = '';
   var mode = '';
@@ -5481,6 +5536,16 @@ function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx
       Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mode=skip_no_suitable_candidate');
     }
     return;
+  }
+
+  if (amazonAiHasForbiddenKwDelimiter_(raw)) {
+    var featBefore = raw;
+    raw = amazonAiNormalizeKwDelimiters_(raw);
+    stats.delimiterNormalized++;
+    amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+      'KW区切り', colName + ' に ,/、 検出→半角スペースへ正規化', stats);
+    Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' delimFix "' +
+      String(featBefore).substring(0, 60) + '" → "' + String(raw).substring(0, 60) + '"');
   }
 
   var filtered = amazonAiFilterTokensAgainstSeen_(amazonAiSplitSpaceTokens_(raw), seen, capacityState, stats);
@@ -5525,38 +5590,75 @@ function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx
 }
 
 /**
- * 強語（メイン・特徴・用途・商品名ベース・メーカー名）以外を優先して末尾側から削除。
- * @return {number} 削除する index。無ければ -1
+ * 禁止区切り（半角カンマ・読点）を含むか。
  */
-function amazonAiPickWeakTokenIndexToRemove_(tokens, strongSet) {
-  if (!tokens || !tokens.length) return -1;
-  for (var i = tokens.length - 1; i >= 0; i--) {
-    if (!strongSet[tokens[i]]) return i;
-  }
-  return tokens.length - 1;
-}
-
-function amazonAiBuildStrongTokenSet_(row, masterColMap) {
-  var strong = {};
-  var headers = ['メーカー名', '商品名ベース', 'メインキーワード（一つ）[商品を示すkw]', '特徴キーワード', '用途キーワード'];
-  for (var i = 0; i < headers.length; i++) {
-    amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(amazonAiGetCellByHeader_(row, masterColMap, headers[i])), strong);
-  }
-  var mainLogical = getTitleDropdownColPair(masterColMap, 'メインKW(3つ)');
-  if (mainLogical && mainLogical.targetIdx !== undefined) {
-    var mv = row[mainLogical.targetIdx];
-    amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(mv != null ? String(mv) : ''), strong);
-  }
-  return strong;
+function amazonAiHasForbiddenKwDelimiter_(str) {
+  return /[,、]/.test(String(str || ''));
 }
 
 /**
- * 最終名が maxChars 超なら trimLogicalOrder の列から弱語を削除。
- * 文字数は半角0.5換算。下限 = max − MIN_SLACK を下回る余分な削除はしない。
+ * `,` `、` を半角スペースへ正規化し、空白を畳む。
+ */
+function amazonAiNormalizeKwDelimiters_(str) {
+  return String(str || '')
+    .replace(/[,、]+/g, ' ')
+    .replace(/[\s\u3000]+/g, ' ')
+    .replace(/^\s+|\s+$/g, '');
+}
+
+/**
+ * 式レター列 → 書き込み可能な列ターゲット（左→右）。
+ */
+function amazonAiBuildTrimColTargetsFromLetters_(masterColMap, letters, letterMap) {
+  var targets = [];
+  var seenIdx = {};
+  for (var i = 0; i < letters.length; i++) {
+    var letter = letters[i];
+    var headerName = letterMap[letter] || letterMap[String(letter).toUpperCase()] || '';
+    if (!headerName) continue;
+    var idx = masterColMap[headerName];
+    var logical = amazonAiHeaderToLogical_(headerName);
+    if (idx === undefined && logical) {
+      var resolved = getTitleDropdownColPair(masterColMap, logical);
+      if (resolved && resolved.targetIdx !== undefined) idx = resolved.targetIdx;
+    }
+    if (idx === undefined || seenIdx[idx]) continue;
+    seenIdx[idx] = true;
+    targets.push({
+      letter: letter,
+      headerName: headerName,
+      logical: logical || headerName,
+      idx: idx
+    });
+  }
+  return targets;
+}
+
+/**
+ * 最終名が maxChars 超なら、式の後ろ列から後ろワードを1語ずつ削除（厳格）。
+ * 文字数は半角0.5換算。下限帯はログ参考（超過解消優先）。
  */
 function amazonAiTrimMallFinalNameToMax_(masterSheet, headerRowIdx, masterColMap, row1Based, row, mall, letterMap, stats, LOG) {
   var minChars = mall.maxChars - AMAZON_AI_ADOPT_FINAL_NAME_MIN_SLACK;
   if (minChars < 0) minChars = 0;
+  var targets = amazonAiBuildTrimColTargetsFromLetters_(masterColMap, mall.letters, letterMap);
+
+  // trim 前に式列の禁止区切りを正規化（カンマ塊が1トークンになるのを防ぐ）
+  for (var ni = 0; ni < targets.length; ni++) {
+    var nt = targets[ni];
+    var nStr = row[nt.idx] != null ? String(row[nt.idx]).trim() : '';
+    if (!nStr || !amazonAiHasForbiddenKwDelimiter_(nStr)) continue;
+    var nNorm = amazonAiNormalizeKwDelimiters_(nStr);
+    if (nNorm === nStr) continue;
+    masterSheet.getRange(row1Based, nt.idx + 1).setValue(nNorm);
+    row[nt.idx] = nNorm;
+    stats.delimiterNormalized++;
+    amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+      'KW区切り', nt.logical + ' に ,/、 検出→半角スペースへ正規化', stats);
+    Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' delimFix letter=' + nt.letter +
+      ' ' + nt.logical);
+  }
+
   var preview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
   var len = amazonAiListingCharLen_(preview);
   if (len <= mall.maxChars) {
@@ -5564,69 +5666,38 @@ function amazonAiTrimMallFinalNameToMax_(masterSheet, headerRowIdx, masterColMap
       ' ok band=[' + minChars + ',' + mall.maxChars + ']');
     return;
   }
-  var strongSet = amazonAiBuildStrongTokenSet_(row, masterColMap);
+
   var removedTotal = 0;
   var guard = 0;
   while (len > mall.maxChars && guard < 200) {
     guard++;
     var removedOne = false;
-    for (var ti = 0; ti < mall.trimLogicalOrder.length; ti++) {
-      var logical = mall.trimLogicalOrder[ti];
-      var resolved = getTitleDropdownColPair(masterColMap, logical);
-      if (!resolved || resolved.targetIdx === undefined) continue;
-      var tidx = resolved.targetIdx;
-      var curStr = row[tidx] != null ? String(row[tidx]).trim() : '';
+    // 後ろの列から（右端の末尾ワード優先）
+    for (var ti = targets.length - 1; ti >= 0; ti--) {
+      var t = targets[ti];
+      var curStr = row[t.idx] != null ? String(row[t.idx]).trim() : '';
+      if (amazonAiHasForbiddenKwDelimiter_(curStr)) {
+        curStr = amazonAiNormalizeKwDelimiters_(curStr);
+      }
       var tokens = amazonAiSplitSpaceTokens_(curStr);
       if (!tokens.length) continue;
 
-      var bestIdx = -1;
-      var bestTrialLen = null;
-      for (var k = tokens.length - 1; k >= 0; k--) {
-        if (strongSet[tokens[k]] && bestIdx >= 0) continue;
-        var trialTokens = tokens.slice();
-        trialTokens.splice(k, 1);
-        var saved = row[tidx];
-        row[tidx] = trialTokens.join(' ');
-        var trialPreview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
-        var trialLen = amazonAiListingCharLen_(trialPreview);
-        row[tidx] = saved;
-        if (trialLen <= mall.maxChars && trialLen >= minChars) {
-          bestIdx = k;
-          bestTrialLen = trialLen;
-          break;
-        }
-        if (bestIdx < 0 || (trialLen < len && (bestTrialLen === null || trialLen > bestTrialLen))) {
-          if (!strongSet[tokens[k]] || bestIdx < 0) {
-            bestIdx = k;
-            bestTrialLen = trialLen;
-          }
-        }
-      }
-      if (bestIdx < 0) {
-        bestIdx = amazonAiPickWeakTokenIndexToRemove_(tokens, strongSet);
-      }
-      if (bestIdx < 0) continue;
-
-      var trialTokens2 = tokens.slice();
-      var removedTok = trialTokens2.splice(bestIdx, 1)[0];
-      row[tidx] = trialTokens2.join(' ');
+      var removedTok = tokens.pop();
+      var nextVal = tokens.join(' ');
+      row[t.idx] = nextVal;
       var nextPreview = amazonAiBuildFinalNamePreview_(row, masterColMap, mall.letters, letterMap);
       var nextLen = amazonAiListingCharLen_(nextPreview);
-      if (nextLen < minChars && len > mall.maxChars && nextLen > 0) {
-        // 下限を大きく割り込むなら、まだ他トークンで調整できるか続けるが、上限超過の解消は優先
-      }
-      var nextVal = trialTokens2.join(' ');
-      masterSheet.getRange(row1Based, tidx + 1).setValue(nextVal);
+
+      masterSheet.getRange(row1Based, t.idx + 1).setValue(nextVal);
       try {
-        masterSheet.getRange(row1Based, tidx + 1).setNote(
-          '文字数上限(' + mall.maxChars + ')/下限(' + minChars + ')調整: 除去 ' + removedTok
+        masterSheet.getRange(row1Based, t.idx + 1).setNote(
+          '文字数上限(' + mall.maxChars + ')厳格trim: 列' + t.letter + ' 末尾除去 ' + removedTok
         );
       } catch (eN) {}
-      row[tidx] = nextVal;
       removedTotal++;
       removedOne = true;
-      Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' trim ' + logical +
-        ' -"' + removedTok + '" len ' + len + '→' + nextLen);
+      Logger.log(LOG + ' 行' + row1Based + ' ' + mall.id + ' trimBack letter=' + t.letter +
+        ' ' + t.logical + ' -"' + removedTok + '" len ' + len + '→' + nextLen);
       preview = nextPreview;
       len = nextLen;
       break;
@@ -5668,7 +5739,75 @@ function amazonAiAddTokensToSeen_(tokens, seen) {
 }
 
 /**
- * 完全一致の seen 除去＋容量キーは全体で1回だけ残す。
+ * 類似横断用の正規化（空白除去＋末尾の軽い接尾辞「品」「用」を落とす）。
+ * 例: 大学共同開発品 → 大学共同開発
+ */
+function amazonAiNormalizeNearDupToken_(t) {
+  var s = String(t || '').replace(/[\s\u3000]/g, '');
+  while (s.length >= 4 && /[品用]$/.test(s)) {
+    s = s.slice(0, -1);
+  }
+  return s;
+}
+
+/**
+ * ほぼ同じ語か（完全一致／正規化一致／短い方が5文字以上で包含）。
+ * 例: 大学共同開発品 ≈ 大学共同開発
+ */
+function amazonAiTokensNearDuplicate_(a, b) {
+  if (!a || !b) return false;
+  var sa = String(a);
+  var sb = String(b);
+  if (sa === sb) return true;
+  var na = amazonAiNormalizeNearDupToken_(sa);
+  var nb = amazonAiNormalizeNearDupToken_(sb);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  var shorter = na.length <= nb.length ? na : nb;
+  var longer = na.length <= nb.length ? nb : na;
+  if (shorter.length >= 5 && longer.indexOf(shorter) !== -1) return true;
+  return false;
+}
+
+/** seen のいずれかに類似するか。 */
+function amazonAiTokenNearSeen_(t, seen) {
+  if (!t || !seen) return false;
+  if (seen[t]) return true;
+  for (var key in seen) {
+    if (!seen.hasOwnProperty(key) || !key) continue;
+    if (amazonAiTokensNearDuplicate_(t, key)) return true;
+  }
+  return false;
+}
+
+/**
+ * 候補リストから seen と類似しない先頭案を返す（CTR・空欄採用用）。
+ */
+function amazonAiPickFirstOptionNotNearSeen_(options, seen, isCtr) {
+  if (!options || !options.length) return '';
+  for (var i = 0; i < options.length; i++) {
+    var opt = String(options[i] || '').trim();
+    if (!opt) continue;
+    if (isCtr) {
+      opt = String(opt).replace(/^\s*\[char_\d+\]\s*/i, '').trim();
+      if (!opt) continue;
+    }
+    var tokens = amazonAiSplitSpaceTokens_(opt);
+    if (!tokens.length) tokens = [opt];
+    var hit = false;
+    for (var j = 0; j < tokens.length; j++) {
+      if (amazonAiTokenNearSeen_(tokens[j], seen)) {
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) return opt;
+  }
+  return '';
+}
+
+/**
+ * 完全一致＋類似の seen 除去＋容量キーは全体で1回だけ残す。
  * @return {{text: string, removed: string[]}}
  */
 function amazonAiFilterTokensAgainstSeen_(tokens, seen, capacityState, stats) {
@@ -5683,8 +5822,26 @@ function amazonAiFilterTokensAgainstSeen_(tokens, seen, capacityState, stats) {
       if (stats) stats.capacityRemoved++;
       continue;
     }
-    if ((seen && seen[t]) || local[t]) {
+    if (local[t]) {
       removed.push(t);
+      continue;
+    }
+    if (seen && (seen[t] || amazonAiTokenNearSeen_(t, seen))) {
+      removed.push(t);
+      if (stats && !seen[t]) stats.nearDupRemoved = (stats.nearDupRemoved || 0) + 1;
+      continue;
+    }
+    // 同一セル内の類似も除去（大学共同開発 と 大学共同開発品）
+    var localNear = false;
+    for (var li = 0; li < kept.length; li++) {
+      if (amazonAiTokensNearDuplicate_(t, kept[li])) {
+        localNear = true;
+        break;
+      }
+    }
+    if (localNear) {
+      removed.push(t);
+      if (stats) stats.nearDupRemoved = (stats.nearDupRemoved || 0) + 1;
       continue;
     }
     local[t] = true;
@@ -5724,9 +5881,13 @@ function amazonAiProcessKwLogicalCol_(masterSheet, masterValues, headerRowIdx, m
   }
   var pickFromCandidates = '';
   if (resolved.isCtr) {
-    pickFromCandidates = getCtrRecommendedFirstLine(valueForOptions) || (options.length ? options[0] : '');
+    pickFromCandidates = amazonAiPickFirstOptionNotNearSeen_(options, useCross ? seen : null, true);
+    if (!pickFromCandidates) {
+      pickFromCandidates = getCtrRecommendedFirstLine(valueForOptions) || (options.length ? options[0] : '');
+    }
   } else if (options.length) {
-    pickFromCandidates = options[0];
+    pickFromCandidates = amazonAiPickFirstOptionNotNearSeen_(options, useCross ? seen : null, false)
+      || options[0];
   }
 
   for (var ti = 0; ti < targetIndices.length; ti++) {
@@ -5751,7 +5912,28 @@ function amazonAiProcessKwLogicalCol_(masterSheet, masterValues, headerRowIdx, m
       mode = 'dedupe_existing';
     }
 
+    if (amazonAiHasForbiddenKwDelimiter_(raw)) {
+      var rawBeforeDelim = raw;
+      raw = amazonAiNormalizeKwDelimiters_(raw);
+      stats.delimiterNormalized++;
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        'KW区切り', colName + ' に ,/、 検出→半角スペースへ正規化', stats);
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' delimFix "' +
+        String(rawBeforeDelim).substring(0, 60) + '" → "' + String(raw).substring(0, 60) + '"');
+    }
+
     var tokens = amazonAiSplitSpaceTokens_(raw);
+    if (resolved.isMainKw && tokens.length > 1) {
+      var droppedMain = tokens.slice(1);
+      tokens = [tokens[0]];
+      raw = tokens[0];
+      stats.mainKwForcedSingle++;
+      amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, row1Based,
+        'メインKW', '1語のみ残す（大中カテゴリSEO）。除去: ' + droppedMain.join(' '), stats);
+      Logger.log(LOG + ' 行' + row1Based + ' ' + colName + ' mainKwSingle keep="' + tokens[0] +
+        '" dropped=' + droppedMain.length);
+    }
+
     var filtered = amazonAiFilterTokensAgainstSeen_(
       tokens, (useCross && seen) ? seen : null, capacityState, stats
     );

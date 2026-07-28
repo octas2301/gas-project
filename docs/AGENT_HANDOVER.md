@@ -99,10 +99,26 @@
 
 ## 6. 更新履歴
 
+- 2026-07-28: **SP-API スプシ橋渡し v1.2 実機合格**: 21-⑧→Drive CSV→ローカル dry_run/prod→SC確認。安眠`…0924-ride01`／アルコール`…0139-ride01`・1000/0。Property・allow_prod false戻し済。次＝v1.3/v1.2b（要承認）。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-07-28: **SP-API スプシ橋渡し v1.2**: `AmazonSpapiExport.js`＋メニュー21-⑧（選択行→Drive CSV）。GASからSP-API直呼びなし。[HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)。
+- 2026-07-28: **SP-API Listings v1.1 複数行バッチ**: `items_csv`／`max_items`／行単位。試験=安眠`B00A0J0D30`・アルコール`B0091G3AHY`・ride01・1000/0。GAS直結なし。prod実機合格。[HUMAN_RUN](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／[BATCH承認](org/LV4_SPAPI_LISTINGS_WRITE_BATCH_APPROVAL.md)。
+- 2026-07-28: **SP-API Listings書込 v1**: `tools/spapi_listings_write`（putListingsItem LISTING_OFFER_ONLY／dry_run=VALIDATION_PREVIEW／prodは allow_prod）。発汗1SKU prod合格。[HUMAN_RUN](org/D_MENU_SPAPI_LISTINGS_WRITE_HUMAN_RUN.md)／[承認](org/LV4_SPAPI_LISTINGS_WRITE_IMPLEMENTATION_APPROVAL.md)。
+- 2026-07-28: **SP-API読取スモーク合格**: LWA＋Catalog／`B07YND44VN`＝発汗チェッカー1500。レポート `SPAPI_SMOKE_20260728_115740`。書込は[承認包](org/LV4_SPAPI_LISTINGS_WRITE_IMPLEMENTATION_APPROVAL.md)。[HUMAN_RUN](org/D_MENU_SPAPI_SMOKE_HUMAN_RUN.md)。
+- 2026-07-28: **SP-API読取スモーク**: `tools/spapi_smoke`（LWA＋Catalog GET）。秘密は config.local.json。GAS書込は別承認。[HUMAN_RUN](org/D_MENU_SPAPI_SMOKE_HUMAN_RUN.md)。
+- 2026-07-28: **M2公式Loader自動埋め**: `tools/m2_offer_packaged/m2_listing_loader_fill.py`＋`listing_loader_map.json`。dry_run/prod。SC自動UPなし。[HUMAN_RUN](org/D_MENU_M2_HUMAN_RUN.md)。
+- 2026-07-28: **M2実機合格＋SP-API認証完了**: 発汗 `0832-48s11`／`B07YND44VN`。公式 ListingLoader 埋め→SC成功1／E-5=`A1_20260727_224939_b7a053_A2`。簡易CSV単独UPは不可と確定。SP-API本番アプリ自己承認＋認証3点手元保存（Git禁止）。次＝Loader自動埋め（要承認）。[HUMAN_RUN](org/D_MENU_M2_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-07-27: **M2 v1実装**: 案L `tools/m2_offer_packaged`／競合ASIN解決／`BRAND_GATE_MODE=manual_ok`。試験=発汗 `0832-48s11`/`B07YND44VN`。要 clasp push。[HUMAN_RUN](org/D_MENU_M2_HUMAN_RUN.md)／[承認](org/LV4_M2_IMPLEMENTATION_APPROVAL.md)。
+- 2026-07-27: **M2（TRACK=A）キックオフ docs**: ギャップ洗い／HUMAN_RUN下書き／承認パッケージ。コード未着手。次＝社長§4回答＋実装承認。[GAP](org/LV4_M2_TRACK_A_GAP_ANALYSIS.md)／[承認](org/LV4_M2_IMPLEMENTATION_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_M2_HUMAN_RUN.md)。
+- 2026-07-27: **C1-clean**: `generated_csv`=`{subBatchId}_GENERATED.csv`＋`sub_batch_id`／`--sub-batch`。`relax` 固定廃止。dry_run出力=`A1_…_B2_PACKAGED_…`。[HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md)。
+- 2026-07-27: **安眠 SC合格＋E-5完了**: 処理2／成功2／エラー0。Downloads `…0924-oya-processing-summary.xlsm`。E-5=`A1_20260726_225610_4f0558_B2`。[HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-27: **安眠 SC送信済（外出先確認待ち）**: Batch `182816020660`／E-5=`A1_20260726_225610_4f0558_B2`。[REMOTE_CHECKLIST](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-27: **C1入力案A（fetch）**: `c1_fetch_inputs.py` で GENERATED＋マスタCSVを自動取得（OAuth読取のみ）。[要件](org/D_MENU_C1_FETCH_INPUTS_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md) §1b。
 - 2026-07-27: **親 Amazon MAIN URL**: U4/E-2 後に子→親（空欄）自動コピー。Lv4 Build は子フォールバック。要 clasp push。[E HUMAN_RUN](org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)。
 - 2026-07-26: **メニューE Amazon出品コース（一時）**: E-0〜E-5 薄いファサード（C/18/21/U4呼出）。要 clasp push。[HUMAN_RUN](org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)。
+- 2026-07-27: **E-3完了ダイアログ**: 承認Web URL付き（`approvalQueueBuildWebUrl_`）。18-②必須ではなくなる。要 clasp push。[E HUMAN_RUN](org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)。
+- 2026-07-27: **メニュー8 v1.10**: 共有4列（メイン/CTR/特徴/用途）の**類似横断dedupe**（末尾品・用／5文字以上の包含）。要 clasp push。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)。
+- 2026-07-27: **syncAiDataToMaster キャッチ1行化**: 楽天／Yahooキャッチの作業エリアへは `getFirstDropdownOptionLine_` で先頭1案のみ（改行全文転記禁止・赤セル防止）。要 clasp push。[商品マスタ作業エリア要件](商品マスタ_人間作業エリアとマスタエリア_要件定義.md)。
+- 2026-07-27: **メニュー8 v1.9**: KW区切り＝半角スペースのみ（`,`/`、`禁止→正規化＋要確認）／メインKW＝1語（大中カテゴリSEO）／最終名上限超過時は式の**後ろ列・後ろワード**から厳格trim。要 clasp push。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)。
 - 2026-07-26: **Yahooブランド正本=getShopBrandList**: コード検証＋メーカー名でAPI取得。要 clasp push。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md) §2.9。
 - 2026-07-26: **Yahooカテゴリ正本=SHP getShopCategoryList**: 書込前検証。無効ID却下／名前でSCコードへ解決。要 clasp push（`Yahoo.js`含む）。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md) §2.8。
 - 2026-07-26: **Yahoo競合ゼロフォールバック**: AI推奨列→DriveマスタCSV。要確認付き。要 clasp push。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md) §2.7。

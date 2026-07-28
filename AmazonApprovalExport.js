@@ -16,6 +16,7 @@
  *   APPROVAL_AMAZON_LV4_PARENTS_PER_SUB … 副制約・親件数/サブバッチ（既定 5）
  *   APPROVAL_AMAZON_LV4_LEAD_TIME_DAYS … エラー時のみ後付け用（初版は未使用）
  *   APPROVAL_AMAZON_LV4_STATE … レジューム用（自動）
+ *   APPROVAL_AMAZON_LV4_BRAND_GATE_MODE … M2(A): manual_ok 必須（人間が制限なし確認後）。未設定＝SKIPPED_BRAND_GATE
  */
 
 var APPROVAL_AMAZON_LV4_PROP = 'APPROVAL_AMAZON_LV4_ENABLED';
@@ -25,6 +26,7 @@ var APPROVAL_AMAZON_LV4_SHIPPING_TEMPLATE_PROP = 'APPROVAL_AMAZON_LV4_SHIPPING_T
 var APPROVAL_AMAZON_LV4_FOLDER_ID_PROP = 'APPROVAL_AMAZON_LV4_FOLDER_ID';
 var APPROVAL_AMAZON_LV4_PARENTS_PER_SUB_PROP = 'APPROVAL_AMAZON_LV4_PARENTS_PER_SUB';
 var APPROVAL_AMAZON_LV4_STATE_PROP = 'APPROVAL_AMAZON_LV4_STATE';
+var APPROVAL_AMAZON_LV4_BRAND_GATE_MODE_PROP = 'APPROVAL_AMAZON_LV4_BRAND_GATE_MODE';
 var APPROVAL_AMAZON_LV4_TIME_MS = 25 * 60 * 1000;
 var APPROVAL_AMAZON_LV4_MAX_TRIGGER_RUNS = 40;
 var APPROVAL_AMAZON_LV4_TRIGGER_FN = 'runApprovalAmazonLv4FromTrigger';
@@ -639,9 +641,34 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
     }
 
     if (resolvedTrack === 'A') {
-      var asinA = amazonApprovalLv4Cell_(masterCtx, masterParent.rowIndex0, 'ASINコード');
-      if (!asinA) {
-        skipped.push({ parentSku: g.parentSku, reason: 'SKIPPED_NEED_HUMAN', detail: 'AトラックだがASIN無し' });
+      // ASIN: 親または承認済み子のいずれか（ASINコード／競合店ASIN／URL）
+      var asinProbe = amazonApprovalLv4ResolveAsinForOffer_(masterCtx, masterParent.rowIndex0);
+      if (!asinProbe) {
+        for (var ai = 0; ai < g.childLines.length && !asinProbe; ai++) {
+          var mrA = amazonApprovalLv4FindMasterRow_(
+            masterCtx, g.parentSku, String(g.childLines[ai].childSku || '').trim()
+          );
+          if (mrA) asinProbe = amazonApprovalLv4ResolveAsinForOffer_(masterCtx, mrA.rowIndex0);
+        }
+      }
+      if (!asinProbe) {
+        skipped.push({
+          parentSku: g.parentSku,
+          reason: 'SKIPPED_NEED_HUMAN',
+          detail: 'AトラックだがASIN無し（ASINコード／競合店ASINコード／競合URL）'
+        });
+        continue;
+      }
+      var gateMode = String(
+        PropertiesService.getScriptProperties().getProperty(APPROVAL_AMAZON_LV4_BRAND_GATE_MODE_PROP) || ''
+      ).trim().toLowerCase();
+      if (gateMode !== 'manual_ok') {
+        skipped.push({
+          parentSku: g.parentSku,
+          reason: 'SKIPPED_BRAND_GATE',
+          detail: 'ブランド／出品制限を人間確認後、' + APPROVAL_AMAZON_LV4_BRAND_GATE_MODE_PROP +
+            '=manual_ok を設定してください（現在=' + (gateMode || '空') + '）'
+        });
         continue;
       }
     }
@@ -724,6 +751,33 @@ function amazonApprovalLv4FindMasterRow_(masterCtx, parentSku, childSku) {
     if (c === wantChild) return { rowIndex0: r };
   }
   return null;
+}
+
+/**
+ * M2(A)用 ASIN 解決。優先: ASINコード → 競合店ASINコード → 競合URL系から /dp/ASIN
+ * @return {string}
+ */
+function amazonApprovalLv4ResolveAsinForOffer_(masterCtx, rowIndex0) {
+  var direct = amazonApprovalLv4Cell_(masterCtx, rowIndex0, 'ASINコード');
+  if (amazonApprovalLv4LooksLikeAsin_(direct)) return direct.toUpperCase();
+  var rival = amazonApprovalLv4Cell_(masterCtx, rowIndex0, '競合店ASINコード');
+  if (amazonApprovalLv4LooksLikeAsin_(rival)) return rival.toUpperCase();
+  var urlCols = ['競合AmazonページURL', '競合URL', 'Amazon URL', '商品URL'];
+  for (var i = 0; i < urlCols.length; i++) {
+    var u = amazonApprovalLv4Cell_(masterCtx, rowIndex0, urlCols[i]);
+    var fromUrl = amazonApprovalLv4AsinFromUrl_(u);
+    if (fromUrl) return fromUrl;
+  }
+  return '';
+}
+
+function amazonApprovalLv4LooksLikeAsin_(s) {
+  return /^B0[A-Z0-9]{8}$/i.test(String(s || '').trim());
+}
+
+function amazonApprovalLv4AsinFromUrl_(url) {
+  var m = String(url || '').match(/\/(?:dp|gp\/product|product)\/(B0[A-Z0-9]{8})/i);
+  return m ? String(m[1]).toUpperCase() : '';
 }
 
 function amazonApprovalLv4Cell_(masterCtx, rowIndex0, colName) {
@@ -963,11 +1017,22 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
         if (!mfrA) mfrA = sku;
         var jan = amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '商品コード(JANコード等)');
         if (!jan) jan = amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'JANコード');
+        var asinOffer = amazonApprovalLv4ResolveAsinForOffer_(masterCtx, t.rowIndex0) ||
+          amazonApprovalLv4ResolveAsinForOffer_(masterCtx, parent.parentRowIndex0) ||
+          asin;
+        if (!asinOffer) {
+          skipped.push({
+            parentSku: parent.parentSku,
+            reason: 'SKIPPED_NEED_HUMAN',
+            detail: 'Build時:Aトラック ASIN無し sku=' + sku
+          });
+          continue;
+        }
         rows.push([
           'A', parent.parentSku, t.childSku || '', sku, mfrA,
           amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '商品名'),
           '', amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '販売価格amazon') || price,
-          stockOut, jan, asin || amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'ASINコード'),
+          stockOut, jan, asinOffer,
           amazonApprovalLv4ResolveMainImageUrl_(masterCtx, t.rowIndex0),
           amazonApprovalLv4SubImages_(masterCtx, t.rowIndex0),
           cat, amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'A.セット商品数'),

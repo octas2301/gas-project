@@ -1,0 +1,8 @@
+config.local.json
+items.csv
+__pycache__/
+*.pyc
+out/
+*_REPORT.json
+secrets/
+old/
