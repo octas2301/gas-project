@@ -10,7 +10,7 @@
 
 | できる | できない（別承認 v1.4） |
 |--------|------------------------|
-| 21-⑧ **子SKU＋出品CK（レ点）** → Drive CSV | GAS から SP-API PUT |
+| 21-⑧ **子SKU＋出品CK（レ点）** → Drive CSV | GAS から SP-API PUT（[v1.4 API合格](LV4_SPAPI_GAS_PUT_APPROVAL.md)・SC最終更新は反映待ち） |
 | 21-⑨ 承認①済 Amazon → Drive CSV | 親レ点のみで全子出品／行選択 |
 | ローカル `--fetch-drive` → dry_run／prod | 全件ループ・在庫>0無人 |
 

@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-29（SP-API **v1.2b／v1.2c／v1.3 実機合格**）  
+**最終更新**: 2026-07-29（SP-API **v1.4 実機合格（API）**／SC最終更新は反映待ち）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,12 +8,12 @@
 ## 0. セッション引き継ぎ（2026-07-29）
 
 **場所**: 自宅PC。  
-**コミット**: 本セッションで v1.2b 合格＋親レ点完了扱い反映。  
-**clasp**: v1.2c／21-⑨ push 済認識。  
-**Property**: `APPROVAL_AMAZON_SPAPI_EXPORT_ENABLED`／ローカル `allow_prod` とも作業後 **false**。
+**コミット**: 本セッションで v1.4 合格＋ENDPOINT正規化。  
+**clasp**: **要 push**（`AmazonSpapiPut.js` ENDPOINT正規化・host削除）。  
+**Property**: PUT／ALLOW_PROD／EXPORT とも作業後 **false**。`SPAPI_ENDPOINT` は空推奨。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.2b（21-⑨）／v1.2c（子レ点）／v1.3（fetch-drive）実機合格**。次＝v1.4 GAS直呼びは別承認。任意で v1.2a cp932。[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.4 GAS直呼び実機合格（API）**（21-⑩ VALID／21-⑪ ACCEPTED・`…48s11`）。SC最終更新の目視は反映待ち。次＝clasp push（ENDPOINT正規化）／任意で第2段承認①直PUT。[GAS PUT HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
@@ -22,17 +22,14 @@
 | **メニュー8** | v1.10＋キャッチ1行化（push済み認識） |
 | **M2** | **実機合格** |
 | **SP-API読取／書込 v1・v1.1** | **実機合格** |
-| **SP-API橋渡し v1.2** | **実機合格**（当時は選択行） |
-| **SP-API v1.2c** | **実機合格**（子SKUレ点・親レ点出さない＝社長完了扱い）。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md) |
-| **SP-API v1.3** | **実機合格**（`--fetch-drive`）。[DRIVE承認](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md) |
-| **SP-API v1.2b** | **実機合格**（21-⑨ APPR→prod）。[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md) |
-| **SP-API v1.2a** | **実装済**（cp932・専用実機未） |
-| 試験SKU（SC確認済） | 発汗／安眠・アルコール ride01・`…0924-48s11`（v1.2c）／`…0832-48s11`（v1.2b） |
+| **SP-API橋渡し v1.2〜v1.3／v1.2b／v1.2c** | **実機合格** |
+| **SP-API v1.4** | **実機合格（API）**。SC最終更新目視は反映待ち。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md) |
+| 試験SKU | `…0924-48s11`／`B00A0J0D30`（v1.4）ほか発汗・ride01 |
 
 ### 次にやること（優先順）
-1. ~~v1〜v1.2c／v1.2b／v1.3 実機~~  
-2. **任意**: v1.2a cp932 実機  
-3. GAS 直呼びは **別承認（v1.4）**  
+1. ~~v1.4 承認・実装・API実機~~  
+2. **人間**: `clasp push -f`（ENDPOINT正規化）／SC最終更新が prod 以降に進んだら HUMAN_RUN の待ちチェックを閉じる  
+3. **任意**: v1.4 第2段（承認①済→GAS直PUT）は別小さな承認  
 4. Frontier／Sandbox は触らない  
 
 ### M2 正本リンク
@@ -46,6 +43,7 @@
 - [org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md](org/LV4_SPAPI_SHEET_BRIDGE_APPROVAL.md)  
 - [org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)（v1.2c）  
 - [org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)  
+- [org/LV4_SPAPI_GAS_PUT_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)（v1.4・API実機合格／SC最終更新は反映待ち）  
 
 ### 外出先チェックリスト
 [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
@@ -133,6 +131,9 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **SP-API v1.4 実機合格（API）**＋ENDPOINT正規化。SC最終更新は反映待ち。 |
+| 2026-07-29 | **SP-API v1.4 実装**: 21-⑩⑪／`AmazonSpapiPut.js`。要 clasp push→実機。 |
+| 2026-07-29 | **SP-API v1.4 承認起草**（GAS直呼び・コードなし）。三者レビュー不要。 |
 | 2026-07-29 | **SP-API v1.2b 実機合格**＋親レ点出さないを完了扱い。 |
 | 2026-07-29 | **SP-API v1.2c／v1.3 実機合格**: 子レ点→Drive→fetch-drive prod（`…48s11`）。 |
 | 2026-07-28 | **SP-API v1.2c**: 21-⑧＝子SKUレ点のみ（選択行廃止）。 |

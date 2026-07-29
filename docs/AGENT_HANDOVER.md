@@ -99,6 +99,10 @@
 
 ## 6. 更新履歴
 
+- 2026-07-29: **SP-API v1.4 実機合格（API）**: 21-⑩ VALID／21-⑪ ACCEPTED（`lifec-4560151300924-48s11`／`B00A0J0D30`）。`https:\` ENDPOINT正規化・hostヘッダ削除。SC最終更新の目視は反映待ち。[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。要 clasp push（正規化）。
+- 2026-07-29: **SP-API v1.4 実装**: `AmazonSpapiPut.js`＋21-⑩ dry_run／21-⑪ prod（子SKUレ点）。Property `APPROVAL_AMAZON_SPAPI_PUT_*`／LWA。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
+- 2026-07-29: **SP-API v1.4 承認**: 社長「承認する」。起草→実装可。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)。
+- 2026-07-29: **SP-API v1.4 承認起草**: GAS UrlFetch Listings（第1段＝子レ点・dry_run／prod 分離トグル）。三者レビュー不要。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-29: **SP-API v1.2b 実機合格**: 21-⑨→Drive APPR→`--fetch-drive` dry_run／prod。`lifec-4560151300832-48s11`／`B07YND44VN` ACCEPTED。親`…oya`スキップ確認。親レ点出さないは社長完了扱い。[APPROVED承認](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)／[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-29: **SP-API v1.2c／v1.3 実機合格**: 子レ点→Drive→`--fetch-drive` dry_run／prod。SKU`lifec-4560151300924-48s11`／`B00A0J0D30` ACCEPTED。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)／[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-28: **SP-API v1.2c**: 21-⑧＝マスタ**子SKU＋出品CK**のみ→Drive CSV。選択行完全廃止。親レ点のみ出さない。[CHECKBOX承認](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)／[BRIDGE HUMAN_RUN](org/D_MENU_SPAPI_SHEET_BRIDGE_HUMAN_RUN.md)。

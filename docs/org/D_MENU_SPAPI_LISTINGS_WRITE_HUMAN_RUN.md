@@ -106,7 +106,7 @@ python spapi_listings_write.py --mode dry_run
 
 - 全件ループ・max_items 無断拡大  
 - `allow_prod=true` のまま放置  
-- GAS からの SP-API 直呼び（v1.4・別承認）  
+- GAS からの SP-API 直呼び（**v1.4**・[HUMAN_RUN](D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)・API実機合格／SC最終更新は反映待ち）
 - 秘密のチャット／Git 共有  
 
 ---

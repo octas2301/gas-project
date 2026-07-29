@@ -4,6 +4,9 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-29 | `AmazonSpapiPut.js`／GAS PUT docs／PHASE | **v1.4 API実機合格記録＋ENDPOINT `https:\` 正規化** | **Git**: revert。要 clasp push |
+| 2026-07-29 | `AmazonSpapiPut.js`／`コード.js` 21-⑩⑪／GAS PUT docs | **v1.4 GAS Listings直呼び実装** | **Git**: revert。Property false。要 clasp push |
+| 2026-07-29 | `LV4_SPAPI_GAS_PUT_APPROVAL`／GAS PUT HUMAN_RUN／PHASE | **v1.4 承認起草**（コードなし） | **Git**: revert docs |
 | 2026-07-29 | APPROVED／BRIDGE／CHECKBOX／CURRENT_PHASE／HANDOVER | **v1.2b実機合格＋親レ点完了扱い** | **Git**: revert docs |
 | 2026-07-29 | CHECKBOX／BRIDGE／CURRENT_PHASE／HANDOVER | **v1.2c／v1.3 実機合格記録**（`…48s11` prod） | **Git**: revert docs |
 | 2026-07-28 | `AmazonSpapiExport.js`／`コード.js` 21-⑧／CHECKBOX承認 | **v1.2c: 子SKUレ点のみ→Drive CSV（選択行廃止）** | **Git**: revert。Property false。要 clasp push |
