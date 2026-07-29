@@ -54,7 +54,7 @@
 | dry_run | `mode=VALIDATION_PREVIEW`（ローカル dry_run 相当） |
 | prod | 実 PUT。別 Property または確認ダイアログ必須 |
 
-第2段（任意・別小さな承認でも可）: 承認①済 Amazon（現行 21-⑨相当）を直呼び対象に追加。
+第2段（任意・別承認）: 承認①済 Amazon（現行 21-⑨相当）を直呼び対象に追加 → [LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（起草・承認待ち）。
 
 ### 3.3 Script Properties（案）
 

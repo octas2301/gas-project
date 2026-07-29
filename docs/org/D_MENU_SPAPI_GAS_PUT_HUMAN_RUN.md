@@ -1,7 +1,7 @@
 # SP-API v1.4 GAS 直呼び（人間手順）
 
 **状態**: **実機合格（API）**／SC最終更新の目視は **反映待ち注記**（2026-07-29）  
-**承認**: [LV4_SPAPI_GAS_PUT_APPROVAL.md](LV4_SPAPI_GAS_PUT_APPROVAL.md)  
+**承認**: [LV4_SPAPI_GAS_PUT_APPROVAL.md](LV4_SPAPI_GAS_PUT_APPROVAL.md)（第1段）／[LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（第2段・**承認待ち＝未実装**）  
 **前提合格**: ローカル Listings／橋渡し v1.2〜v1.3／v1.2b／v1.2c  
 **範囲**: 既存 ASIN・LISTING_OFFER_ONLY。新規カタログなし。第1段＝**子SKUレ点**のみ。
 
@@ -12,7 +12,7 @@
 | できる | できない |
 |--------|----------|
 | **21-⑩** dry_run（VALIDATION_PREVIEW） | 全件・在庫>0無人・親レ点のみ全子 |
-| **21-⑪** prod（ALLOW_PROD 時のみ） | 承認①一括直呼び（第2段・別承認可） |
+| **21-⑪** prod（ALLOW_PROD 時のみ） | 承認①一括直呼び（第2段・**承認待ち／メニュー未実装**） |
 | 子SKU＋出品CK のみ | 楽天／Yahoo 改変 |
 
 ローカル経路（21-⑧／⑨＋`--fetch-drive`）は **併用可**。

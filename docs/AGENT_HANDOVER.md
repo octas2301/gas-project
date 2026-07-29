@@ -99,7 +99,8 @@
 
 ## 6. 更新履歴
 
-- 2026-07-29: **SP-API v1.4 実機合格（API）**: 21-⑩ VALID／21-⑪ ACCEPTED（`lifec-4560151300924-48s11`／`B00A0J0D30`）。`https:\` ENDPOINT正規化・hostヘッダ削除。SC最終更新の目視は反映待ち。[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。要 clasp push（正規化）。
+- 2026-07-29: **SP-API v1.4 第2段 承認起草**: 承認①済 Amazon（21-⑨相当）を GAS 直 PUT する案。**コードなし・社長承認待ち＝実装禁止**。Property は第1段と共用（新規キー増やさない）。三者レビュー不要。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-07-29: **SP-API v1.4 実機合格（API）**: 21-⑩ VALID／21-⑪ ACCEPTED（`lifec-4560151300924-48s11`／`B00A0J0D30`）。`https:\` ENDPOINT正規化・hostヘッダ削除。SC最終更新の目視は反映待ち。**clasp push 済（`-f`）**。[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-29: **SP-API v1.4 実装**: `AmazonSpapiPut.js`＋21-⑩ dry_run／21-⑪ prod（子SKUレ点）。Property `APPROVAL_AMAZON_SPAPI_PUT_*`／LWA。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 - 2026-07-29: **SP-API v1.4 承認**: 社長「承認する」。起草→実装可。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)。
 - 2026-07-29: **SP-API v1.4 承認起草**: GAS UrlFetch Listings（第1段＝子レ点・dry_run／prod 分離トグル）。三者レビュー不要。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
