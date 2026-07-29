@@ -4,6 +4,8 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-29 | `LV4_SPAPI_D_ENTRY_APPROVAL` §6／PHASE／HANDOVER | **A（D入口版）社長承認**（実装可・コードなし） | **Git**: revert docs |
+| 2026-07-29 | `LV4_SPAPI_D_ENTRY_APPROVAL`（新規）／PHASE／HANDOVER | **A（D入口版）承認起草**（Dラジオで新規／既存相乗り・コードなし） | **Git**: revert docs |
 | 2026-07-29 | GAS PUT HUMAN_RUN／第2段承認／PHASE／HANDOVER | **v1.4 第2段 実機合格記録**（21-⑫ VALID／21-⑬ ACCEPTED） | **Git**: revert docs |
 | 2026-07-29 | `AmazonSpapiPut.js`／`コード.js` 21-⑫⑬／GAS PUT docs | **v1.4 第2段実装**（承認①済→GAS直PUT） | **Git**: revert。Property false。clasp push 済 |
 | 2026-07-29 | `LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL` §6／GAS PUT承認・HUMAN_RUN／PHASE／HANDOVER | **v1.4 第2段 社長承認**（実装可・コードなし） | **Git**: revert docs |

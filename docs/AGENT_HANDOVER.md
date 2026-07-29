@@ -99,6 +99,8 @@
 
 ## 6. 更新履歴
 
+- 2026-07-29: **A（D入口版）承認**: 社長「承認」。**実装可**（範囲は承認 §2・§3。`コード.js` の `showBatchExportModal` ラジオ拡張＋`runBatchExportAmazonFacade` 分岐で既存 21-⑫⑬ を呼ぶ薄いファサード。フル＋相乗り prod 禁止・相乗りでは Drive `02` MAIN ゲート不適用・E/Z 残す）。[承認](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)。
+- 2026-07-29: **A（D入口版）承認起草**: 本線 D を Amazon 起点に。ラジオ＝新規カタログ／既存相乗り dry_run／既存相乗り prod／フル→新規。**D から prod 可**（ALLOW_PROD＋確認必須）。フル＋既存相乗り prod は禁止。E/Z はテスト期間残可。**コードなし・社長承認待ち**。三者レビュー不要。[承認](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-29: **SP-API v1.4 第2段 実機合格（API）**: 21-⑫ VALID（`…231605_1b24e2`）／21-⑬ **ACCEPTED**（`…232041_3d83f3`）。batch `A1_20260727_224939_b7a053`・`lifec-4560151300832-48s11`／`B07YND44VN`・在庫0・親行スキップ1。prod は確認ダイアログで **OK を押さないと `cancelled_by_user` で PUT されない**（1回目は取消）。SC最終更新の目視は反映待ち。[HUMAN_RUN §3.3](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 - 2026-07-29: **SP-API v1.4 第2段 実装**: `AmazonSpapiPut.js` に承認①済収集＋**21-⑫ dry_run／21-⑬ prod**。Property は第1段と共用。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 - 2026-07-29: **SP-API v1.4 第2段 承認**: 社長「承認する」。**実装可**（範囲は承認 §2・§3＝承認①済抽出は 21-⑨ 流用・子SKU必須・LISTING_OFFER_ONLY・Property は第1段と共用）。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)。
