@@ -1,12 +1,15 @@
 /**
- * SP-API v1.4 — GAS から Listings Items 直呼び（第1段＝子SKUレ点）
+ * SP-API v1.4 — GAS から Listings Items 直呼び
+ *   第1段: 子SKUレ点（21-⑩ dry_run／21-⑪ prod）
+ *   第2段: 承認①済 Amazon（21-⑫ dry_run／21-⑬ prod）※21-⑨と同抽出
  *
  * - dry_run: VALIDATION_PREVIEW（永続化しない）
  * - prod: 実 PUT（ALLOW_PROD 必須）
  * 承認: docs/org/LV4_SPAPI_GAS_PUT_APPROVAL.md
+ *       docs/org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md
  * 手順: docs/org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md
  *
- * Script Properties:
+ * Script Properties（第1段・第2段で共用）:
  *   APPROVAL_AMAZON_SPAPI_PUT_ENABLED … 既定 false
  *   APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD … 既定 false
  *   APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS … 既定 5（1〜50）
@@ -37,33 +40,60 @@ var SPAPI_USER_AGENT_ = 'OctasSpapiGasPut/1.4 (Language=GoogleAppsScript)';
  * メニュー 21-⑩: 子SKUレ点 → Listings PUT dry_run（VALIDATION_PREVIEW）
  */
 function menuAmazonSpapiPutDryRun() {
-  return menuAmazonSpapiPutListings_({ mode: 'dry_run' });
+  return menuAmazonSpapiPutListings_({ mode: 'dry_run', source: 'child_ck' });
 }
 
 /**
  * メニュー 21-⑪: 子SKUレ点 → Listings PUT prod（ALLOW_PROD 必須）
  */
 function menuAmazonSpapiPutProd() {
-  return menuAmazonSpapiPutListings_({ mode: 'prod' });
+  return menuAmazonSpapiPutListings_({ mode: 'prod', source: 'child_ck' });
 }
 
 /**
- * @param {{mode:string, silent?:boolean}} opt
- * @return {{ok:boolean, reason?:string, runId?:string, count?:number, fail?:number}}
+ * メニュー 21-⑫: 承認①済 Amazon → Listings PUT dry_run（第2段）
+ */
+function menuAmazonSpapiPutApprovedDryRun() {
+  return menuAmazonSpapiPutListings_({ mode: 'dry_run', source: 'approved' });
+}
+
+/**
+ * メニュー 21-⑬: 承認①済 Amazon → Listings PUT prod（第2段・ALLOW_PROD 必須）
+ */
+function menuAmazonSpapiPutApprovedProd() {
+  return menuAmazonSpapiPutListings_({ mode: 'prod', source: 'approved' });
+}
+
+/**
+ * @param {{mode:string, source?:string, silent?:boolean}} opt
+ *   source: 'child_ck'（第1段）| 'approved'（第2段＝21-⑨相当）
+ * @return {{ok:boolean, reason?:string, runId?:string, count?:number, fail?:number, batchId?:string}}
  */
 function menuAmazonSpapiPutListings_(opt) {
   opt = opt || {};
   var mode = String(opt.mode || 'dry_run');
+  var source = String(opt.source || 'child_ck');
+  var isApproved = source === 'approved';
   var silent = !!opt.silent;
   var isProd = mode === 'prod';
-  var stepName = isProd ? 'AmazonSpapiPutProd' : 'AmazonSpapiPutDryRun';
-  var functionName = isProd ? 'menuAmazonSpapiPutProd' : 'menuAmazonSpapiPutDryRun';
-  var runId = 'SPAPI_PUT_' + (isProd ? 'PROD_' : 'DRY_') +
+  var stepName;
+  var functionName;
+  var runIdPrefix;
+  if (isApproved) {
+    stepName = isProd ? 'AmazonSpapiPutApprovedProd' : 'AmazonSpapiPutApprovedDryRun';
+    functionName = isProd ? 'menuAmazonSpapiPutApprovedProd' : 'menuAmazonSpapiPutApprovedDryRun';
+    runIdPrefix = 'SPAPI_PUT_APPR_' + (isProd ? 'PROD_' : 'DRY_');
+  } else {
+    stepName = isProd ? 'AmazonSpapiPutProd' : 'AmazonSpapiPutDryRun';
+    functionName = isProd ? 'menuAmazonSpapiPutProd' : 'menuAmazonSpapiPutDryRun';
+    runIdPrefix = 'SPAPI_PUT_' + (isProd ? 'PROD_' : 'DRY_');
+  }
+  var runId = runIdPrefix +
     Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') + '_' +
     String(Utilities.getUuid()).replace(/-/g, '').substring(0, 6);
 
   Logger.log('[' + stepName + '] runId=' + runId + ' functionName=' + functionName +
-    ' state=PENDING mode=' + mode);
+    ' state=PENDING mode=' + mode + ' source=' + source);
 
   if (!getBoolScriptProperty_(APPROVAL_AMAZON_SPAPI_PUT_PROP, false)) {
     var off = 'SP-API GAS直呼びは無効です。Script Properties の ' +
@@ -72,8 +102,9 @@ function menuAmazonSpapiPutListings_(opt) {
   }
 
   if (isProd && !getBoolScriptProperty_(APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD_PROP, false)) {
+    var dryMenu = isApproved ? '21-⑫' : '21-⑩';
     var noProd = 'prod には ' + APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD_PROP +
-      '=true が必要です（誤送信防止）。先に dry_run（21-⑩）を実行してください。';
+      '=true が必要です（誤送信防止）。先に dry_run（' + dryMenu + '）を実行してください。';
     return amazonSpapiPutFail_(stepName, runId, noProd, silent);
   }
 
@@ -99,42 +130,76 @@ function menuAmazonSpapiPutListings_(opt) {
       String(eLoad && eLoad.message ? eLoad.message : eLoad), silent);
   }
 
-  var collected = amazonSpapiPutCollectChildCkItems_(masterCtx, forceQty0);
+  var collected;
+  try {
+    if (isApproved) {
+      collected = amazonSpapiPutCollectApprovedItems_(masterCtx, forceQty0);
+    } else {
+      collected = amazonSpapiPutCollectChildCkItems_(masterCtx, forceQty0);
+    }
+  } catch (eCol) {
+    return amazonSpapiPutFail_(stepName, runId,
+      String(eCol && eCol.message ? eCol.message : eCol), silent);
+  }
+
+  var batchId = collected.batchId ? String(collected.batchId) : '';
+  var parentSkip = isApproved
+    ? (collected.parentOnlySkipped || 0)
+    : (collected.parentCkOnly || 0);
+
   if (!collected.items.length) {
-    var none = '出品CK付きの子SKU行から有効な出品候補が0件です。\n' +
-      'レ点子行=' + collected.targetRows1.length +
-      ' / スキップ=' + collected.skipped.length +
-      ' / 親レ点のみ除外=' + collected.parentCkOnly + '\n\n' +
-      (typeof amazonSpapiExportFormatSkipDetails_ === 'function'
-        ? amazonSpapiExportFormatSkipDetails_(collected.skipped)
-        : '');
+    var none;
+    if (isApproved) {
+      none = '承認①済 Amazon から有効な出品候補が0件です。\n' +
+        'batchId=' + (batchId || '(なし)') +
+        ' / スキップ=' + collected.skipped.length +
+        ' / 親行のみスキップ=' + parentSkip + '\n\n' +
+        (typeof amazonSpapiExportFormatSkipDetails_ === 'function'
+          ? amazonSpapiExportFormatSkipDetails_(collected.skipped)
+          : '') +
+        '\n先に承認キューで amazon を承認①してください。親行のみ（子SKU空）はスキップされます。';
+    } else {
+      none = '出品CK付きの子SKU行から有効な出品候補が0件です。\n' +
+        'レ点子行=' + collected.targetRows1.length +
+        ' / スキップ=' + collected.skipped.length +
+        ' / 親レ点のみ除外=' + parentSkip + '\n\n' +
+        (typeof amazonSpapiExportFormatSkipDetails_ === 'function'
+          ? amazonSpapiExportFormatSkipDetails_(collected.skipped)
+          : '');
+    }
     return amazonSpapiPutFail_(stepName, runId, none, silent);
   }
 
   if (collected.items.length > maxItems) {
+    var overHint = isApproved
+      ? '対象を絞るか Property '
+      : 'レ点を減らすか Property ';
     var over = '候補が max_items=' + maxItems + ' を超えています（' + collected.items.length +
-      '件）。レ点を減らすか Property ' + APPROVAL_AMAZON_SPAPI_PUT_MAX_PROP + ' を見直してください。';
+      '件）。' + overHint + APPROVAL_AMAZON_SPAPI_PUT_MAX_PROP + ' を見直してください。' +
+      (batchId ? '\nbatchId=' + batchId : '');
     return amazonSpapiPutFail_(stepName, runId, over, silent);
   }
 
   if (isProd && !silent) {
     var ui = SpreadsheetApp.getUi();
-    var conf = ui.alert(
-      'SP-API prod 確認',
-      '本番 PUT を実行します。件数=' + collected.items.length +
-        '\n在庫FORCE_0=' + forceQty0 +
-        '\nSKU例=' + collected.items[0].sku +
-        '\n続行しますか？',
-      ui.ButtonSet.OK_CANCEL
-    );
+    var confTitle = isApproved ? 'SP-API prod 確認（承認①済）' : 'SP-API prod 確認';
+    var confBody = '本番 PUT を実行します。件数=' + collected.items.length +
+      (batchId ? '\nbatchId=' + batchId : '') +
+      '\n在庫FORCE_0=' + forceQty0 +
+      '\nSKU例=' + collected.items[0].sku +
+      (parentSkip ? '\n親行のみスキップ=' + parentSkip : '') +
+      '\n続行しますか？';
+    var conf = ui.alert(confTitle, confBody, ui.ButtonSet.OK_CANCEL);
     if (conf !== ui.Button.OK) {
       Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED cancelled_by_user');
-      return { ok: false, reason: 'ユーザー取消', runId: runId };
+      return { ok: false, reason: 'ユーザー取消', runId: runId, batchId: batchId };
     }
   }
 
   Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING items=' + collected.items.length +
-    ' maxItems=' + maxItems + ' forceQty0=' + forceQty0);
+    ' maxItems=' + maxItems + ' forceQty0=' + forceQty0 +
+    (batchId ? ' batchId=' + batchId : '') +
+    ' parentSkip=' + parentSkip);
 
   var accessToken;
   try {
@@ -153,7 +218,8 @@ function menuAmazonSpapiPutListings_(opt) {
   for (var i = 0; i < collected.items.length; i++) {
     var item = collected.items[i];
     Logger.log('[' + stepName + '] --- item ' + (i + 1) + '/' + collected.items.length +
-      ' sku=' + item.sku + ' asin=' + item.asin);
+      ' sku=' + item.sku + ' asin=' + item.asin +
+      (item.note ? ' note=' + item.note : ''));
     try {
       var one = amazonSpapiPutProcessOne_(creds, accessToken, item, validationPreview);
       if (one.ok) {
@@ -173,17 +239,19 @@ function menuAmazonSpapiPutListings_(opt) {
     Utilities.sleep(300);
   }
 
-  var doneMsg = 'SP-API GAS ' + mode + ' 完了。\n' +
+  var sourceLabel = isApproved ? '承認①済' : '子SKUレ点';
+  var doneMsg = 'SP-API GAS ' + mode + '（' + sourceLabel + '）完了。\n' +
+    (batchId ? 'batchId=' + batchId + '\n' : '') +
     'ok=' + okCount + ' fail=' + failCount + ' total=' + collected.items.length +
     (collected.skipped.length ? ' / スキップ' + collected.skipped.length : '') +
-    (collected.parentCkOnly ? ' / 親レ点除外' + collected.parentCkOnly : '') +
+    (parentSkip ? ' / 親行スキップ' + parentSkip : '') +
     '\nrunId=' + runId + '\n\n' + lines.slice(0, 12).join('\n') +
     '\n\n作業後は ' + APPROVAL_AMAZON_SPAPI_PUT_PROP +
     (isProd ? ' と ' + APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD_PROP : '') +
     ' を false に戻してください。';
 
   Logger.log('[' + stepName + '] runId=' + runId + ' state=DONE ok=' + okCount +
-    ' fail=' + failCount);
+    ' fail=' + failCount + (batchId ? ' batchId=' + batchId : ''));
   if (!silent) {
     try { SpreadsheetApp.getUi().alert(doneMsg); } catch (eUi) {}
   }
@@ -194,7 +262,10 @@ function menuAmazonSpapiPutListings_(opt) {
     count: okCount,
     fail: failCount,
     skipped: collected.skipped.length,
-    mode: mode
+    parentSkip: parentSkip,
+    batchId: batchId || undefined,
+    mode: mode,
+    source: source
   };
 }
 
@@ -237,6 +308,76 @@ function amazonSpapiPutCollectChildCkItems_(masterCtx, forceQty0) {
     skipped: skipped,
     targetRows1: targetRows1,
     parentCkOnly: parentCkOnly
+  };
+}
+
+/**
+ * 第2段: 21-⑨（menuAmazonSpapiExportApprovedItemsCsv）と同一の対象抽出。
+ * @return {{items:Array, skipped:Array, batchId:string, parentOnlySkipped:number, targetRows1:Array}}
+ */
+function amazonSpapiPutCollectApprovedItems_(masterCtx, forceQty0) {
+  if (typeof approvalQueueGetLatestApprovedAmazon_ !== 'function') {
+    throw new Error('approvalQueueGetLatestApprovedAmazon_ がありません。');
+  }
+  var loaded = approvalQueueGetLatestApprovedAmazon_();
+  var lines = (loaded && loaded.lines) ? loaded.lines : [];
+  var batchId = (loaded && loaded.batch && loaded.batch.batchId)
+    ? String(loaded.batch.batchId)
+    : '';
+  if (!loaded || !loaded.found || !lines.length) {
+    return {
+      items: [],
+      skipped: [{ reason: 'APPROVED の Amazon 明細なし' }],
+      batchId: batchId,
+      parentOnlySkipped: 0,
+      targetRows1: []
+    };
+  }
+
+  var items = [];
+  var skipped = [];
+  var seenSku = {};
+  var parentOnlySkipped = 0;
+  var targetRows1 = [];
+
+  for (var i = 0; i < lines.length; i++) {
+    var L = lines[i];
+    if (String(L.mall) !== 'amazon' || String(L.lineStatus) !== 'APPROVED') continue;
+    var parentSku = String(L.parentSku || '').trim();
+    var childSku = String(L.childSku || '').trim();
+    if (!childSku) {
+      parentOnlySkipped++;
+      skipped.push({ parentSku: parentSku, reason: '親行のみ（子SKU空）' });
+      continue;
+    }
+    if (seenSku[childSku]) continue;
+    seenSku[childSku] = true;
+
+    var mr = amazonApprovalLv4FindMasterRow_(masterCtx, parentSku, childSku);
+    if (!mr) {
+      skipped.push({ parentSku: parentSku, childSku: childSku, reason: 'マスタ行なし' });
+      continue;
+    }
+    var built = amazonSpapiExportBuildItemFromRow_(masterCtx, mr.rowIndex0, forceQty0);
+    if (built.ok) {
+      built.item.note = (built.item.note ? built.item.note + ';' : '') + 'approved=' + batchId;
+      items.push(built.item);
+      targetRows1.push(mr.rowIndex0 + 1);
+    } else {
+      skipped.push({
+        parentSku: parentSku,
+        childSku: childSku,
+        reason: built.reason || 'build失敗'
+      });
+    }
+  }
+
+  return {
+    items: items,
+    skipped: skipped,
+    batchId: batchId,
+    parentOnlySkipped: parentOnlySkipped,
+    targetRows1: targetRows1
   };
 }
 
