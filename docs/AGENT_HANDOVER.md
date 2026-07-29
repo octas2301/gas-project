@@ -99,6 +99,8 @@
 
 ## 6. 更新履歴
 
+- 2026-07-29: **SP-API v1.4 第2段 実機合格（API）**: 21-⑫ VALID（`…231605_1b24e2`）／21-⑬ **ACCEPTED**（`…232041_3d83f3`）。batch `A1_20260727_224939_b7a053`・`lifec-4560151300832-48s11`／`B07YND44VN`・在庫0・親行スキップ1。prod は確認ダイアログで **OK を押さないと `cancelled_by_user` で PUT されない**（1回目は取消）。SC最終更新の目視は反映待ち。[HUMAN_RUN §3.3](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
+- 2026-07-29: **SP-API v1.4 第2段 実装**: `AmazonSpapiPut.js` に承認①済収集＋**21-⑫ dry_run／21-⑬ prod**。Property は第1段と共用。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 - 2026-07-29: **SP-API v1.4 第2段 承認**: 社長「承認する」。**実装可**（範囲は承認 §2・§3＝承認①済抽出は 21-⑨ 流用・子SKU必須・LISTING_OFFER_ONLY・Property は第1段と共用）。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)。
 - 2026-07-29: **SP-API v1.4 第2段 承認起草**: 承認①済 Amazon（21-⑨相当）を GAS 直 PUT する案。三者レビュー不要。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
 - 2026-07-29: **SP-API v1.4 実機合格（API）**: 21-⑩ VALID／21-⑪ ACCEPTED（`lifec-4560151300924-48s11`／`B00A0J0D30`）。`https:\` ENDPOINT正規化・hostヘッダ削除。SC最終更新の目視は反映待ち。**clasp push 済（`-f`）**。[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。

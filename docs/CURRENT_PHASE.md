@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-29（SP-API **v1.4 実機合格（API）**／**第2段 承認済・実装待ち**）  
+**最終更新**: 2026-07-29（SP-API **v1.4 第1段・第2段とも実機合格（API）**。SC最終更新は反映待ち）  
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -8,12 +8,12 @@
 ## 0. セッション引き継ぎ（2026-07-29）
 
 **場所**: 自宅PC。  
-**コミット**: 本セッションで v1.4 合格＋ENDPOINT正規化＋**第2段承認起草**。  
-**clasp**: ENDPOINT正規化は **push 済（`-f`）**。第2段はコード未着手のため push 不要。  
+**コミット**: 本セッションで v1.4 第1段合格＋ENDPOINT正規化＋第2段承認＋**第2段実装・実機合格（21-⑫⑬）**。  
+**clasp**: 第2段も **push 済**（21-⑫⑬ が実機で動作）。  
 **Property**: PUT／ALLOW_PROD／EXPORT とも作業後 **false**。`SPAPI_ENDPOINT` は空推奨。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.4 第1段は実機合格（API）**（21-⑩ VALID／21-⑪ ACCEPTED・`…48s11`）で push 済。次＝**第2段（承認①済→GAS直PUT）が 2026-07-29 承認済・実装待ち**。範囲は §2・§3 に限定し、Property は第1段と共用。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[GAS PUT HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.4 は第1段（21-⑩⑪＝子レ点）・第2段（21-⑫⑬＝承認①済）とも実機合格（API）**。第2段は dry_run VALID → prod **ACCEPTED**（`…0832-48s11`・batch `…b7a053`）。残るのは **SC 最終更新の目視のみ**。Property は全て false 済。[第2段承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[GAS PUT HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
@@ -24,13 +24,13 @@
 | **SP-API読取／書込 v1・v1.1** | **実機合格** |
 | **SP-API橋渡し v1.2〜v1.3／v1.2b／v1.2c** | **実機合格** |
 | **SP-API v1.4 第1段** | **実機合格（API）・push済**。SC最終更新目視は反映待ち。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md) |
-| **SP-API v1.4 第2段** | **承認済・実装待ち**（2026-07-29）。[承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md) |
-| 試験SKU | `…0924-48s11`／`B00A0J0D30`（v1.4）ほか発汗・ride01 |
+| **SP-API v1.4 第2段** | **実機合格（API）**（21-⑫ VALID／21-⑬ ACCEPTED）。[承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[HUMAN_RUN §2b](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md) |
+| 試験SKU | `…0924-48s11`／`B00A0J0D30`（第1段）・`…0832-48s11`／`B07YND44VN`（第2段）ほか発汗・ride01 |
 
 ### 次にやること（優先順）
-1. ~~v1.4 承認・実装・API実機~~／~~clasp push -f（ENDPOINT正規化）~~／~~第2段 社長承認~~  
-2. **Agent**: v1.4 第2段を実装（承認①済→GAS直PUT・[承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md) §2・§3 の範囲厳守）→ clasp push → dry_run  
-3. **人間**: SC最終更新が prod 以降に進んだら HUMAN_RUN の待ちチェックを閉じる  
+1. ~~v1.4 第1段 承認・実装・API実機~~／~~ENDPOINT正規化~~／~~第2段 承認・実装・API実機（21-⑫⑬）~~  
+2. **人間**: SC最終更新が prod 以降に進んだら HUMAN_RUN の待ちチェックを閉じる（第1段・第2段とも）  
+3. **次テーマ**: v1.4 は API 面で完了。次の開発対象は未確定（承認②は当面スコープ外）  
 4. Frontier／Sandbox は触らない  
 
 ### M2 正本リンク
@@ -45,7 +45,7 @@
 - [org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md](org/LV4_SPAPI_CHECKBOX_EXPORT_APPROVAL.md)（v1.2c）  
 - [org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)  
 - [org/LV4_SPAPI_GAS_PUT_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)（v1.4 第1段・API実機合格／SC最終更新は反映待ち）  
-- [org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（v1.4 **第2段・承認済／実装待ち**）  
+- [org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（v1.4 **第2段・実機合格（API）**）  
 
 ### 外出先チェックリスト
 [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
@@ -133,6 +133,8 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **SP-API v1.4 第2段 実機合格（API）**: 21-⑫ VALID／21-⑬ ACCEPTED（batch `…b7a053`）。SC目視は反映待ち。 |
+| 2026-07-29 | **SP-API v1.4 第2段 実装**: 21-⑫⑬／承認①済抽出。 |
 | 2026-07-29 | **SP-API v1.4 第2段 承認**（社長「承認する」）。実装可・範囲は承認 §2・§3。 |
 | 2026-07-29 | **SP-API v1.4 第2段 承認起草**（承認①済→GAS直PUT・コードなし）。三者レビュー不要。 |
 | 2026-07-29 | **SP-API v1.4 実機合格（API）**＋ENDPOINT正規化。SC最終更新は反映待ち。 |
