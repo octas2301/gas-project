@@ -1,7 +1,7 @@
 # SP-API v1.4 第2段 — 承認①済 Amazon を GAS から直 PUT（承認パッケージ・起草）
 
 **日付**: 2026-07-29  
-**状態**: **起草・社長実装承認待ち**（コード未着手）  
+**状態**: **承認済・実装待ち**（2026-07-29 社長承認。コードは未着手）  
 **親承認**: [LV4_SPAPI_GAS_PUT_APPROVAL.md](LV4_SPAPI_GAS_PUT_APPROVAL.md)（v1.4 第1段＝子レ点・API実機合格）  
 **関連**: [LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md](LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)（v1.2b＝21-⑨ Drive CSV・実機合格）  
 **手順（実装後に追記）**: [D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)  
@@ -115,7 +115,7 @@ CSV 出力用 `APPROVAL_AMAZON_SPAPI_EXPORT_*` とは **分離**を維持。
 
 ## 6. 社長承認欄
 
-- [ ] **承認する**（v1.4 第2段＝承認①済 Amazon の GAS 直 PUT・コード実装可）  
+- [x] **承認する**（v1.4 第2段＝承認①済 Amazon の GAS 直 PUT・コード実装可／2026-07-29）  
 - [ ] 却下／条件付き（条件: ）
 
-**実装開始条件**: 本 §6 の承認後のみ。承認前のコード追加は禁止。
+**実装開始条件**: 本 §6 の承認後のみ。承認前のコード追加は禁止 → **2026-07-29 承認済。実装可**。
