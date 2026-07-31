@@ -4,6 +4,8 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-31 | `AmazonApprovalExport.js`／D_ENTRY HUMAN_RUN §1e | **SCサマリ監視の自動ON/OFF**（GENERATED成功→待ちリスト＋トリガー設置。終端ステータスで削除。上限72h。Property `…_SC_SUMMARY_WAIT`） | **21-⑰**でトリガー＋待ちクリア。**Property** ENABLED=false。**Git**: 対象差分revert |
+| 2026-07-31 | `Yahoo.js`／`コード.js`／`YAHOO_OAUTH_REAUTH_HUMAN_RUN.md` | **Yahoo再認証半自動**（認可code貼付→B14更新＋**C14取得日**。残り≤7日でB17へメール。任意日次トリガー。出品本体非改変） | **メニュー**でトリガー削除。**Property** `YAHOO_OAUTH_REDIRECT_URI` 削除可。**Git**: 対象差分revert＋メニュー行削除 |
 | 2026-07-31 | `c1_packaged.py`／`food_seasoning_column_map.json` | **SEASONING検索KWは1枠**（SC 99016: generic_keywordは最大1回。空白結合。keyword2〜5列マップ削除） | **Git**: 対象差分をrevert。旧5枠分割に戻る |
 | 2026-07-31 | `AmazonDriveImageExport.js`／`コード.js` autoU4／U4 HUMAN_RUN | **楽天サブ→R2流用**（PT参照空かつ非AMAZON_ONLYなら `楽天サブ画像1〜8` を取得→R2→`Amazon PT URL`。D自動U4も楽天サブ不足を検知。MAINファイル無し時は既存MAIN URL維持可） | **Git**: 対象差分をrevert。autoU4判定は旧「ptRef無しならスキップ」に戻る |
 | 2026-07-31 | `AmazonDriveImageExport.js`／`コード.js`（D新規）／`c1_packaged.py`／SEASONING列マップ／U4・C1 docs | **サブ画像＋商品の形式＋U4自動化**（U4はREUSE_RAKUTENでもPTをR2へ→`Amazon PT URL`（親へも伝播）、D新規はGENERATED前にU4自動実行、C1はPT URLを24〜31列へ、`item_form` 既定=粉末） | **Property**: `AMAZON_U4_AUTO_IN_D_ENABLED=false` でD自動U4のみ停止（21-⑦手動は従来どおり）。**Git**: 対象差分をrevert。列マップは `item_form`／`other_image1..8` の行を削れば旧挙動 |

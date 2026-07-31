@@ -100,6 +100,9 @@
 
 ## 6. 更新履歴
 
+- 2026-07-31: **docs同期**: CURRENT_PHASE§0をYahoo再認証済・SC監視自動ON/OFF・許可待ちに更新。Property作業後チェックリストを正本化。
+- 2026-07-31: **SCサマリ監視 自動ON/OFF**: GENERATED成功で待ちリスト＋トリガー自動設置。待ちが全て UPLOADED_OK／FAILED で削除。上限72h。21-⑯⑰は手動残置。[HUMAN_RUN §1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-07-31: **Yahoo再認証半自動**: メニューで認可code貼付→B14＋**C14取得日**。残り≤7日はB17へメール（任意日次トリガー）。`YAHOO_OAUTH_REDIRECT_URI` 必須。[HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md)。出品本体は非改変。
 - 2026-07-31: **docs整理（外出先）**: CURRENT_PHASE§0を七味到達点に更新。SCサマリ手順§1e短文化。在庫停止中メモ（親`B0HC9S8PRN`／子`B0HC9RRCBP`／相乗り`…19as13`）。コミットは人間指示待ち。
 - 2026-07-31: **U4楽天サブ→R2**: PT参照空かつ非AMAZON_ONLYなら `楽天サブ画像1〜8` を取得→R2→`Amazon PT URL`。D自動U4も検知。七味でPT成功=3（`U4_20260731_124440_329c1a`）。手ZIPは帰宅後。[U4 HUMAN_RUN](org/D_MENU_U4_HUMAN_RUN.md)。
 - 2026-07-31: **SEASONING SC必須知見**: item_form=粉末／item_weight_unit=グラム／検索KWは1枠（99016対策）。PACKAGED再送 `…_20260731_032459.xlsm`。初回サマリは99016＋100521。[列マップ](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)。

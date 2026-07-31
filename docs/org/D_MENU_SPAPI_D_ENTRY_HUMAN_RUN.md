@@ -81,12 +81,17 @@ Dレ点新規（`source=child_ck`）は、マスタ在庫>0でも `SKIPPED_IN_ST
 **やること（初回だけ）**
 1. Driveに監視フォルダを1つ作る → フォルダIDを `APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID` に設定  
 2. `APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED=true`  
-3. **21-⑯** でトリガー設置（間隔は既定15分。変更は `…_INTERVAL_MIN`＝5/10/15/30/60）
+3. （任意）間隔変更は `…_INTERVAL_MIN`＝5/10/15/30/60。既定15分  
+
+**自動設置・自動削除（2026-07-31 承認）**
+- **設置**: 本番 **GENERATED 成功時**（21-①／E-4／D新規）に待ちリストへ `subBatchId` を追加し、監視トリガーを自動設置（ENABLED＋FOLDER必須。DRY_RUNは対象外）
+- **削除**: 待ちリストの ID がすべて `UPLOADED_OK`／`UPLOAD_FAILED` になったらトリガー削除。または追加から **72時間**超過で待ちから外し、空なら削除（メール通知）
+- 手動の **21-⑯／21-⑰** も残置。21-⑰はトリガー＋待ちリストをクリア
 
 **日常**
 - SC UP後、処理サマリ（`{subBatchId}_PACKAGED_…-processing-summary.xlsm`）を監視フォルダへ置くだけ  
-- トリガーまたは **21-⑮** で `UPLOADED_OK` 追記 → ファイルは `_処理済` へ  
-- 停止は **21-⑰** ＋ Property false  
+- トリガーまたは **21-⑮** で記録 → ファイルは `_処理済` へ  
+- 閑散期は待ちが空ならトリガー無し（空走りしない）
 
 **判定ルール（ファイル名のみ・中身は読まない）**
 - 名前から `subBatchId` を抽出。`GENERATED` 行が無いIDは記録せずファイルも残す  
@@ -135,6 +140,7 @@ PACKAGED再送: `…_20260731_032459.xlsm`（KW1枠・粉末・グラム）。�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-31 | §1e: GENERATED時の監視トリガー自動設置／終端・72hで自動削除。 |
 | 2026-07-31 | §1e短文化。§1fに七味SC停止中メモ（親`B0HC9S8PRN`／子`B0HC9RRCBP`）。 |
 | 2026-07-31 | **新規＋相乗りprod 同時 実機合格**（§1b）。`CK_daba393f8055_B2_GENERATED.csv`／`ACCEPTED issues=0`。 |
 | 2026-07-31 | 21-⑮〜⑰ SC処理サマリ検知でUPLOADED_OK自動記録（§1e・ファイル名判定のみ）。 |

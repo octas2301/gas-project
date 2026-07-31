@@ -1,40 +1,59 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-31（**七味 SEASONING：SC再送待ち／在庫は停止中。U4楽天サブ流用・KW1枠・D自動U4実装済**）
+**最終更新**: 2026-07-31（**Yahoo再認証・SC監視自動ON/OFF済。七味は吉野家許可待ち**）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
 ## 0. セッション引き継ぎ（2026-07-31）
 
-**場所**: 外出先／帰宅後確認あり。  
-**コミット**: レ点本線〜SEASONING〜U4楽天サブまでの差分は**未コミット**（コミットは人間指示後）。  
-**clasp**: 当該GAS差分は push 済み認識（21-⑭〜⑰／U4楽天サブ／D自動U4）。  
-**Property**: PUT／ALLOW_PROD／`AMAZON_U4_URL_EMBED_ENABLED` は作業後 **false**。`SPAPI_ENDPOINT` は空推奨。
+**場所**: ブランド認証は人間並行。次出品でSC監視自動ONを実機確認予定。  
+**コミット**: 本セッションで Yahoo再認証＋SC監視自動ON/OFF をコミット予定。  
+**clasp**: Yahoo再認証／SC監視自動ON/OFF は **push済**。  
+**Property（作業後）**: 下表「false に戻す」を確認。SC監視・Yahoo redirect は運用のため残す。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。**D新規＋相乗り同時・C1 SEASONING七味はSC再送済（審査／停止中確認中）**。次＝帰宅後サブZIP＋SC停止理由確認＋Yahoo再認証。[HUMAN_RUN](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)／[U4](org/D_MENU_U4_HUMAN_RUN.md)／[C1 SEASONING](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。**Yahoo再認証済**（C14＝2026-07-31／スモーク成功）。**SCサマリ監視**はFOLDER＋ENABLED済・GENERATEDで自動ON／終端or72hでOFF。七味は**吉野家出品許可待ち**。次出品で監視自動ONをログ確認。[Yahoo HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md)／[§1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
 |------|------|
 | 安眠 E〜E-5／C1 HPC | **済** |
 | **レ点本線＋Amazon相乗りSKU** | **相乗り自己発 dry_run／prod＋新規＋相乗り同時 実機合格**（07-31） |
-| **C1 SEASONING（七味）** | PACKAGED再送済（`…_20260731_032459.xlsm`）。**99016対策＝KW1枠**／item_form=粉末／重量単位=グラム。SC審査100521あり。在庫画面は**停止中**（親`B0HC9S8PRN`／子`B0HC9RRCBP`） |
-| **U4** | D新規前に自動実行。PT参照空なら**楽天サブ1〜8→R2**。七味で MAIN=1／PT=3 成功（`U4_20260731_124440_329c1a`） |
-| **GTIN免除／SCサマリ自動** | 21-⑭〜⑰ 実装・push済。監視フォルダ運用は人間セット待ち |
-| **サブ画像（SC ZIP）** | U4でPT URL取得済。**帰宅後**に手ZIP→Upload Images |
-| **Yahoo** | refresh token期限切れ（フル失敗）。要再認証 |
-| 試験SKU | 新規親 `sanky-4538872180149-oya`／子 `…-19s13`。相乗り `…-19as13`（ASIN `B01N5A6ESU`・停止中）。旧相乗り `…-48as12` |
+| **C1 SEASONING（七味）** | PACKAGED再送・画像UP済。在庫**停止中**（吉野家出品許可が必要）。親`B0HC9S8PRN`／子`B0HC9RRCBP` |
+| **U4** | D新規前に自動。PT空なら楽天サブ→R2。七味 MAIN=1／PT=3 成功 |
+| **GTIN免除／SCサマリ** | 21-⑭〜⑰。監視フォルダ（例: `08.SC処理サマリ監視`）＋ENABLED。**GENERATED→自動トリガー**／終端or**72h**でOFF。21-⑮で取込確認済 |
+| **Yahoo再認証半自動** | **済**（B14＋C14取得日。出品スモーク成功1件）。[HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md) |
+| 試験SKU | 新規 `…-19s13`／相乗り `…-19as13`（`B01N5A6ESU`）いずれも許可待ちで停止中の可能性 |
 
 ### 次にやること（優先順）
-0. **Property** PUT／ALLOW_PROD／`AMAZON_U4_URL_EMBED_ENABLED` を **false**
-1. **帰宅後・サブZIP**: MAIN＋PT01〜03 → SC Upload Images（[手順メモ](org/D_MENU_U4_HUMAN_RUN.md) §3b＋手ZIP）
-2. **SC停止理由**: 親／子の「ブロックされた理由を確認」／相乗りの「出品に関する問題を修正」を開き内容メモ → 必要ならAgentへ貼付
-3. **再送サマリ**をDownloadsへ保存 → 分析（99016消えたか／100521の扱い）
-4. **21-⑮〜⑰運用セット**（監視フォルダID＋ENABLED＋21-⑯）※短い手順は [HUMAN_RUN §1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)
-5. **Yahoo再認証** → Yahooのみ再実行
-6. 任意: 相乗りFBA／フル再走／gitコミット（人間指示後）
+1. **吉野家出品許可**（ブランド認証）→ 許可後に SCライブ／画像店頭反映を確認  
+2. **次の Amazon GENERATED 出品時**: SC監視自動ONを実機確認（ログに `ScSummaryOnGenerated`／`ensureTrigger ok=true` → サマリ配置 → 終端でトリガー消える）  
+3. **Property 作業後チェック**（下記）  
+4. 任意: Yahoo認証期限の日次メールトリガー（未設置ならメニューで）
+
+### Property チェックリスト（人間・作業後）
+
+**false に戻す（本番誤書き防止）**
+| Property | 推奨 |
+|----------|------|
+| `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **false** |
+| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **false** |
+| `AMAZON_U4_URL_EMBED_ENABLED` | **false**（次U4時だけ true） |
+| `APPROVAL_AMAZON_LV4_ENABLED` | 次GENERATEDまで不要なら **false**可（出すとき true） |
+
+**運用で残す（OFFにしない）**
+| Property | 値 |
+|----------|-----|
+| `APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED` | **true** |
+| `APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID` | 監視フォルダID |
+| `YAHOO_OAUTH_REDIRECT_URI` | アプリ登録と一致する戻り先URL |
+
+**任意**
+| Property | メモ |
+|----------|------|
+| `APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_MIN` | 既定15。疎にするなら60 |
+| `YAHOO_OAUTH_WARN_DAYS` | 既定7 |
 
 ### SEASONINGで確定した必須・落とし穴（再発防止）
 | 項目 | 対応 |
@@ -77,6 +96,7 @@
 - [org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)  
 - [org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md](org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)  
 - [org/D_MENU_U4_HUMAN_RUN.md](org/D_MENU_U4_HUMAN_RUN.md)  
+- [org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md)（Yahoo再認証半自動・C14／B17メール）  
 
 ---
 

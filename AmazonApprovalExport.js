@@ -23,6 +23,7 @@
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID … サマリ監視フォルダ（必須。未設定なら実行しない）
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_MIN … 監視トリガー間隔分（5/10/15/30/60。既定 15）
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_ID … トリガー用スプレッドシートID（21-⑯設置時に自動保存）
+ *   APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT … 待ちリストJSON（自動。GENERATED→終端で消す＋72h上限）
  */
 
 var APPROVAL_AMAZON_LV4_PROP = 'APPROVAL_AMAZON_LV4_ENABLED';
@@ -39,9 +40,12 @@ var APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLE
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_MIN';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_ID';
+var APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_TRIGGER_FN = 'runApprovalAmazonLv4ScSummaryFromTrigger';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_DONE_FOLDER = '_処理済';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_MAX_FILES = 20;
+/** 待ちリスト上限（ms）。超過した subBatchId は待ちから外し、空ならトリガー削除 */
+var APPROVAL_AMAZON_LV4_SC_SUMMARY_MAX_AGE_MS = 72 * 60 * 60 * 1000;
 var APPROVAL_AMAZON_LV4_TIME_MS = 25 * 60 * 1000;
 var APPROVAL_AMAZON_LV4_MAX_TRIGGER_RUNS = 40;
 var APPROVAL_AMAZON_LV4_TRIGGER_FN = 'runApprovalAmazonLv4FromTrigger';
@@ -584,6 +588,11 @@ function amazonApprovalLv4ScanScSummaries_(ss, fn) {
         '\n\n※ファイル名のみで判定しています。掲載完了の断定には実機確認が必要です。'
     );
   }
+  try {
+    amazonApprovalLv4ScSummaryReconcileWait_(ss, fn);
+  } catch (eRec) {
+    Logger.log('[' + fn + '] WARN reconcile: ' + ((eRec && eRec.message) || eRec));
+  }
   return out;
 }
 
@@ -639,28 +648,16 @@ function menuApprovalAmazonLv4InstallScSummaryTrigger() {
   var ui = null;
   try { ui = SpreadsheetApp.getUi(); } catch (eUi) {}
   try {
-    var props = PropertiesService.getScriptProperties();
-    if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP, false)) {
-      throw new Error(APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP + ' が false です。先に true にしてください。');
-    }
-    if (!String(props.getProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP) || '').trim()) {
-      throw new Error(APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP + ' が未設定です。');
-    }
-    var minutes = amazonApprovalLv4ScSummaryInterval_();
-    amazonApprovalLv4ScSummaryDeleteTriggers_();
-    var builder = ScriptApp.newTrigger(APPROVAL_AMAZON_LV4_SC_SUMMARY_TRIGGER_FN).timeBased();
-    if (minutes >= 60) builder.everyHours(1);
-    else builder.everyMinutes(minutes);
-    builder.create();
-    props.setProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_PROP,
-      SpreadsheetApp.getActiveSpreadsheet().getId());
-    Logger.log('[' + fn + '] state=DONE intervalMin=' + minutes);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var res = amazonApprovalLv4ScSummaryEnsureTrigger_(ss, { force: true });
+    if (!res.ok) throw new Error(res.reason || '設置失敗');
+    Logger.log('[' + fn + '] state=DONE intervalMin=' + res.intervalMin);
     if (ui) {
       ui.alert(
         'SCサマリ監視トリガーを設置しました',
-        '間隔=' + (minutes >= 60 ? '1時間' : minutes + '分') + '\n' +
-          'SCからダウンロードしたサマリを監視フォルダへ置くだけで、\n' +
-          'UPLOADED_OK が自動記録されます（メニュー操作不要）。\n' +
+        '間隔=' + (res.intervalMin >= 60 ? '1時間' : res.intervalMin + '分') + '\n' +
+          '通常は GENERATED 成功時に自動設置されます。\n' +
+          '待ちリストが全て終端（UPLOADED_OK/FAILED）または72時間超過で自動削除。\n' +
           '※ファイル名のみで判定します。',
         ui.ButtonSet.OK
       );
@@ -678,12 +675,170 @@ function menuApprovalAmazonLv4RemoveScSummaryTrigger() {
   var fn = 'menuApprovalAmazonLv4RemoveScSummaryTrigger';
   try {
     var removed = amazonApprovalLv4ScSummaryDeleteTriggers_();
-    Logger.log('[' + fn + '] state=DONE removed=' + removed);
-    SpreadsheetApp.getUi().alert('SCサマリ監視トリガーを削除しました（削除数=' + removed + '）');
+    PropertiesService.getScriptProperties().deleteProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP);
+    Logger.log('[' + fn + '] state=DONE removed=' + removed + ' waitCleared=1');
+    SpreadsheetApp.getUi().alert(
+      'SCサマリ監視トリガーを削除しました（削除数=' + removed + '）\n待ちリストもクリアしました。'
+    );
   } catch (err) {
     Logger.log('[' + fn + '] state=FAILED ' + ((err && err.message) || err));
     try { SpreadsheetApp.getUi().alert(String((err && err.message) || err)); } catch (e2) {}
   }
+}
+
+/**
+ * GENERATED 成功後: 待ちリストに追加し、条件を満たせば監視トリガーを自動設置。
+ * @param {SpreadsheetApp.Spreadsheet} ss
+ * @param {Array<string>} subBatchIds
+ */
+function amazonApprovalLv4ScSummaryOnGenerated_(ss, subBatchIds) {
+  var fn = 'amazonApprovalLv4ScSummaryOnGenerated_';
+  var ids = [];
+  for (var i = 0; i < (subBatchIds || []).length; i++) {
+    var id = String(subBatchIds[i] || '').trim();
+    if (id) ids.push(id);
+  }
+  if (!ids.length) return;
+
+  var wait = amazonApprovalLv4ScSummaryLoadWait_();
+  var now = Date.now();
+  for (var j = 0; j < ids.length; j++) {
+    if (!wait.items[ids[j]]) {
+      wait.items[ids[j]] = now;
+    }
+  }
+  amazonApprovalLv4ScSummarySaveWait_(wait);
+  Logger.log('[' + fn + '] waitAdded=' + ids.join(',') +
+    ' waitSize=' + Object.keys(wait.items).length);
+
+  var ensured = amazonApprovalLv4ScSummaryEnsureTrigger_(ss, { force: false });
+  Logger.log('[' + fn + '] ensureTrigger ok=' + ensured.ok +
+    ' skipped=' + !!ensured.skipped + ' reason=' + (ensured.reason || ''));
+}
+
+/**
+ * 待ちリストを終端ステータス／72h超過で整理。空ならトリガー削除。
+ * @param {SpreadsheetApp.Spreadsheet} ss
+ * @param {string=} logFn
+ */
+function amazonApprovalLv4ScSummaryReconcileWait_(ss, logFn) {
+  var fn = logFn || 'amazonApprovalLv4ScSummaryReconcileWait_';
+  var wait = amazonApprovalLv4ScSummaryLoadWait_();
+  var keys = Object.keys(wait.items);
+  if (!keys.length) {
+    // 待ちが空でも手動21-⑯だけで残っているトリガーは触らない（force設置の残り）
+    // ただし自動運用では OnGenerated 経由で必ず wait が入る。空＋トリガーは手動想定。
+    return { removed: [], expired: [], remaining: 0, triggerRemoved: false };
+  }
+
+  var now = Date.now();
+  var removed = [];
+  var expired = [];
+  for (var i = 0; i < keys.length; i++) {
+    var id = keys[i];
+    var addedAt = Number(wait.items[id]) || 0;
+    var latest = amazonApprovalLv4SubBatchLatestStatus_(ss, id);
+    if (latest === 'UPLOADED_OK' || latest === 'UPLOAD_FAILED') {
+      delete wait.items[id];
+      removed.push(id + '=' + latest);
+      continue;
+    }
+    if (addedAt && (now - addedAt) > APPROVAL_AMAZON_LV4_SC_SUMMARY_MAX_AGE_MS) {
+      delete wait.items[id];
+      expired.push(id);
+    }
+  }
+  amazonApprovalLv4ScSummarySaveWait_(wait);
+  var remaining = Object.keys(wait.items).length;
+  var triggerRemoved = false;
+  if (!remaining) {
+    amazonApprovalLv4ScSummaryDeleteTriggers_();
+    triggerRemoved = true;
+    Logger.log('[' + fn + '] wait empty → SCサマリ監視トリガー削除');
+  }
+  if (expired.length) {
+    Logger.log('[' + fn + '] expired72h=' + expired.join(','));
+    try {
+      amazonApprovalLv4Mail_(
+        '【Lv4 Amazon】SCサマリ待ちが72時間超過',
+        '以下を待ちリストから外しました（トリガーは残り=' + remaining + '）:\n' +
+          expired.join('\n') +
+          '\n\nサマリが後から来たら監視フォルダへ置いて 21-⑮ を実行してください。'
+      );
+    } catch (eMail) {}
+  }
+  Logger.log('[' + fn + '] reconciled removed=' + removed.length +
+    ' expired=' + expired.length + ' remaining=' + remaining +
+    ' triggerRemoved=' + triggerRemoved);
+  return {
+    removed: removed,
+    expired: expired,
+    remaining: remaining,
+    triggerRemoved: triggerRemoved
+  };
+}
+
+/**
+ * @param {SpreadsheetApp.Spreadsheet} ss
+ * @param {{force?:boolean}=} opts force=true は21-⑯（待ちが空でも設置可）
+ * @return {{ok:boolean, skipped?:boolean, reason?:string, intervalMin?:number}}
+ */
+function amazonApprovalLv4ScSummaryEnsureTrigger_(ss, opts) {
+  opts = opts || {};
+  var props = PropertiesService.getScriptProperties();
+  if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP, false)) {
+    return { ok: false, skipped: true, reason: APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP + ' が false' };
+  }
+  if (!String(props.getProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP) || '').trim()) {
+    return { ok: false, skipped: true, reason: APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP + ' 未設定' };
+  }
+  if (!opts.force) {
+    var wait = amazonApprovalLv4ScSummaryLoadWait_();
+    if (!Object.keys(wait.items).length) {
+      return { ok: false, skipped: true, reason: '待ちリスト空' };
+    }
+  }
+  var minutes = amazonApprovalLv4ScSummaryInterval_();
+  amazonApprovalLv4ScSummaryDeleteTriggers_();
+  var builder = ScriptApp.newTrigger(APPROVAL_AMAZON_LV4_SC_SUMMARY_TRIGGER_FN).timeBased();
+  if (minutes >= 60) builder.everyHours(1);
+  else builder.everyMinutes(minutes);
+  builder.create();
+  if (ss) {
+    props.setProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_PROP, ss.getId());
+  }
+  return { ok: true, intervalMin: minutes };
+}
+
+/** @return {{items: Object<string, number>}} id → addedAt ms */
+function amazonApprovalLv4ScSummaryLoadWait_() {
+  var raw = PropertiesService.getScriptProperties()
+    .getProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP);
+  var items = {};
+  if (!raw) return { items: items };
+  try {
+    var parsed = JSON.parse(raw);
+    if (parsed && parsed.items && typeof parsed.items === 'object') {
+      items = parsed.items;
+    } else if (parsed && typeof parsed === 'object' && !parsed.items) {
+      items = parsed;
+    }
+  } catch (e) {
+    Logger.log('[amazonApprovalLv4ScSummaryLoadWait_] WARN parse: ' + ((e && e.message) || e));
+  }
+  return { items: items };
+}
+
+function amazonApprovalLv4ScSummarySaveWait_(wait) {
+  var items = (wait && wait.items) ? wait.items : {};
+  if (!Object.keys(items).length) {
+    PropertiesService.getScriptProperties().deleteProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP);
+    return;
+  }
+  PropertiesService.getScriptProperties().setProperty(
+    APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP,
+    JSON.stringify({ items: items })
+  );
 }
 
 /** everyMinutes が受け付ける値へ丸める（5/10/15/30、60以上は1時間）。 */
@@ -861,6 +1016,7 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
   var stockOut = inventoryMode === 'ONE' ? 1 : 0;
   var shipping = amazonApprovalLv4ShippingTemplate_();
   var skipExport = getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SKIP_EXPORT_PROP, false);
+  var generatedSubBatchIds = [];
 
   amazonApprovalLv4EnsureLogSheet_(ss);
   var masterCtx = amazonApprovalLv4LoadMasterContext_(ss);
@@ -1035,6 +1191,9 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
         fileUrl: fileUrl,
         note: skipExport ? 'DRY_RUN（冪等ブロック対象外。本番はSKIP_EXPORT=falseでGENERATED）' : ''
       });
+      if (outStatus === 'GENERATED') {
+        generatedSubBatchIds.push(subBatchId);
+      }
 
       for (var p = 0; p < built.okParents.length; p++) {
         doneParents.push(built.okParents[p].parentSku);
@@ -1073,9 +1232,19 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
     message = message || (
       (skipExport
         ? 'DRY_RUN完了（本番GENERATEDはSKIP_EXPORT=falseで再実行可）。'
-        : 'GENERATED完了。次はローカルでPACKAGED→SC手動UP→21-③。') +
+        : 'GENERATED完了。次はローカルでPACKAGED→SC手動UP→監視フォルダへサマリ。') +
       'スキップ=' + amazonApprovalLv4SkipSummary_(resolved.skipped)
     );
+  }
+
+  // 本番 GENERATED 成功分を SCサマリ待ちリストへ（ENABLED+FOLDER 時のみトリガー自動設置）
+  if (generatedSubBatchIds.length) {
+    try {
+      amazonApprovalLv4ScSummaryOnGenerated_(ss, generatedSubBatchIds);
+    } catch (eWatch) {
+      Logger.log('[' + fn + '] WARN SCサマリ監視の自動設置に失敗: ' +
+        ((eWatch && eWatch.message) || eWatch));
+    }
   }
 
   return {
@@ -1084,6 +1253,7 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
     parentsDone: doneParents.length,
     skipped: resolved.skipped.length,
     willResume: willResume,
+    generatedSubBatchIds: generatedSubBatchIds,
     message: message
   };
 }
@@ -2078,6 +2248,14 @@ function amazonApprovalLv4MarkStatus_(ss, subBatchId, status, note) {
     fileUrl: fileUrl,
     note: (note || '') + ' by=' + who + ' (append-only)'
   });
+  if (status === 'UPLOADED_OK' || status === 'UPLOAD_FAILED') {
+    try {
+      amazonApprovalLv4ScSummaryReconcileWait_(ss, 'amazonApprovalLv4MarkStatus_');
+    } catch (eRec2) {
+      Logger.log('[amazonApprovalLv4MarkStatus_] WARN reconcile: ' +
+        ((eRec2 && eRec2.message) || eRec2));
+    }
+  }
   return 1;
 }
 

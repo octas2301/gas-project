@@ -989,6 +989,12 @@ function getYahooAccessToken(mapSheet) {
   }
   
   const json = JSON.parse(res.getContentText());
+  // Access更新時に新しいrefreshが返ることがある。B14のみ更新（取得日C14は再認可時のみ更新）
+  if (json.refresh_token && String(json.refresh_token).trim() &&
+      String(json.refresh_token).trim() !== String(refreshToken).trim()) {
+    mapSheet.getRange('B14').setValue(String(json.refresh_token).trim());
+    Logger.log('[YahooAuth] refresh_token rotated via grant_type=refresh_token (C14 unchanged)');
+  }
   return json.access_token;
 }
 
@@ -2900,4 +2906,358 @@ function getRakutenDeleteResultHtml(success, itemUrl, message) {
   </div>
 </body>
 </html>`;
+}
+
+// ==========================================
+// Yahoo OAuth 再認可（半自動）— 2026-07-31 承認
+// 公式: Refresh 有効期限は通常4週間。切れ前の再認可で期限延長可（文字列は変わらない場合あり）。
+// 取得日はマッピングシート C14（B14 refresh の右）。通知メール宛先は B17。
+// editItem／画像／在庫送信は非改変。
+// ==========================================
+var YAHOO_OAUTH_AUTH_URL_ = 'https://auth.login.yahoo.co.jp/yconnect/v2/authorization';
+var YAHOO_OAUTH_REDIRECT_PROP_ = 'YAHOO_OAUTH_REDIRECT_URI';
+var YAHOO_OAUTH_SCOPE_PROP_ = 'YAHOO_OAUTH_SCOPE';
+var YAHOO_OAUTH_SCOPE_DEFAULT_ = 'openid';
+var YAHOO_OAUTH_STATE_PROP_ = 'YAHOO_OAUTH_PENDING_STATE';
+var YAHOO_OAUTH_WARN_DAYS_PROP_ = 'YAHOO_OAUTH_WARN_DAYS';
+var YAHOO_OAUTH_REFRESH_DAYS_ = 28;
+var YAHOO_OAUTH_ACQUIRED_CELL_ = 'C14';
+var YAHOO_OAUTH_REFRESH_CELL_ = 'B14';
+var YAHOO_OAUTH_MAIL_CELL_ = 'B17';
+var YAHOO_OAUTH_TRIGGER_HANDLER_ = 'runYahooOauthExpiryReminderFromTrigger';
+
+/**
+ * メニュー: 認可URLを表示し、戻りURLの code を貼って refresh を更新する。
+ */
+function menuYahooOauthReauth() {
+  var ui = SpreadsheetApp.getUi();
+  var fn = 'menuYahooOauthReauth';
+  Logger.log('[' + fn + '] state=PENDING');
+  try {
+    var ctx = yahooOauthLoadMapContext_();
+    var redirectUri = yahooOauthGetRedirectUri_();
+    var scope = yahooOauthGetScope_();
+    var state = Utilities.getUuid().replace(/-/g, '').substring(0, 24);
+    PropertiesService.getScriptProperties().setProperty(YAHOO_OAUTH_STATE_PROP_, state);
+
+    var authUrl = YAHOO_OAUTH_AUTH_URL_ +
+      '?response_type=code' +
+      '&client_id=' + encodeURIComponent(ctx.clientId) +
+      '&redirect_uri=' + encodeURIComponent(redirectUri) +
+      '&scope=' + encodeURIComponent(scope) +
+      '&state=' + encodeURIComponent(state) +
+      '&prompt=' + encodeURIComponent('login consent');
+
+    var open = ui.alert(
+      'Yahoo再認証（1/2）',
+      '次のURLをブラウザで開き、Yahoo! JAPAN にログインして同意してください。\n\n' +
+        authUrl + '\n\n' +
+        '※ redirect_uri はアプリ登録と一致必須:\n' + redirectUri + '\n\n' +
+        '同意後、戻り先URLの「code=」の値（またはURL全体）を控えたら OK。',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (open !== ui.Button.OK) {
+      Logger.log('[' + fn + '] state=CANCELLED step=openUrl');
+      return;
+    }
+
+    var codeResp = ui.prompt(
+      'Yahoo再認証（2/2）',
+      '認可コード（code）または code を含む戻りURLを貼り付けてください。',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (codeResp.getSelectedButton() !== ui.Button.OK) {
+      Logger.log('[' + fn + '] state=CANCELLED step=pasteCode');
+      return;
+    }
+    var code = yahooOauthExtractCode_(codeResp.getResponseText());
+    if (!code) {
+      ui.alert('code を読み取れませんでした。戻りURL全体を貼るか、code= の値だけを貼ってください。');
+      Logger.log('[' + fn + '] state=FAILED reason=noCode');
+      return;
+    }
+
+    var token = yahooOauthExchangeAuthorizationCode_(ctx, code, redirectUri);
+    var refresh = String(token.refresh_token || '').trim();
+    if (!refresh) {
+      throw new Error('Token応答に refresh_token がありません: ' + JSON.stringify(token).substring(0, 300));
+    }
+    var acquired = yahooOauthTodayTokyo_();
+    ctx.mapSheet.getRange(YAHOO_OAUTH_REFRESH_CELL_).setValue(refresh);
+    ctx.mapSheet.getRange(YAHOO_OAUTH_ACQUIRED_CELL_).setValue(acquired);
+    PropertiesService.getScriptProperties().deleteProperty(YAHOO_OAUTH_STATE_PROP_);
+
+    var exp = yahooOauthExpiryDateFromAcquired_(acquired);
+    Logger.log('[' + fn + '] state=DONE acquired=' + acquired + ' expiresApprox=' + exp);
+    ui.alert(
+      'Yahoo再認証 完了',
+      'B14 に refresh_token を保存し、C14 に取得日 ' + acquired + ' を記録しました。\n' +
+        '目安の期限: ' + exp + '（取得日＋' + YAHOO_OAUTH_REFRESH_DAYS_ + '日）\n' +
+        '切れ前に再実行すると公式どおり期限を延長できます。',
+      ui.ButtonSet.OK
+    );
+  } catch (e) {
+    var err = String((e && e.message) || e);
+    Logger.log('[' + fn + '] state=FAILED ' + err);
+    try { ui.alert('Yahoo再認証に失敗しました', err, ui.ButtonSet.OK); } catch (e2) {}
+  }
+}
+
+/**
+ * メニュー: C14取得日から残り日数を表示。残り少／期限切れなら B17 へメール。
+ */
+function menuYahooOauthCheckExpiry() {
+  var ui = SpreadsheetApp.getUi();
+  var fn = 'menuYahooOauthCheckExpiry';
+  Logger.log('[' + fn + '] state=PENDING');
+  try {
+    var info = yahooOauthComputeExpiryInfo_();
+    var mailNote = '';
+    if (info.needMail) {
+      var sent = yahooOauthSendExpiryMail_(info, false);
+      mailNote = sent.ok ? ('\nメール送信: ' + sent.to) : ('\nメール送信失敗: ' + sent.error);
+    }
+    ui.alert(
+      'Yahoo認証期限',
+      '取得日(C14): ' + (info.acquired || '（未記録）') + '\n' +
+        '目安期限: ' + (info.expires || '—') + '\n' +
+        '残り日数: ' + (info.daysLeft == null ? '不明' : info.daysLeft) + '\n' +
+        '警告閾値: 残り' + info.warnDays + '日以内\n' +
+        (info.refreshPresent ? 'B14 refresh: あり' : 'B14 refresh: 空') +
+        mailNote +
+        '\n\n※期限APIはYahooに無いため、取得日＋' + YAHOO_OAUTH_REFRESH_DAYS_ + '日の自前計算です。',
+      ui.ButtonSet.OK
+    );
+    Logger.log('[' + fn + '] state=DONE ' + JSON.stringify({
+      acquired: info.acquired, daysLeft: info.daysLeft, needMail: info.needMail
+    }));
+  } catch (e) {
+    var err = String((e && e.message) || e);
+    Logger.log('[' + fn + '] state=FAILED ' + err);
+    try { ui.alert('期限確認に失敗しました', err, ui.ButtonSet.OK); } catch (e2) {}
+  }
+}
+
+/** 日次トリガー設置（期限リマインドメール用） */
+function menuYahooOauthInstallExpiryTrigger() {
+  var ui = SpreadsheetApp.getUi();
+  yahooOauthRemoveExpiryTriggers_();
+  ScriptApp.newTrigger(YAHOO_OAUTH_TRIGGER_HANDLER_)
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .create();
+  Logger.log('[menuYahooOauthInstallExpiryTrigger] state=DONE handler=' + YAHOO_OAUTH_TRIGGER_HANDLER_);
+  ui.alert('Yahoo認証期限の日次トリガーを設置しました（毎日9時前後・' + YAHOO_OAUTH_TRIGGER_HANDLER_ + '）。');
+}
+
+/** 日次トリガー削除 */
+function menuYahooOauthRemoveExpiryTrigger() {
+  var n = yahooOauthRemoveExpiryTriggers_();
+  Logger.log('[menuYahooOauthRemoveExpiryTrigger] removed=' + n);
+  try {
+    SpreadsheetApp.getUi().alert('Yahoo認証期限トリガーを削除しました（' + n + '件）。');
+  } catch (e) {}
+}
+
+/** トリガー本体: 残り少／期限切れ／未記録かつrefreshあり のときだけメール */
+function runYahooOauthExpiryReminderFromTrigger() {
+  var fn = 'runYahooOauthExpiryReminderFromTrigger';
+  Logger.log('[' + fn + '] state=PENDING');
+  try {
+    var info = yahooOauthComputeExpiryInfo_();
+    if (!info.needMail) {
+      Logger.log('[' + fn + '] state=SKIPPED reason=ok daysLeft=' + info.daysLeft);
+      return;
+    }
+    var sent = yahooOauthSendExpiryMail_(info, true);
+    Logger.log('[' + fn + '] state=DONE mailOk=' + sent.ok + ' to=' + (sent.to || '') +
+      ' err=' + (sent.error || ''));
+  } catch (e) {
+    Logger.log('[' + fn + '] state=FAILED ' + ((e && e.message) || e));
+  }
+}
+
+function yahooOauthRemoveExpiryTriggers_() {
+  var n = 0;
+  var list = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].getHandlerFunction() === YAHOO_OAUTH_TRIGGER_HANDLER_) {
+      ScriptApp.deleteTrigger(list[i]);
+      n++;
+    }
+  }
+  return n;
+}
+
+function yahooOauthLoadMapContext_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var mapSheet = ss.getSheetByName(SHEET_NAME_YAHOO_MAP);
+  if (!mapSheet) throw new Error('シート「' + SHEET_NAME_YAHOO_MAP + '」がありません。');
+  var clientId = String(mapSheet.getRange('B12').getValue() || '').trim();
+  var clientSecret = String(mapSheet.getRange('B13').getValue() || '').trim();
+  if (!clientId || !clientSecret) {
+    throw new Error('B12(Client ID) / B13(Client Secret) が空です。');
+  }
+  return { mapSheet: mapSheet, clientId: clientId, clientSecret: clientSecret };
+}
+
+function yahooOauthGetRedirectUri_() {
+  var v = String(PropertiesService.getScriptProperties().getProperty(YAHOO_OAUTH_REDIRECT_PROP_) || '').trim();
+  if (!v) {
+    throw new Error(
+      'Script Properties に ' + YAHOO_OAUTH_REDIRECT_PROP_ + ' を設定してください。\n' +
+        'Yahooアプリ管理に登録した戻り先URLと完全一致が必要です。'
+    );
+  }
+  return v;
+}
+
+function yahooOauthGetScope_() {
+  var v = String(PropertiesService.getScriptProperties().getProperty(YAHOO_OAUTH_SCOPE_PROP_) || '').trim();
+  return v || YAHOO_OAUTH_SCOPE_DEFAULT_;
+}
+
+function yahooOauthExtractCode_(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  var m = s.match(/[?&#]code=([^&]+)/i);
+  if (m) return decodeURIComponent(m[1]);
+  if (/^[A-Za-z0-9_-]+$/.test(s) && s.length >= 6 && s.length <= 128) return s;
+  return '';
+}
+
+function yahooOauthExchangeAuthorizationCode_(ctx, code, redirectUri) {
+  var payload = {
+    grant_type: 'authorization_code',
+    client_id: ctx.clientId,
+    client_secret: ctx.clientSecret,
+    redirect_uri: redirectUri,
+    code: code
+  };
+  var res = UrlFetchApp.fetch(YAHOO_AUTH_URL, {
+    method: 'post',
+    payload: payload,
+    muteHttpExceptions: true
+  });
+  var body = res.getContentText();
+  if (res.getResponseCode() !== 200) {
+    throw new Error('Token交換失敗 HTTP ' + res.getResponseCode() + ': ' + body.substring(0, 400));
+  }
+  return JSON.parse(body);
+}
+
+function yahooOauthTodayTokyo_() {
+  return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
+function yahooOauthParseAcquired_(raw) {
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    return Utilities.formatDate(raw, 'Asia/Tokyo', 'yyyy-MM-dd');
+  }
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  var m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (!m) return '';
+  var y = m[1];
+  var mo = ('0' + m[2]).slice(-2);
+  var d = ('0' + m[3]).slice(-2);
+  return y + '-' + mo + '-' + d;
+}
+
+function yahooOauthExpiryDateFromAcquired_(acquiredYmd) {
+  var parts = String(acquiredYmd).split('-');
+  if (parts.length !== 3) return '';
+  var dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  dt.setDate(dt.getDate() + YAHOO_OAUTH_REFRESH_DAYS_);
+  return Utilities.formatDate(dt, 'Asia/Tokyo', 'yyyy-MM-dd');
+}
+
+function yahooOauthDaysLeft_(acquiredYmd) {
+  var exp = yahooOauthExpiryDateFromAcquired_(acquiredYmd);
+  if (!exp) return null;
+  var ep = exp.split('-');
+  var expDate = new Date(Number(ep[0]), Number(ep[1]) - 1, Number(ep[2]));
+  var todayParts = yahooOauthTodayTokyo_().split('-');
+  var today = new Date(Number(todayParts[0]), Number(todayParts[1]) - 1, Number(todayParts[2]));
+  return Math.round((expDate.getTime() - today.getTime()) / 86400000);
+}
+
+function yahooOauthWarnDays_() {
+  var n = parseInt(String(PropertiesService.getScriptProperties().getProperty(YAHOO_OAUTH_WARN_DAYS_PROP_) || ''), 10);
+  if (!(n >= 0)) n = 7;
+  return n;
+}
+
+function yahooOauthComputeExpiryInfo_() {
+  var ctx = yahooOauthLoadMapContext_();
+  var acquired = yahooOauthParseAcquired_(ctx.mapSheet.getRange(YAHOO_OAUTH_ACQUIRED_CELL_).getValue());
+  var refreshPresent = !!String(ctx.mapSheet.getRange(YAHOO_OAUTH_REFRESH_CELL_).getValue() || '').trim();
+  var warnDays = yahooOauthWarnDays_();
+  var expires = acquired ? yahooOauthExpiryDateFromAcquired_(acquired) : '';
+  var daysLeft = acquired ? yahooOauthDaysLeft_(acquired) : null;
+  var needMail = false;
+  var reason = '';
+  if (!acquired && refreshPresent) {
+    needMail = true;
+    reason = 'acquired_missing';
+  } else if (daysLeft != null && daysLeft <= warnDays) {
+    needMail = true;
+    reason = daysLeft < 0 ? 'expired' : 'within_warn';
+  }
+  return {
+    acquired: acquired,
+    expires: expires,
+    daysLeft: daysLeft,
+    warnDays: warnDays,
+    refreshPresent: refreshPresent,
+    needMail: needMail,
+    reason: reason,
+    mapSheet: ctx.mapSheet
+  };
+}
+
+/**
+ * @param {boolean} silent true=トリガー（連続送信抑制のため同日重複を避ける）
+ * @return {{ok:boolean, to?:string, error?:string}}
+ */
+function yahooOauthSendExpiryMail_(info, silent) {
+  var to = '';
+  try {
+    to = String(info.mapSheet.getRange(YAHOO_OAUTH_MAIL_CELL_).getValue() || '').trim();
+  } catch (e0) {}
+  if (!to) {
+    try {
+      to = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail() || '';
+    } catch (e1) {}
+  }
+  if (!to) {
+    return { ok: false, error: '宛先なし（マッピング B17「成否メール送信宛先」を設定）' };
+  }
+
+  if (silent) {
+    var props = PropertiesService.getScriptProperties();
+    var key = 'YAHOO_OAUTH_LAST_WARN_MAIL_DAY';
+    var today = yahooOauthTodayTokyo_();
+    if (props.getProperty(key) === today + ':' + info.reason) {
+      return { ok: true, to: to, error: 'suppressed_same_day' };
+    }
+    props.setProperty(key, today + ':' + info.reason);
+  }
+
+  var subject = '【Yahoo認証】リフレッシュトークン期限の確認';
+  var body =
+    'Yahoo! ショッピングAPI用 refresh_token の期限リマインドです。\n\n' +
+    '取得日(C14): ' + (info.acquired || '（未記録）') + '\n' +
+    '目安期限（取得日＋' + YAHOO_OAUTH_REFRESH_DAYS_ + '日）: ' + (info.expires || '—') + '\n' +
+    '残り日数: ' + (info.daysLeft == null ? '不明' : info.daysLeft) + '\n' +
+    '理由コード: ' + (info.reason || '') + '\n\n' +
+    '対応: スプレッドシートメニュー「🛒 Yahoo!出品」→「Yahoo再認証（認可コード貼付）」で切れ前に再認可してください。\n' +
+    '（Yahoo公式: 有効期限切れ前の再認可で期限延長。文字列は変わらない場合があります）\n';
+  try {
+    MailApp.sendEmail(to, subject, body);
+    return { ok: true, to: to };
+  } catch (e) {
+    return { ok: false, to: to, error: String((e && e.message) || e) };
+  }
 }
