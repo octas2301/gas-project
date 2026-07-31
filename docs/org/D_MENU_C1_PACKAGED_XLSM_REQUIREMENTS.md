@@ -2,7 +2,7 @@
 
 **文書種別**: 要件定義（**実装承認済・HUMAN_RUN待ち**）  
 **最終更新**: 2026-07-26  
-**状態**: **実装承認済**。次＝HUMAN_RUN実機  
+**状態**: **HPC実機合格／C1-1c SEASONING実装・機械DRY_RUN合格**。次＝吉野家実データDRY_RUN
 **親**: [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §6.1 Da／§6.2 Db（xlsm自動＝C1）  
 **設計参照**: [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) §5  
 **多数決**: [D_MENU_C1_THREE_REVIEW_MAJORITY.md](D_MENU_C1_THREE_REVIEW_MAJORITY.md)  
@@ -32,7 +32,7 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
 | 画像URL | マスタ **`Amazon MAIN URL`（U4）優先**。**空ならスキップ＋ログのみ**（GENERATED／楽天CDNへフォールバックしない）。URL欠落も親一式除外 |
 | 原本 | Drive **06 読取のみ**（破壊禁止） |
 | 出力 | Drive **03 に新規コピー**（既存 PACKAGED 上書き禁止） |
-| Product Type | **HPCのみ（v1）** |
+| Product Type | v1=`HEALTH_PERSONAL_CARE`、C1-1c=`SEASONING`（七味唐辛子）。PT別マップ・指紋を分離 |
 | 失敗単位 | **必須欠落・URL欠落・親子不整合は親SKU一式を出力から除外**。他親は続行可。途中例外はファイル残す＋ログ |
 | DRY_RUN | **必須**（本番前1回以上）。本番トグル分離 |
 | テンプレ検知 | **v1必須**: ヘッダー／属性行指紋不一致 → DRY_RUN警告＋**本番停止**。accepted_values_db は **C2** |
@@ -70,7 +70,7 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
 | 06 原本の上書き | 聖域 |
 | 03 既存 PACKAGED の上書き | 原因追及・復元のため禁止 |
 | **マスタへの書込**（在庫・JAN・価格・URL） | 聖域。C1は読取のみ |
-| FOOD／他 PT | v1外 |
+| FOOD／他 PT | `SEASONING`のみC1-1cで追加。その他PTは別ゲート |
 | GAS での `.xlsm` 直編集 | v1外（POCどおり） |
 | T3 ZIP・ε・U7・楽天CSV・Yahoo.js | 別ゲート |
 | accepted_values_db 本格連携 | **C2** |
@@ -89,8 +89,8 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
 
 | 項目 | 契約 |
 |------|------|
-| テンプレ | HPC純正のみ。行5属性マップ・VBAを壊さない |
-| 行構造（正） | [LV4_HPC_M1_PACKAGED_RUNBOOK.md](LV4_HPC_M1_PACKAGED_RUNBOOK.md)／LV4 §11.5.3: **行5=属性厳守／行6=サンプル維持／行7=親／8行目〜=子**／HPC親の電池2列＝いいえ／ハイライト空 |
+| テンプレ | PT別純正のみ。HPC／SEASONINGのマップ・指紋を混用しない。行5属性マップ・VBAを壊さない |
+| 行構造（正） | HPC: 行7から実データ。SEASONING: **行7注記保持・行8から実データ**。[SEASONING列マップ](D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md) |
 | 親子最小 | **1親＋N子**を一式で出力。子の必須欠落・URL欠落があれば**親一式を書かない** |
 | URL | `Amazon MAIN URL` 優先。**空＝スキップ＋ログ。フォールバック禁止** |
 | テンプレ指紋 | ヘッダー／属性行（行3〜5相当）のハッシュを成功時指紋と比較。不一致 → DRY_RUN警告・**本番停止** |
@@ -150,7 +150,8 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
 | **C1-1b** | 成功相当必須列（マスタ→HPC） | **実装済**（`master_csv` 併読・タックスはマスタ） |
 | **C1-HR** | HUMAN_RUN | 生成OK・**SC再検は未送信SKUで** |
 | **C1-GAS** | GAS薄い案内のみ | 任意・未 |
-| **C1-ε** | FOOD／GAS直編集スパイク | バックログ |
+| **C1-1c** | FOOD系複合テンプレの `SEASONING`（七味唐辛子） | **実装済・機械DRY_RUN合格／実データ待ち** |
+| **C1-ε** | FOOD／他PT・GAS直編集スパイク | バックログ |
 | **C2** | accepted_values_db／深い純正差分 | バックログ |
 
 ---
@@ -159,6 +160,7 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-30 | **C1-1c SEASONING**: 321列複合テンプレ、PT別マップ／指紋、行7注記保持、行8開始。機械DRY_RUN＋HPC回帰合格。 |
 | 2026-07-26 | **C1-1b実装**: マスタCSV併読・必須列埋め・タックスはマスタ。次＝未送信SKUでSC。 |
 | 2026-07-26 | 列マップ下書き追加。SCスモークは必須列不足で不合格（想定内）。次＝C1-1b。 |
 | 2026-07-26 | 実装承認＋`tools/c1_hpc_packaged`。次＝HUMAN_RUN実機。 |

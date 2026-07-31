@@ -1,6 +1,7 @@
 {
   "template_path": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/templates/HEALTH_PERSONAL_CARE.xlsm",
   "generated_csv": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/input/{subBatchId}_GENERATED.csv",
+  "sub_batch_id": "A1_YYYYMMDD_HHMMSS_xxxxxx_B2",
   "master_csv": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/input/master_export.csv",
   "output_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_03",
   "log_dir": "C:/Users/takuy/Downloads/Lv4_Amazon_PACKAGED/out_05",
@@ -9,6 +10,12 @@
   "mode": "dry_run",
   "update_fingerprint_on_match": false,
   "write_dryrun_xlsm": false,
+  "food_seasoning_example": {
+    "template_path": "C:/Users/takuy/Downloads/FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+    "column_map_path": "food_seasoning_column_map.json",
+    "fingerprint_path": "fingerprints/food_seasoning_header_r3_r5.json",
+    "note": "七味唐辛子はSEASONING。実運用時は上位3キーをこの値へ置換し、まずdry_run。"
+  },
   "parent_sku_filter": [],
   "size_map": {},
   "url_override_map": {},
@@ -23,5 +30,5 @@
     "generated_folder_id": "",
     "comment": "generated_folder_id 空なら Drive 名検索／--latest はログの fileUrl 優先"
   },
-  "comment": "C1-1b + fetch(案A)。secrets/ は Git 禁止。初回: c1_fetch_inputs.py --latest"
+  "comment": "C1-1b + fetch(案A) + C1-clean。generated_csv は {subBatchId}。packaged は sub_batch_id または --sub-batch。secrets/ は Git 禁止。"
 }

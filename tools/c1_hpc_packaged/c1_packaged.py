@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-C1 / C1-1b: HPC 純正 xlsm → PACKAGED（ローカル本線）
+C1 / C1-1b: 純正 xlsm → PACKAGED（HPC / FOOD系ローカル本線）
 
 - GENERATED + マスタCSV併読（列名＝マスタ見出し）
 - 必須マスタ欠落・URL空 → 親SKU一式除外
@@ -60,6 +60,20 @@ def resolve_path(p: str, base: Path) -> Path:
     if not path.is_absolute():
         path = (base / path).resolve()
     return path
+
+
+def expand_sub_batch_id_(path_str: str, sub_batch_id: str) -> str:
+    """config の {subBatchId} を実 ID に置換。プレースホルダ無しならそのまま。"""
+    s = str(path_str or "")
+    if "{subBatchId}" not in s:
+        return s
+    sid = str(sub_batch_id or "").strip()
+    if not sid:
+        raise ValueError(
+            "generated_csv に {subBatchId} があります。"
+            "config.sub_batch_id または --sub-batch を指定してください。"
+        )
+    return s.replace("{subBatchId}", sid)
 
 
 def compute_header_fingerprint(ws, rows: List[int], max_col: int = 300) -> str:
@@ -259,6 +273,9 @@ def _yes_no_jp(raw: str, default: str = "いいえ") -> str:
 def split_keywords(text: str, n: int = 5) -> List[str]:
     parts = re.split(r"[\s　,、/|]+", _cell_str(text))
     parts = [p for p in parts if p]
+    if n <= 1:
+        joined = " ".join(parts)
+        return [joined] if joined else [""]
     out = parts[:n]
     while len(out) < n:
         out.append("")
@@ -295,6 +312,23 @@ def resolve_url(
     if sku and sku in url_override:
         return _cell_str(url_override[sku])
     return _cell_str(master.get("amazon_main_url"))
+
+
+def resolve_sub_urls(master: Dict[str, str], limit: int = 8) -> List[str]:
+    """サブ画像は マスタ Amazon PT URL のみ。GENERATED / 楽天CDN へのフォールバック禁止。"""
+    raw = _cell_str(master.get("amazon_pt_url"))
+    if not raw:
+        return []
+    out: List[str] = []
+    for part in re.split(r"[|\n,]+", raw):
+        url = part.strip()
+        if not url or not url.lower().startswith("http"):
+            continue
+        if url not in out:
+            out.append(url)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def resolve_size(row: Dict[str, str], size_map: Dict[str, str], master: Dict[str, str]) -> str:
@@ -366,6 +400,7 @@ def build_row_attrs(
     list_price_override: Dict[str, str],
     is_parent: bool,
     parent_sku: str,
+    colmap: dict,
     master_index: Optional[Dict[str, Dict[str, str]]] = None,
     list_price_from_children: Optional[List[str]] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -396,8 +431,8 @@ def build_row_attrs(
     if not origin:
         return None, "マスタ 原産国 空"
 
-    unit_count = _cell_str(master.get("unit_count"))
-    unit_uom = _cell_str(master.get("unit_uom"))
+    unit_count = _cell_str(master.get("unit_count")) or _cell_str(defaults.get("unit_count"))
+    unit_uom = _cell_str(master.get("unit_uom")) or _cell_str(defaults.get("unit_uom"))
     if not unit_count or not unit_uom:
         return None, "マスタ ユニット数/単位 空"
 
@@ -417,7 +452,8 @@ def build_row_attrs(
         _cell_str(master.get("bullet4")) or bullet1,
         _cell_str(master.get("bullet5")) or bullet1,
     ]
-    kws = split_keywords(master.get("keywords") or "")
+    kw_slots = int(colmap.get("keyword_max_slots") or 5)
+    kws = split_keywords(master.get("keywords") or "", n=kw_slots)
 
     heat = _yes_no_jp(master.get("heat") or "", defaults.get("heat", "いいえ"))
     liquid = _yes_no_jp(master.get("liquid") or "", defaults.get("liquid", "いいえ"))
@@ -434,10 +470,29 @@ def build_row_attrs(
     if not list_price:
         return None, "税込み参考価格（定価）が数字でない。子SKU行の定価か list_price_override_map を数字に"
     ingredients = _cell_str(master.get("ingredients"))
+    passthrough: Dict[str, str] = {}
+    for key in colmap.get("passthrough_fields") or []:
+        value = _cell_str(master.get(key)) or _cell_str(defaults.get(key))
+        if value:
+            passthrough[key] = value
+
+    missing_extra = []
+    for key in colmap.get("required_master_fields") or []:
+        if key in {
+            "mfr_name", "bullet1", "tax_code", "origin",
+            "unit_count", "unit_uom",
+        }:
+            continue
+        value = _cell_str(master.get(key)) or _cell_str(defaults.get(key))
+        if not value:
+            missing_extra.append(key)
+    if missing_extra:
+        return None, "マスタ必須項目空: " + ",".join(missing_extra)
 
     return {
         "sku": sku,
         "url": url,
+        "sub_urls": resolve_sub_urls(master),
         "title": title,
         "price": price,
         "size": size or None,
@@ -456,6 +511,7 @@ def build_row_attrs(
         "unit_uom": unit_uom,
         "list_price": list_price,
         "ingredients": ingredients or None,
+        "passthrough": passthrough,
         "shipping": resolve_shipping(gen_row, defaults),
         "inventory": _cell_str(gen_row.get("inventory") or "0"),
     }, None
@@ -469,6 +525,7 @@ def evaluate_parent(
     list_price_override: Dict[str, str],
     master_index: Dict[str, Dict[str, str]],
     defaults: dict,
+    colmap: dict,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
     parent_row = bundle.get("parent")
     children = bundle.get("children") or []
@@ -493,6 +550,7 @@ def evaluate_parent(
             list_price_override,
             False,
             parent_sku,
+            colmap,
             master_index=master_index,
         )
         if attrs is None:
@@ -510,6 +568,7 @@ def evaluate_parent(
         list_price_override,
         True,
         parent_sku,
+        colmap,
         master_index=master_index,
         list_price_from_children=child_prices,
     )
@@ -551,6 +610,8 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "browse", defaults["browse"])
         setc(r, "mfr_name", attrs["mfr_name"])
         setc(r, "main_image_url", attrs["url"])
+        for i, sub_url in enumerate(attrs.get("sub_urls") or []):
+            setc(r, "other_image%d" % (i + 1), sub_url)
         setc(r, "desc", attrs["desc"])
         specs = attrs.get("specs") or []
         for i, key in enumerate(["spec1", "spec2", "spec3", "spec4", "spec5"]):
@@ -563,26 +624,28 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "color", attrs.get("color"))
         setc(r, "size", attrs.get("size"))
         setc(r, "mfr_part", attrs.get("mfr"))
-        setc(r, "import_type", defaults["import_type"])
-        setc(r, "exclusive", defaults["exclusive"])
-        setc(r, "heat", attrs.get("heat") or defaults["heat"])
+        setc(r, "import_type", defaults.get("import_type"))
+        setc(r, "exclusive", defaults.get("exclusive"))
+        setc(r, "heat", attrs.get("heat") or defaults.get("heat"))
         setc(r, "ingredients", attrs.get("ingredients"))
         setc(r, "unit_count", attrs.get("unit_count"))
         setc(r, "unit_uom", attrs.get("unit_uom"))
-        setc(r, "condition", defaults["condition"])
+        setc(r, "condition", defaults.get("condition"))
         setc(r, "list_price", attrs.get("list_price"))
         setc(r, "tax_code", attrs.get("tax_code"))
-        setc(r, "fulfillment", defaults["fulfillment"])
+        setc(r, "fulfillment", defaults.get("fulfillment"))
         inv = attrs.get("inventory") or "0"
         setc(r, "inventory", int(inv) if str(inv).isdigit() else inv)
         price = attrs["price"]
         setc(r, "price", float(price) if _is_number(price) else price)
         setc(r, "shipping", attrs.get("shipping") or defaults.get("shipping"))
         setc(r, "origin", attrs.get("origin"))
-        setc(r, "battery_needed", defaults["battery_needed"])
-        setc(r, "battery_included", defaults["battery_included"])
-        setc(r, "hazmat", defaults["hazmat"])
-        setc(r, "liquid", attrs.get("liquid") or defaults["liquid"])
+        setc(r, "battery_needed", defaults.get("battery_needed"))
+        setc(r, "battery_included", defaults.get("battery_included"))
+        setc(r, "hazmat", defaults.get("hazmat"))
+        setc(r, "liquid", attrs.get("liquid") or defaults.get("liquid"))
+        for key, value in (attrs.get("passthrough") or {}).items():
+            setc(r, key, value)
 
     r = start_row
     write_common(r, family["parent"], "親", None)
@@ -601,11 +664,12 @@ def _is_number(s: str) -> bool:
         return False
 
 
-def clear_data_rows(ws, start_row: int, max_col: int = 228) -> None:
+def clear_data_rows(ws, start_row: int, max_col: Optional[int] = None) -> None:
     if ws.max_row < start_row:
         return
+    clear_to = int(max_col or ws.max_column)
     for r in range(start_row, ws.max_row + 1):
-        for c in range(1, max_col + 1):
+        for c in range(1, clear_to + 1):
             ws.cell(r, c).value = None
 
 
@@ -621,11 +685,13 @@ def build_mapping_report(families: List[Dict[str, Any]], colmap: dict) -> List[d
                 "taxCode": p.get("tax_code"),
                 "mfrName": p.get("mfr_name"),
                 "mainImageCol": cols.get("main_image_url"),
+                "subImageCount": len(p.get("sub_urls") or []),
                 "children": [
                     {
                         "sku": c["sku"],
                         "size": c.get("size"),
                         "urlPresent": bool(c.get("url")),
+                        "subImageCount": len(c.get("sub_urls") or []),
                         "taxCode": c.get("tax_code"),
                     }
                     for c in fam["children"]
@@ -635,7 +701,7 @@ def build_mapping_report(families: List[Dict[str, Any]], colmap: dict) -> List[d
     return report
 
 
-def run(config_path: Path, mode: str) -> int:
+def run(config_path: Path, mode: str, sub_batch_id: Optional[str] = None) -> int:
     cfg = _load_json(config_path)
     base = config_path.parent
 
@@ -643,8 +709,9 @@ def run(config_path: Path, mode: str) -> int:
     if mode not in ("dry_run", "prod"):
         raise SystemExit("mode は dry_run または prod")
 
+    sid = str(sub_batch_id or cfg.get("sub_batch_id") or "").strip()
     template_path = resolve_path(cfg["template_path"], base)
-    generated_csv = resolve_path(cfg["generated_csv"], base)
+    generated_csv = resolve_path(expand_sub_batch_id_(cfg["generated_csv"], sid), base)
     output_dir = resolve_path(cfg["output_dir"], base)
     log_dir = resolve_path(cfg.get("log_dir") or str(output_dir), base)
     fp_path = resolve_path(cfg.get("fingerprint_path") or "fingerprints/hpc_header_r3_r5.json", base)
@@ -703,6 +770,7 @@ def run(config_path: Path, mode: str) -> int:
             list_price_override,
             master_index,
             defaults,
+            colmap,
         )
         if fam is None:
             excluded.append({"parentSku": parent_sku, "reason": reason or "unknown"})
@@ -716,7 +784,8 @@ def run(config_path: Path, mode: str) -> int:
         raise RuntimeError("シートがありません: %s / %s" % (sheet_name, wb_probe.sheetnames))
     ws_probe = wb_probe[sheet_name]
     fp_rows = colmap.get("header_fingerprint_rows") or [3, 4, 5]
-    current_fp = compute_header_fingerprint(ws_probe, fp_rows)
+    fingerprint_max_col = int(colmap.get("fingerprint_max_col") or ws_probe.max_column)
+    current_fp = compute_header_fingerprint(ws_probe, fp_rows, fingerprint_max_col)
     wb_probe.close()
 
     fp_status = "missing_baseline"
@@ -737,7 +806,8 @@ def run(config_path: Path, mode: str) -> int:
     report = {
         "runId": run_id,
         "mode": mode,
-        "version": "C1-1b",
+        "version": "C1-1c",
+        "profile": colmap.get("profile") or defaults.get("product_type") or "HPC",
         "subBatchId": sub_batch_id,
         "templatePath": str(template_path),
         "generatedCsv": str(generated_csv),
@@ -748,6 +818,7 @@ def run(config_path: Path, mode: str) -> int:
             "sha256": current_fp,
             "baselinePath": str(fp_path),
             "rows": fp_rows,
+            "maxCol": fingerprint_max_col,
         },
         "acceptedParents": [f["parent_sku"] for f in accepted],
         "excludedParents": excluded,
@@ -794,10 +865,20 @@ def run(config_path: Path, mode: str) -> int:
 
     suffix = "_DRYRUN" if mode == "dry_run" else ""
     parent_tag = accepted[0]["parent_sku"] if len(accepted) == 1 else ("n%d" % len(accepted))
-    out_name = "%s_PACKAGED_HPC_%s%s.xlsm" % (sub_batch_id, parent_tag, suffix)
+    output_label = re.sub(
+        r"[^A-Za-z0-9_-]+",
+        "_",
+        str(colmap.get("output_label") or defaults.get("product_type") or "HPC"),
+    ).strip("_") or "C1"
+    out_name = "%s_PACKAGED_%s_%s%s.xlsm" % (
+        sub_batch_id, output_label, parent_tag, suffix
+    )
     out_path = output_dir / out_name
     if out_path.exists():
-        out_path = output_dir / ("%s_PACKAGED_HPC_%s_%s%s.xlsm" % (sub_batch_id, parent_tag, _utc_stamp(), suffix))
+        out_path = output_dir / (
+            "%s_PACKAGED_%s_%s_%s%s.xlsm" %
+            (sub_batch_id, output_label, parent_tag, _utc_stamp(), suffix)
+        )
 
     work = output_dir / ("_work_%s.xlsm" % run_id)
     shutil.copy2(template_path, work)
@@ -808,7 +889,7 @@ def run(config_path: Path, mode: str) -> int:
         ws = wb[sheet_name]
         data_start = int(colmap.get("data_start_row") or 7)
         sample_row = int(colmap.get("sample_row") or 6)
-        clear_data_rows(ws, data_start)
+        clear_data_rows(ws, data_start, int(colmap.get("clear_max_col") or ws.max_column))
         row_cursor = data_start
         for fam in accepted:
             row_cursor = write_family_rows(ws, row_cursor, fam, colmap, defaults)
@@ -836,9 +917,14 @@ def run(config_path: Path, mode: str) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="C1 HPC PACKAGED builder (C1-1b)")
+    parser = argparse.ArgumentParser(description="C1 PACKAGED builder (HPC / FOOD系)")
     parser.add_argument("--config", required=True, help="config.json パス")
     parser.add_argument("--mode", choices=["dry_run", "prod"], default=None)
+    parser.add_argument(
+        "--sub-batch",
+        default=None,
+        help="generated_csv の {subBatchId} 置換（config.sub_batch_id より優先）",
+    )
     parser.add_argument("--write-fingerprint", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
@@ -862,7 +948,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         wb = openpyxl.load_workbook(template_path, keep_vba=True, data_only=False)
         ws = wb[colmap.get("sheet_name") or "テンプレート"]
         rows = colmap.get("header_fingerprint_rows") or [3, 4, 5]
-        sha = compute_header_fingerprint(ws, rows)
+        max_col = int(colmap.get("fingerprint_max_col") or ws.max_column)
+        sha = compute_header_fingerprint(ws, rows, max_col)
         wb.close()
         _save_json(
             fp_path,
@@ -871,13 +958,22 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "rows": rows,
                 "templatePath": str(template_path),
                 "recordedAt": datetime.now(timezone.utc).isoformat(),
-                "productType": "HEALTH_PERSONAL_CARE",
+                "maxCol": max_col,
+                "productType": (
+                    colmap.get("profile") or
+                    (colmap.get("defaults") or {}).get("product_type") or
+                    "HEALTH_PERSONAL_CARE"
+                ),
             },
         )
         LOG.info("指紋を保存: %s sha256=%s", fp_path, sha)
         return 0
 
-    return run(config_path, args.mode or cfg.get("mode") or "dry_run")
+    return run(
+        config_path,
+        args.mode or cfg.get("mode") or "dry_run",
+        sub_batch_id=args.sub_batch,
+    )
 
 
 if __name__ == "__main__":
