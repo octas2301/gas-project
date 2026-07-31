@@ -56,15 +56,25 @@ function menuApprovalQueueCreateCandidates() {
 }
 
 /**
- * メニュー: 承認WebのURL案内（デプロイは人間作業）
+ * 承認WebのURL（未デプロイ等なら空文字）。
+ * @return {string}
  */
-function menuApprovalQueueShowWebHelp() {
+function approvalQueueBuildWebUrl_() {
   var url = '';
   try {
     url = ScriptApp.getService().getUrl() || '';
   } catch (e) {
     url = '';
   }
+  if (!url) return '';
+  return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'action=approval_queue';
+}
+
+/**
+ * メニュー: 承認WebのURL案内（デプロイは人間作業）
+ */
+function menuApprovalQueueShowWebHelp() {
+  var webUrl = approvalQueueBuildWebUrl_();
   var body =
     '【Lv1 承認キュー】\n' +
     '1) Script Properties:\n' +
@@ -74,8 +84,8 @@ function menuApprovalQueueShowWebHelp() {
     '3) 既存の削除用Webアプリを再デプロイ（または新規）\n' +
     '4) スマホで次のURLを開く（末尾のクエリ必須）:\n' +
     '   {ウェブアプリURL}?action=approval_queue\n\n' +
-    (url
-      ? ('承認用URL例:\n' + url + (url.indexOf('?') >= 0 ? '&' : '?') + 'action=approval_queue')
+    (webUrl
+      ? ('承認用URL:\n' + webUrl)
       : '（未デプロイ、またはURL取得不可）');
   try {
     SpreadsheetApp.getUi().alert('承認Webの使い方', body, SpreadsheetApp.getUi().ButtonSet.OK);

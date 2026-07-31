@@ -1,7 +1,7 @@
 # Lv4 Amazon バルク掲載（2トラック）— 要件定義
 
 **文書種別**: 要件定義ドラフト（**コード未実装**・実装は別承認）  
-**最終更新**: 2026-07-20  
+**最終更新**: 2026-07-30
 **親**: [LEVELLED_IMPLEMENTATION_PLAN.md](LEVELLED_IMPLEMENTATION_PLAN.md) ・ [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [LV1_APPROVAL_QUEUE_REQUIREMENTS.md](LV1_APPROVAL_QUEUE_REQUIREMENTS.md) ・ [LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md](LV2_RAKUTEN_ORCHESTRATION_REQUIREMENTS.md) ・ [LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md](LV3_YAHOO_ORCHESTRATION_REQUIREMENTS.md) ・ [PHASE0_THREE_REVIEW_MAJORITY.md](PHASE0_THREE_REVIEW_MAJORITY.md) §4.2・§4.3  
 **三点レビュー**: [LV4_THREE_REVIEW_MAJORITY.md](LV4_THREE_REVIEW_MAJORITY.md)（2026-07-20・条件付き→社長確定反映済）  
 **列メモ（参考）**: [AMAZON_REQUIREMENTS.md](../AMAZON_REQUIREMENTS.md)（列メモは維持。**トラック別識別子・在庫書込方針は本ドキュメントが正**）  
@@ -122,6 +122,8 @@
 
 ※ **着手依存**: `ApprovalQueue` に amazon（親＋子）抽出を追加する。空のままでは候補0。
 
+**当面のD手動特則（2026-07-30）**: AIが対象を自動決定しない期間は、人間が付けた子SKU `出品CK` を承認①相当として、DからB（新規）／A（既存相乗り）を実行できる。ApprovalQueue経路は削除せず、AIレ点・無人実行・トリガー接続前に再接続する。詳細は [LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)。
+
 ### 3.1.1 実行直前再検証（生成前）
 
 不足時は **ファイルを生成しない**（ログ＋スキップ）:
@@ -131,7 +133,7 @@
 | 承認 | 取消・REJECTED になっていない |
 | 親子 | 親SKU存在・承認済み子が1件以上（B） |
 | 価格 | `販売価格amazon` が有効 |
-| 識別子 | A: ASIN必須／B: GTIN列空＋免除カテゴリOK・ブランド=ノーブランド品。**出品者SKU=子SKU**。**メーカー型番=`メーカー品番`（空→子SKU）** |
+| 識別子 | A: N列`ASINコード`必須・**出品者SKU=`Amazon相乗りSKU`**／B: GTIN列空＋免除カテゴリOK・ブランド=ノーブランド品・**出品者SKU=子SKU**。**メーカー型番=`メーカー品番`（空→子SKU）** |
 | 画像 | メイン画像URLが空でない（到達確認の厳格度は§11） |
 | 自己配送 | 配送テンプレート名＝`送料無料パターン`（変更可）。リードタイム列は初版なし |
 | 販売中 | 在庫>0はスキップ |
@@ -171,6 +173,7 @@ M1検収は **`TRACK=B` を明示設定**（未設定は実行しない）。ASI
 - **バルクの在庫列**にはヘッダ値をそのまま出す（Q11=A）: `ZERO`→**0**／`ONE`→**1**。未選択も ZERO 扱い  
 - **マスタの出品用「在庫数」へは書き込まない**（共有列による楽天/Yahoo副作用防止）  
 - スキップ判定のためマスタ在庫は **読取のみ**（計算列「在庫数計算」と出品用「在庫数」の区別は Lv3 どおり）  
+- **Dレ点新規（`source=child_ck`）は在庫>0でもスキップしない**（2026-07-30 承認）。別カタログ（ノーブランドセット）を作るため。バルクの在庫列は `inventoryMode` 準拠で 0／1、マスタ在庫は非改変。承認①経路は従来どおり `SKIPPED_IN_STOCK`。戻し: Property `APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK=false`  
 - **販売可能数への引き上げはしない**（承認②）  
 - **販売中SKUの無人上書き（U1）は当面手動・後送り**（Q11b=A）。既に Amazon で売れている（マスタ在庫>0 等でスキップ対象）SKUへの更新バルクは Lv4 では出さない。`inventoryMode` は **新規／再掲載用バルクに載せる在庫値**の話に限る  
 
@@ -190,7 +193,8 @@ M1検収は **`TRACK=B` を明示設定**（未設定は実行しない）。ASI
 | 識別（B） | **マスタ JAN は残す**（卸コード等・他モール用）。**Amazon バルクの GTIN／商品コード列だけ空** | 楽天／Yahoo と同じ商品でも Amazon ノーブランドは JAN なし登録。**Lv4はマスタ JAN を消さない**。GTIN免除必須。[AMAZON_REQUIREMENTS.md](../AMAZON_REQUIREMENTS.md) の「JAN必須」は **Bのバルク出力では本正本が上書き** |
 | セット | `A.セット商品数` | バリエーション属性の材料 |
 | ブランド（B） | 固定値 `ノーブランド品` | Keepaのbrandは使わない |
-| 出品者SKU | **子SKU**（Q10b） | 親行はテンプレ仕様に従い親SKUまたは空 |
+| 出品者SKU（B/M1・新規） | **子SKU**（Q10b） | 親行はテンプレ仕様に従い親SKUまたは空 |
+| 出品者SKU（A/M2・既存相乗り） | **`Amazon相乗りSKU`（NF列）** | 子SKU中央の識別値をN列ASINへ置換し、`s1/f1` を `as1/af1` へ変換。dry_run VALID/issues=0後にGAS保存、prodは保存値を再利用 |
 | メーカー型番（B） | マスタ **`メーカー品番`**（なければ `型番`）。**空なら子SKUにフォールバック**（Q10b=B） | 取得ロジック（15-⑤／⑥）は見直してよい。空のまま出さない |
 
 列メモの詳細は [AMAZON_REQUIREMENTS.md](../AMAZON_REQUIREMENTS.md)。Product Type 必須列対応表はテンプレ固定後に本ドキュメントへ追記（§11）。
@@ -286,7 +290,8 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 - シート名: **`▼Lv4実行ログ(Amazon)`**（確定）  
 - 粒度: **`subBatchId` 単位**（親SKU一覧・track・ファイル名・Drive URL・`GENERATED_at`・`PACKAGED_at`・`UPLOADED_OK_at`・メモ）  
 - メニュー: **21-③ アップロード成功を記録**／**21-④ 失敗記録**／**21-⑤ 修正登録（親子付け直し）を記録**（`NEEDS_VARIATION_LINK`／`CORRECTIVE_UPDATE`・§6.1.2。実装後続可・手順は先に正本化）  
-- **GTIN免除証跡（Q13）**: 同シートの `recordType=EXEMPTION` 行に **カテゴリ実値または `*`**／`ノーブランド品`／**承認日**／**証跡URL** をすべて記入。マスタの amazon カテゴリが空の親は B 不可（fail-closed）。テンプレ行の `（カテゴリ or *）` は無効。  
+- **GTIN免除証跡（Q13）**: 同シートの `recordType=EXEMPTION` 行に **カテゴリ実値または `*`**／`ノーブランド品`／**承認日**／**証跡URL** をすべて記入。マスタの amazon カテゴリが空の親は B 不可（fail-closed）。テンプレ行の `（カテゴリ or *）` は無効。
+- **記録手段（2026-07-31 実装）**: メニュー **21-⑭ GTIN免除証跡を記録**。レ点新規の親からカテゴリ実値を検出し、人間が証跡を入力・確認して追記する（手入力も可）。有効な証跡があるカテゴリは追記しない。`*` は Property `APPROVAL_AMAZON_LV4_EXEMPTION_ALL_CATEGORIES=true` のときのみで、追加警告あり。**カテゴリ別記録を原則**とする。  
 - **冪等**: 同一 `batchId`+親+track で最新が `GENERATED`/`UPLOADED_OK`/`PACKAGED` の親は再生成しない。`UPLOAD_FAILED` が最新の親のみ再生成可。`DRY_RUN`（SKIP_EXPORT）と `SKIP` 行はブロック対象外。状態は追記のみ。`subBatchId` は単調増加。  
 - **ブランド（B）**: 免除証跡の brand は **`ノーブランド品` 完全一致**（新規カタログ限定）。  
 - 目的: 原因追及・調査・着手ゲートの検収。Logger と二重でもよいが、シートは人間が追える正本とする  
@@ -351,8 +356,8 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 
 | 項目 | 要件 |
 |------|------|
-| 対象ASIN | マスタ `ASINコード` 等（欠けたら生成停止） |
-| 出品者SKU | 子SKU（または商品管理番号ルール） |
+| 対象ASIN | マスタN列 `ASINコード` のみ（子→同一親の親行）。競合店ASIN／URLは使わない。欠けたら停止 |
+| 出品者SKU | `Amazon相乗りSKU`。未作成時は子SKUから相乗り専用規則で生成し、dry_run VALID/issues=0後に保存 |
 | 価格・在庫 | 価格はマスタ／在庫はバルク内0または1 |
 | コンディション | 新品等の固定値 |
 | 自己配送 | **配送テンプレート**＝`送料無料パターン`（変更可）。リードタイム初版なし |
@@ -361,6 +366,8 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 
 - **ブランド認証**・出品制限 → `SKIPPED_BRAND_GATE`  
 - Category Listings Report は既存SKU更新用途に限定  
+- 新ASIN型 `Amazon相乗りSKU` と旧JAN型子SKUは別sellerSku。各経路で同一sellerSkuが既存なら更新、無ければ新規登録する。別sellerSku同士は相互に上書きしない
+- 保存済み `Amazon相乗りSKU` 内のASINと今回確定ASINが不一致なら自動上書きせず停止
 
 ---
 
@@ -666,6 +673,7 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-27 | **M2キックオフ**: [LV4_M2_TRACK_A_GAP_ANALYSIS.md](LV4_M2_TRACK_A_GAP_ANALYSIS.md)／承認・HUMAN_RUN下書き。GENERATED(A)骨格あり・PACKAGED未。実装は承認後。 |
 | 2026-07-24 | §10 に本線D参照（[D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md)）と21-⑥を追記。 |
 | 2026-07-23 | **§11.0 HPCクローズ**: §11-1〜8・10およびU5を閉じる。正本=`…titlefix`＋U5（在庫0）。画像＝ZIP優先。FOOD／他PT／M2／21-⑤は別ゲート。 |
 | 2026-07-22 | **FOOD調査＋成功値DB方針**: `FOOD.xlsm` は新規用として利用可（行7=プリファレンス注記・実データ8行〜・テーマ英語ENUM）。§11.5.4を確定方針化。種子JSONは `Lv4_Amazon_PACKAGED/accepted_values_db/`。 |
@@ -679,7 +687,8 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 | 2026-07-20 | **実装着手（承認済）**: `AmazonApprovalExport.js` 新規／`ApprovalQueue` amazon加算／メニュー21。コード実装。 |
 | 2026-07-20 | **第3回三点レビュー後**: TRACK未設定＝実行しない／Lv1 amazon抽出は同一実装チケット必須／列メモとの相互注記。 |
 | 2026-07-20 | **Q11–Q14反映**: inventoryMode同期・販売中上書きは手動維持・部分失敗は親SKU単位・GTIN証跡は状態シート・配送テンプレ=送料無料パターン・リードタイム初版なし。 |
-| 2026-07-20 | **Q7–Q10b反映**: Lv1は親＋子個別承認・3モール同一バッチ（切り分けはmall+runId）。TRACK=BはASIN無視で強制B。出品者SKU=子SKU／メーカー型番=メーカー品番（空→子SKU）。 |
+| 2026-07-30 | **D手動レ点特則・sellerSku例外**: 当面は人間の子SKUレ点を承認①相当。B/M1は子SKU、A/M2は`Amazon相乗りSKU`。同一sellerSkuは更新、未登録は新規登録。 |
+| 2026-07-20 | **Q7–Q10b反映**: Lv1は親＋子個別承認・3モール同一バッチ（切り分けはmall+runId）。TRACK=BはASIN無視で強制B。B/M1の出品者SKU=子SKU／メーカー型番=メーカー品番（空→子SKU）。 |
 | 2026-07-20 | **社長Q&A反映（§17）**: 純正xlsm・D-1（GAS+ローカルPACKAGED）・BはマスタJAN残しGTIN列のみ空・M1バリエーションのみ・失敗後同一subBatchId上書き＋ログ追記。 |
 | 2026-07-20 | **三点レビュー反映**（[LV4_THREE_REVIEW_MAJORITY.md](LV4_THREE_REVIEW_MAJORITY.md)）。在庫マスタ書込禁止・DONE分離・親SKU抽出・UPLOADED_OK専用シート・GTIN着手ゲート。 |
 | 2026-07-20 | **初版ドラフト**。M1=B／M2=A。Keepa・レポート・推奨値は限定運用。自己配送既定・FBA後送り。コード未実装。 |
@@ -699,7 +708,7 @@ SC: 子のみ単品成功（親SKU未作成／未処理）
 | Q8 | **A**: `TRACK=B` 時は強制 B。マスタ ASIN は無視／オファーしない |
 | Q9 | **A**: 楽天／Yahoo と **同一承認①バッチ**に amazon も載せる（3モール一括承認）。明細 `mall`＋モール別 `runId` で切り分け。切り分け不能時のみ別バッチ（B）をフォールバック |
 | Q10 | メーカー型番 ← マスタ **`メーカー品番`**（取得ロジック見直し可） |
-| Q10b | **B**: 出品者SKU＝**子SKU**／メーカー型番＝**メーカー品番**（空なら **子SKU** フォールバック） |
+| Q10b | **B/M1の正**: 出品者SKU＝**子SKU**／メーカー型番＝**メーカー品番**（空なら **子SKU** フォールバック）。A/M2は2026-07-30承認の相乗り専用例外 `Amazon相乗りSKU` |
 | Q11 | **A**: 承認①ヘッダ `inventoryMode` をバルク在庫に反映（ZERO→0／ONE→1） |
 | Q11b | **A**: 在庫値の話のみ。販売中SKUの無人上書き（U1）は当面手動。Lv4はスキップ維持 |
 | Q12 | **A**: 部分失敗時のやり直し単位＝**親SKU一式**（バリエーションまとめて） |

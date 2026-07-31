@@ -219,7 +219,7 @@ C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 | **U4** | 画像量産 R2／GENERATED・マスタへの URL 書き（xlsm直編集はC1） | U2・T2・T2再検証合格 | **実機合格** → [HUMAN_RUN §0](D_MENU_U4_HUMAN_RUN.md) |
 | **C1** | PACKAGED xlsm ほぼ自動（ローカル／Cursor） | U4・HPC | **要件起草** → [C1要件](D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)／[承認包](LV4_C1_IMPLEMENTATION_APPROVAL.md)。**次＝3者** |
 | **U5** | T3 ZIP 自動 | §6.4。T2再検証後は **急がない** | 保留 |
-| **U6** | M2／21-⑤ 等 | 別ゲート | 未 |
+| **U6** | M2／21-⑤ 等 | **M2 v1実装済**（案L・発汗試験定義）。実機は [D_MENU_M2_HUMAN_RUN.md](D_MENU_M2_HUMAN_RUN.md) | 実機待ち |
 | **U7** | Dc: SC API 連携（将来必須） | Da運用安定後 | 未 |
 
 U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** を提示し社長承認を得る（新規ファイル・複数ファイル・EC 関連の可能性）。

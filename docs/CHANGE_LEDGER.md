@@ -4,6 +4,21 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-07-31 | `c1_packaged.py`／`food_seasoning_column_map.json` | **SEASONING検索KWは1枠**（SC 99016: generic_keywordは最大1回。空白結合。keyword2〜5列マップ削除） | **Git**: 対象差分をrevert。旧5枠分割に戻る |
+| 2026-07-31 | `AmazonDriveImageExport.js`／`コード.js` autoU4／U4 HUMAN_RUN | **楽天サブ→R2流用**（PT参照空かつ非AMAZON_ONLYなら `楽天サブ画像1〜8` を取得→R2→`Amazon PT URL`。D自動U4も楽天サブ不足を検知。MAINファイル無し時は既存MAIN URL維持可） | **Git**: 対象差分をrevert。autoU4判定は旧「ptRef無しならスキップ」に戻る |
+| 2026-07-31 | `AmazonDriveImageExport.js`／`コード.js`（D新規）／`c1_packaged.py`／SEASONING列マップ／U4・C1 docs | **サブ画像＋商品の形式＋U4自動化**（U4はREUSE_RAKUTENでもPTをR2へ→`Amazon PT URL`（親へも伝播）、D新規はGENERATED前にU4自動実行、C1はPT URLを24〜31列へ、`item_form` 既定=粉末） | **Property**: `AMAZON_U4_AUTO_IN_D_ENABLED=false` でD自動U4のみ停止（21-⑦手動は従来どおり）。**Git**: 対象差分をrevert。列マップは `item_form`／`other_image1..8` の行を削れば旧挙動 |
+| 2026-07-31 | `AmazonApprovalExport.js`／`コード.js` 21-⑮⑯⑰／D_ENTRY HUMAN_RUN §1e | **SC処理サマリ自動記録**（監視フォルダ＋時間主導トリガー→ファイル名から subBatchId→`UPLOADED_OK`／`UPLOAD_FAILED`→`_処理済`退避） | **Property**: `APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED=false` で即停止。**21-⑰** でトリガー削除。**Git**: 当該差分revert＋メニュー3行削除。誤記録行はシート上で削除 |
+| 2026-07-31 | `AmazonApprovalExport.js`／D_ENTRY HUMAN_RUN | **21-⑭ 証跡おすすめ**（同カテゴリマスタASIN→過去成功文面。OKで記録／Cancelで手入力） | **Git**: 当該差分revert |
+| 2026-07-31 | `AmazonApprovalExport.js`／`コード.js` 21-⑭／Lv4正本／D_ENTRY HUMAN_RUN | **GTIN免除証跡の記録メニュー**（レ点カテゴリ検出→人間確認→EXEMPTION追記。既存証跡は追記せず、`*` はProperty＋警告） | **Git**: 対象差分をrevert＋メニュー行削除。誤記録した EXEMPTION 行はシート上で削除（追記のみのため他行に影響なし） |
+| 2026-07-30 | `AmazonApprovalExport.js`／レ点本線承認包／Lv4正本／D_ENTRY HUMAN_RUN | **Dレ点新規は在庫>0でもGENERATED**（別カタログのため。承認①経路は従来どおりスキップ／マスタ在庫非改変） | **Property**: `APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK=false`。**Git**: 対象差分をrevert |
+| 2026-07-30 | `コード.js`／`AmazonImageMatrixExport.js`／U2 docs | **Amazon画像の旧sheet誤紐付け防止**（U2時は楽天画像0件でもC再生成、②で現在レ点／sheet完全一致ゲート） | **Git**: 対象差分をrevert。`AMAZON_IMAGE_U2_ENABLED=false` |
+| 2026-07-30 | `c1_packaged.py`／SEASONING列マップ・指紋／C1 docs | **C1-1c SEASONING**（新321列テンプレ、唐辛子ノード、行7保持・行8開始、PT別出力） | **Git**: 対象差分をrevert。HPCマップは維持 |
+| 2026-07-30 | `AmazonApprovalExport.js`／`コード.js`／D_ENTRY docs | **同一レ点行を新規＋相乗りへ同時出品**（N列分割を廃止。識別子は子SKU／Amazon相乗りSKUで分離） | **Git**: revert。Property false |
+| 2026-07-30 | D_ENTRY HUMAN_RUN／PHASE／HANDOVER／承認包 | **D相乗り自己発 dry_run／prod 実機合格記録**（`…48as12`／B084RJSH7W） | **Git**: revert docs。Propertyは作業後false |
+| 2026-07-30 | `コード.js`／`AmazonApprovalExport.js`／`AmazonSpapiPut.js`／HUMAN_RUN | **D相乗り修正**（Dで自己発/FBA選択、X非依存、ASIN済みSKUそのまま、在庫>0でも送信0） | **Git**: 対象差分をrevert。Propertyをfalseへ |
+| 2026-07-30 | `コード.js`／`AmazonApprovalExport.js`／`AmazonSpapiPut.js`／レ点本線docs | **Dレ点本線＋Amazon相乗りSKU実装**（新規／相乗り同時、N列ASINのみ、NF列VALID後保存、prod再利用） | **Git**: 対象差分をrevert。`APPROVAL_AMAZON_LV4_ENABLED=false`／`APPROVAL_AMAZON_SPAPI_PUT_ENABLED=false`。承認①メニューへ戻す |
+| 2026-07-30 | レ点本線承認包／憲章／承認マトリクス／Lv4正本／商品マスタ要件／PHASE／HANDOVER | **3者多数決反映**（人間レ点＝当面承認①相当、A/M2専用Amazon相乗りSKU、フル＋相乗りprod許可）。コードなし | **Git**: revert docs。実装前のためProperty／GAS影響なし |
+| 2026-07-29 | `コード.js` Dラジオ／offer facade／D_ENTRY HUMAN_RUN／PHASE | **A（D入口版）実装**（既存相乗りを D から呼出） | **Git**: revert。要 clasp push |
 | 2026-07-29 | `LV4_SPAPI_D_ENTRY_APPROVAL` §6／PHASE／HANDOVER | **A（D入口版）社長承認**（実装可・コードなし） | **Git**: revert docs |
 | 2026-07-29 | `LV4_SPAPI_D_ENTRY_APPROVAL`（新規）／PHASE／HANDOVER | **A（D入口版）承認起草**（Dラジオで新規／既存相乗り・コードなし） | **Git**: revert docs |
 | 2026-07-29 | GAS PUT HUMAN_RUN／第2段承認／PHASE／HANDOVER | **v1.4 第2段 実機合格記録**（21-⑫ VALID／21-⑬ ACCEPTED） | **Git**: revert docs |

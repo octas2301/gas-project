@@ -53,7 +53,7 @@
 | **再生成** | `generateAiImageMatrix` の `clear()` 後、**マスタ→sheet へ復元** |
 | **MAIN 出口** | Drive `02\{sellerSku}.MAIN.jpg`（**コピー**。必須） |
 | **白抜き候補** | **Amazon 用ソースフォルダ**（楽天 `DRIVE_IMAGE_SOURCE_FOLDER_ID` と分離） |
-| サブ `REUSE_RAKUTEN` | マスタ「楽天サブ画像1〜n」→ PT01…（中身再判定なし）。正本はマスタ列優先 |
+| サブ `REUSE_RAKUTEN` | マスタ「楽天サブ画像1〜n」→ U4 が R2 へ上げ `Amazon PT URL`（中身再判定なし）。**マッチングsheetの Amazon PT ドラッグは不要**（2026-07-31）。正本はマスタ列優先 |
 | サブ `AMAZON_ONLY` | **マッチング sheet で PT 紐付け**が本線。`02` 手置きは例外・復旧のみ |
 | フォールバック | REUSE だが楽天サブ0枚 → AMAZON_ONLY（ログ） |
 | モード粒度 | **子SKU単位を優先可能**（親一括のみでは不足しうる） |
@@ -117,6 +117,8 @@ Drive 02（Folder ID 既定: 1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84）
 | 3 | モード | 子SKU単位を優先可能。REUSE／ONLY |
 | 4 | ONLY 時の PT 枠 | **sheet 本線** |
 | 5 | 「Drive 02 へ出力」 | 楽天 R-Cabinet アップと **別ボタン**。コピー出力 |
+| 6 | Amazon単独のsheet生成 | `AMAZON_IMAGE_U2_ENABLED=true` なら、楽天未整理画像0件でも現在のレ点から C がsheetを再生成する |
+| 7 | 旧sheet誤紐付け防止 | C-Amazon②開始前に、現在のレ点対象とsheetの親子SKUを完全照合。不一致は候補配置せず安全停止 |
 
 **人間の手順（MAIN）**
 
@@ -185,6 +187,7 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 - [x] MAIN＝sheet＋マスタ永続＋再生成復元（③列追加・更新行=2）  
 - [x] `02` コピー出力・命名（④ MAIN成功=1）  
+- [x] Amazon U2有効時の楽天画像0件続行＋C-Amazon②のレ点／sheet不一致安全停止
 - [ ] ONLY PT＝sheet（本試験は `REUSE_RAKUTEN`／PT=0。ONLY は別サンプルで可）  
 - [x] 楽天／Yahoo 経路退行なし（本試験範囲：楽天アップ未実行・Amazon枠のみ）  
 - [x] HUMAN_RUN 実機合格  
@@ -218,6 +221,7 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-30 | Amazon単独時は楽天画像0件でも C 続行。C-Amazon②に現在レ点／sheet親子SKUの完全一致ゲートを追加。 |
 | 2026-07-25 | **実機合格**記録。C子レ点・候補`07`。 |
 | 2026-07-25 | U2 v1 実装: `AmazonImageMatrixExport.js`＋Cメニュー。HUMAN_RUN。 |
 | 2026-07-25 | 三点採用＋社長回答反映。マスタ永続／復元、ONLY=sheet、候補フォルダ分離、§3.2制約、POC整合。 |

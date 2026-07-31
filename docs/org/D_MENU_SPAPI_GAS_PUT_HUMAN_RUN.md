@@ -17,7 +17,8 @@
 | **21-⑬** prod（承認①済・ALLOW_PROD） | Cloud Agent からの本番 PUT |
 | 子SKU＋出品CK／承認①済子SKU | 楽天／Yahoo 改変 |
 
-ローカル経路（21-⑧／⑨＋`--fetch-drive`）は **併用可**。第1段と第2段は **同じ Property を共用**。
+ローカル経路（21-⑧／⑨＋`--fetch-drive`）は **併用可**。第1段と第2段は **同じ Property を共用**。  
+**本線入口**: D ラジオでも既存相乗りを選べる（[D入口 HUMAN_RUN](D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)／[承認](LV4_SPAPI_D_ENTRY_APPROVAL.md)）。
 
 ---
 

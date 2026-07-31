@@ -1,7 +1,7 @@
 # AI 組織憲章（一人社長＋AI部門）
 
 **文書種別**: 組織・運用の正（requirements）  
-**最終更新**: 2026-07-17  
+**最終更新**: 2026-07-30  
 **実装**: 本フェーズでは **コード実装なし**（憲章＋承認マトリクスの確定と、その後の3者検証がゴール）  
 **関連**: [AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) ・ [LEVELLED_IMPLEMENTATION_PLAN.md](LEVELLED_IMPLEMENTATION_PLAN.md) ・ [AGENTS.md](../../AGENTS.md) ・ [CURRENT_PHASE.md](../CURRENT_PHASE.md)
 
@@ -62,6 +62,8 @@ flowchart LR
 | 実行前に「既に販売中（在庫>0）」 | **原則スキップ**（意図した補充は承認②のみ）。レ点＝候補。販売中の情報上書きは当面手動（2026-07-17） |
 | 承認ゲート形 | **ハイブリッド**（①軽い／②本命）。運用後見直し可（2026-07-17） |
 | 日中出品の時間 | **実働約25分**／課金枠30分前提（2026-07-17） |
+
+**Amazon D 手動本線の当面特則（社長決定 2026-07-30）**: AI が対象を自動決定しない期間に限り、社長が `▼商品マスタ(人間作業用)` の子SKU行へ手動で付けた `出品CK` を、Amazon D 手動実行の承認①相当とする。Web承認①のコード・メニュー・履歴は削除しない。AIによるレ点付与、無人D実行、日中トリガー接続のいずれかを導入する前にWeb承認①を再接続・再検収する。承認②、在庫>0更新、対外自動送信には適用しない。詳細は [LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)。
 
 補充（承認②）は flowchart の夜確認帯でも、**出品承認①とは別ゲート**（[AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) §3）。タイミング表記はマトリクスを正とする。
 

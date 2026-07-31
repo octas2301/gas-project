@@ -33,7 +33,7 @@
 | 候補フォールバック | コード.js `setTitleDropdownForParentRowsWithGivenRows`・`TITLE_DROPDOWN_STRICT_PER_ROW_OPTIONS` | 候補が0件または1件のとき、**全親行の候補元列**を改行区切りで集めて候補に補う（メインKW・特徴KW・用途KW・楽天/Yahoo補足KW 等。**商品名検索キーワード3列は除外**、表直下の注記参照）。マスタ列が無く同一列のみの場合でも他親行から候補を補える |
 | 商品名案生成でのキーワード書き込み | コード.js `menuGenerateProductNameProposals`（1683〜1698行付近） | 特徴・用途・楽天補足・Yahoo補足のAI案は**候補元列**（▼マスタ(特徴キーワード) 等があればそこへ、無ければ従来どおり同一列）に書き込む。参照は作業エリア列を優先 |
 | 追加プルダウン対象 | コード.js `TITLE_DROPDOWN_PAIRS` | 楽天キャッチ(60-80字)→楽天キャッチコピーAIから取得、Yahooキャッチ(20-30字)→Yahoo!キャッチコピーAIから取得、箇条書き1～5→商品説明の箇条書き①～⑤、★推奨楽天ジャンルID/楽天ジャンル名、★推奨YahooカテゴリID/Yahooカテゴリ名、★推奨Yahooブランドコード、推奨バリ項目名(軸1)(軸2)→バリエーションテーマ/バリエーションテーマ2。**商品説明は1案のためプルダウンにせず値コピーのみ**（同期時に「商品説明文AIから取得」へGemini案を書き込む） |
-| 同期でGemini+GPTマージ・作業エリアにGemini | コード.js `syncAiDataToMaster` | ▼マスタ(〇〇)には[Gemini]と[GPT]を改行でマージして書き、作業エリア列には**Gemini案を初期表示**で書き込む。数値項目は従来どおり正解のみ |
+| 同期でGemini+GPTマージ・作業エリアにGemini | コード.js `syncAiDataToMaster` | ▼マスタ(〇〇)には[Gemini]と[GPT]を改行でマージして書き、作業エリア列には**Gemini案を初期表示**で書き込む。**楽天／Yahooキャッチ**は作業エリアへ **先頭1案のみ**（`getFirstDropdownOptionLine_`）。数値項目は従来どおり正解のみ |
 | Yahoo親行のマージ元（同一親SKUで親が複数） | Yahoo.js `yahooMasterCheckboxIsTrue_`、`YahooDataBuilder._groupMasterData` | **出品CK付き親行（複数なら走査順で最後）**を `group.parent` に採用。無いときのみ最後の親行へフォールバック。§5 参照（2026-05） |
 | Yahoo `path` 正規化（editItem） | Yahoo.js `normalizeYahooItemPathForApi_`、`YahooApiClient._getValue` | `(Yahooカテゴリ名)` の `＞` / `>` を `:` に、`:\s*` を圧縮。マスタセルは未変更。§6 参照（2026-05） |
 

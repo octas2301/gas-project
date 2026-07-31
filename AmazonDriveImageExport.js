@@ -384,16 +384,19 @@ function menuAmazonU4UrlEmbed() {
 }
 
 /**
- * U4 コア（確認・成功ダイアログなし）。Eコース用。
+ * U4 コア（確認・成功ダイアログなし）。Eコース・D新規の自動実行用。
+ * @param {{skus?:Array<string>, force?:boolean}=} opts
+ *   skus 指定時はレ点由来の対象だけを処理する。force=true は手動運用トグルを迂回する（D自動実行用）。
  * @return {{ok:boolean, runId?:string, summary?:Object, error?:string}}
  */
-function amazonU4UrlEmbedSilent_() {
+function amazonU4UrlEmbedSilent_(opts) {
+  opts = opts || {};
   var stepName = 'AmazonU4UrlEmbedSilent';
   var runId = 'U4_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') +
     '_' + String(Utilities.getUuid()).replace(/-/g, '').substring(0, 6);
   Logger.log('[' + stepName + '] runId=' + runId + ' state=PENDING');
 
-  if (!getBoolScriptProperty_(AMAZON_U4_URL_EMBED_PROP, false)) {
+  if (!opts.force && !getBoolScriptProperty_(AMAZON_U4_URL_EMBED_PROP, false)) {
     var off = 'U4 は無効です。Script Properties の ' + AMAZON_U4_URL_EMBED_PROP + ' を true にしてください（既定は無効）。';
     Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED ' + off);
     return { ok: false, runId: runId, error: off };
@@ -417,7 +420,18 @@ function amazonU4UrlEmbedSilent_() {
     return { ok: false, runId: runId, error: authErr };
   }
 
-  var targets = amazonU4CollectTargetSkus_(maxSkus);
+  var targets = [];
+  if (opts.skus && opts.skus.length) {
+    var seenSku = {};
+    for (var si = 0; si < opts.skus.length && targets.length < maxSkus; si++) {
+      var one = String(opts.skus[si] || '').trim();
+      if (!one || seenSku[one]) continue;
+      seenSku[one] = true;
+      targets.push(one);
+    }
+  } else {
+    targets = amazonU4CollectTargetSkus_(maxSkus);
+  }
   if (!targets.length) {
     var msg =
       '対象SKUがありません。マッチングsheetの子に Amazon MAIN／マスタ Amazon MAIN 参照／' +
@@ -532,36 +546,49 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
   var s;
   for (s = 0; s < skus.length; s++) {
     var sku = skus[s];
+    var mRow = amazonU4FindMasterChildRow_(mValues, headerRowIdx, idxP, idxC, sku);
+    var mode = '';
+    if (mRow >= 0 && idxMode !== undefined) {
+      mode = String(mValues[mRow][idxMode] || '').trim().toUpperCase();
+    }
+    var existingMainUrl = (mRow >= 0 && idxMainUrl !== undefined)
+      ? String(mValues[mRow][idxMainUrl] || '').trim() : '';
+
     var mainName = sku + '.MAIN.jpg';
     var file = amazonDriveFindFileByName_(folderId, mainName);
-    if (!file) {
+    var mainUrl = '';
+    if (file) {
+      var bytes = file.getBlob().getBytes();
+      var putMain = amazonR2PutObject_(accountId, accessKey, secretKey, bucket, mainName, bytes, 'image/jpeg');
+      mainUrl = publicBase + '/' + mainName;
+      Logger.log(
+        '[U4] runId=' + runId + ' sku=' + sku + ' http=' + putMain.code +
+          ' url=' + mainUrl + ' state=' + (putMain.ok ? 'DONE' : 'FAILED')
+      );
+      if (!putMain.ok) {
+        failed++;
+        notes.push(sku + ' MAIN Put http=' + putMain.code);
+        continue;
+      }
+      mainOk++;
+    } else if (existingMainUrl) {
+      // PTのみ不足の再実行用（Drive02 MAIN が無くても既存 Amazon MAIN URL を維持）
+      mainUrl = existingMainUrl;
+      Logger.log('[U4] runId=' + runId + ' sku=' + sku + ' state=REUSE_EXISTING_MAIN');
+      mainOk++;
+    } else {
       failed++;
       notes.push(sku + ': MAINファイルなし');
       Logger.log('[U4] runId=' + runId + ' sku=' + sku + ' state=FAILED noMainFile');
       continue;
     }
-    var bytes = file.getBlob().getBytes();
-    var putMain = amazonR2PutObject_(accountId, accessKey, secretKey, bucket, mainName, bytes, 'image/jpeg');
-    var mainUrl = publicBase + '/' + mainName;
-    Logger.log(
-      '[U4] runId=' + runId + ' sku=' + sku + ' http=' + putMain.code +
-        ' url=' + mainUrl + ' state=' + (putMain.ok ? 'DONE' : 'FAILED')
-    );
-    if (!putMain.ok) {
-      failed++;
-      notes.push(sku + ' MAIN Put http=' + putMain.code);
-      continue;
-    }
-    mainOk++;
 
     var ptUrls = [];
-    var mRow = amazonU4FindMasterChildRow_(mValues, headerRowIdx, idxP, idxC, sku);
-    var mode = '';
-    if (mRow >= 0 && idxMode !== undefined) mode = String(mValues[mRow][idxMode] || '').trim().toUpperCase();
-    if (mode.indexOf('ONLY') >= 0 && mRow >= 0 && idxPtRef !== undefined) {
+    var ptSeq = 0;
+    // 1) Amazon PT 参照（Drive ID）があれば優先（画像モードに関わらず）
+    if (mRow >= 0 && idxPtRef !== undefined) {
       var ptRefs = String(mValues[mRow][idxPtRef] || '').split('|');
       var pi;
-      var ptSeq = 0;
       for (pi = 0; pi < ptRefs.length; pi++) {
         var ptId = String(ptRefs[pi] || '').trim();
         if (!ptId) continue;
@@ -585,9 +612,49 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
       }
     }
 
+    // 2) PT参照が空／失敗0件 → 楽天サブ画像1〜8を取得して R2 へ（AMAZON_ONLY は除外）
+    //    マッチングsheetで Amazon PT を二重ドラッグしなくてよい（2026-07-31 承認）
+    if (!ptUrls.length && mode.indexOf('ONLY') < 0 && mRow >= 0) {
+      var rakutenSubs = amazonU4CollectRakutenSubUrls_(mValues, headerRowIdx, colMap, mRow, idxP);
+      var ri;
+      for (ri = 0; ri < rakutenSubs.length; ri++) {
+        ptSeq++;
+        var ptNameR = sku + '.PT' + ('0' + ptSeq).slice(-2) + '.jpg';
+        try {
+          var rBytes = amazonU4FetchImageBytes_(rakutenSubs[ri]);
+          if (!rBytes || !rBytes.length) {
+            failed++;
+            notes.push(sku + ' ' + ptNameR + ': 楽天画像取得失敗');
+            continue;
+          }
+          var putPtR = amazonR2PutObject_(accountId, accessKey, secretKey, bucket, ptNameR, rBytes, 'image/jpeg');
+          if (putPtR.ok) {
+            ptOk++;
+            ptUrls.push(publicBase + '/' + ptNameR);
+          } else {
+            failed++;
+            notes.push(sku + ' ' + ptNameR + ' http=' + putPtR.code);
+          }
+        } catch (eR) {
+          failed++;
+          notes.push(sku + ' 楽天PT: ' + ((eR && eR.message) || eR));
+        }
+      }
+      if (rakutenSubs.length) {
+        Logger.log('[U4] runId=' + runId + ' sku=' + sku +
+          ' rakutenSubSources=' + rakutenSubs.length + ' ptUploaded=' + ptUrls.length);
+      }
+    }
+
+    Logger.log('[U4] runId=' + runId + ' sku=' + sku + ' imageMode=' + (mode || '(空)') +
+      ' ptOkThisSku=' + ptUrls.length);
+
     if (mRow >= 0 && idxMainUrl !== undefined) {
       master.getRange(mRow + 1, idxMainUrl + 1).setValue(mainUrl);
-      if (idxPtUrl !== undefined) master.getRange(mRow + 1, idxPtUrl + 1).setValue(ptUrls.join('|'));
+      // PT が0件のときは既存値を消さない（別経路で入れた URL の保護）
+      if (idxPtUrl !== undefined && ptUrls.length) {
+        master.getRange(mRow + 1, idxPtUrl + 1).setValue(ptUrls.join('|'));
+      }
       masterUpdated++;
     } else {
       notes.push(sku + ': マスタ子行なし（R2のみ成功）');
@@ -600,6 +667,13 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
     masterUpdated += prop.copied;
     notes.push('親MAIN URLコピー=' + prop.copied);
     Logger.log('[U4] runId=' + runId + ' parentMainUrlCopied=' + prop.copied);
+  }
+  // サブ画像も親行から C1 が読むため、PT URL も同様に親へ伝播する
+  var propPt = amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP, idxC, idxPtUrl, 'PT');
+  if (propPt && propPt.copied > 0) {
+    masterUpdated += propPt.copied;
+    notes.push('親PT URLコピー=' + propPt.copied);
+    Logger.log('[U4] runId=' + runId + ' parentPtUrlCopied=' + propPt.copied);
   }
 
   return {
@@ -616,8 +690,9 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
  * 親行の Amazon MAIN URL が空のとき、同一親の子行から先頭の非空URLをコピーする。
  * @return {{copied:number}}
  */
-function amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP, idxC, idxMainUrl) {
+function amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP, idxC, idxMainUrl, label) {
   var out = { copied: 0 };
+  label = label || 'MAIN';
   if (idxP == null || idxC == null || idxMainUrl == null || !master) return out;
   // 子への setValue 直後は引数 mValues が古いことがあるので再読込
   mValues = master.getDataRange().getValues();
@@ -644,7 +719,7 @@ function amazonU4PropagateMainUrlToParents_(master, mValues, headerRowIdx, idxP,
     if (g.parentUrl) continue;
     master.getRange(g.parentRow + 1, idxMainUrl + 1).setValue(g.childUrl);
     out.copied++;
-    Logger.log('[U4] parentMainUrlCopy parentSku=' + keys[k] + ' row1=' + (g.parentRow + 1));
+    Logger.log('[U4] parentUrlCopy kind=' + label + ' parentSku=' + keys[k] + ' row1=' + (g.parentRow + 1));
   }
   return out;
 }
@@ -665,6 +740,77 @@ function amazonU4EnsureMasterUrlColumns_(masterSheet, headerRowIdx) {
     }
   }
   return { added: added, colMap: colMap };
+}
+
+/**
+ * 楽天サブ画像1〜8を収集（子優先、空なら同一親の親行）。最大8件。絶対URLへ正規化済み。
+ * @return {string[]}
+ */
+function amazonU4CollectRakutenSubUrls_(mValues, headerRowIdx, colMap, childRowIdx, idxP) {
+  var out = [];
+  var parentSku = idxP !== undefined
+    ? String(mValues[childRowIdx][idxP] || '').trim() : '';
+  var parentRow = -1;
+  if (parentSku && idxP !== undefined) {
+    var idxC = colMap['子SKU'];
+    var r;
+    for (r = headerRowIdx + 1; r < mValues.length; r++) {
+      if (String(mValues[r][idxP] || '').trim() !== parentSku) continue;
+      var c = idxC !== undefined ? String(mValues[r][idxC] || '').trim() : '';
+      if (!c) {
+        parentRow = r;
+        break;
+      }
+    }
+  }
+  var i;
+  for (i = 1; i <= 8; i++) {
+    var idx = colMap['楽天サブ画像' + i];
+    if (idx === undefined) continue;
+    var raw = String(mValues[childRowIdx][idx] || '').trim();
+    if (!raw && parentRow >= 0) raw = String(mValues[parentRow][idx] || '').trim();
+    if (!raw) continue;
+    var abs = amazonU4NormalizeRakutenImageUrl_(raw);
+    if (abs && out.indexOf(abs) < 0) out.push(abs);
+  }
+  return out;
+}
+
+/**
+ * 楽天Cabinet相対パス → 公開https。既にhttpならそのまま。
+ * Yahoo.js と同型: `/…` → `https://image.rakuten.co.jp/octas/cabinet` + path
+ */
+function amazonU4NormalizeRakutenImageUrl_(raw) {
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.indexOf('//') === 0) return 'https:' + s;
+  if (s.charAt(0) !== '/') s = '/' + s;
+  // R-Cabinet保存後は `/123/img.jpg` 形式が多い。octas店舗固定（Yahoo.js準拠）
+  return 'https://image.rakuten.co.jp/octas/cabinet' + s;
+}
+
+/**
+ * 外部画像URLを取得してバイト配列を返す。失敗時は null。
+ * @return {Byte[]|null}
+ */
+function amazonU4FetchImageBytes_(url) {
+  var abs = amazonU4NormalizeRakutenImageUrl_(url);
+  if (!abs) return null;
+  var res = UrlFetchApp.fetch(abs, {
+    muteHttpExceptions: true,
+    followRedirects: true,
+    validateHttpsCertificates: true
+  });
+  var code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    Logger.log('[U4] fetchImage http=' + code + ' url=' + abs.substring(0, 120));
+    return null;
+  }
+  var blob = res.getBlob();
+  var bytes = blob.getBytes();
+  if (!bytes || !bytes.length) return null;
+  return bytes;
 }
 
 function amazonU4FindMasterChildRow_(mValues, headerRowIdx, idxP, idxC, childSku) {

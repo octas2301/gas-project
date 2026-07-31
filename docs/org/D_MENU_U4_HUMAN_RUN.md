@@ -54,7 +54,32 @@ clasp push
 
 ---
 
+## 3b. D×Amazon 新規からの自動実行（2026-07-31 承認）
+
+- **D×Amazon 新規**は GENERATED の直前に **U4 を自動実行**する（`batchExportAmazonAutoU4_`）。手動の 21-⑦ と `AMAZON_U4_URL_EMBED_ENABLED` は不要。
+- 対象は **レ点行のうち URL が未充足の子SKU のみ**。`Amazon MAIN URL` があり、かつ（`Amazon PT 参照` が無い or `Amazon PT URL` がある）行は **スキップ**（ログ `autoU4 skip reason=urls_present`）。
+- **失敗時はDを停止**する（画像なしバルクを作らないため）。原因は 21-⑦ 単独実行で確認する。
+- 止めたいときは Property **`AMAZON_U4_AUTO_IN_D_ENABLED=false`**（既定 true）。
+- **サブ画像**:
+  1. `Amazon PT 参照`（Drive ID）があればそれを R2 へ上げる
+  2. 無ければ（かつ `AMAZON_ONLY` でなければ）マスタ **`楽天サブ画像1〜8`**（子→親フォールバック）を取得して R2 へ上げ、`Amazon PT URL`（`|` 区切り）に書く
+  3. **親行へも空欄時のみコピー**（C1は親行も読む）。PT が0件のときは既存値を消さない
+  4. このため **マッチングsheetで楽天サブとAmazon PTを二重ドラッグする必要はない**（楽天側のサブ紐付けだけで足りる）。Amazon MAIN（白抜き）の紐付けは従来どおり必要
+- MAIN は Drive02 `{SKU}.MAIN.jpg` を優先。無い場合でも既存 `Amazon MAIN URL` があればそれを維持して PT のみ処理する
+
+### 帰宅後・既出品へのサブ追加（手ZIP）
+
+1. Property: `AMAZON_U4_URL_EMBED_ENABLED=false` に戻す  
+2. マスタ `Amazon PT URL`（例: PT01|PT02|PT03）と MAIN URL／Drive02 から JPG を用意  
+3. 名前: `{子SKU}.MAIN.jpg` / `{子SKU}.PT01.jpg` …（フラット）  
+4. ZIP化 → SC **Upload Images**  
+5. 任意: Drive `04.SC用画像ZIP保存先` へコピー  
+
+七味例: `sanky-B01N5A6ESU-19s13`・PT成功=3（`U4_20260731_124440_329c1a`）
+
+---
+
 ## 4. 戻し方
 
-- Property false  
+- Property false（手動21-⑦は `AMAZON_U4_URL_EMBED_ENABLED`、D自動は `AMAZON_U4_AUTO_IN_D_ENABLED`）  
 - `git revert`／メニュー 21-⑦ 削除  

@@ -128,6 +128,15 @@ function menuAmazonImageMatrixLoadCandidates() {
     SpreadsheetApp.getUi().alert('マトリクスシートがありません。');
     return;
   }
+  var selection = amazonImageMatrixValidateCurrentSelection_(ss, sheet);
+  if (!selection.ok) {
+    Logger.log('[' + fn + '] state=FAILED reason=stale_matrix ' + selection.message);
+    SpreadsheetApp.getUi().alert(
+      '安全停止: マッチングsheetが現在のレ点対象と一致しません。\n' +
+        selection.message + '\n\n先に C を再実行してください。'
+    );
+    return;
+  }
   var folderId = String(PropertiesService.getScriptProperties().getProperty(AMAZON_IMAGE_CANDIDATE_FOLDER_PROP) || '').trim();
   if (!folderId) {
     SpreadsheetApp.getUi().alert(AMAZON_IMAGE_CANDIDATE_FOLDER_PROP + ' が未設定です。Amazon用白抜き候補フォルダの ID を設定してください。');
@@ -148,6 +157,87 @@ function amazonImageU2Guard_(fn) {
     return false;
   }
   return true;
+}
+
+/**
+ * C-Amazon②の誤紐付け防止。現在のレ点選定とマッチングsheetの親子SKUを照合する。
+ * C本体と同じ契約: 子レ点あり=親+レ点子、子レ点なしで親レ点=親+全子。
+ * @return {{ok:boolean,message:string}}
+ */
+function amazonImageMatrixValidateCurrentSelection_(ss, matrixSheet) {
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) return { ok: false, message: 'マスタがありません。' };
+
+  var values = masterSheet.getDataRange().getValues();
+  var headerRowIdx = getAnchorRowIndex(values);
+  if (headerRowIdx < 0) return { ok: false, message: 'マスタヘッダーが見つかりません。' };
+
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var idxP = colMap[COL_NAME_PARENT_SKU];
+  var idxC = colMap[COL_NAME_CHILD_SKU];
+  var idxCheck = colMap[COL_NAME_CHECK];
+  if (idxP === undefined || idxCheck === undefined) {
+    return { ok: false, message: '必須列（親SKU または 出品CK）が見つかりません。' };
+  }
+
+  function isChecked_(v) {
+    return v === true || v === 1 || String(v).toUpperCase() === 'TRUE';
+  }
+  function key_(p, c) {
+    return String(p).trim() + '\t' + String(c || '').trim();
+  }
+
+  var groups = {};
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    var row = values[r];
+    var pCode = String(row[idxP] || '').trim();
+    var cCode = idxC !== undefined ? String(row[idxC] || '').trim() : '';
+    if (!pCode) continue;
+    if (!groups[pCode]) groups[pCode] = { parentChecked: false, children: [], checkedChildren: [] };
+    if (!cCode) {
+      groups[pCode].parentChecked = isChecked_(row[idxCheck]);
+    } else {
+      groups[pCode].children.push(cCode);
+      if (isChecked_(row[idxCheck])) groups[pCode].checkedChildren.push(cCode);
+    }
+  }
+
+  var expected = {};
+  Object.keys(groups).forEach(function (pCode) {
+    var group = groups[pCode];
+    var children = group.checkedChildren.length > 0
+      ? group.checkedChildren
+      : (group.parentChecked ? group.children : []);
+    if (children.length === 0 && !group.parentChecked) return;
+    expected[key_(pCode, '')] = true;
+    children.forEach(function (cCode) { expected[key_(pCode, cCode)] = true; });
+  });
+
+  var actual = {};
+  var lastRow = matrixSheet.getLastRow();
+  if (lastRow >= 3) {
+    var sheetRows = matrixSheet.getRange(3, 1, lastRow - 2, 2).getValues();
+    sheetRows.forEach(function (row) {
+      var pCode = String(row[0] || '').trim();
+      if (pCode) actual[key_(pCode, row[1])] = true;
+    });
+  }
+
+  var expectedKeys = Object.keys(expected).sort();
+  var actualKeys = Object.keys(actual).sort();
+  if (expectedKeys.join('\n') === actualKeys.join('\n')) {
+    return { ok: true, message: '一致' };
+  }
+
+  var missing = expectedKeys.filter(function (k) { return !actual[k]; });
+  var stale = actualKeys.filter(function (k) { return !expected[k]; });
+  function display_(keys) {
+    return keys.slice(0, 3).map(function (k) { return k.replace('\t', ' / '); }).join(', ') || 'なし';
+  }
+  return {
+    ok: false,
+    message: '不足=' + display_(missing) + '\n旧・余分=' + display_(stale)
+  };
 }
 
 function amazonImageMatrixEnsureZone_(sheet) {

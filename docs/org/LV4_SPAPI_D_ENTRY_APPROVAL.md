@@ -1,7 +1,7 @@
 # SP-API × D入口 — Amazon 新規／既存相乗りの選択（承認パッケージ・起草）
 
 **日付**: 2026-07-29  
-**状態**: **承認済・実装待ち**（2026-07-29 社長承認。コードは未着手）  
+**状態**: **履歴／後続レ点本線に置換済み**（2026-07-30）
 **テーマ名**: **A（D入口版）** … 本線 D を Amazon 出品の起点にし、新規カタログと既存ASIN相乗りを人間が選ぶ  
 **前提合格**: SP-API v1.4 第1段・第2段 API 実機合格／D×Amazon U3（Da）実機合格／E コース実装済  
 **関連**:  
@@ -9,7 +9,11 @@
 - [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md)（D 本線）  
 - [D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md](D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md)（一時 E・テスト期間残可）  
 - [D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)  
+- [D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)（本実装の手順）
+- [LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)（3者レビュー済み後続承認。本書のDラジオをレ点＋複数チェックへ置換予定）
 **三者レビュー**: **不要**（組織・承認マトリクス改定ではない。D ラジオ拡張＋既存 PUT 呼出の薄いファサード）
+
+> **後続関係**: 本書の相互排他ラジオは後続承認により置換済み。現在の正は、レ点＋新規／相乗り複数選択、開始前確認付きの **フル＋既存相乗りprod許可**。
 
 ---
 
@@ -39,9 +43,9 @@
 
 | 種別 | パス | 内容 |
 |------|------|------|
-| 改修 | `コード.js` | `showBatchExportModal` のラジオ拡張／`runBatchExportAmazonFacade` に経路分岐 |
-| （必要なら）改修 | `AmazonSpapiPut.js` | D から呼ぶ際の `silent`／ダイアログ方針の微調整のみ。抽出・PUT 本体は再利用 |
-| 新規 | 本ファイル | 承認 |
+| 改修 | `コード.js` | `showBatchExportModal` のラジオ拡張／`runBatchExportAmazonFacade` に経路分岐（**実装済**） |
+| （必要なら）改修 | `AmazonSpapiPut.js` | D から呼ぶ際の `silent`／ダイアログ方針の微調整のみ。抽出・PUT 本体は再利用（**今回は変更なし・既存メニュー呼出**） |
+| 新規 | 本ファイル／D_ENTRY HUMAN_RUN | 承認・手順 |
 | 更新（実装後） | HUMAN_RUN（D または SP-API）／CURRENT_PHASE／HANDOVER／CHANGE_LEDGER／E HUMAN_RUN 1行案内 | 進捗 |
 
 **やらない（本承認の範囲外）**
@@ -150,4 +154,4 @@
 - [x] **承認する**（A＝D入口版・ラジオ案確定・Dから prod 可＝ALLOW_PROD＋確認必須・E/Z はテスト期間残可・コード実装可／2026-07-29）  
 - [ ] 却下／条件付き（条件: ）
 
-**実装開始条件**: 本 §6 の承認後のみ。承認前のコード追加は禁止 → **2026-07-29 承認済。実装可**（範囲は §2・§3。§2「やらない」と §3.4 の禁止組み合わせは厳守）。
+**実装開始条件**: 本 §6 の承認後のみ。承認前のコード追加は禁止 → **2026-07-29 承認・実装済（実機は HUMAN_RUN）**。
