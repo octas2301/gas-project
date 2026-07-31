@@ -1,38 +1,50 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-29（SP-API v1.4 API合格／**A＝D入口版 承認済・実装待ち**。SC最終更新は反映待ち）  
+**最終更新**: 2026-07-31（**七味 SEASONING：SC再送待ち／在庫は停止中。U4楽天サブ流用・KW1枠・D自動U4実装済**）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-07-29）
+## 0. セッション引き継ぎ（2026-07-31）
 
-**場所**: 自宅PC。  
-**コミット**: 本セッションで v1.4 第1〜2段合格＋**A（D入口版）承認起草・承認**。  
-**clasp**: v1.4 は push 済。A（D入口）はコード未着手のため push 不要。  
-**Property**: PUT／ALLOW_PROD／EXPORT とも作業後 **false**。`SPAPI_ENDPOINT` は空推奨。
+**場所**: 外出先／帰宅後確認あり。  
+**コミット**: レ点本線〜SEASONING〜U4楽天サブまでの差分は**未コミット**（コミットは人間指示後）。  
+**clasp**: 当該GAS差分は push 済み認識（21-⑭〜⑰／U4楽天サブ／D自動U4）。  
+**Property**: PUT／ALLOW_PROD／`AMAZON_U4_URL_EMBED_ENABLED` は作業後 **false**。`SPAPI_ENDPOINT` は空推奨。
 
 ### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。SP-API **v1.4 第1段・第2段は API実機合格**。次＝**A（D入口版）が 2026-07-29 承認済・実装待ち**。D ラジオで Amazon「新規カタログ／既存相乗り dry_run／prod」を選ぶ。prod は ALLOW_PROD＋確認必須。フル＋相乗り prod は禁止・相乗りでは `02` MAIN ゲート不適用・E/Z はテスト期間残可。範囲は承認 §2・§3。[D入口承認](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)／[第2段](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)。
+> `docs/CURRENT_PHASE.md` §0 を読め。**D新規＋相乗り同時・C1 SEASONING七味はSC再送済（審査／停止中確認中）**。次＝帰宅後サブZIP＋SC停止理由確認＋Yahoo再認証。[HUMAN_RUN](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)／[U4](org/D_MENU_U4_HUMAN_RUN.md)／[C1 SEASONING](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)。
 
 ### いまの到達点
 | 項目 | 状態 |
 |------|------|
-| 安眠 E〜E-5／C1 | **済** |
-| **メニュー8** | v1.10＋キャッチ1行化（push済み認識） |
-| **M2** | **実機合格** |
-| **SP-API読取／書込 v1・v1.1** | **実機合格** |
-| **SP-API橋渡し v1.2〜v1.3／v1.2b／v1.2c** | **実機合格** |
-| **SP-API v1.4 第1段** | **実機合格（API）・push済**。SC最終更新目視は反映待ち。[承認](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md) |
-| **SP-API v1.4 第2段** | **実機合格（API）**（21-⑫ VALID／21-⑬ ACCEPTED）。[承認](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)／[HUMAN_RUN §2b](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md) |
-| **A（D入口版）** | **承認済・実装待ち**（2026-07-29）。[承認](org/LV4_SPAPI_D_ENTRY_APPROVAL.md) |
-| 試験SKU | `…0924-48s11`／`B00A0J0D30`（第1段）・`…0832-48s11`／`B07YND44VN`（第2段）ほか発汗・ride01 |
+| 安眠 E〜E-5／C1 HPC | **済** |
+| **レ点本線＋Amazon相乗りSKU** | **相乗り自己発 dry_run／prod＋新規＋相乗り同時 実機合格**（07-31） |
+| **C1 SEASONING（七味）** | PACKAGED再送済（`…_20260731_032459.xlsm`）。**99016対策＝KW1枠**／item_form=粉末／重量単位=グラム。SC審査100521あり。在庫画面は**停止中**（親`B0HC9S8PRN`／子`B0HC9RRCBP`） |
+| **U4** | D新規前に自動実行。PT参照空なら**楽天サブ1〜8→R2**。七味で MAIN=1／PT=3 成功（`U4_20260731_124440_329c1a`） |
+| **GTIN免除／SCサマリ自動** | 21-⑭〜⑰ 実装・push済。監視フォルダ運用は人間セット待ち |
+| **サブ画像（SC ZIP）** | U4でPT URL取得済。**帰宅後**に手ZIP→Upload Images |
+| **Yahoo** | refresh token期限切れ（フル失敗）。要再認証 |
+| 試験SKU | 新規親 `sanky-4538872180149-oya`／子 `…-19s13`。相乗り `…-19as13`（ASIN `B01N5A6ESU`・停止中）。旧相乗り `…-48as12` |
 
 ### 次にやること（優先順）
-1. ~~v1.4 第1段・第2段 承認・実装・API実機~~／~~A（D入口版）社長承認~~  
-2. **Agent**: A（D入口版）を実装（[承認](org/LV4_SPAPI_D_ENTRY_APPROVAL.md) §2・§3 の範囲厳守）→ clasp push → D で dry_run  
-3. **人間**: SC最終更新が prod 以降に進んだら HUMAN_RUN の待ちチェックを閉じる（後回し可）  
-4. Frontier／Sandbox は触らない。承認②は当面スコープ外  
+0. **Property** PUT／ALLOW_PROD／`AMAZON_U4_URL_EMBED_ENABLED` を **false**
+1. **帰宅後・サブZIP**: MAIN＋PT01〜03 → SC Upload Images（[手順メモ](org/D_MENU_U4_HUMAN_RUN.md) §3b＋手ZIP）
+2. **SC停止理由**: 親／子の「ブロックされた理由を確認」／相乗りの「出品に関する問題を修正」を開き内容メモ → 必要ならAgentへ貼付
+3. **再送サマリ**をDownloadsへ保存 → 分析（99016消えたか／100521の扱い）
+4. **21-⑮〜⑰運用セット**（監視フォルダID＋ENABLED＋21-⑯）※短い手順は [HUMAN_RUN §1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)
+5. **Yahoo再認証** → Yahooのみ再実行
+6. 任意: 相乗りFBA／フル再走／gitコミット（人間指示後）
+
+### SEASONINGで確定した必須・落とし穴（再発防止）
+| 項目 | 対応 |
+|------|------|
+| 商品の形式 | 既定 `粉末`（列134） |
+| 商品の重量の単位 | 重量ありなら単位必須。既定 `グラム`（列166） |
+| 検索キーワード | **1枠のみ**（空白結合）。5枠分割は SC **99016** |
+| 画像URL | C1は `Amazon MAIN/PT URL` のみ。サブはU4で楽天→R2 |
+| マッチングsheet | 楽天サブとAmazon PTの**二重ドラッグ不要**（MAIN白抜きのみ手動） |
+| 冪等 | 同じ親の再GENERATEDは 21-④ `UPLOAD_FAILED` 後 |
 
 ### M2 正本リンク
 - [org/D_MENU_M2_HUMAN_RUN.md](org/D_MENU_M2_HUMAN_RUN.md)  
@@ -47,7 +59,8 @@
 - [org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md](org/LV4_SPAPI_DRIVE_FETCH_APPROVAL.md)／[org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md](org/LV4_SPAPI_APPROVED_EXPORT_APPROVAL.md)  
 - [org/LV4_SPAPI_GAS_PUT_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)（v1.4 第1段・API実機合格／SC最終更新は反映待ち）  
 - [org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（v1.4 **第2段・実機合格（API）**）  
-- [org/LV4_SPAPI_D_ENTRY_APPROVAL.md](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)（**A＝D入口版・承認済／実装待ち**）  
+- [org/LV4_SPAPI_D_ENTRY_APPROVAL.md](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)／[org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)（**Dレ点本線・相乗り自己発 dry_run／prod 実機合格**）
+- [org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)（**相乗り自己発 実機合格／拡大確認待ち**）
 
 ### 外出先チェックリスト
 [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
@@ -61,7 +74,9 @@
 - [YAHOO_CATEGORY_BRAND_STAGE.md](YAHOO_CATEGORY_BRAND_STAGE.md)／[org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md](org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md)／[org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)  
 - [org/D_MENU_C1_HUMAN_RUN.md](org/D_MENU_C1_HUMAN_RUN.md)  
 - [org/D_MENU_C1_MASTER_HPC_COLUMN_MAP.md](org/D_MENU_C1_MASTER_HPC_COLUMN_MAP.md)  
+- [org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)  
 - [org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md](org/D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)  
+- [org/D_MENU_U4_HUMAN_RUN.md](org/D_MENU_U4_HUMAN_RUN.md)  
 
 ---
 
@@ -78,20 +93,21 @@
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Lv4 — U2/U3 実機合格。次は T3／ε 等ゲート**（§0）。  
+- **フォーカス領域**: **Dレ点本線の food 新規（SEASONING）仕上げ** — SC停止理由確認・サブZIP・KW再送結果。並行でYahoo再認証。詳細は §0。  
 - **Lv4（Amazonバルク）**:  
-  - HPC／FOOD／T2／U3／**U2**: 完了。  
-  - U2: `AmazonImageMatrixExport.js`＋C-Amazon①〜④＋C子レ点。  
-  - 本線UX記録: [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md) §0。  
+  - HPC／FOOD／T2／U3／**U2**／**U4（楽天サブ流用）**: 実装済。  
+  - C1 SEASONING: 七味実データPACKAGED再送済（審査・停止中確認待ち）。  
+  - 本線UX: [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md)／[org/D_MENU_U4_HUMAN_RUN.md](org/D_MENU_U4_HUMAN_RUN.md)／[org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
-- **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
+- **Lv3（Yahoo）**: 2026-07-20 人間検収完了。**refresh token再認証待ち**。  
 - **Lv2（楽天）**: 2026-07-20 人間検収完了。  
 - **Lv1（承認キュー）**: 2026-07-17 人間検収完了。  
 
 - **このフェーズの完了条件（目安）**  
-  - U2: **実機合格達成**。  
+  - 七味新規カタログが公開（または停止理由が特定され次アクション確定）。  
+  - サブ画像がSCに載る（手ZIP）。  
 
-- **並行・継続（後回し可）**: T3実装承認／Dc API／M2／21-⑤／ε（C1は本線・§0優先）。  
+- **並行・継続（後回し可）**: T3 ZIP自動／Dc API／ε。  
 
 - **スコープ外（次モール着手前）**  
   - 承認②、販売中SKU無人上書き、clasp push 自動化。  
@@ -135,6 +151,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-29 | **A（D入口版）実装**: D ラジオに既存相乗り dry/prod。要 clasp push→実機。 |
 | 2026-07-29 | **A（D入口版）承認**（社長「承認」）。実装可・範囲は承認 §2・§3。 |
 | 2026-07-29 | **A（D入口版）承認起草**: D ラジオで Amazon 新規／既存相乗り（dry_run／prod）。コードなし。 |
 | 2026-07-29 | **SP-API v1.4 第2段 実機合格（API）**: 21-⑫ VALID／21-⑬ ACCEPTED（batch `…b7a053`）。SC目視は反映待ち。 |
