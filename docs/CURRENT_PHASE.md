@@ -1,59 +1,55 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-07-31（**Yahoo再認証・SC監視自動ON/OFF済。七味は吉野家許可待ち**）
+**最終更新**: 2026-08-12（販促 **2層減衰**：カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。要 clasp push／`--schema-only`）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-07-31）
+## 0. セッション引き継ぎ（2026-08-10）
 
-**場所**: ブランド認証は人間並行。次出品でSC監視自動ONを実機確認予定。  
-**コミット**: Yahoo再認証＋SC監視自動ON/OFF は **`a6be328` 済**。  
-**clasp**: Yahoo再認証／SC監視自動ON/OFF は **push済**。  
-**Property（作業後）**: 下表「false に戻す」を確認。SC監視・Yahoo redirect は運用のため残す。
+**場所**: Amazon出品は **本番運用可**（缶飯・相乗り等 SC出品中確認済。A3サブ画像も合格）。開発フォーカスはサブ画像楽天出口の品質改善など。  
+**コミット**: 未（指示時）。  
 
-### 起動時に貼る一文
-> `docs/CURRENT_PHASE.md` §0 を読め。**Yahoo再認証済**（C14＝2026-07-31／スモーク成功）。**SCサマリ監視**はFOLDER＋ENABLED済・GENERATEDで自動ON／終端or72hでOFF。七味は**吉野家出品許可待ち**。次出品で監視自動ONをログ確認。[Yahoo HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md)／[§1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+### 次にやること
+1. 人間: `clasp push`（常時ON既定のコード反映）
+2. Script Properties: 下表の常時ONキーが **false のまま残っていれば削除 or true**（1回だけ）
+3. （任意）サブ画像楽天の写真ルール改善は `photo_realism_rules.py`
 
-### いまの到達点
-| 項目 | 状態 |
-|------|------|
-| 安眠 E〜E-5／C1 HPC | **済** |
-| **レ点本線＋Amazon相乗りSKU** | **相乗り自己発 dry_run／prod＋新規＋相乗り同時 実機合格**（07-31） |
-| **C1 SEASONING（七味）** | PACKAGED再送・画像UP済。在庫**停止中**（吉野家出品許可が必要）。親`B0HC9S8PRN`／子`B0HC9RRCBP` |
-| **U4** | D新規前に自動。PT空なら楽天サブ→R2。七味 MAIN=1／PT=3 成功 |
-| **GTIN免除／SCサマリ** | 21-⑭〜⑰。監視フォルダ（例: `08.SC処理サマリ監視`）＋ENABLED。**GENERATED→自動トリガー**／終端or**72h**でOFF。21-⑮で取込確認済 |
-| **Yahoo再認証半自動** | **済**（B14＋C14取得日。出品スモーク成功1件）。[HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md) |
-| 試験SKU | 新規 `…-19s13`／相乗り `…-19as13`（`B01N5A6ESU`）いずれも許可待ちで停止中の可能性 |
+### Property チェックリスト（人間・本番常時ONセット 2026-08-10）
 
-### 次にやること（優先順）
-1. **吉野家出品許可**（ブランド認証）→ 許可後に SCライブ／画像店頭反映を確認  
-2. **次の Amazon GENERATED 出品時**: SC監視自動ONを実機確認（ログに `ScSummaryOnGenerated`／`ensureTrigger ok=true` → サマリ配置 → 終端でトリガー消える）  
-3. **Property 作業後チェック**（下記）  
-4. 任意: Yahoo認証期限の日次メールトリガー（未設置ならメニューで）
+**考え方**: 毎日の D 出品で Script Properties を切り替えない。  
+**未設定＝ON**（コード既定）。既に `false` が入っているキーは **削除**するか **true に1回**書き換える。  
+緊急停止だけ明示 `false`。
 
-### Property チェックリスト（人間・作業後）
-
-**false に戻す（本番誤書き防止）**
+**本番で常時ON（未設定で可／明示 false のみ緊急停止）**
 | Property | 推奨 |
 |----------|------|
-| `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **false** |
-| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **false** |
-| `AMAZON_U4_URL_EMBED_ENABLED` | **false**（次U4時だけ true） |
-| `APPROVAL_AMAZON_LV4_ENABLED` | 次GENERATEDまで不要なら **false**可（出すとき true） |
+| `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **true／未設定** |
+| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **true／未設定**（開始前確認ダイアログは残る） |
+| `APPROVAL_AMAZON_LV4_ENABLED` | **true／未設定** |
+| `APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED` | **true／未設定** |
+| `APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID` | 監視フォルダID（必須） |
+| `APPROVAL_AMAZON_LV4_TRACK` | **B**（新規GENERATED） |
+| `APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_ATTRS` | **true／未設定** |
+| `AMAZON_SHELF_REGISTRY_FILE_ID` | Drive の `shelf_registry.json` ファイルID |
+| `AMAZON_IMAGE_CANDIDATE_FOLDER_ID` | Drive 07（C本線） |
 
-**運用で残す（OFFにしない）**
-| Property | 値 |
-|----------|-----|
-| `APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED` | **true** |
-| `APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID` | 監視フォルダID |
-| `YAHOO_OAUTH_REDIRECT_URI` | アプリ登録と一致する戻り先URL |
+**常時OFFのまま（毎回ONにしない）**
+| Property | 推奨 | 理由 |
+|----------|------|------|
+| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY` | **false／未設定** | マスタ在庫で数量送信（承認②） |
+| `APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED` | **false／未設定** | PT空の新規だけ一時 true |
+| `AMAZON_IMAGE_U2_ENABLED` | **false／未設定** | Cコースが実行時だけ一時ON |
+| `AMAZON_U4_URL_EMBED_ENABLED` | **false／未設定** | 同上（C-2／自動U4経路） |
 
 **任意**
 | Property | メモ |
 |----------|------|
 | `APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_MIN` | 既定15。疎にするなら60 |
 | `YAHOO_OAUTH_WARN_DAYS` | 既定7 |
+| `RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED` | 未設定＝**true**。旧運用に戻すときだけ `false` |
+| `AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED` | 未設定＝**true** |
+| `YAHOO_OAUTH_REDIRECT_URI` | アプリ登録と一致する戻り先URL |
 
 ### SEASONINGで確定した必須・落とし穴（再発防止）
 | 項目 | 対応 |
@@ -63,7 +59,7 @@
 | 検索キーワード | **1枠のみ**（空白結合）。5枠分割は SC **99016** |
 | 画像URL | C1は `Amazon MAIN/PT URL` のみ。サブはU4で楽天→R2 |
 | マッチングsheet | 楽天サブとAmazon PTの**二重ドラッグ不要**（MAIN白抜きのみ手動） |
-| 冪等 | 同じ親の再GENERATEDは 21-④ `UPLOAD_FAILED` 後 |
+| 冪等 | 同じ親の再GENERATEDは D内レ点「失敗後の再GENERATED」または 21-④ `UPLOAD_FAILED` 後 |
 
 ### M2 正本リンク
 - [org/D_MENU_M2_HUMAN_RUN.md](org/D_MENU_M2_HUMAN_RUN.md)  
@@ -79,7 +75,21 @@
 - [org/LV4_SPAPI_GAS_PUT_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_APPROVAL.md)／[org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)（v1.4 第1段・API実機合格／SC最終更新は反映待ち）  
 - [org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md](org/LV4_SPAPI_GAS_PUT_STAGE2_APPROVAL.md)（v1.4 **第2段・実機合格（API）**）  
 - [org/LV4_SPAPI_D_ENTRY_APPROVAL.md](org/LV4_SPAPI_D_ENTRY_APPROVAL.md)／[org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)（**Dレ点本線・相乗り自己発 dry_run／prod 実機合格**）
-- [org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)（**相乗り自己発 実機合格／拡大確認待ち**）
+- [org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md](org/LV4_AMAZON_CHECKBOX_MAINLINE_SELLER_SKU_APPROVAL.md)（**レ点本線・拡大実機合格**）
+- [org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md](org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md)（**FBA属性・実機合格**）
+- [org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md](org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)（**デュアル Phase1・検収OK**）
+- [org/LV4_DUAL_OFFER_PHASE2_APPROVAL.md](org/LV4_DUAL_OFFER_PHASE2_APPROVAL.md)／[org/D_MENU_DUAL_OFFER_PHASE2_HUMAN_RUN.md](org/D_MENU_DUAL_OFFER_PHASE2_HUMAN_RUN.md)（**Phase2・検収OK**）
+- [org/LV4_LANE_A1_FBA_OFFER_APPROVAL.md](org/LV4_LANE_A1_FBA_OFFER_APPROVAL.md)／[org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)（**レーンA1・検収OK**）
+- [org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md](org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)／[org/D_MENU_P2_DC_HUMAN_RUN.md](org/D_MENU_P2_DC_HUMAN_RUN.md)（**P2調査完了＋§7.4方針ロック**・③は低優先）
+- [org/LV4_P1_FILE_MIN_APPROVAL.md](org/LV4_P1_FILE_MIN_APPROVAL.md)／[org/D_MENU_P1_HUMAN_RUN.md](org/D_MENU_P1_HUMAN_RUN.md)（**P1 File最少・検収OK**）
+- [org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md](org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md)／[org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md](org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md)（**P4a読取PoC・実機合格**）
+- [org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)（**P4b-a／b合格。P4b-c＝D新規ゲート方針**）
+- [org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md](org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md)（**D新規ゲート＋Cursor手渡し・実装済**）
+- [org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md](org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md)／[org/D_MENU_SHELF_BROWSE_CATALOG_HUMAN_RUN.md](org/D_MENU_SHELF_BROWSE_CATALOG_HUMAN_RUN.md)（**SHELF Browse 網羅・Node ルーティング**）
+- [org/LV4_MAP_SHEET_JSON_SYNC_APPROVAL.md](org/LV4_MAP_SHEET_JSON_SYNC_APPROVAL.md)／[org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md](org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md)／[org/MAP_SC_ERROR_LEDGER.md](org/MAP_SC_ERROR_LEDGER.md)（**正本=sheet／派生=MD／実行=JSON**）
+- [org/AMAZON_DEV_ROADMAP_P0_P4.md](org/AMAZON_DEV_ROADMAP_P0_P4.md)
+- [org/LV4_C_COURSE_CONSOLIDATION_APPROVAL.md](org/LV4_C_COURSE_CONSOLIDATION_APPROVAL.md)／[org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)
+- [org/LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md](org/LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md)
 
 ### 外出先チェックリスト
 [org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](org/D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md) — 安眠完了済み（履歴）  
@@ -113,21 +123,22 @@
 
 ## 2. 現在のフェーズ（いま優先している開発）
 
-- **フォーカス領域**: **Dレ点本線の food 新規（SEASONING）仕上げ** — SC停止理由確認・サブZIP・KW再送結果。並行でYahoo再認証。詳細は §0。  
+- **フォーカス領域**: Amazon出品は **本番常時ONセット適用済**。販促 **2層減衰実装**（カレンダー`減衰中%`＋B中1%。restore=減衰中%・[要件§10.13/10.14](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)）。並行でサブ画像楽天品質。  
 - **Lv4（Amazonバルク）**:  
-  - HPC／FOOD／T2／U3／**U2**／**U4（楽天サブ流用）**: 実装済。  
-  - C1 SEASONING: 七味実データPACKAGED再送済（審査・停止中確認待ち）。  
+  - HPC／FOOD／T2／U3／**U2**／**U4（楽天サブ流用）**: 実装済・運用合格。  
+  - C1 SEASONING: 七味 **出品中**。  
+  - C1 GROCERY: 缶飯 **出品中**（100521待ち解消・人間確認済）。  
   - 本線UX: [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md)／[org/D_MENU_U4_HUMAN_RUN.md](org/D_MENU_U4_HUMAN_RUN.md)／[org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
-- **Lv3（Yahoo）**: 2026-07-20 人間検収完了。**refresh token再認証待ち**。  
+- **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
 - **Lv2（楽天）**: 2026-07-20 人間検収完了。  
 - **Lv1（承認キュー）**: 2026-07-17 人間検収完了。  
 
 - **このフェーズの完了条件（目安）**  
-  - 七味新規カタログが公開（または停止理由が特定され次アクション確定）。  
-  - サブ画像がSCに載る（手ZIP）。  
+  - ~~缶飯新規カタログが公開~~ **済（人間SC確認）**。  
+  - ~~サブ画像 Amazon（A3）~~ **合格（人間確認）**。  
 
-- **並行・継続（後回し可）**: T3 ZIP自動／Dc API／ε。  
+- **並行・継続（後回し可）**: T3 ZIP自動／Dc API強化／レーンC・P3／ε。  
 
 - **スコープ外（次モール着手前）**  
   - 承認②、販売中SKU無人上書き、clasp push 自動化。  
@@ -147,9 +158,11 @@
 
 ## 4. 次にやること（優先順）
 
-1. Property `AMAZON_IMAGE_U2_ENABLED=false`（未戻しなら）。  
-2. T3／ε／U7 は各ゲート承認後。  
-3. remote `git push` は指示時。  
+1. （済）広告運用GAS `clasp push`／`--schema-only`／Cinderellas 減衰開始日=2026-08-14。  
+2. 8/14: `python taper_send.py --poll --mail` → 1SKU `--prod --i-confirm-prod --wait --update-sheet --mail`（都度承認）。  
+3. 日次 dry_run。安定後に `--prod` または Windowsタスク。  
+4. T3／ε／U7（Dc④⑤）は各ゲート承認後。  
+5. remote `git push` は指示時。  
 
 ---
 
@@ -171,6 +184,18 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-12 | **販促2層減衰**: カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。`減衰開始日`。fetchは現在%のみ。要 clasp push／`--schema-only`。 |
+| 2026-08-10 | **本番常時ONセット**: PUT／ALLOW_PROD／LV4／SCサマリの未設定既定=true。MASTER_QTY・P4B・U2・U4は常時OFF。A1〜B2・A3合格反映。要 clasp push。 |
+| 2026-08-02 | **セットMAIN Phase A 実装**（`tools/set_main_image`・スモークOK）。実素材はHUMAN_RUN。[承認](org/LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL.md)。 |
+| 2026-08-02 | **セットMAIN Phase A 方針ロック**（Pillow・07/C接続・一括・Amazon先）。実装は別承認。[承認](org/LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL.md)。 |
+| 2026-08-02 | **七味出品中確定**（48h待ち削除）。D内レ点＋ダイアログ **clasp push済**。缶飯は100521待ち。 |
+| 2026-08-02 | **D内レ点実装**（失敗後再GENERATED・案A）。[承認](org/LV4_D_REMAKE_MENU_APPROVAL.md)。 |
+| 2026-08-02 | **D内レ点方針ロック**＋MAP sync HUMAN_RUN固め。[承認](org/LV4_D_REMAKE_MENU_APPROVAL.md)／[MAP HUMAN_RUN](org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md)。 |
+| 2026-08-02 | **SHELF Browse 網羅**（抽出・MAP・P4b/D Node ルーティング・缶飯 GROCERY）。[承認](org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md)。 |
+| 2026-08-02 | **D新規ゲート＋Cursor手渡し実装**（Drive `AMAZON_SHELF_REGISTRY_FILE_ID`・3者スキップ）。要 clasp push＋File ID設定。[承認](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
+| 2026-08-01 | **Amazon候補を1子SKU＝1枚**（C画像コース）。要 clasp push。[C HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。 |
+| 2026-08-01 | **相乗り ASIN空 soft skip**（相乗りのみ含む）。`コード.js`。要 clasp push。[承認§2.1](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
+| 2026-08-01 | **D新規ゲート＋Cursor手渡し方針ロック**（docs）。実装は別承認。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
 | 2026-07-29 | **A（D入口版）実装**: D ラジオに既存相乗り dry/prod。要 clasp push→実機。 |
 | 2026-07-29 | **A（D入口版）承認**（社長「承認」）。実装可・範囲は承認 §2・§3。 |
 | 2026-07-29 | **A（D入口版）承認起草**: D ラジオで Amazon 新規／既存相乗り（dry_run／prod）。コードなし。 |

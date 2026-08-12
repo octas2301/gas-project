@@ -4,6 +4,179 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-08-12 | DEALS／HUMAN_RUN／HANDOVER | **表記揃え**: P1c実装済。G8＝終着空でもapply可。復元済＝減衰中%へ | **Git**: revert 当該docs |
+| 2026-08-12 | `price_recovery_logic`／`taper_send`／`points_*`／GAS／DEALS§10.13-14 | **2層**: カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。fetchは現在%のみ。列`減衰開始日` | **Git**: revert。`--schema-only`＋clasp push |
+| 2026-08-12 | `sheets_io` 次回減衰後%数式 | **f-string 二重引用で `{c_pct}` が残るバグ修正** | **Git**: revert。`--schema-only` 再実行 |
+| 2026-08-12 | 広告運用GAS `onOpen`／HUMAN_RUN／DEALS | **メニュー分割**: タイムセール本線＋99。広告運用は分析のみ | **Git**: revert。要 clasp push |
+| 2026-08-12 | `taper_send.py`／sheet_schema／GAS／DEALS§10.14 | **P1c**: taper＋メール＋実行依頼E。リカバリ手動 | **Git**: revert。要 clasp push／`--schema-only`。日次タスクは人手 |
+| 2026-08-12 | DEALS§10.14／HUMAN_RUN／PHASE／HANDOVER | **P1c要件**: 現スナップ＋進捗。E先行。C／D／URL後続 | **Git**: 当該docs revert |
+| 2026-08-12 | `sheet_schema` 減衰*改名／販促売価削除／GAS／DEALS | **戻し→減衰列名。減衰段%明示。販促売価円削除** | **Git**: revert。`--schema-only`＋clasp push |
+| 2026-08-12 | `sheets_io` display formulas／GAS／DEALS§2.2 | **販促ポイント円・実質価格円をシート数式化**（販促売価円は非推奨で空） | **Git**: revert。`--schema-only` 再実行可 |
+| 2026-08-12 | `sheet_schema`／sync realign／GAS Realign／DEALS§2.2 | **マスタ列：目的グループ＋人入力先頭＋黄セル** | **Git**: revert。要 clasp push／`--schema-only` またはメニュー並べ替え |
+| 2026-08-12 | `price_recovery_*`／`sheet_schema`／GAS PriceRecovery／DEALS§10.12 | **実質戻し**: 販促ポイント%＋円表示。売価段上げ廃止 | **Git**: revert。要 clasp push（広告）・`sync --schema-only` |
+| 2026-08-12 | `docs/org/MEMO_POINTS_VS_REFERENCE_PRICE.md` | **ポイント×過去価格メモ**: 記事要約・公式原文未特定・30日/90日/8週整理 | **ファイル削除**または revert |
+| 2026-08-11 | `price_recovery_*`／GAS QtyMail／DEALS§10.12 | **価格戻しAPI＋G10**: our_price段階上げ・B/restoreガード | **Git**: revert。要 clasp push（広告） |
+| 2026-08-11 | `TimeSaleQtyMail.js`／`コード.js`／DEALS docs | **Points G5**: apply／restore Cursor指示メニュー | **Git**: revert。要 clasp push（広告） |
+| 2026-08-11 | `mail_points_remind`／HUMAN_RUN | **Points運用予行**: 日程基準リマインド＋Smile下書き確認 | **Git**: revert |
+| 2026-08-11 | `points_fetch`／`test_points_fetch`／要件§10.10 | **Points G9**: listings pointsNumber÷price で%本線 | **Git**: revert |
+| 2026-08-11 | `points_send`／`points_fetch`／要件§10.10 | **Points G8**: セール前%空・backup失敗でapply中止 | **Git**: revert。`--allow-missing-before` |
+| 2026-08-11 | `points_logic`／`points_send`／要件§10.10.1c | **Points G4**: 施策連動SKUフィルタ（既定ON） | **Git**: revert。`--all-master`で旧挙動 |
+| 2026-08-11 | `mail_points_remind`／GAS QtyMail／要件§10.10.1b | **Points G2/G3**: apply/restore リマインド | **Git**: revert。要 clasp push（広告） |
+| 2026-08-11 | `points_logic`／send／fetch／要件§10.10 | **Points G7**: 状態語彙固定＋sheet更新揃え | **Git**: revert |
+| 2026-08-11 | `points_send`／HUMAN_RUN | **Points G1**: 1SKU prod 2%→1%（feed DONE）。読取GETは未 | **Git**: revert。%はマスタで戻し可 |
+| 2026-08-11 | `build_submit_xlsx`／HUMAN_RUN | **成功submitv2準拠**: compact+日付直書き+保護OFF（全行残しはSC処理失敗） | **Git**: revert |
+| 2026-08-11 | `build_submit_xlsx`／HUMAN_RUN | **開始/終了はVLOOKUP残す**（参加中＋スケジュールのみ書込。日付直書きはSC失敗） | **Git**: revert |
+| 2026-08-11 | `build_submit_xlsx`／HUMAN_RUN | **提出xlsx日付=YYYY-MM-DD文字**（データ定義準拠・シリアル混入修正） | **Git**: revert |
+| 2026-08-11 | sync／template_parse／notify_mail／要件§10.9 | **②ドロップダウン日付付き全登録**＋公式衝突時独自短縮メール | **Git**: revert |
+| 2026-08-11 | `mail_qty_confirm`／GAS `TimeSaleQtyMail`／HUMAN_RUN§9.7 | **数量確認メール実送信**（Gmail API＋下書きシート＋メニュー）→ contact@octas2301.com | **Git**: revert／token_gmail_send は secrets 外 |
+| 2026-08-11 | HUMAN_RUN／`mail_qty_confirm`／DEALS§9.7 | **A未運用表記揃え**／数量確認はUL済対象＋`--tol` | **Git**: revert |
+| 2026-08-11 | `parse_ymd`／`invariants.py`／sync／DEALS§0.1 | **並び修復＋不変条件自動検証**（抜け落ち再発防止） | **Git**: revert |
+| 2026-08-11 | sync／build／sheets_io／DEALS§2.1.0 | **A未運用・作成=UL済・画像保全・台帳終了まで** | **Git**: revert |
+| 2026-08-11 | sync／schedule_class／DEALS§2.1.1 | **B台帳保全**（予定消禁止）／Smile復元・BF非自動 | **Git**: revert |
+| 2026-08-11 | `schedule_class`／sync／build／`TimeSaleP1bMenus.js`／DEALS docs | **P1b: ②SKU行正本・カスタム提出・UL固定文・再build** | **Git**: revert。要 clasp push（広告運用） |
+| 2026-08-11 | `TimeSaleP1bMenus.js`／コード.jsメニュー／DEALS§10.9.1・P1b HUMAN | **P1b: ②確認→Cursor→③→UL手順メニュー**。公式即登録 | **Git**: revert。要 clasp push（広告運用） |
+| 2026-08-11 | `a_track.py`／`lane_a_send`／sheet_schema／build `--sku`／DEALS docs | **A実施フラグ＋ログ参照**／1SKU提出 | **Git**: revert。列は手で残して可 |
+| 2026-08-11 | `sheet_schema`／`sheets_io`／`TimeSalePriceRecovery.js`／DEALS§2.2 | **マスタヘッダ色分け**（戻し=琥珀） | **Git**: revert。シート背景は手でクリア可。要 clasp push（広告運用） |
+| 2026-08-11 | `TimeSalePriceRecovery.js`／`price_recovery_logic`／sheet_schema／DEALS§10.12 | **戻し列＋GAS都度提案（即書き込み）** | **Git**: revert。要 clasp push（広告運用） |
+| 2026-08-11 | `points_fetch`／`mail_qty_confirm`／`detect_new_schedules`／ops／DEALS§9.7・10.10-11 | **ポイントAPI退避・数量確認メール(スプシリンク)・新Sale差分** | **Git**: revert |
+| 2026-08-11 | `points_*`／`sheet_schema`／DEALS§10.10 | **ポイント列意味**: 期間中／セール前退避／restoreモード | **Git**: revert。シート列は手で戻し可 |
+| 2026-08-11 | `points_logic`／`points_send`／`sheet_schema`／sync／DEALS要件§10.10 | **Points Phase0**: マスタ列＋差分TSV／フィード。Phase1はメモのみ | **Git**: revert。マスタ列は手で残して可 |
+| 2026-08-11 | `ops_status`／`revise_b_qty`／`lane_a_patch` | 運用ダッシュ・数量改定・AパッチJSON | **Git**: revert |
+| 2026-08-11 | `tools/amazon_deals_bulk/*`／広告GAS／DEALS要件§2 | **シート改訂**: マスタ薄型・実行・A別タブ。sync＋P1b | **Git**: revert。シートは手で戻し可 |
+| 2026-08-11 | `tools/amazon_deals_bulk/*`／広告GAS Cursor指示／DEALS要件・P1b HUMAN_RUN | **販促P1b**: ②人DL→Python提出xlsx→③。GASは指示のみ | **Git**: revert。③のxlsxは手削除 |
+| 2026-08-11 | `広告運用GAS/コード.js`（clone push済） | **販促P0**: `bootstrapTimeSaleSheetsP0`＋メニュー。マスタ／ログ／分析タブ作成 | **Git**: revert 該当差分。シートは手削除可。要 clone 経由 clasp push |
+| 2026-08-10 | `AmazonSpapiPut.js`／`AmazonApprovalExport.js`／`コード.js`／CURRENT_PHASE／D_ENTRY | **本番常時ONセット**: PUT／ALLOW_PROD／LV4／SCサマリ未設定=true。MASTER_QTY等はOFF。要 clasp push＋旧falseキー削除 | **Git**: revert。緊急停止は明示 false |
+| 2026-08-10 | `tonmana_palette.py`／compose／`コード.js` B-④／SUB docs | **ベース色 PoC 3択**（beige/warm_white/soft_gray）B-④＋`--base-color`。背景のみ。要 clasp push | **Git**: revert |
+| 2026-08-10 | `コード.js` B-④／`review_feedback_templates.py`／review_loop | **目視チェック必須パネル**＋再生成コメントテンプレ（偽物感等）。要 clasp push | **Git**: revert |
+| 2026-08-10 | `export_sub_images_for_rakuten_matrix.py`／compose | **目視=品番キー×最大10（pick=ab）**。全セット子FO禁止。`--to-checked-children` は出品CKのみ | **Git**: revert |
+| 2026-08-10 | `photo_realism_rules.py`／compose fal | **CAMERA_LOOK 案A**（Canon R5 50mm f/1.8・creamy bokeh・輪郭ソフトネス）。目視10枚/全子FOは後続 | **Git**: revert |
+| 2026-08-10 | `sub_image_ai_compose_poc.py` | **auto-export前に run_meta を書く**（順序バグで SystemExit→バッチ停止）。SystemExit を捕捉して次JAN継続 | **Git**: revert |
+| 2026-08-10 | `コード.js` B-④ | **`finishB4AfterTruthBind` 公開名化**（末尾`_`削除）。`google.script.run` private 固着修正。要 clasp push | **Git**: revert |
+| 2026-08-10 | `コード.js` B-④ | **診断ログ diag=v1**（ms刻み・`finishB4`・Drive resolve via・クライアント時刻）。要 clasp push → ログ貼付で原因切り分け | **Git**: revert |
+| 2026-08-10 | `コード.js` B-④ | 紐付け後の指示を**同一ダイアログ内表示**（`google.script.run`→`showModalDialog`禁止でハング修正） | **Git**: revert。要 clasp push |
+| 2026-08-10 | `コード.js`／`photo_realism_rules.py`／`rakuten_image_names.py`／export／compose／SUB docs | **B-④ JAN↔正本人間紐付け**／写真実写ルール進化ファイル／`{sku}_{pattern}_subN` | **Git**: revert。要 clasp push。`SET_MAIN_AMAZON_BASE_FOLDER_ID` 任意 |
+| 2026-08-09 | `work_paths.py`／`master_sets.py`／`export_sub_images_for_rakuten_matrix.py`／`sub_image_ai_compose_poc.py`／`コード.js`／SUB docs | **1話完結 auto-export**: compose後に楽天フォルダへ直出し。人間目視フォルダは1つ。JAN→出品CK子SKU解決 | **Git**: revert。`--no-auto-export`。要 clasp push |
+| 2026-08-09 | `package_truth.py`／`sub_image_ai_compose_poc.py`／`sub_image_lp_themes.py`／`sub_image_review_loop.py`／`コード.js`／SUB docs | **PACKAGE_TRUTH必須・LOCK強化・文字量上限・SEO・人間レビュー再生成**。B-④正本確認。Vision QA／ベース色は対象外 | **Git**: revert。要 clasp push |
+| 2026-08-09 | `コード.js`／SUB HUMAN_RUN／B3 docs | **B-④**: サブ採用CK JAN→Python／Cursor指示ダイアログ（非合成） | **Git**: revert。要 clasp push（メニュー反映） |
+| 2026-08-09 | `sub_image_b3_curate.py`／`export_sub_images_for_rakuten_matrix.py`／`コード.js`／サブ画像楽天 docs | **サブ画像楽天本線**: B-③参照列＋compose→subN export＋E2E手順。AmazonはU4 REUSE | **Git**: revert。要 clasp push。`RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED=false` |
+| 2026-08-09 | `コード.js`／`master_sets.py`／`rakuten_image_names.py`／`export_sub_images_for_rakuten_matrix.py`／楽天SKU docs | **楽天セット数→SKU紐付け転用**: ファイル名子SKU→楽天メイン1／`_subN`→サブ。マスタでN解決。Vision Nは対象外 | **Property** `RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED=false`。**Git**: revert。要 clasp push |
+| 2026-08-09 | `sub_image_lp_themes.py`／compose／instruction_report／HUMAN_RUN | AI合成v3: 心理順スロット5×A/B・page分類・想像FO・OpenAI medium本線・pkgロック。パーツ分類は将来メモ | **Git**: 当該ファイル revert |
+| 2026-08-09 | `sub_image_fal_edit_compare_poc.py`／HUMAN_RUN | fal競合改変4本比較（背景/光/湯気/文字色・商品色ロック） | **Git**: 当該ファイル revert |
+| 2026-08-09 | `sub_image_ai_compose_poc.py`／HUMAN_RUN | 段階1: hybrid振り分け（T03→fal文字禁止／他→Gemini） | **Git**: 当該ファイル revert |
+| 2026-08-09 | `fal_image.py`／`sub_image_fal_poc.py`／compose／HUMAN_RUN | fal.ai（FLUX Kontext/Schnell）格安画像PoC | **Git**: 当該ファイル revert。キーは secrets |
+| 2026-08-09 | `sub_image_ai_compose_poc.py`／`sub_image_lp_themes.py`／`sub_image_instruction_report.py`／HUMAN_RUN | AI合成v2: 競合実在テーマ／ベージュ／AI≤50%／日本語指示ボード | **Git**: 当該ファイル revert |
+| 2026-08-09 | `sub_image_ai_compose_poc.py`／`openai_image.py`／HUMAN_RUN | サブ画像をGemini+OpenAI最新画像モデルで再合成（パーツ流用≥80%／新規≤20%） | **Git**: 当該ファイル revert |
+| 2026-08-09 | `コード.js` B-③／`sub_image_b3_curate.py`／`sheets_rw.py`／docs | B-③右列サブ採用レ点＋採用のみログ＋再実行復元。旧確認シート削除 | **Git**: revert。要 clasp push。ログ／旧シートは手削除可 |
+| 2026-08-09 | `sub_image_b3_curate.py`／`sheets_rw.py`／`sub_image_part_poc.py`／HUMAN_RUN | JAN別仕分け＋シート「サブ画像競合候補（人間確認）」。メイン/無関係除外デフォルト | **Git**: revert。シートは手動削除可 |
+| 2026-08-09 | `b3_comp_catalog.py`／`sub_image_intent.py`／`sub_image_parts.py`／`sub_image_part_poc.py`／HUMAN_RUN | B-③連動: 文字読取で選定・パーツ提案・安全BG合成（文字改変なし）。商品任意 | **Git**: 当該ファイル revert |
+| 2026-08-09 | `sub_image_poc.py`／`sub_image_prompts.py`／`_sub_bg_photos/`／SUB IMAGE HUMAN_RUN | サブ画像10種（実写背景Pillow＋競合掛け合わせ＋シーンAI）。MAIN相当なし | **Git**: 当該ファイル revert。背景JPGは `_sub_bg_photos` 削除可 |
+| 2026-08-09 | `sub_image_poc.py`／`sub_image_prompts.py`／SUB IMAGE HUMAN_RUN | サブ画像PoC（競合改変＋自社フル・注釈ボード・テスト出力のみ） | **Git**: 当該ファイル削除／revert |
+| 2026-08-09 | `コード.js`（画像キー／画素スコア／Keepa列挙／B-③ push）／B3 docs | B-③同一画像は高画素を残す（AmazonメディアID＋SL/_ex） | **Git**: revert／clasp push |
+| 2026-08-09 | `コード.js`（parseCrossMall／pick／B-③）／B3 docs | **案A**: 統合セット数不明でも楽天Yahoo競合画像を取得 | **Git**: revert／clasp push |
+| 2026-08-09 | `コード.js`（KeepaログJAN／B-③ Amazon段0〜2）／B3 docs／RESEARCH | B-③: ログ◎→貼付◎→マスタ親子。0件次段。Amazon0でも楽天Yahoo。ログJAN=AI | **Git**: revert／clasp push |
+| 2026-08-09 | `landscape_layout.py`（新）／`amazon_paste.py`／`amazon_paste_batch.py`／`layout_rules.json`／`コード.js`／docs | 横長合格固定をC③実装。楽天N=1をC指示に反映 | **Git**: 当該ファイル revert／clasp push でGAS反映 |
+| 2026-08-09 | `rakuten_badge.py`／`compose_set_main.py`／RULES／HUMAN_RUN／landscape annot | 楽天N=1生成許可。横長N1中央+Octas。N2+合格記録 | **Git**: 当該ファイル revert |
+| 2026-08-09 | `SET_MAIN_LAYOUT_RULES.md`／`_export_landscape_rule_annots.py` | 横長: N3/4階段横進み復元＋Octas。N≥5案A（右辺接触廃止） | **Git**: 当該docs/script revert |
+| 2026-08-09 | `SET_MAIN_LAYOUT_RULES.md` §1.2／`_export_landscape_rule_annots.py` | 横長: N3/4枠ピン・N≥5 hero三辺＋半端行中央寄せ。注釈再出力 | **Git**: 当該docs/script revert |
+| 2026-08-08 | `SET_MAIN_LAYOUT_RULES.md` §1.2／HANDOVER | **横長セットMAINルール草案**（見本154–158・実装前） | **Git**: 当該docs revert |
+| 2026-08-08 | `AmazonSpapiPut.js`／`コード.js`／PUT docs | **PUT max_items 既定 5→10**（Property未設定時。ハード上限50は維持） | **Git**: revert。運用で下げるなら `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` を再設定 |
+| 2026-08-08 | `AmazonCategoryPt.js`／`コード.js`／P4b承認・HUMAN_RUN | **P4b-d**: ASIN検証・複数多数決・JAN/SHELF重み投票・Browse無しPT禁止＋Dエラーalert | **Git**: revert。`APPROVAL_AMAZON_P4B_PT_MAX_ASINS` 削除可 |
+| 2026-08-08 | `AmazonImageMatrixExport.js`／`コード.js`／C・U2 docs | **U2-ε MAIN自動**: 子SKU名一致→BX自動投入（既存非上書き・親一致/余りは対象外） | **Property** `AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED=false`。**Git**: revert |
+| 2026-08-08 | `AmazonDriveImageExport.js`／`コード.js`／U4 HUMAN_RUN | **U4途中切れ対策**: URL充足スキップ・1SKU例外継続・Putリトライ・時間スライス＋トリガー再開 | **Property** `AMAZON_U4_FORCE_REUPLOAD`／`AMAZON_U4_SLICE_MS` 削除可。**Git**: revert。残留トリガーは `runAmazonU4ResumeFromTrigger` を削除 |
+| 2026-08-08 | `bind_amazon_base_to_parents.py`／`amazon_paste_batch`／SET_MAIN HUMAN_RUN | **01白抜き↔楽天メインVision自動紐付け**（`{親SKU}_単体.png`・複数商品量産） | **Git**: revert。リネームは `BASE_BIND_*.json` の old_name で手戻し |
+| 2026-08-08 | `layout_rules`／`portrait_layout`／`amazon_paste`／SET_MAIN RULES・HUMAN_RUN | **N=3細長合格確定**: Q(四隅上辺中点)→M＋緑法線上+35px。C②→07→D | **Git**: revert。ノブ `unit0NudgeUpAlongNormalPx=0` でも旧挙動に近い |
+| 2026-08-08 | `portrait_layout`／RULES | **N=3細長**: Q＝四隅上辺(TL–TR)中点→円弧中点M（AABB不可） | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／RULES | **N=3細長**: Q＝オレンジAABB上辺中点→円弧中点M | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／RULES | **N=3細長**: Q＝オレンジ外枠(ProductQuad)上辺中点→円弧中点M | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／RULES | **N=3細長**: unit1上辺中点Q＝円弧中点M（法線∩弧） | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／`layout_rules`／RULES | **N=3細長**: unit1上辺左右中点＝円弧中点の法線上 | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／`layout_rules`／RULES | **N=3細長**: hero枠内＋unit0 AABB中心中点（見た目バランス） | **Git**: revert |
+| 2026-08-08 | `portrait_layout`／`layout_rules`／`octas_prep`／`amazon_paste`／RULES | **N=3細長**: 中角8.8°（頂X中点）＋composeでOctas未傾き時に8°適用 | **Git**: revert（Pythonのみ） |
+| 2026-08-08 | `portrait_layout.py`／`layout_rules.json`／SET_MAIN RULES | **N=3細長**: hero AABB下辺＝枠下辺（扇剛体平行移動／`pinHeroFrameBottom`） | **Git**: revert（Pythonのみ・clasp不要） |
+| 2026-08-08 | `portrait_layout.py`／`layout_rules.json`／SET_MAIN RULES | **N=3分岐**: 細長→top_arc_legacy＋高さ≤92%（N=4同型）／幅広→upright現行 | **Git**: revert（Pythonのみ・clasp不要） |
+| 2026-08-08 | `portrait_layout.py`／`layout_rules.json`／SET_MAIN RULES | **N=4分岐見直し**: 細長(H/W≥1.75・缶含む)→**n4_legacy頂円弧**／幅広→upright_quad現行 | **Git**: revert（Pythonのみ・clasp不要） |
+| 2026-08-08 | `amazon_paste.py`／`layout_rules.json`／SET_MAIN RULES | **N≥5 Octas**: unit非被覆＋下枠接触＋**hero隠し≤5%で縮小**／upright_quad素材1枚化 | **Git**: revert（Pythonのみ・clasp不要） |
+| 2026-08-08 | `layout_rules.json`／`portrait_layout.py`／`コード.js`／`work_paths.py`／SET_MAIN RULES・HUMAN_RUN・LV4／HANDOVER | **縦長タイプ合格固定**（N=2〜≥5・Cメニュー②登録・unit3 BR枠下） | **Git**: revert。GASは clasp push 前ならローカル戻し |
+| 2026-08-05 | `portrait_layout.py`／`layout_rules.json`／SET_MAIN RULES・HUMAN_RUN | **縦長N=3合格固定（頂円弧）＋N=4拡張初版** | **Git**: revert。`portraitTilt.n3/n4` を戻す |
+| 2026-08-05 | `portrait_layout.py`／`amazon_paste*.py`／`layout_rules.json`／`コード.js`／SET_MAIN docs | **縦長パターン（斜めファン）** | **Git**: revert。GASは clasp push 前ならローカル戻し |
+| 2026-08-05 | `c1_packaged.py`／C1 HUMAN_RUN／HANDOVER | **定価空時のみ販売価格フォールバック**（B3はマスタ定価で再PACKAGED） | **Git**: revert `resolve_list_price`。03の旧xlsm（timestampなし）は販売価格誤反映のため使わない |
+| 2026-08-02 | `layout_rules`／`rakuten_layer` 3段組版／`master_sets` バリエーション単位／RULES・HUMAN | **楽天Python本線**（金丸数値組版＋単位ヘッダ連携） | **Git**: revert |
+| 2026-08-02 | `tools/set_main_image/ai_*`／`gemini_image`／`model_policy`／AI承認・HUMAN_RUN／PHASE／LEDGER | **セットMAIN AI PoC**（Nano Banana＝通常Flash最新・PRO禁止・見本03/04） | **Git**: revert。secrets/はコミットしない |
+| 2026-08-02 | `LV4_SET_MAIN_IMAGE_PHASE_AI_APPROVAL`／PHASE／LEDGER | **セットMAINを見本参照AI生成へ振替提案**（Pillow本線凍結） | **Git**: 当該docs revert |
+| 2026-08-02 | `tools/set_main_image/*`／`D_MENU_SET_MAIN_IMAGE_*`／承認／PHASE／HANDOVER／LEDGER | **セットMAIN Phase A 実装**（Amazonコラージュ＋楽天数字レイヤ・07出力） | **Git**: revert。07の生成jpgは人手削除 |
+| 2026-08-02 | `LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL`／PHASE／LEDGER | **セットMAIN Phase A 方針ロック**（数字レイヤ・07/C・一括・品質でリサーチ切替可） | **Git**: 当該docs revert |
+| 2026-08-02 | `LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL`／PHASE／LEDGER | **セットMAIN Phase A 承認ドラフト**（Pillow合成・生成AI不使用・B/C後回し） | **Git**: 当該docs revert |
+| 2026-08-02 | 台帳／PHASE／ROADMAP／REMAKE／HANDOVER／LEDGER | **七味出品中**（48h待ち削除）＋D内レ点 clasp push済反映 | **Git**: 当該docs revert |
+| 2026-08-02 | `コード.js`／`AmazonApprovalExport.js`／`LV4_D_REMAKE_*`／Facade／PHASE／HANDOVER／LEDGER | **D内レ点実装**（失敗後再GENERATED・案A・確認後に最新openのみ UPLOAD_FAILED） | **Git**: revert。Z 21-④は従来どおり |
+| 2026-08-02 | `LV4_D_REMAKE_MENU_APPROVAL`／MAP HUMAN_RUN／Facade§6／SHELF・PHASE／HANDOVER／LEDGER | **D内レ点方針ロック（案A）**＋MAP sync HUMAN_RUN §0b 固め。コードなし | **Git**: 当該docs revert |
+| 2026-08-02 | `c1_packaged.py`／`コード.js`（D手渡し人間手順）／MAP・LANE_B台帳／SHELF HUMAN_RUN／LEDGER | **browse=Node IDのみ**（90194/90225対策）＋人間手順を成功/失敗で分離（失敗=05・08禁止） | **Git**: revert |
+| 2026-08-02 | `c1_packaged.py`／`コード.js`／MAP・LANE台帳／LEDGER | **browse=BrowsePath（プルダウン表記）**＋人間手順成功/失敗分離。数値ID単独禁止 | **Git**: revert |
+| 2026-08-02 | `LV4_MAP_SHEET_JSON_SYNC_*`／`sync_map_sheet_to_column_json.py`／`push_map_attr_patches_to_sheet.py`／`append_map_sheet_error.py`／`MAP_SC_ERROR_LEDGER.md`／PHASE／HANDOVER／LEDGER | **正本=sheet／派生=MD／実行=JSON（sheet→生成）** | **Git**: revert。JSON は `.bak_map_sync` から戻す |
+| 2026-08-02 | `c1_packaged.py`／`food_fish_grocery_column_map.json`／MAP生成／LEDGER | **缶飯数量ポリシー**（入数/ユニット=セット缶数、重量=サイズg、AT=size、色・形態・温度未出力） | **Git**: revert。03の該当PACKAGEDを旧版に戻す |
+| 2026-08-02 | `food_fish_grocery_column_map.json`／`create_amazon_mapping_sheet.py`／C1 FOOD列マップ／SHELF承認／LEDGER | **GROCERYテーマ=`サイズ`**（純正プルダウンのみ。`SET_NAME`廃止） | **Git**: revert。旧xlsmは03のタイムスタンプ付きを使わない |
+| 2026-08-02 | `LV4_SHELF_BROWSE_CATALOG_*`／`c1_shelf_browse_extract.py`／`shelf_browse_catalog.json`／sync MAP／`AmazonCategoryPt.js`／`コード.js`／T2・P4b・PHASE／HANDOVER／LEDGER | **SHELF Browse網羅＋Nodeルーティング**（缶飯GROCERY・MEATエイリアスはフォールバック） | **Git**: revert。Drive catalog／registry 旧版 |
+| 2026-08-02 | `shelf_registry.json`／`food_fish_grocery_column_map.json`／指紋／`AmazonCategoryPt.js`／`コード.js`／PHASE／HANDOVER／LEDGER | **GROCERY本線**（FOOD_FISH_GROCERY・Catalog MEAT→GROCERYエイリアス・Dゲート書換） | **Git**: revert。Drive `shelf_registry.json` を旧版に戻す |
+| 2026-08-02 | `c1_packaged.py`／`food_seasoning_column_map.json`／`create_amazon_mapping_sheet.py`／C1 FOOD列マップ／P4b承認／PHASE／HANDOVER／LEDGER | **C1 FOOD: PT/browse必須・既定禁止・FOOD許可・ハイライトB（楽天→Yahoo→箇条書き①）・HJ型番** | **Git**: revert 当該差分 |
+| 2026-08-02 | `コード.js`／`AmazonCategoryPt.js`／D新規ゲート承認・HUMAN_RUN／Facade／P4b／PHASE／HANDOVER／LEDGER | **D新規ゲート＋Cursor手渡し実装**（Drive棚 File ID） | **Git**: revert。Property `AMAZON_SHELF_REGISTRY_FILE_ID` 削除可 |
+| 2026-08-02 | `AmazonSpapiPut.js`／`コード.js`／D_ENTRY／デュアル承認／レ点本線承認／HANDOVER／LEDGER | **相乗り通常運用=prod直**（SKU空でも生成・成功後保存。dry_run任意） | **Git**: revert 当該差分 |
+| 2026-08-02 | `コード.js`／`AmazonDriveImageExport.js`／C画像コース HUMAN_RUN／U2要件／HANDOVER／LEDGER | **C表示名をAma新カタログ①／②へ明確化＋U4対象SKU限定の兄弟PT URL補完** | **Git**: revert 当該差分。補完済みURLは必要な行だけ人手で空欄へ戻す |
+| 2026-08-01 | `AmazonImageMatrixExport.js`／C画像コース HUMAN_RUN／U2要件／PHASE／HANDOVER／LEDGER | **Amazon候補を1子SKU＝1枚に**（全行タイル廃止・名前一致優先） | **Property**: `AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED=true` で旧表示。**Git**: revert |
+| 2026-08-01 | `コード.js`（`runBatchExportAmazonFacade`）／D新規ゲート承認§2.1／D_ENTRY／HUMAN_RUN／PHASE／HANDOVER／LEDGER | **相乗りASIN空 soft skip**（相乗りのみでも行スキップ・全体継続） | **Git**: revert 当該差分 |
+| 2026-08-01 | `LV4_D_NEW_PT_SHELF_GATE_…`／`D_MENU_D_NEW_PT_SHELF_GATE_…`／Facade§6／P4b-c／PHASE／HANDOVER／LEDGER | **D新規ゲート＋Cursor手渡し方針ロック**（docsのみ・実装未） | **Git**: 当該docs revert |
+| 2026-08-01 | B-T2承認／HUMAN_RUN／T0・T1誘導／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T2§4ロック**（複合複数明示・三点スキップ・実装は実需後） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_B_BULK_TEMPLATE_T2_…`／`D_MENU_LANE_B_BULK_T2_…`／T0・T1誘導／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T2方針ドラフト**（コードなし・複合優先・実需起動） | **Git**: 当該docs revert |
+| 2026-08-01 | `コード.js`／`AmazonApprovalExport.js`／P0承認／D_ENTRY／PHASE／HANDOVER／LEDGER | **D送信在庫: 新規もMASTER時qty内訳確認**（相乗りと同水準・UI明示） | **Git**: revert 当該差分 |
+| 2026-08-01 | 台帳／C1 §0b／D_ENTRY §1f／PHASE／HANDOVER／LEDGER | **七味再送サマリ確定**（100521のみ・99016解消） | **Git**: 当該docs revert |
+| 2026-08-01 | `コード.js`（`createZSplitMenu`） | **Zメニュー連番サブ化**（1〜10／11〜17／18〜21・21内分割。関数名・番号不変） | **Git**: revert |
+| 2026-08-01 | `c1_bulk_fill_by_name.py`／T1_PROD承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T1 prod実装**（`--mode prod`・三点スキップ・スモークOK） | **Git**: revert 当該差分 |
+| 2026-08-01 | `LV4_LANE_B_BULK_TEMPLATE_T1_PROD_…`／`D_MENU_LANE_B_BULK_T1_PROD_…`／親T1／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T1 prod第2段方針ドラフト**（コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `c1_bulk_shelf_lookup.py`／`c1_bulk_fill_by_name.py`／`c1_bulk_name_map.py`／`shelf_registry.json`／`food_seasoning_column_map.json`／B-T1 docs | **B-T1実装**（棚引き＋項目名 dry_run・三点スキップ・スモークOK） | **Git**: revert 当該ツール＋docs。prod未 |
+| 2026-08-01 | B-T1承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER | **B-T1に棚引き・DL要否案内を追記** | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_B_BULK_TEMPLATE_T1_…`／`D_MENU_LANE_B_BULK_T1_…`／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T1方針ドラフト**（項目名マップ・複合SEASONING・コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `c1_bulk_fingerprint.py`／B-T0承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T0実装**（09指紋→05・三点スキップ・スモークmatch） | **Git**: revert ツール＋docs |
+| 2026-08-01 | B-T0承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T0入口を09に確定** | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_B_BULK_TEMPLATE_T0_…`／`D_MENU_LANE_B_BULK_T0_…`／PHASE／HANDOVER／LEDGER／ROADMAP | **B-T0承認ドラフト**（指紋差分・`04`集約・コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | P4b／C1 HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4b-b合格**（HERB→C1 PT=SEASONING）＋ローカルPython=Agent実行明記 | **Git**: 当該docs revert |
+| 2026-08-01 | P4b承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4b-a合格・P4b-b=HERBフォールバック手順** | **Git**: 当該docs revert |
+| 2026-08-01 | `AmazonCategoryPt.js`／P4b承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4bマスタ競合版実装**（多数決廃止・WARNのみ） | **Git**: revert。Property OFF |
+| 2026-08-01 | P4b承認§2／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4b§2マスタ競合改定**（多数決廃止・WARNのみ・コード未） | **Git**: 当該docs revert |
+| 2026-08-01 | `AmazonCategoryPt.js`／P4b承認§2／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4b多数決改定**（◎上位5・同票は売上1位・SEASONING優先廃止） | **Git**: revert。Property OFF |
+| 2026-08-01 | `AmazonCategoryPt.js`／`AmazonSpapiPut.js`／`コード.js`／`c1_packaged.py`／column_map／P4b承認／HUMAN_RUN／PHASE等 | **P4b実装**（21-⑱・空セル書込・C1マスタ優先・三点スキップ） | **Git**: revert。Property OFF |
+| 2026-08-01 | P4b承認§2／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **P4b方針ロック**（Keepa既存browse・提案HERB可・C1本線SEASONING/HPC） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_AMAZON_CATEGORY_PT_P4B_…`／`D_MENU_P4B_…`／PHASE／HANDOVER／LEDGER／ROADMAP／P4a | **P4b承認包起草**（方針待ち・コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | Phase2承認§5／HUMAN_RUN§3／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **デュアル Phase2検収OK**（dry `…f372b8`／`…40d85e`・prod `…8fcbc2`／`…cc7c72`） | **Git**: 当該docs revert |
+| 2026-08-01 | `AmazonSpapiPut.js` | **`amazonSpapiPutOfferSellerSkuHeader_` 復元**（Phase2編集で消失→`ReferenceError`。系統→保存列名） | **Git**: revert |
+| 2026-08-01 | `コード.js`／`AmazonSpapiPut.js`／`LV4_DUAL_OFFER_PHASE2_…`／`D_MENU_DUAL_OFFER_PHASE2_…`／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **デュアル Phase2実装**（チェックUI・順次PUT・部分成功） | **Git**: revert。UIはラジオに戻る |
+| 2026-08-01 | `LV4_LANE_B_…`／`LANE_B_SC_ERROR_LEDGER`／`D_MENU_LANE_B_LEDGER_…`／PHASE／HANDOVER／LEDGER／ROADMAP／P2・C1・D_ENTRY | **レーンB台帳初版＋シード** | **Git**: 当該docs revert |
+| 2026-08-01 | A3承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **A3 dry／prod検収OK**（`…49a49e`／`…f677a3`） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_A3_…`／`D_MENU_LANE_A3_HUMAN_RUN`／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **A3承認包・HUMAN_RUN起草**（実機待ち・原則コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | A2承認／HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **A2検収OK記録** | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_A2_…`／`D_MENU_LANE_A2_HUMAN_RUN`／PHASE／HANDOVER／LEDGER／ROADMAP／D_ENTRY | **A2承認包・HUMAN_RUN起草**（原則コードなし・実機待ち） | **Git**: 当該docs revert |
+| 2026-08-01 | デュアル承認§6／D_ENTRY§1b2／A1 HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **デュアル prod検収OK**（`…4ed30e`／`…eb2511`） | **Git**: 当該docs revert |
+| 2026-08-01 | デュアル承認§6／D_ENTRY§1b2／A1 HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **デュアル dry_run実機OK記録**（`…8fa79e`／`…d6ed67`。prod未） | **Git**: 当該docs revert |
+| 2026-08-01 | `AmazonSpapiPut.js`／`コード.js`／`AmazonApprovalExport.js`／デュアル承認／D_ENTRY・A1 HUMAN_RUN／PHASE／HANDOVER／LEDGER／ROADMAP | **デュアル Phase1実装**（系統別SKU列・三点スキップ） | **Git**: revert。マスタの `_FBA` 列は人手削除可 |
+| 2026-08-01 | A1 HUMAN_RUN／属性・A1承認／PHASE／ROADMAP／HANDOVER／D_ENTRY／LEDGER | **A1検収OK記録**（FBA dry_run／prod runId） | **Git**: 当該docs revert |
+| 2026-08-01 | `AmazonSpapiPut.js`／`コード.js`／属性承認／A1 HUMAN_RUN／PHASE／HANDOVER／LEDGER | **FBA compliance属性実装**（電池・危険物既定＋失敗時おすすめUI） | **Git**: revert。Property `…FBA_COMPLIANCE_ATTRS=false` |
+| 2026-08-01 | `LV4_A1_FBA_COMPLIANCE_ATTRS_…`／PHASE／ROADMAP／HANDOVER／LEDGER | **FBA属性方針承認**（§3折衷・三点スキップ。実装待ち） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL`／A1 HUMAN_RUN／PHASE／ROADMAP／HANDOVER／LEDGER | **A1対比記録＋FBA属性承認ドラフト**（コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_DUAL_OFFER_MFN_FBA_APPROVAL`／A1 HUMAN_RUN／PHASE／ROADMAP／HANDOVER／LEDGER | **デュアル Phase1方針ロック**＋A1暫定NF空七味。コードなし | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_A1_…`／HUMAN_RUN／PHASE／ROADMAP／HANDOVER／LEDGER | **A1方針承認**（prodまで・三点スキップ。実機待ち） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_LANE_A1_FBA_…APPROVAL`／`D_MENU_LANE_A1_FBA_HUMAN_RUN`／PHASE／ROADMAP／HANDOVER／LEDGER | **レーンA1承認包ドラフト**（相乗りFBA検収。コード原則なし） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_P2_…APPROVAL` §7.4／PHASE／ROADMAP／HANDOVER／P2 HUMAN_RUN／LEDGER | **方針ロック**: 既存API本線(A)／新規xlsm取り貯め(B)／新規JSONゲート後(C)。コードなし | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_P2_DC_123_…APPROVAL`／P2 HUMAN_RUN／PHASE／ROADMAP／HANDOVER／LEDGER | **P2調査承認＋結論**（①②API不可／③温存。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_P2_DC_123_INVESTIGATION_APPROVAL`／`D_MENU_P2_DC_HUMAN_RUN`／PHASE／ROADMAP／HANDOVER／LEDGER | **P2調査承認包起草**（Dc①②③。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | PHASE／ROADMAP／HANDOVER／LEDGER／P1承認・HUMAN_RUN | **P1検収OK＋吉野家承認済**記録（コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `コード.js`／`AmazonImageMatrixExport.js`／`AmazonDriveImageExport.js`／P1・C・U2 docs／PHASE／LEDGER | **P1実装**: 02手File禁止の案内・Dゲート／U4／④メッセージ | **Git**: revert。要 clasp push |
+| 2026-08-01 | `LV4_P1_FILE_MIN_APPROVAL`／PHASE／ROADMAP／HANDOVER／LEDGER | **P1方針承認**（§2既定・三点スキップ。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `LV4_P1_FILE_MIN_APPROVAL`／`D_MENU_P1_HUMAN_RUN`／PHASE／ROADMAP／HANDOVER／LEDGER | **P1承認包起草**（07以降 File最少。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `tools/spapi_smoke/spapi_smoke.py`／config.example／P4a承認・HUMAN_RUN／PHASE／ROADMAP／HANDOVER | **P4a読取PoC**: `--poc-category`（Definitions search/get＋Catalog分類。マスタ非書込） | **Git**: revert。フラグ無しなら従来スモークのみ |
+| 2026-08-01 | `コード.js`／C承認／C HUMAN_RUN／PHASE／HANDOVER／LEDGER | **CをD型選択モーダル1本へ**（C-0〜C-2はZ互換） | **Git**: revert。トップを `createCImageCourseMenu` サブメニューへ戻す |
+| 2026-08-01 | `コード.js`／C承認／C HUMAN_RUN／PHASE／HANDOVER／LEDGER | **C本線 Property一時ON→復元**（常設は07フォルダID。C-2確認＋ScriptLock） | **Git**: revert。復元失敗時は U2/U4 を手動false/削除 |
+| 2026-08-01 | `コード.js`／`LV4_C_COURSE_…APPROVAL`／`D_MENU_C_IMAGE_COURSE_HUMAN_RUN`／PHASE／HANDOVER／LEDGER | **Cコース実装**（C-0/1/2・①〜④をZ・E寄せ） | **Git**: revert。メニューは旧C/C-Amazon行に戻す |
+| 2026-08-01 | `LV4_C_COURSE_CONSOLIDATION_APPROVAL`／PHASE／HANDOVER／ROADMAP／ファサード§7 | **Cコース統合 方針ロック**（IA・三点スキップ・P1非同梱。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `コード.js`／`AmazonSpapiPut.js`／`AmazonApprovalExport.js`／P0承認／D_ENTRY HUMAN_RUN／PHASE／LEDGER | **P0実装**: D在庫0\|マスタ・prod既定・ALLOW_MASTER_QTY・E→D補助/Z互換 | **Property** MASTER_QTY/ALLOW_PROD false。**Git**: revert |
+| 2026-08-01 | `LV4_D_P0_THREE_REVIEW_MAJORITY`／P0承認／CHECKBOX／マトリクス／Lv4§3.4／PHASE | **P0三点(B)反映**（マスタqty＝承認②。コードなし） | **Git**: 当該docs revert |
+| 2026-08-01 | `AMAZON_DEV_ROADMAP_P0_P4`／`LV4_D_P0_…APPROVAL`／`LV4_AMAZON_CATEGORY_PT_POC_APPROVAL`／PHASE／ファサード／HANDOVER | **Amazon P0〜P4／Dcロードマップ確定**（P4a並列調査・P0三点対象。コードなし） | **Git**: 当該docs revert |
 | 2026-07-31 | `AmazonApprovalExport.js`／D_ENTRY HUMAN_RUN §1e | **SCサマリ監視の自動ON/OFF**（GENERATED成功→待ちリスト＋トリガー設置。終端ステータスで削除。上限72h。Property `…_SC_SUMMARY_WAIT`） | **21-⑰**でトリガー＋待ちクリア。**Property** ENABLED=false。**Git**: 対象差分revert |
 | 2026-07-31 | `Yahoo.js`／`コード.js`／`YAHOO_OAUTH_REAUTH_HUMAN_RUN.md` | **Yahoo再認証半自動**（認可code貼付→B14更新＋**C14取得日**。残り≤7日でB17へメール。任意日次トリガー。出品本体非改変） | **メニュー**でトリガー削除。**Property** `YAHOO_OAUTH_REDIRECT_URI` 削除可。**Git**: 対象差分revert＋メニュー行削除 |
 | 2026-07-31 | `c1_packaged.py`／`food_seasoning_column_map.json` | **SEASONING検索KWは1枠**（SC 99016: generic_keywordは最大1回。空白結合。keyword2〜5列マップ削除） | **Git**: 対象差分をrevert。旧5枠分割に戻る |

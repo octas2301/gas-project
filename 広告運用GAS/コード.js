@@ -33,18 +33,153 @@ const PRODUCT_MAP = {
 
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  ui.createMenu('🚀 広告運用メニュー')
-    .addItem('1-2. 分析＆バルク生成を実行', 'runOptimizationAndBulk')
-    .addItem('1. 分析を実行する', 'runOptimization')
+
+  ui.createMenu('🚀 広告運用')
+    .addItem('1. 広告レポートを分析し、除外・入札案を出す', 'runOptimization')
+    .addItem('1-② 分析して広告バルクまで一気に作る', 'runOptimizationAndBulk')
     .addSeparator()
-    .addItem('2. バルク生成＆ドライブ保存', 'generateBulkFiles')
-    .addItem('🔍 バルクファイル事前診断', 'checkBulkFileErrors')
+    .addItem('2. 広告バルクをDriveに保存する', 'generateBulkFiles')
+    .addItem('2-② 広告バルクの誤りをチェックする', 'checkBulkFileErrors')
     .addSeparator()
-    .addItem('3. 【新機能】お宝キーワード広告CSV作成', 'generateRakutenKeywordAdCSV')
+    .addItem('3. 楽天お宝キーワードの広告CSVを作る', 'generateRakutenKeywordAdCSV')
     .addSeparator()
-    .addItem('🔧 操作マニュアルを作成', 'createManualSheet')
-    .addItem('🧹 古いファイルの掃除', 'runManualCleanup')
+    .addSubMenu(ui.createMenu('99.テスト用')
+      .addItem('99-① 操作マニュアルシートを作る', 'createManualSheet')
+      .addItem('99-② 古いDriveファイルを削除する', 'runManualCleanup'))
     .addToUi();
+
+  ui.createMenu('⏱ Amazonタイムセール・ポイント減衰設定')
+    .addItem('1. 公式タイムセールの提出xlsxを作る（Agent依頼文）', 'menuTimeSaleP1bCursorPrompt')
+    .addItem('1-② 提出xlsxを作り直す（修正後・Agent依頼文）', 'menuTimeSaleP1bRebuildPrompt')
+    .addSeparator()
+    .addItem('2. セール開始の21日前・14日前：数量確認メールを送る（下書き送信）', 'menuTimeSaleQtyConfirmSend')
+    .addSeparator()
+    .addItem('3. セール開始前日／終了翌日：ポイント作業の催促メールを送る（下書き送信）', 'menuTimeSalePointsRemindSend')
+    .addItem('4. セール開始時：期間中ポイント%をAmazonに載せる（Agent依頼文）', 'menuTimeSalePointsApplyCursorPrompt')
+    .addItem('5. セール終了後：減衰中ポイント%をAmazonに戻す（Agent依頼文）', 'menuTimeSalePointsRestoreCursorPrompt')
+    .addSeparator()
+    .addItem('6. 新しいSKUに、何日かけて何%ずつ下げるかを記入する（選択行）', 'menuProposePriceRecoverySelection')
+    .addItem('6-② 予定日より前に、今すぐ1段下げたいSKUに印を付ける（選択行）', 'menuRequestTaperRunSelection')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('99.テスト用')
+      .addItem('99-① 【危険】タイムセールシートを初期化する', 'bootstrapTimeSaleSheetsP0')
+      .addItem('99-② 列の並びを目的グループに直す', 'menuRealignMasterColumns')
+      .addItem('99-③ ヘッダ色・入力黄・計算式を付け直す', 'menuApplyMasterHeaderColors')
+      .addItem('99-④ 期間・間隔・実行依頼の入力規則を直す', 'menuFixRecoveryValidations')
+      .addItem('99-⑤ 計画が空の有効SKUへ、減衰の進め方を一括記入する（初回向け）', 'menuProposePriceRecoveryEligible')
+      .addItem('99-⑥ 提出xlsxは作らず、タイムセール表だけ最新にする（Agent依頼文）', 'menuTimeSaleSyncCursorPrompt')
+      .addItem('99-⑦ 減衰を手動で1回回す（日次失敗時・Agent依頼文）', 'menuTimeSalePriceRecoverySendCursorPrompt'))
+    .addToUi();
+}
+
+/**
+ * P0: マスタ名簿（有効SKU）＋施策「タイムセール」。旧実行/期間値下げは案内のみ。
+ */
+function bootstrapTimeSaleSheetsP0() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const masterHeaders = [
+    'SKU', 'ASIN', '親ASIN', '商品名', '画像URL', 'marketplace', '通貨', '有効',
+    '出品者価格_SC', 'タイムセール価格_SC', '販売商品数_SC', 'V30', 'Q_fba', '原価U', 'メモ'
+  ];
+  const saleHeaders = [
+    'sale_id', 'レーン', 'SKU', 'ASIN', '親ASIN', '商品名', '画像', 'marketplace', '通貨',
+    '有効', '承認済', '種別', 'スケジュール', '開始日', '終了日',
+    '出品者価格_SC', 'タイムセール価格_SC', 'タイムセール価格_確定',
+    '販売商品数_SC', 'V30', '販売商品数_確定', '通常価格', 'セール価格', '目標販売', '想定利益',
+    '原価U', '提出対象', '状態', '更新日時', 'runId', 'メッセージ', 'メモ'
+  ];
+
+  const master = getSheetByNameSafe(ss, 'タイムセール_マスタ');
+  if (master.getLastRow() === 0 || String(master.getRange(1, 1).getValue()) !== 'SKU') {
+    // 案内のみ／空ならヘッダだけ用意（名簿は人が入れる／syncが施策から復元可）
+    const wasGuide = String(master.getRange(1, 1).getValue()) === '案内';
+    const keep = [];
+    if (!wasGuide && master.getLastRow() >= 2) {
+      const vals = master.getRange(2, 1, master.getLastRow(), Math.min(2, master.getLastColumn())).getValues();
+      vals.forEach(function (row) {
+        const a = String(row[0] || '').trim();
+        const b = String(row[1] || '').trim();
+        if (/^B0/i.test(a)) keep.push(['', a]);
+        else if (a || b) keep.push([a, b]);
+      });
+    }
+    master.clear();
+    master.appendRow(masterHeaders);
+    master.getRange(1, 1, 1, masterHeaders.length).setFontWeight('bold');
+    master.setFrozenRows(1);
+    keep.forEach(function (pair) {
+      master.appendRow([
+        pair[0], pair[1], '', '', 'JP', 'JPY', 'TRUE', '', '', '', '', ''
+      ]);
+    });
+  }
+
+  const sh = getSheetByNameSafe(ss, 'タイムセール');
+  if (sh.getLastRow() === 0 || String(sh.getRange(1, 1).getValue()) !== 'sale_id') {
+    sh.clear();
+    sh.appendRow(saleHeaders);
+    sh.getRange(1, 1, 1, saleHeaders.length).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+
+  ['タイムセール_実行', 'タイムセール_期間値下げ'].forEach(function (name) {
+    const leg = getSheetByNameSafe(ss, name);
+    leg.clear();
+    leg.getRange(1, 1, 2, 1).setValues([
+      ['案内'],
+      ['対象はタイムセール_マスタ（有効のみ）。施策はタイムセール。sync_master_and_exec.py --write']
+    ]);
+  });
+
+  const analysis = getSheetByNameSafe(ss, 'タイムセール_分析');
+  if (analysis.getLastRow() === 0) {
+    analysis.getRange(1, 1, 3, 1).setValues([
+      ['タイムセール_分析'],
+      ['ソース: タイムセール／対象名簿=タイムセール_マスタ'],
+      ['B=名付き公式のみバルク／A=月・カスタム相当']
+    ]);
+  }
+
+  SpreadsheetApp.getUi().alert('マスタ名簿＋施策シートを用意しました。次: sync --write');
+  try {
+    if (typeof applyMasterHeaderGroupColors_ === 'function') {
+      applyMasterHeaderGroupColors_(master);
+    }
+  } catch (e) { /* optional */ }
+  Logger.log(JSON.stringify({ stepName: 'bootstrapTimeSaleSheetsP0', state: 'DONE' }));
+}
+
+function menuTimeSaleSyncCursorPrompt() {
+  const prompt = [
+    'gas-project で Amazon タイムセール同期を実行してください。',
+    '',
+    'ルール: 対象はタイムセール_マスタの有効SKUのみ。名付き公式=Bバルク。月/カスタム=A。並び=開始日降順→商品名昇順。',
+    '',
+    '1. cd tools/amazon_deals_bulk',
+    '2. python sync_master_and_exec.py',
+    '3. python sync_master_and_exec.py --write',
+    '4. マスタ件数とタイムセールA/B件数を報告',
+    '',
+    '要件§2: docs/org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md'
+  ].join('\n');
+  showTimeSaleCursorDialog_('99-⑥ タイムセール表だけ最新にする — Agent依頼文', prompt, 'menuTimeSaleSyncCursorPrompt');
+}
+
+// menuTimeSaleP1bCursorPrompt / menuTimeSaleP1bRebuildPrompt → TimeSaleP1bMenus.js
+
+function showTimeSaleCursorDialog_(title, prompt, stepName) {
+  const html = HtmlService.createHtmlOutput(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<style>body{font-family:sans-serif;font-size:13px;padding:12px;}' +
+    'textarea{width:100%;height:280px;font-family:monospace;font-size:11px;}</style></head><body>' +
+    '<h3 style="margin-top:0;">' + title + '</h3>' +
+    '<p>下の文をコピーし、Cursor Agent に貼って実行してください。</p>' +
+    '<textarea id="t">' + prompt.replace(/</g, '&lt;') + '</textarea>' +
+    '<p><button onclick="var t=document.getElementById(\'t\');t.select();document.execCommand(\'copy\');">コピー</button></p>' +
+    '</body></html>'
+  ).setWidth(640).setHeight(460);
+  SpreadsheetApp.getUi().showModalDialog(html, title);
+  Logger.log(JSON.stringify({ stepName: stepName, state: 'DONE' }));
 }
 
 /**

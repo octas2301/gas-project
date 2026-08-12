@@ -100,6 +100,167 @@
 
 ## 6. 更新履歴
 
+- 2026-08-10: **Amazon本番常時ONセット**: `PUT_ENABLED`／`ALLOW_PROD`／`LV4_ENABLED`／`SC_SUMMARY` の未設定既定=true（明示falseで緊急停止）。`MASTER_QTY`／`P4B`／`U2`／`U4`は常時OFF。A1〜B2・A3合格。要 clasp push＋旧falseキー削除or true。[CURRENT_PHASE](CURRENT_PHASE.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-08-10: **サブ画像ベース色 PoC 3択**（beige/warm_white/soft_gray）: B-④ドロップダウン → compose `--base-color`（別名 `--tonmana`）。`tonmana_palette.py`／GAS `b4TonmanaPalette_` 同期。背景・カードのみ（PACKAGE_LOCK）。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-10: **B-④正本人間紐付け／写真実写ルール／サブファイル名にpattern**: Driveの`01.amazon白抜きベース`画像をJANと対応付け（`--package-truth`）。`photo_realism_rules.py`をcomposeが毎回読込。exportは`{子SKU}_{themeSlug}_subN.jpg`。要 clasp push／任意 Property `SET_MAIN_AMAZON_BASE_FOLDER_ID`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像1話完結 auto-export**: compose後に `02.楽天アップロード画像保存場所` へ `{子SKU}_subN` 自動配置（JAN→出品CK子）。人間目視はこの1フォルダのみ。再生成後も再export。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像 PACKAGE_TRUTH／LOCK強化**: 正本必須（無ければJANスキップ）・正本OCR禁止・アスペクトR・文字量上限・商品名SEO・`sub_image_review_loop.py`（チェック＋要望→再生成）。B-④で正本確認。Vision自動QA・ベース色メニューは対象外。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-09: **B-④ サブ画像 Python／Cursor 指示**: サブ採用CK（なければ採用ログ）の JAN を集め、compose 本線コマンドをダイアログ表示（GAS非合成）。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像コース（楽天出口）本線**: B-③参照列（themeId/phaseOrder/cluster）／compose→`{子SKU}_subN` export（`--from-compose-dir`/`--pick`）／マトリクス自動→R-Cabinet。人手＝採用CK＋短い目視。Amazonは U4 REUSE。Yahoo・Vision N・パーツ分類はバックログ。要 clasp push。[承認](org/LV4_SUB_IMAGE_RAKUTEN_COURSE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-09: **楽天セット数→SKU紐付け転用**: ファイル名に子SKU→楽天メイン1自動／`_subN`→サブ。セット数はマスタで子SKU決定（Vision Nはバックログ）。Property `RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED`。要 clasp push。[承認](org/LV4_RAKUTEN_IMAGE_SKU_AUTOBIND_APPROVAL.md)／[要件](org/D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像 AI合成 v3**: 心理プロセス順スロット5×A/B／ページ全体テーマ分類／競合→phase被り→想像FO／`gpt-image-2` medium本線／パッケージ厳禁。ファイル名にテーマslug。パーツ単位分類は将来拡張（HUMAN_RUNメモ）。例 `--providers openai --openai-quality medium --jan 4538872281013`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像 hybrid段階1**: Gemini本線＋falはT03シズルのみ（文字/ロゴ禁止）。`--providers gemini,fal --route auto`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **fal.ai 画像PoC**: `fal_image.py`／`sub_image_fal_poc.py`。既定 `flux-kontext/dev`（編集）＋`flux/schnell`（最安）。compose は `--providers fal`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像 AI合成 v2**: 競合実在LPテーマのみ×各2枚／ベージュ固定／文字量抑制（成分表例外）／AI≤50%。日本語指示ボード同梱。`sub_image_ai_compose_poc.py`＋`sub_image_lp_themes.py`＋`sub_image_instruction_report.py`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像 AI合成（Gemini+OpenAI）**: Pillow精度不足のため切替。`sub_image_ai_compose_poc.py`。`gemini-3.1-flash-image` + `gpt-image-2`。競合パーツ≥約80%／新規≤約20%。例 `sub_image_ai_compose/4538872180149_20260808_192500` ほか缶飯2JAN。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **B-③右列サブ採用レ点＋採用のみログ**: `サブ採用CK`（レ点）／`サブ画像採用ログ`。再実行時GASが復元。旧「サブ画像競合候補」削除。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)／[B3 docs](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)。
+- 2026-08-09: **サブ画像 JAN仕分けシート**: `サブ画像競合候補（人間確認）` にB-③をJAN紐付け。メイン/無関係を自動除外デフォルト→人が採用CK。合成は `--from-curate-sheet`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像パーツPoC（B-③連動）**: 文字読取で意図選定／配送等除外／パーツ自動提案＋安全BG合成。商品任意。例 `sub_image_parts_poc/4538872180149_*`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像PoC 10種**: 実写背景Pillow（P01–04）／競合掛け合わせ（P05–06）／写真BG誘導シーンAI（P07–10）。MAIN白抜きなし。例 `sub_image_poc/20260808_174349`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-12: **販促 docs表記揃え**: P1c＝実装済（prod検収待ち）。G8＝終着空でも apply 可。`セール前復元済`＝減衰中%へ。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-12: **販促 2層減衰**: カレンダー`減衰中%`＋B中店頭1%。restore=減衰中%（終着へ一気に戻さない）。`減衰開始日`。fetchは現在%のみ。clasp push／`--schema-only` 済。[要件§10.13/10.14](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-12: **販促 P1c-0数式修正**: 次回減衰後%の f-string バグ（`{c_pct}` 残存→#ERROR!）。`--schema-only`＋減衰中%=22。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-12: **販促メニュー分割**: `⏱ Amazonタイムセール・ポイント減衰設定`（本線1〜6／99）。広告運用から分離。減衰送信は日次＋99-⑦。要 clasp push。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-12: **販促 P1c実装**: `taper_send.py`（dry_run／prodフィード＋結果メール）＋列（減衰中%／次回後%／実行依頼／最終実行）＋GAS依頼メニュー。リカバリは手動。C／D後続。[要件§10.14](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-12: **販促 P1c要件**: ポイント現スナップ＋減衰進捗。細承認なし／結果メール。起動E。リカバリURL・C・Dは後続。[要件§10.14](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-12: **減衰列名**: `減衰期間`／`減衰段%`／`減衰間隔` 等。`販促売価円`削除。`--schema-only`＋clasp push。[要件§2.2/§10.12](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-12: **マスタ列並べ替え**: 目的グループ／人入力先頭／行2〜黄。`最終売価円`→`目標売価円`。GAS「マスタ列並べ替え」または `sync --schema-only`。[要件§2.2](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-12: **販促実質戻し改訂**: 人必須=`目標売価円`＋`販促ポイント%`。円・実質は表示。売価段階上げ廃止。GAS/Python提案をポイント減衰式に。要 clasp push。[要件§10.12](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-12: **販促メモ**: ポイントは過去価格を汚しにくい（記事＋二次支持・公式原文はSC確認待ち）。Dealは概ね過去30日最低／参考価格は90日系。「8週間」は公式固定でなく我慢目安。[MEMO](org/MEMO_POINTS_VS_REFERENCE_PRICE.md)。
+- 2026-08-11: **販促価格戻しAPI／G10**: `price_recovery_send`（dry_run既定・our_price PATCH）。B中スキップ／期間中適用済は中止。GAS Cursor指示要 clasp push。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)／[要件§10.12](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促Points G5**: GAS「ポイント apply／restore（Cursor指示）」。SP-APIはCLIのまま。要 clasp push。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points 運用予行**: Smile T-1 下書き2件OK。リマインドを日程基準に修正（差分ゼロでも催促）。bのセール前%を1%退避。次は clasp push／8/27送信。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points G9**: listings `pointsNumber`÷price で%本線（b/s 実機1%）。`points_fetch --write` で現在%/円同期＋空のセール前のみ埋める。残り G5任意／G10。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points G8**: applyはセール前%必須（backup失敗も中止）。`--allow-missing-before`で解除可。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points G4**: `points_send`既定を施策B連動（開始接近／終了直後）。`--all-master`で解除。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points G2/G3**: `mail_points_remind`（apply T-1／restore 終了+1）。GASメニュー要 clasp push。次はG4。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points G7**: `ポイント状態`語彙固定（退避済／期間中適用済／セール前復元済／フィード*）。次はG3/G2。[要件§10.10](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促Points G1**: 1SKU本番往復検収（2%→1% feed DONE×2）。次はG7状態語彙。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: 提出xlsxを成功UL(`…114817_submitv2`)準拠に変更＝**compact＋日付直書き＋保護OFF**。全行残しはVLOOKUP壊れでSC処理失敗。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: 提出xlsxは **開始/終了の VLOOKUP を残し**、参加中＋スケジュールのみ書く（日付直書きはSC失敗の原因）。in-place・`--only-schedule` で8/9月分離。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: 提出xlsxを **in-place（行残し・参加いいえ）** に変更。8月/9月は `--only-schedule` で別ファイル。②古いDLは `使用済み/`。手削除はドロップダウン破壊の原因。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: 提出xlsxの開始/終了をデータ定義どおり `YYYY-MM-DD` 文字列で出力（Sheetsシリアル混入修正）。メニュー相当 sync→build で `DEALS_20260811_201459_all_submit.xlsx` 再作成。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: §10.13 ポイント×価格戻し連携メモ。Phase0残ギャップ（本番未検収・日程トリガー・リマインド等）をHUMAN_RUNに列挙。[要件§10.13](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: ②スケジュール列ドロップダウンの日付付き候補を全て台帳登録→提出。公式衝突時は独自セールを短縮＋メール。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: §9.7 実送信経路整備（Gmail API／GAS下書きシート＋メニュー／WebApp）。`contact@octas2301.com` へ T-14（Smile×2, `--tol 3`）送信成功。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: HUMAN_RUNをA未運用に揃え。`mail_qty_confirm` はUL済も対象＋`--tol`。T-14下書き生成済。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)／§9.7。
+- 2026-08-11: **販促不変条件§0.1**: 並びI1等を sync 前検証。日付シリアルで並び崩壊を修正（`parse_ymd`＋`invariants.py`）。[要件§0.1](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促**: A未運用（行削除）／作成=UL済・再作成可／台帳は終了まで／IMAGE FORMULA保全。要件§2.1.0。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促台帳保全**: syncがBの`予定`等を消さない（Smile消失再発防止）。horizon内カタログ名付きは復元、遠方BFは自動追加しない。要確認は要件§2.1.1。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促P1b**: ②SKU行正本（カタログBF除外）／カスタム提出／UL手順はCursorダイアログ下部／再buildメニュー。③例 `DEALS_20260811_181628_all_submit.xlsx`（8/12–13×2）。要 clasp push（広告運用）。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促P1bメニュー**: ②最新確認ダイアログ→Cursor→③保存→「提出後のSCアップロード手順」。公式Saleは出たら即登録。要 clasp push（`TimeSaleP1bMenus.js`）。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促A実施フラグ**: マスタ／施策に `A実施`・ログ参照。`lane_a_send` 書込＋`--backfill-a-logs`。P1bは `--sku` で1SKU提出可。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促マスタヘッダ色分け**: 基本灰／SC青／ポイント紫／**価格戻し琥珀**／メモ黄。GAS「⏱ マスタヘッダ色付け」＋sync再適用。要 clasp push（広告運用GAS）。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促§10.12**: マスタ価格戻し列＋GAS都度提案メニュー（採用即書き込み）。TS札はBのみ。要 clasp push（広告運用GAS）。[要件§10.12](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促**: `points_fetch`（セール前API退避）／`mail_qty_confirm`（§9.7・スプシ行リンク）／`detect_new_schedules`（月次新Sale差分）。A延長ヘルパなし。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促Points列意味**: `期間中%`／`セール前%`（復元用）／`出品者現在%`。`--mode restore`。店頭合計％は退避しない。既存2SKUセール前=20（記憶）。[要件§10.10](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促Points Phase0**: `タイムセール_マスタ`にポイント列。`points_send.py`（dry_run既定／Pointsフィード）。Phase1全商品は§10.10.2メモのみ。[要件§10.10](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促**: 数量確認メールT-21/T-14（§9.7）。BFはASIN候補出現後のみ。A本番1SKU VALIDATION済→prod HTTP200。
+- 2026-08-11: **販促**: 数量改定はSC画面編集が正（再バルクUL不可寄り）。`build --event bf|smile` targets-first。A dry_run HTTP200。
+- 2026-08-11: **販促続き**: `ops_status`／`revise_b_qty`（§10.9.1数量改定）／`lane_a_patch`（A JSON・APIは承認後）。
+- 2026-08-11: **販促提出xlsx**: データ行縦結合解除＋対象SKUのみ。§10.9.1 公式Saleは早期登録→接近時数量改定。
+- 2026-08-11: **販促提出xlsx=対象SKUのみ**／§10.9早期申請割引500円（感謝祭8/5済・BF/CMは9/30まで）。[G202111590](https://sellercentral.amazon.co.jp/help/hub/reference/G202111590)。
+- 2026-08-11: **販促§10.6 B固定→A合成**: 最大14日・`ab_gap_days`／`b_horizon_days`。A↔B間隔は§10.8実機検証。`plan_ab_windows.py`。
+- 2026-08-11: **販促§10.7クールダウン**: おすすめ再実施14日（JP）。月(A)とSmile(B)は別系統で可。B同士は選定時に14日適用。[要件§10.7](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促§10.2数量**: `qty_logic`＋V30（SP-API Sales/CSV/マスタ）。`販売商品数_確定`へ反映。おすすめのみ提出。[要件§10](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促スケジュール選定**: ValidationDataSheetから日付付きB（Smile/BF）／Aは非重なり月枠。P1b提出xlsx再生成。[要件§2](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促画像列**: マスタ`画像URL`／施策`画像`（IMAGE関数・商品名直後）。syncで②から取得。[要件§2](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促マスタ復活**: `タイムセール_マスタ`＝対象名簿（有効のみsync）。施策は`タイムセール`。初回空なら施策から名簿復元。[要件§2](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促1枚化**: `タイムセール`＋レーン。名付き公式のみBバルク／月・カスタム=A。新着上。sync＋P1b更新。[要件§2](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促デモ埋め**: 原価U＝商品マスタU(セット卸値)ASIN突合。期間値下げ・実行を想定データで充填。[seed_demo_fill.py](../tools/amazon_deals_bulk/seed_demo_fill.py)。
+- 2026-08-11: **販促シート改訂実装**: マスタ薄型SKU先頭／実行(B)／期間値下げ(A)。`sync_master_and_exec.py`＋P1bは実行シート参照。③に提出xlsx生成済。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)。
+- 2026-08-11: **販促P1b着手**: Drive①②③分割。提出xlsx=Python（`tools/amazon_deals_bulk`）。GASはCursor指示。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md)／[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促P0着手**: 公式終了→A自動復帰／D出品SKU重なりはAスキップ＋メール／次々回不足→2週DL。広告GASに `bootstrapTimeSaleSheetsP0`。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-11: **販促三点必須修正反映**: レーンA承認制・SKU・状態表・売切95%・次々回14日方針。マトリクスにA/B行。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)／[多数決](org/D_MENU_AMAZON_DEALS_BULK_THREE_REVIEW_MAJORITY.md)。
+- 2026-08-11: **販促三点レビュー**: 3者とも条件付きYES。[多数決](org/D_MENU_AMAZON_DEALS_BULK_THREE_REVIEW_MAJORITY.md)。§14埋込済。必須修正の正本反映は社長確認後。
+- 2026-08-11: **販促要件確定**: おすすめ本線・FBA/数量/価格§10・①本線②保留。P0可／P1は不足解消後。三点は推奨1回。[要件](org/D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)。
+- 2026-08-09: **サブ画像PoC軸分離**: A=`COMP_MICRO`（競合SKU微改変）／B=`OWN_REMAKE`（自社作り変え）＋実写寄り指示。例 `sub_image_poc/20260808_173136`。
+- 2026-08-09: **サブ画像PoCに微改変（COMP_LIGHT）追加**: 競合フレーム維持＋軽置換。再出力例 `sub_image_poc/20260808_172326`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **サブ画像PoC（競合改変＋自社フル）**: `sub_image_poc.py`／注釈ボード。テスト出力のみ。例 `00.テスト出力/sub_image_poc/20260808_171428`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_POC_HUMAN_RUN.md)。
+- 2026-08-09: **B-③同一画像→高画素優先**: AmazonメディアID／URL正規化で同一判定。SL²・楽天`_ex`で大きい方を残す。Keepaは同一IDを1枚化。要 clasp push。[B3 docs](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)。
+- 2026-08-09: **B-③案A**: モール横断の統合セット数「不明」／画像ガード行でも URL 付き楽天・Yahoo を画像取得対象に（`allowUnknownIntegratedSetForImages`）。要 clasp push。[B3 docs](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)。
+- 2026-08-09: **B-③ Amazon ASIN解決強化**: Keepa取得_ログへAI由来JAN追記。解決順＝ログ◎→貼付◎→マスタ親子（各段全ASIN・画像0なら次段）。Amazon0件でも楽天・Yahoo実行。[B3 docs](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)。要 clasp push。
+- 2026-08-09: **セットMAIN横長タイプ合格固定＋C③**: `landscape_layout.py`／`--aspect landscape`。N=1中央／N2縦二段／N3–4階段／N≥5上hero+グリッド。楽天N=1もC指示反映。要 clasp push。[RULES §1.2](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-08: **セットMAIN横長草案＋注釈テスト**: N2=下hero左辺／上unit右辺。N≥5=半端行をhero直下で全幅配分。テスト `00…/landscape_rule_annot/`（N=2/3/4/6/10/12/20）。[RULES §1.2](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-08: **セットMAIN横長ルール草案**: 見本154–158。N2縦積み／N3–4階段／N≥5上hero+下グリッド。四隅四辺・素材等は縦長踏襲。実装前。[RULES §1.2](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-08: **PUT max_items 既定10**: Property未設定時の相乗り／PUT上限を5→10。ハード上限50は維持。`APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` は省略可。[HUMAN_RUN](org/D_MENU_SPAPI_GAS_PUT_HUMAN_RUN.md)。
+- 2026-08-08: **セットMAIN 01白抜き自動紐付け**: レ点親の楽天メイン画像1とVision照合→`{親SKU}_単体.png`。`bind_amazon_base_to_parents.py`／batch `--auto-bind-bases`。[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)。
+- 2026-08-08: **セットMAIN N=3細長合格確定**: Q＝ProductQuad上辺中点→円弧中点Mの後、緑法線上+35px（`unit0NudgeUpAlongNormalPx`）。缶・唐辛子検収。Cメニュー②→07→**D本線**。[RULES §1.1](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-08: **セットMAIN 縦長タイプ合格固定**: N=2/3/4/≥5 `locked_pass`。Cメニュー②「縦長タイプ（合格固定）」。`--aspect portrait`。unit3 BR=枠下接触。出力07→D本線。[RULES §1.1](org/SET_MAIN_LAYOUT_RULES.md)／[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)。
+- 2026-08-05: **セットMAIN 縦長 N=3合格固定**: 頂円弧・下はみ出し36・unit1下55・傾き−14/18/38。**N=4**は同ルール拡張（−14/18/38/48）。[RULES §1.1](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-05: **セットMAIN 縦長パターン**: `--aspect portrait`（斜めファン・傾き15°・N≤4・キャンバス正方形）。見本=縦型レイアウト基本。`portrait_layout.py`。[RULES](org/SET_MAIN_LAYOUT_RULES.md)／[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)。GAS Cメニュー portrait=実装済。
+- 2026-08-08: **P4b-d**: 誤競合ASIN対策。複数ASIN一致チェック＋browse多数決。競合無しはJAN→SHELF/楽天/Yahoo/名称の重み付き投票。Browse未確定ならPT非書込。D一括失敗はalert。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md) §2。
+- 2026-08-08: **U2-ε MAIN自動**: C①で `{子SKU}_amazon.jpg` 一致分をマッチングsheet Amazon MAIN（BX）へ自動投入。目視→C②。Property `AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED`（未設定=true）。[C HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-08: **U4途中切れ対策**: MAIN/PT URL充足スキップ・1SKU例外継続・Put/GETリトライ・約4.5分スライス→トリガー再開。C②再実行で残りだけ上がる。[HUMAN_RUN](org/D_MENU_U4_HUMAN_RUN.md) §1b。
+- 2026-08-05: **C1 定価フォールバック**: `resolve_list_price` はマスタ `定価、市場価格` 優先。**空のときのみ**販売価格amazon／GENERATED `priceAmazon`。[HUMAN_RUN](org/D_MENU_C1_HUMAN_RUN.md)。缶飯 B3 再PACKAGED=`…_20260804_231959.xlsm`（list≠price 確認済）。SC ULは人間。
+- 2026-08-05: **D条件付き自動再GENERATED（案B）**: 冪等0件時に PT/Browse 指紋差分があれば自動解除→再実行。Property `APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP`。[REMAKE](org/LV4_D_REMAKE_MENU_APPROVAL.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-08-05: **D新規ゲート Browse必須**: P4bはPT空またはBrowse空。Browse空／Node未登録はGENERATED前にハード停止。[承認](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md)。
+- 2026-08-05: **Lv4 Track B 親 inventory=0固定**: MASTERでも親マスタ在庫は非読取（子のみ厳密）。親 `#DIV/0!` で送信停止しない。[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)／`AmazonApprovalExport.js`。
+- 2026-08-02: **D新規ゲート＋Cursor手渡し実装**: 新規ON→PT空ならP4b→Drive棚なし停止。完了ダイアログにCursor全文コピペ。Property `AMAZON_SHELF_REGISTRY_FILE_ID`。[承認](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md)。
+- 2026-08-02: **相乗り通常運用=prod直**: `Amazon相乗りSKU` 空でもprodで生成→PUT→成功後保存。as/af正規化もprod可。dry_runは上級・任意。[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-08-02: **C表示名＋兄弟PT補完**: C本線を「Ama新カタログ①／②」へ明確化。U4末尾で今回対象かつ `Amazon PT URL` 空欄の子SKUだけ、同親の最上位非空兄弟から補完。既存値・対象外は非更新。[C HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-01: **Amazon候補を1子SKU＝1枚**: Cの候補表示を全行タイルから子SKU行1枚ずつへ。ファイル名に子SKU／親SKUを含めばその行、残りは順に配置。戻しは `AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED=true`。[C HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-01: **相乗り ASIN空 soft skip**: 相乗りのみでも N列空は行スキップ・全体継続（有効0件のみ停止）。`コード.js`。[承認§2.1](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-08-01: **D新規ゲート＋Cursor手渡し方針ロック**: 新規ON→PT空ならP4b→棚なし停止＋DL指示。完了後はCursor全文コピペ（GAS→Python起動なし）。docsのみ・実装別承認。[承認](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md)。
+- 2026-08-01: **七味再送サマリ確定**: `…032459-processing-summary`＝処理2／その他エラー2／**100521のみ**（**99016解消**）。[台帳](org/LANE_B_SC_ERROR_LEDGER.md)。
+- 2026-08-01: **レーンBエラー／成功台帳**: 初版＋七味99016/100521・HPC成功シード。運用=[HUMAN_RUN](org/D_MENU_LANE_B_LEDGER_HUMAN_RUN.md)／[台帳](org/LANE_B_SC_ERROR_LEDGER.md)。
+- 2026-08-01: **A3検収OK**: dry `SPAPI_PUT_OFFER_CK_DRY_20260801_121701_49a49e` VALID／prod `…121813_f677a3` ACCEPTED（MASTER・自己発・`…19as13`）。トグル false 必須。[HUMAN_RUN §5](org/D_MENU_LANE_A3_HUMAN_RUN.md)。
+- 2026-08-01: **A3承認包・HUMAN_RUN起草**: 自己発マスタ在庫>0（P0経路検収）。三点スキップ・原則コードなし。次＝実機。[承認](org/LV4_LANE_A3_MASTER_QTY_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_A3_HUMAN_RUN.md)。
+- 2026-08-01: **B-T2方針ロック／三点スキップ**: 複合は複数・SEASONING複合は唯一でない・DL不要＝PT＋指紋・Amazon更新時は再DL・**実装は実需PT後**。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T2_APPROVAL.md)。
+- 2026-08-01: **B-T2方針ドラフト**: 新PTは実需起動・複合優先・HERB単体非強制・レジストリはPT＋指紋。コードなし。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T2_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_B_BULK_T2_HUMAN_RUN.md)。
+- 2026-08-01: **D在庫補強**: 新規カタログでもMASTER選択時は開始前にqty内訳確認（P0ギャップ埋め）。UIで新規GENERATED＋相乗り共通を明示。[P0](org/LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-08-01: **B-T1 prod実装＋スモーク**: `--mode prod`。棚なし拒否／指紋不一致拒否／本番xlsm `…_oya_20260801_085442`。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T1_PROD_APPROVAL.md)。
+- 2026-08-01: **B-T1 prod第2段ドラフト**: dry_run同経路の本番xlsm。棚`DL_NOT_NEEDED`必須・指紋一致必須・SC非自動。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T1_PROD_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_B_BULK_T1_PROD_HUMAN_RUN.md)。次＝§4ロック。
+- 2026-08-01: **B-T1実装＋スモーク**: 棚引き（SEASONING=DL不要／HERB=要DL）＋項目名66/66＋dry_run FILL `B_T1_FILL_SEASONING_20260801_084627`。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T1_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_B_BULK_T1_HUMAN_RUN.md)。
+- 2026-08-01: **B-T1ドラフト追記**: テンプレ棚引き（PT＋指紋）。あり＝SC DL不要／なし＝09へ要求。定常フローを承認§5・HUMAN_RUNへ。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T1_APPROVAL.md)。
+- 2026-08-02: **MAP正本=sheet／派生=MD／実行=JSON**: PACKAGED前に `sync_map_sheet_to_column_json.py`。[承認](org/LV4_MAP_SHEET_JSON_SYNC_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md)／[LEDGER](org/MAP_SC_ERROR_LEDGER.md)。
+- 2026-08-02: **SHELF Browse 網羅カタログ**: 06純正`データを閲覧する`全行→`shelf_browse_catalog.json`／MAP右SHELF。P4b/Dは browseNodeId で採用PT。缶飯=GROCERY。MEATエイリアスはフォールバック。[承認](org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SHELF_BROWSE_CATALOG_HUMAN_RUN.md)。失敗後再GENERATEDはD内レ点（案A・**実装済＋clasp push済**）[承認](org/LV4_D_REMAKE_MENU_APPROVAL.md)。
+- 2026-08-02: **セットMAIN文字色5種＋Cメニュー**: えんじ/青/黒/緑/茶（`--text-color`）。見本`94/01_〜05_`。C「セットMAIN量産（Cursor指示）」出力先=楽天ULフォルダ。[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)／[LAYOUT](org/SET_MAIN_LAYOUT_RULES.md)。
+- 2026-08-02: **セットMAIN AI PoC**: Nano Banana（通常 Flash Image 最新・PRO禁止）。見本03/04。[承認](org/LV4_SET_MAIN_IMAGE_PHASE_AI_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_AI_HUMAN_RUN.md)。Pillow Phase Aは凍結。
+- 2026-08-02: **セットMAIN画像 Phase A 実装**: `tools/set_main_image`（Pillow）。Drive07＋C。子SKU命名。マスタ一括。Amazonコラージュ→楽天／Yahoo数字レイヤ。[承認](org/LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)。
+- 2026-08-02: **GROCERY本線（缶飯）**: `FOOD_FISH_GROCERY.xlsm` 指紋登録。棚 B-T1-2（GROCERY/FOOD/FISH）。Catalog `MEAT`→`GROCERY` エイリアス（P4b＋Dゲート）。C1マップ `food_fish_grocery_column_map.json`。次＝`clasp push`→D→PACKAGED。[T2](org/D_MENU_LANE_B_BULK_T2_HUMAN_RUN.md)。
+- 2026-08-02: **C1 FOOD改定**: 許可PTに`FOOD`追加。マスタ PT/browse 必須（空・唐辛子既定埋込禁止）。ハイライト=楽天キャッチ→Yahoo→箇条書き①（タイトル≤75）。メーカー型番=HJ優先。次＝マスタにFOOD+browse投入→PACKAGED再作成。[列マップ](org/D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)。
+- 2026-08-01: **B-T1方針ドラフト**: 複合＋SEASONING。項目名マッピング。マスタのみ書込。HERB単体非本線。[承認](org/LV4_LANE_B_BULK_TEMPLATE_T1_APPROVAL.md)。
+- 2026-08-01: **P4b-b合格**: マスタHERBのまま C1 SEASONING dry_run（`C1_CK_daba393f8055_B2_20260801_073624`）→ xlsm PT=`SEASONING`／browse=defaults。ローカルPythonはAgent実行と明記。[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4b-a合格→P4b-bへ**: runId`…161210_546de6`／rival_asin／HERB。[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4bマスタ競合版実装**: `AmazonCategoryPt.js` を競合店ASIN→URL→自ASIN→Definitions＋WARNに置換。多数決削除。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4b §2マスタ競合改定**: 正本＝`競合店ASINコード`→`競合AmazonページURL`→自`ASINコード`→Definitions。多数決廃止。正しさチェックはWARNのみ。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4b §2多数決改定＋実装**: 評価◎・売れ筋上位最大5で Catalog 多数決。同票は売上1位。SEASONING優先廃止。◎0は自ASIN／Definitions。（§2は後にマスタ競合へ再改定）[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **Zメニュー連番サブ化**: 直下を「1〜10／11〜17／18〜21／C・E互換／99」に折りたたみ。21は本線・SP-API・SC/P4b。項目番号・関数名は不変。`clasp push`後にシート再読込で反映。
+- 2026-08-01: **P4b実装**（三点スキップ）: `AmazonCategoryPt.js`・21-⑱・C1マスタPT/browse優先（SEASONING/HPC）。Keepa新規取得なし。次＝`clasp push`→実機。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4b §2方針ロック**: Catalog→既存Keepa browse→Definitions→人間。提案PT＝SEASONING/HERB/HPC、C1本線＝SEASONING/HPC。Keepa新規取得なし。次＝実装承認→コード。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **P4b承認包起草**: SP-API PT／browse → マスタ空セル書込・C1接続。手数料`amazon カテゴリー`非対象。コードなし。次＝§2方針ロック→実装承認。[承認](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)。
+- 2026-08-01: **デュアル Phase2 検収OK**: dry 自己発 `SPAPI_PUT_OFFER_CK_DRY_20260801_141229_f372b8`／FBA `…141243_40d85e`（VALID）・prod `…141420_8fcbc2`／`…141432_cc7c72`（ACCEPTED・行494／`B0D9VK8YPS`）。次＝レーンB台帳運用・トグル戻し。[承認§5](org/LV4_DUAL_OFFER_PHASE2_APPROVAL.md)／[HUMAN_RUN §3](org/D_MENU_DUAL_OFFER_PHASE2_HUMAN_RUN.md)。
+- 2026-08-01: **デュアル Phase2 コード実装**: Dチェック複数選択・自己発→FBA順次PUT・部分成功可。三点スキップ。次＝`clasp push`→両系統 dry／prod。[承認](org/LV4_DUAL_OFFER_PHASE2_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_DUAL_OFFER_PHASE2_HUMAN_RUN.md)。
+- 2026-08-01: **A2検収OK**: キャンセル`cancelled_by_user`（12:07）／E0 `menuAmazonCourseE0Precheck` checked=1。次＝A3。[HUMAN_RUN §4](org/D_MENU_LANE_A2_HUMAN_RUN.md)。
+- 2026-08-01: **A2承認包・HUMAN_RUN起草**: 確認キャンセル／トグル戻し／逃げ道疎通。三点スキップ・原則コードなし。次＝実機。[承認](org/LV4_LANE_A2_OPS_HARDENING_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_A2_HUMAN_RUN.md)。
+- 2026-08-01: **デュアル Phase1検収OK**: prod 自己発 `SPAPI_PUT_OFFER_CK_PROD_20260801_115554_4ed30e`／FBA `…115648_eb2511` ACCEPTED（dry `…8fa79e`／`…d6ed67`）。次＝A2／A3。[承認§6.1](org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)。
+- 2026-08-01: **デュアル Phase1 dry_run実機OK**: 自己発 `SPAPI_PUT_OFFER_CK_DRY_20260801_114254_8fa79e`（NF／`…as13`）／FBA `…114820_d6ed67`（`_FBA`／`…af13`）。prod未提示。次＝prod任意 or A2／A3。[承認§6.1](org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)。
+- 2026-08-01: **デュアル Phase1実装**: 自己発=`Amazon相乗りSKU`／FBA=`Amazon相乗りSKU_FBA`（読取・保存は系統のみ・他列不変）。三点スキップ。次＝マスタ列追加→clasp push→両系統 dry_run 検収。[承認](org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)。
+- 2026-08-01: **レーンA1検収OK**: FBA dry_run `SPAPI_PUT_OFFER_CK_DRY_20260801_111613_41ce9e` VALID／prod `SPAPI_PUT_OFFER_CK_PROD_20260801_111845_6bd20f` ACCEPTED（`sanky-B01N5A6ESU-19af13`・compliance attrs）。次＝A2／デュアル Phase1／A3。[HUMAN_RUN §0c](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)。
+- 2026-08-01: **FBA属性実装**: FBA時 `batteries_required`/`batteries_included`=false・`supplier_declared_dg_hz_regulation`=not_applicable。失敗時おすすめをダイアログ表示。Property `APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_ATTRS`（既定true）。次＝clasp push→七味FBA再検収。[承認](org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)。
+- 2026-08-01: **FBA属性方針承認**: §3折衷（dry_run必須→失敗時おすすめ→再dry_run→prod）。三点スキップ。次＝実装承認。[承認](org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md)。
+- 2026-08-01: **FBA属性承認§3を折衷に改定**: 既定dry_run→失敗時issues＋おすすめ提示→人間確認→再dry_run必須→prod。初手prod／コンプライアンスのdry_runスキップは不採用。[属性承認](org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md)。
+- 2026-08-01: **A1対比確定＋FBA属性承認ドラフト**: 七味`B01N5A6ESU`で自己発dry_run VALID（`…105918_199878`）／FBA 90220（`…105527_f64afc`）。次＝FBA時に電池・危険物属性追加。[HUMAN_RUN §0b](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)／[属性承認](org/LV4_A1_FBA_COMPLIANCE_ATTRS_APPROVAL.md)。
+- 2026-08-01: **デュアルオファー Phase1方針ロック**: 新列`Amazon相乗りSKU_FBA`、既存NF＝自己発専用、Dは1回1系統のまま列分離、初回はDのみ。実装は別承認。[承認](org/LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)。A1暫定はNF空＋七味（`B01N5A6ESU`）。
+- 2026-08-01: **レーンA1方針承認**: 相乗りFBA dry_run→**1SKU prod**まで。三点スキップ。原則コードなし。次＝[HUMAN_RUN](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)実機。[承認](org/LV4_LANE_A1_FBA_OFFER_APPROVAL.md)。
+- 2026-08-01: **レーンA1承認包ドラフト**: 相乗りFBA dry_run→少件prod（原則コードなし・在庫>0はA3）。[承認](org/LV4_LANE_A1_FBA_OFFER_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_LANE_A1_FBA_HUMAN_RUN.md)。次＝社長方針承認。
+- 2026-08-01: **方針ロック（A/B/C）**: **A**既存カタログ＝SP-API本開発／**B**新規＝xlsm＋SC人手で取り貯め／**C**新規JSON＝ゲート後（1〜2PT・同等dry_run等）。P2のxlsm①②追従・今の新規JSON全面はしない。[承認§7.4](org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)／[ROADMAP §1.1](org/AMAZON_DEV_ROADMAP_P0_P4.md)／[CURRENT_PHASE §0](CURRENT_PHASE.md)。
+- 2026-08-01: **P2調査完了**: PACKAGED xlsmのAPI UP／SC processing-summary自動DLは不可→人手①②＋21-⑮温存。③中身パースは任意・低優先。JSON Listings寄せはレーンC。[承認§7](org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)。
+- 2026-08-01: **P2調査承認包起草**: Dc①UP／②時間DL／③取込強化。④⑤・非公式自動化・本番自動UPコードは非同梱。過渡21-⑮温存。[承認](org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_P2_DC_HUMAN_RUN.md)。
+- 2026-08-01: **P1検収OK＋吉野家承認済**: Cモーダル実機＋他認識。Amazonメールで吉野家出品承認（反映〜24h・停止時は保留在庫解消）。次＝七味ライブ確認＋P2調査承認。[HUMAN_RUN](org/D_MENU_P1_HUMAN_RUN.md)。
+- 2026-08-01: **P1実装**: C/D/U4/④の案内を File最少化（02手置き＝復旧例外のみ）。要 clasp push。[HUMAN_RUN](org/D_MENU_P1_HUMAN_RUN.md)／[承認](org/LV4_P1_FILE_MIN_APPROVAL.md)。
+- 2026-08-01: **P1方針承認**: §2既定（07＋sheetドラッグ＋手ZIP残／02手File廃止）。三点スキップ。次＝実装承認（案内・ゲート文言中心）。[承認](org/LV4_P1_FILE_MIN_APPROVAL.md)。
+- 2026-08-01: **P1承認包起草**: 07以降 File最少（`02`手操作廃止・退避/U4はGAS。MAINドラッグ自動化・U5非同梱）。三点今回スキップ案。[承認](org/LV4_P1_FILE_MIN_APPROVAL.md)／[HUMAN_RUN下書き](org/D_MENU_P1_HUMAN_RUN.md)。
+- 2026-08-01: **P4a読取PoC 実機合格**: `keywords=七味`→HERB/SEASONING（getはSEASONING優先）、Catalog分類可、xlsm自動DL不可。次＝P1承認。[HUMAN_RUN](org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md)。
+- 2026-08-01: **P4a読取PoC実装**: `tools/spapi_smoke` に `--poc-category`（search／getDefinitions／Catalog分類）。GAS非改変・マスタ非書込。次＝人間実機。[HUMAN_RUN](org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md)／[承認](org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md)。
+- 2026-08-01: **CをD型選択モーダル化**: トップCは1項目。Amazon準備／ドラッグ後／楽天／前提チェックを選択。C-0〜C-2はZ互換に残置。[HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-01: **C本線 Property一時ON**: C-1/C-2（E互換含む）で U2/U4 を実行中だけ true→finally復元。常設は `AMAZON_IMAGE_CANDIDATE_FOLDER_ID` のみ。C-2開始前確認＋ScriptLock。[HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-01: **Cコース実装**: トップC.画像コース（C-0/C-1/C-2）。①〜④はZ互換。E-1/E-2→C寄せ。[承認](org/LV4_C_COURSE_CONSOLIDATION_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)。
+- 2026-08-01: **Cコース統合 方針ロック**: [LV4_C_COURSE_CONSOLIDATION_APPROVAL](org/LV4_C_COURSE_CONSOLIDATION_APPROVAL.md)。トップ1本・U4はAmazon新規のC-2のみ・E-1/E-2一本化・三点スキップ・P1/ドラッグ自動化は後。
+- 2026-08-01: **P0実装**: D在庫0\|マスタ（ALLOW_MASTER_QTY）・prod既定・E→D補助/Z互換。[P0承認](org/LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md)／[D_ENTRY HUMAN_RUN](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。在庫0＋dry_run／MASTER_QTYゲート確認OK。
+- 2026-08-01: **P0三点多数決**: [MAJORITY](org/LV4_D_P0_THREE_REVIEW_MAJORITY.md)。社長(B)マスタqty＝承認②＋親正本改定。1SKU必須免除。
+- 2026-08-01: **Amazonロードマップ確定**: [AMAZON_DEV_ROADMAP_P0_P4](org/AMAZON_DEV_ROADMAP_P0_P4.md)。次＝P0 HUMAN_RUN＋並列P4a調査。[P0承認](org/LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md)／[P4a](org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md)。
 - 2026-07-31: **docs同期**: CURRENT_PHASE§0をYahoo再認証済・SC監視自動ON/OFF・許可待ちに更新。Property作業後チェックリストを正本化。
 - 2026-07-31: **SCサマリ監視 自動ON/OFF**: GENERATED成功で待ちリスト＋トリガー自動設置。待ちが全て UPLOADED_OK／FAILED で削除。上限72h。21-⑯⑰は手動残置。[HUMAN_RUN §1e](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
 - 2026-07-31: **Yahoo再認証半自動**: メニューで認可code貼付→B14＋**C14取得日**。残り≤7日はB17へメール（任意日次トリガー）。`YAHOO_OAUTH_REDIRECT_URI` 必須。[HUMAN_RUN](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md)。出品本体は非改変。

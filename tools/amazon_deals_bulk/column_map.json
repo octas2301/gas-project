@@ -1,0 +1,30 @@
+{
+  "template_sheet_name_candidates": [
+    "タイムセール推奨テンプレート",
+    "タイムセール推奨商品- テンプレート",
+    "Template"
+  ],
+  "header_row_jp": 4,
+  "header_row_key": 5,
+  "data_start_row": 6,
+  "jp_to_role": {
+    "親ASIN": "parent_asin",
+    "おすすめのASIN": "featured_asin",
+    "タイムセールのASIN": "deal_asin",
+    "商品名": "product_name",
+    "タイムセールの種類": "deal_type",
+    "推奨情報ID": "recommendation_id",
+    "SKU": "sku",
+    "参加中": "participating",
+    "スケジュール": "schedule",
+    "開始日（YYYY-MM-DD）": "start_date",
+    "終了日（YYYY-MM-DD）": "end_date",
+    "出品者の価格（JPY）": "seller_price",
+    "タイムセール価格（JPY）": "deal_price",
+    "確定済み商品": "committed_units",
+    "出品者の数量": "seller_quantity",
+    "画像URL：": "image_url",
+    "画像URL": "image_url"
+  },
+  "editable_roles": ["sku", "participating", "schedule", "deal_price", "committed_units"]
+}
