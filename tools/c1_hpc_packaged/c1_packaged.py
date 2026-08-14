@@ -282,6 +282,177 @@ def split_keywords(text: str, n: int = 5) -> List[str]:
     return out
 
 
+def resolve_highlight(
+    title: str,
+    master: Dict[str, str],
+    bullet1: str,
+    colmap: dict,
+) -> Tuple[str, str]:
+    """ハイライト: タイトルが上限超なら空。優先は colmap.highlight_priority（既定: 楽天→Yahoo→箇条書き①）。"""
+    max_chars = int(colmap.get("highlight_max_title_chars") or 75)
+    if len(title) > max_chars:
+        return "", "skipped_title_gt_%d" % max_chars
+    priority = colmap.get("highlight_priority") or [
+        "catch_rakuten",
+        "catch_yahoo",
+        "bullet1",
+    ]
+    for key in priority:
+        if key == "bullet1":
+            value = bullet1
+        else:
+            value = _cell_str(master.get(key))
+        if value:
+            return value, str(key)
+    return "", "empty"
+
+
+def extract_browse_node_id(browse_text: str) -> str:
+    """表示文字列「… (71192051)」または素の数字 → Node ID（ルーティング／突合用）。"""
+    s = _cell_str(browse_text)
+    if not s:
+        return ""
+    m = re.search(r"\((\d{6,})\)\s*$", s)
+    if m:
+        return m.group(1)
+    if s.isdigit() and len(s) >= 6:
+        return s
+    m = re.search(r"\b(\d{6,})\b", s)
+    return m.group(1) if m else ""
+
+
+_BROWSE_PATH_BY_NODE: Optional[Dict[str, str]] = None
+
+
+def load_browse_path_by_node(colmap: Optional[dict] = None) -> Dict[str, str]:
+    """データを閲覧する由来の BrowsePath（xlsmプルダウン表記）。"""
+    global _BROWSE_PATH_BY_NODE
+    if _BROWSE_PATH_BY_NODE is not None:
+        return _BROWSE_PATH_BY_NODE
+    rel = ""
+    if colmap:
+        rel = _cell_str(colmap.get("browse_catalog_path"))
+    candidates = []
+    if rel:
+        candidates.append(Path(rel))
+        candidates.append(SCRIPT_DIR / rel)
+    candidates.append(SCRIPT_DIR / "shelf_browse_catalog.json")
+    out: Dict[str, str] = {}
+    for p in candidates:
+        if not p.is_file():
+            continue
+        try:
+            data = _load_json(p)
+        except Exception:
+            continue
+        for row in data.get("rows") or []:
+            nid = _cell_str(row.get("browseNodeId"))
+            path = _cell_str(row.get("browsePath"))
+            if nid and path:
+                out[nid] = path
+        if out:
+            break
+    _BROWSE_PATH_BY_NODE = out
+    return out
+
+
+def resolve_browse_xlsm_value(
+    browse_raw: str,
+    colmap: dict,
+) -> Tuple[str, Optional[str]]:
+    """xlsm の推奨ブラウズノード列用。純正プルダウンと同じ表記を返す。
+
+    Dropdown Lists 実値は『BrowsePath (NodeId)』。
+    例: 食品・飲料・お酒 > 缶詰・瓶詰 > 肉の缶詰・瓶詰 (71192051)
+    短縮名や Node ID だけは不可。
+    """
+    raw = _cell_str(browse_raw)
+    if not raw:
+        return "", "browse empty"
+    by_node = load_browse_path_by_node(colmap)
+    node = extract_browse_node_id(raw)
+
+    def dropdown_label(path: str, nid: str) -> str:
+        p = _cell_str(path)
+        n = _cell_str(nid)
+        if not p:
+            return ""
+        if n and p.endswith("(%s)" % n):
+            return p
+        if n:
+            return "%s (%s)" % (p, n)
+        return p
+
+    if node and node in by_node:
+        return dropdown_label(by_node[node], node), None
+    if ">" in raw:
+        path_only = re.sub(r"\s*\(\d{6,}\)\s*$", "", raw).strip()
+        nid2 = extract_browse_node_id(raw)
+        if nid2 and nid2 in by_node:
+            return dropdown_label(by_node[nid2], nid2), None
+        for nid3, path in by_node.items():
+            if path_only == path:
+                return dropdown_label(path, nid3), None
+        if nid2:
+            return dropdown_label(path_only, nid2), None
+        return path_only, None
+    leaf = re.sub(r"\s*\(\d{6,}\)\s*$", "", raw).strip()
+    matches = [
+        (nid4, p) for nid4, p in by_node.items() if p.split(" > ")[-1] == leaf
+    ]
+    if len(matches) == 1:
+        return dropdown_label(matches[0][1], matches[0][0]), None
+    if len(matches) > 1:
+        return "", "BrowsePath 複数候補（Node IDをマスタに含めてください）: %s" % leaf
+    return "", (
+        "推奨ブラウズノードをプルダウン表記(BrowsePath (NodeId))に解決できない: %r "
+        "（棚 catalog / Dropdown Lists を確認）" % raw[:80]
+    )
+
+
+def resolve_product_type_browse(
+    master: Dict[str, str],
+    defaults: dict,
+    colmap: dict,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """(pt, browse, error)。require 時はマスタ必須・既定埋込禁止。
+    browse は xlsm プルダウンと同じ『BrowsePath (NodeId)』（数値IDや短縮名だけは不可）。
+    """
+    allow = set(
+        colmap.get("p4b_c1_product_types")
+        or ["SEASONING", "HEALTH_PERSONAL_CARE"]
+    )
+    pt_m = _cell_str(master.get("amazon_product_type"))
+    browse_raw = _cell_str(master.get("amazon_browse_node"))
+    require = bool(colmap.get("p4b_require_master_pt_browse"))
+    if require:
+        if not pt_m or not browse_raw:
+            return None, None, (
+                "Amazon Product Type / Browse Node 必須"
+                "（マスタ空は不可・既定埋込禁止）"
+            )
+        browse_m, berr = resolve_browse_xlsm_value(browse_raw, colmap)
+        if berr or not browse_m:
+            return None, None, berr or "BrowsePath 解決失敗"
+        if pt_m not in allow:
+            return None, None, (
+                "Amazon Product Type 本線非許可: %s（許可=%s）"
+                % (pt_m, ",".join(sorted(allow)))
+            )
+        return pt_m, browse_m, None
+    if pt_m and pt_m in allow:
+        browse_m, _ = resolve_browse_xlsm_value(
+            browse_raw or _cell_str(defaults.get("browse")), colmap
+        )
+        return pt_m, browse_m, None
+    browse_m, _ = resolve_browse_xlsm_value(_cell_str(defaults.get("browse")), colmap)
+    return (
+        _cell_str(defaults.get("product_type")),
+        browse_m,
+        None,
+    )
+
+
 def master_for_sku(master_index: Dict[str, Dict[str, str]], sku: str, parent_sku: str) -> Dict[str, str]:
     """子行に空欄が多いSheetsマスタ向け: 親の値を継承し、子の非空だけ上書き。
     定価は親の非数字（調査メモ等）を子へ継承しない。
@@ -343,6 +514,43 @@ def resolve_size(row: Dict[str, str], size_map: Dict[str, str], master: Dict[str
     return _cell_str(row.get("setCount"))
 
 
+def parse_set_count(
+    set_count_raw: str = "",
+    size: str = "",
+    gen_set_count: str = "",
+) -> str:
+    """A.セット商品数「3個で1セット」／サイズ「3缶/480g」／GENERATED setCount → 缶数。"""
+    raw = _cell_str(set_count_raw)
+    m = re.search(r"(\d+)\s*個", raw)
+    if m:
+        return m.group(1)
+    m = re.search(r"(\d+)\s*缶", raw)
+    if m:
+        return m.group(1)
+    size_s = _cell_str(size)
+    m = re.search(r"(\d+)\s*缶", size_s)
+    if m:
+        return m.group(1)
+    gen = _cell_str(gen_set_count)
+    if gen.isdigit():
+        return gen
+    if raw.isdigit():
+        return raw
+    return ""
+
+
+def parse_weight_from_size(size: str) -> str:
+    """バリエーション値「3缶/480g」→ 480。"""
+    s = _cell_str(size)
+    m = re.search(r"/\s*(\d+(?:\.\d+)?)\s*g", s, re.I)
+    if m:
+        return m.group(1)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*g", s, re.I)
+    if m:
+        return m.group(1)
+    return ""
+
+
 def resolve_list_price(
     sku: str,
     parent_sku: str,
@@ -351,8 +559,9 @@ def resolve_list_price(
     master_index: Optional[Dict[str, Dict[str, str]]] = None,
     is_parent: bool = False,
     from_children: Optional[List[str]] = None,
+    sale_price: str = "",
 ) -> str:
-    """優先: override → 当SKU行の定価 →（親行なら）子の定価 → マージ結果の数字のみ。"""
+    """優先: override → 当SKU行の定価 →（親行なら）子の定価 → マージ定価 → 販売価格フォールバック。"""
     for key in (sku, parent_sku):
         if key and key in list_price_override:
             norm = _normalize_list_price(list_price_override[key])
@@ -378,7 +587,25 @@ def resolve_list_price(
                 if norm:
                     return norm
 
-    return _normalize_list_price(master.get("list_price") or "")
+    from_master = _normalize_list_price(master.get("list_price") or "")
+    if from_master:
+        return from_master
+
+    # 定価空のときのみ: GENERATED 販売価格 → マスタ販売価格amazon（master_columns key=price）
+    for cand in (
+        sale_price,
+        master.get("price") or "",
+        master.get("販売価格amazon") or "",
+    ):
+        fb = _normalize_list_price(cand)
+        if fb:
+            LOG.info(
+                "list_price fallback to sale_price sku=%s value=%s",
+                sku or parent_sku,
+                fb,
+            )
+            return fb
+    return ""
 
 
 def resolve_shipping(gen_row: Dict[str, str], defaults: dict) -> str:
@@ -431,20 +658,49 @@ def build_row_attrs(
     if not origin:
         return None, "マスタ 原産国 空"
 
-    unit_count = _cell_str(master.get("unit_count")) or _cell_str(defaults.get("unit_count"))
-    unit_uom = _cell_str(master.get("unit_uom")) or _cell_str(defaults.get("unit_uom"))
-    if not unit_count or not unit_uom:
-        return None, "マスタ ユニット数/単位 空"
+    policy = colmap.get("c1_quantity_policy") or {}
+    size = "" if is_parent else resolve_size(gen_row, size_map, master)
+    if not is_parent and not size:
+        return None, "サイズ/バリエーション値 空"
+
+    set_count = ""
+    if policy.get("parse_set_count"):
+        set_count = parse_set_count(
+            _cell_str(master.get("set_count")),
+            size=size,
+            gen_set_count=_cell_str(gen_row.get("setCount")),
+        )
+        if not is_parent and not set_count:
+            return None, "セット数を解析できない（A.セット商品数／setCount／サイズ）"
+
+    if policy.get("use_set_count_for_unit_count"):
+        if is_parent:
+            unit_count = ""
+            unit_uom = ""
+        else:
+            unit_count = set_count
+            unit_uom = (
+                _cell_str(master.get("unit_uom"))
+                or _cell_str(policy.get("unit_uom_default"))
+                or _cell_str(defaults.get("unit_uom"))
+            )
+            if not unit_count or not unit_uom:
+                return None, "ユニット数/単位 空（セット数ポリシー）"
+    else:
+        unit_count = _cell_str(master.get("unit_count")) or _cell_str(defaults.get("unit_count"))
+        unit_uom = _cell_str(master.get("unit_uom")) or _cell_str(defaults.get("unit_uom"))
+        if not unit_count or not unit_uom:
+            return None, "マスタ ユニット数/単位 空"
 
     mfr_name = _cell_str(master.get("mfr_name"))
     if not mfr_name:
         return None, "マスタ メーカー名 空"
 
-    size = "" if is_parent else resolve_size(gen_row, size_map, master)
-    if not is_parent and not size:
-        return None, "サイズ/バリエーション値 空"
-
-    mfr_part = _cell_str(gen_row.get("manufacturerPart")) or ("" if is_parent else sku)
+    mfr_part = (
+        _cell_str(master.get("mfr_part"))
+        or _cell_str(gen_row.get("manufacturerPart"))
+        or ("" if is_parent else sku)
+    )
     bullets = [
         bullet1,
         _cell_str(master.get("bullet2")) or bullet1,
@@ -457,7 +713,10 @@ def build_row_attrs(
 
     heat = _yes_no_jp(master.get("heat") or "", defaults.get("heat", "いいえ"))
     liquid = _yes_no_jp(master.get("liquid") or "", defaults.get("liquid", "いいえ"))
-    color = _cell_str(master.get("color")) or defaults.get("color", "その他")
+    if policy.get("omit_color"):
+        color = None
+    else:
+        color = _cell_str(master.get("color")) or defaults.get("color", "その他")
     list_price = resolve_list_price(
         sku,
         parent_sku,
@@ -466,28 +725,83 @@ def build_row_attrs(
         master_index=master_index,
         is_parent=is_parent,
         from_children=list_price_from_children,
+        sale_price=price,
     )
     if not list_price:
-        return None, "税込み参考価格（定価）が数字でない。子SKU行の定価か list_price_override_map を数字に"
+        return None, (
+            "税込み参考価格（定価）が数字でない。"
+            "子SKU行の「定価、市場価格」を数字にするか、"
+            "販売価格amazon／GENERATED priceAmazon を埋めてください"
+            "（定価空時のみ販売価格へフォールバック）"
+        )
     ingredients = _cell_str(master.get("ingredients"))
     passthrough: Dict[str, str] = {}
     for key in colmap.get("passthrough_fields") or []:
+        if policy.get("omit_item_form") and key == "item_form":
+            continue
+        if policy.get("omit_temperature_rating") and key == "temperature_rating":
+            continue
+        if policy.get("temperature_fixed") and key == "temperature_rating":
+            passthrough[key] = _cell_str(policy.get("temperature_fixed"))
+            continue
+        if policy.get("use_set_count_for_number_items") and key == "number_items":
+            if not is_parent and set_count:
+                passthrough[key] = set_count
+            continue
+        if policy.get("parse_weight_from_size") and key == "item_weight":
+            if not is_parent:
+                weight = parse_weight_from_size(size)
+                if weight:
+                    passthrough[key] = weight
+                elif _cell_str(master.get("item_weight")):
+                    # 子行に直接重量がある場合のみ（親総重量の継承は aliases 側で遮断）
+                    passthrough[key] = _cell_str(master.get("item_weight"))
+            continue
+        if policy.get("parse_weight_from_size") and key == "item_weight_unit" and is_parent:
+            continue
+        if policy.get("omit_color") and key == "color":
+            continue
         value = _cell_str(master.get(key)) or _cell_str(defaults.get(key))
         if value:
             passthrough[key] = value
 
+    if (
+        policy.get("parse_weight_from_size")
+        and not is_parent
+        and "item_weight" in (colmap.get("passthrough_fields") or [])
+        and not passthrough.get("item_weight")
+    ):
+        return None, "商品の重量をサイズから解析できない"
+
     missing_extra = []
+    skip_required = {
+        "mfr_name", "bullet1", "tax_code", "origin",
+        "unit_count", "unit_uom",
+    }
+    if policy.get("use_set_count_for_unit_count"):
+        skip_required.add("unit_count")
     for key in colmap.get("required_master_fields") or []:
-        if key in {
-            "mfr_name", "bullet1", "tax_code", "origin",
-            "unit_count", "unit_uom",
-        }:
+        if key in skip_required:
             continue
         value = _cell_str(master.get(key)) or _cell_str(defaults.get(key))
         if not value:
             missing_extra.append(key)
     if missing_extra:
         return None, "マスタ必須項目空: " + ",".join(missing_extra)
+
+    pt_val, browse_val, pt_err = resolve_product_type_browse(master, defaults, colmap)
+    if pt_err:
+        return None, pt_err
+
+    highlight, highlight_source = resolve_highlight(title, master, bullet1, colmap)
+    LOG.info(
+        "rowAttrs sku=%s pt=%s browseLen=%d highlightSrc=%s titleLen=%d",
+        sku,
+        pt_val or "",
+        len(browse_val or ""),
+        highlight_source,
+        len(title),
+    )
 
     return {
         "sku": sku,
@@ -498,7 +812,8 @@ def build_row_attrs(
         "size": size or None,
         "mfr": mfr_part or None,
         "mfr_name": mfr_name,
-        "highlight": bullet1,
+        "highlight": highlight,
+        "highlight_source": highlight_source,
         "desc": bullet1,
         "specs": bullets,
         "keywords": kws,
@@ -514,6 +829,10 @@ def build_row_attrs(
         "passthrough": passthrough,
         "shipping": resolve_shipping(gen_row, defaults),
         "inventory": _cell_str(gen_row.get("inventory") or "0"),
+        "product_type": pt_val or "",
+        "browse": browse_val or "",
+        "amazon_product_type": _cell_str(master.get("amazon_product_type")),
+        "amazon_browse_node": _cell_str(master.get("amazon_browse_node")),
     }, None
 
 
@@ -597,8 +916,12 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         ws.cell(r, cols[key]).value = value
 
     def write_common(r: int, attrs: Dict[str, Any], parentage: str, parent_sku_val: Any) -> None:
+        pt_val = _cell_str(attrs.get("product_type")) or _cell_str(defaults.get("product_type"))
+        browse_val = _cell_str(attrs.get("browse"))
+        if not browse_val and not colmap.get("p4b_require_master_pt_browse"):
+            browse_val = _cell_str(defaults.get("browse"))
         setc(r, "sku", attrs["sku"])
-        setc(r, "product_type", defaults["product_type"])
+        setc(r, "product_type", pt_val)
         setc(r, "action", defaults["action"])
         setc(r, "parentage", parentage)
         setc(r, "parent_sku", parent_sku_val)
@@ -607,7 +930,7 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "highlight", attrs["highlight"])
         setc(r, "brand", defaults["brand"])
         setc(r, "id_type", defaults["id_type"])
-        setc(r, "browse", defaults["browse"])
+        setc(r, "browse", browse_val)
         setc(r, "mfr_name", attrs["mfr_name"])
         setc(r, "main_image_url", attrs["url"])
         for i, sub_url in enumerate(attrs.get("sub_urls") or []):

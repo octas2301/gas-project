@@ -1,18 +1,18 @@
 {
-  "version": "C1-1d-FOOD",
-  "profile": "FOOD",
-  "output_label": "FOOD",
+  "version": "C1-1d-GROCERY",
+  "profile": "GROCERY",
+  "output_label": "GROCERY",
   "sheet_name": "テンプレート",
   "header_fingerprint_rows": [
     3,
     4,
     5
   ],
-  "fingerprint_max_col": 321,
+  "fingerprint_max_col": 310,
   "sample_row": 6,
   "note_row": 7,
   "data_start_row": 8,
-  "clear_max_col": 321,
+  "clear_max_col": 310,
   "cols": {
     "sku": 1,
     "product_type": 2,
@@ -56,35 +56,35 @@
     "shelf_life": 132,
     "shelf_life_unit": 133,
     "item_form": 134,
-    "unit_count": 138,
-    "unit_uom": 139,
-    "size": 147,
-    "grind_type": 162,
-    "item_weight": 165,
-    "item_weight_unit": 166,
-    "condition": 191,
-    "list_price": 193,
-    "tax_code": 194,
-    "fulfillment": 217,
-    "inventory": 218,
-    "price": 222,
-    "shipping": 247,
-    "package_length": 254,
-    "package_length_unit": 255,
-    "package_width": 256,
-    "package_width_unit": 257,
-    "package_height": 258,
-    "package_height_unit": 259,
-    "package_weight": 260,
-    "package_weight_unit": 261,
-    "origin": 267,
-    "hazmat": 269,
-    "liquid": 279
+    "unit_count": 135,
+    "unit_uom": 136,
+    "size": 46,
+    "grind_type": 181,
+    "item_weight": 157,
+    "item_weight_unit": 158,
+    "condition": 183,
+    "list_price": 185,
+    "tax_code": 186,
+    "fulfillment": 209,
+    "inventory": 210,
+    "price": 214,
+    "shipping": 239,
+    "package_length": 246,
+    "package_length_unit": 247,
+    "package_width": 248,
+    "package_width_unit": 249,
+    "package_height": 250,
+    "package_height_unit": 251,
+    "package_weight": 252,
+    "package_weight_unit": 253,
+    "origin": 257,
+    "hazmat": 258,
+    "liquid": 300
   },
   "defaults": {
-    "product_type": "FOOD",
+    "product_type": "GROCERY",
     "action": "作成または置換 (完全更新)",
-    "var_theme": "SET_NAME",
+    "var_theme": "サイズ",
     "brand": "ノーブランド品",
     "browse": "",
     "id_type": "GTIN免除",
@@ -95,14 +95,23 @@
     "temperature_rating": "常温：室温",
     "number_items": "1",
     "unit_count": "1",
-    "unit_uom": "Count",
+    "unit_uom": "缶",
     "condition": "新品",
-    "item_form": "ホール",
     "item_weight_unit": "グラム",
     "hazmat": "該当なし",
     "liquid": "いいえ",
-    "color": "その他",
     "shipping": "送料無料パターン"
+  },
+  "c1_quantity_policy": {
+    "parse_set_count": true,
+    "use_set_count_for_number_items": true,
+    "use_set_count_for_unit_count": true,
+    "parse_weight_from_size": true,
+    "omit_color": true,
+    "omit_item_form": true,
+    "omit_temperature_rating": true,
+    "unit_uom_default": "缶",
+    "notes": "synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. MAP RULES: CHILD_ONLY＋PARSE_SET_COUNT/WEIGHT。親総個数6・総重量960・一人分160・色その他・保存方法長文・形態ホールを書かない。"
   },
   "master_columns": {
     "parent_sku": [
@@ -142,15 +151,14 @@
     ],
     "unit_count": [
       "ユニット数",
-      "Amazonユニット数量",
-      "一人分の数量",
-      "▼マスタ(総個数)"
+      "Amazonユニット数量"
     ],
     "unit_uom": [
       "商品のユニット数の単位",
-      "Amazon一人分単位",
-      "一人分の数量単位",
       "▼マスタ(Amz:ユニット数単位)"
+    ],
+    "set_count": [
+      "A.セット商品数"
     ],
     "variation_value": [
       "バリエーション値"
@@ -171,11 +179,11 @@
     ],
     "ingredients": [
       "特記すべき原材料／原料",
-      "特記すべき原材料",
-      "原料",
       "原材料(食品)",
       "(原材料(食品))",
-      "▼マスタ(原材料(食品))"
+      "▼マスタ(原材料(食品))",
+      "特記すべき原材料",
+      "原料"
     ],
     "list_price": [
       "定価、市場価格",
@@ -203,9 +211,9 @@
       "▼マスタ(Yahooキャッチ(20-30字))"
     ],
     "mfr_part": [
-      "メーカー型番",
       "メーカー品番",
-      "型番"
+      "型番",
+      "メーカー型番"
     ],
     "amazon_product_type": [
       "Amazon Product Type"
@@ -214,13 +222,11 @@
       "Amazon Browse Node"
     ],
     "number_items": [
-      "商品の入数",
-      "▼マスタ(総個数)"
+      "A.セット商品数",
+      "setCount"
     ],
     "temperature_rating": [
-      "温度の定格",
-      "保存方法(食品)",
-      "(保存方法(食品))"
+      "温度の定格"
     ],
     "flavor": [
       "味"
@@ -244,8 +250,7 @@
       "グラインドタイプ"
     ],
     "item_weight": [
-      "商品の重量",
-      "▼マスタ(総重量)"
+      "商品の重量"
     ],
     "item_weight_unit": [
       "商品の重量の単位"
@@ -265,6 +270,91 @@
     "package_weight": [
       "梱包:重量(g)",
       "▼マスタ(梱包:重量(g))"
+    ],
+    "sku": [
+      "子SKU",
+      "親SKU"
+    ],
+    "product_type": [
+      "Amazon Product Type"
+    ],
+    "title": [
+      "最終商品名amazon",
+      "商品名amazon",
+      "商品名案(Amazon)"
+    ],
+    "highlight": [
+      "商品説明の箇条書き①"
+    ],
+    "browse": [
+      "Amazon Browse Node"
+    ],
+    "main_image_url": [
+      "Amazon MAIN URL"
+    ],
+    "other_image1": [
+      "Amazon PT URL"
+    ],
+    "other_image2": [
+      "Amazon PT URL"
+    ],
+    "other_image3": [
+      "Amazon PT URL"
+    ],
+    "other_image4": [
+      "Amazon PT URL"
+    ],
+    "other_image5": [
+      "Amazon PT URL"
+    ],
+    "other_image6": [
+      "Amazon PT URL"
+    ],
+    "other_image7": [
+      "Amazon PT URL"
+    ],
+    "other_image8": [
+      "Amazon PT URL"
+    ],
+    "desc": [
+      "商品説明の箇条書き①"
+    ],
+    "spec1": [
+      "商品説明の箇条書き①"
+    ],
+    "spec2": [
+      "商品説明の箇条書き②",
+      "商品説明の箇条書き①"
+    ],
+    "spec3": [
+      "商品説明の箇条書き③",
+      "商品説明の箇条書き①"
+    ],
+    "spec4": [
+      "商品説明の箇条書き④",
+      "商品説明の箇条書き①"
+    ],
+    "spec5": [
+      "商品説明の箇条書き⑤",
+      "商品説明の箇条書き①"
+    ],
+    "keyword1": [
+      "検索キーワード",
+      "★Amazon検索KW(150字)",
+      "▼マスタ(★Amazon検索KW(150字))"
+    ],
+    "size": [
+      "バリエーション値",
+      "A.セット商品数"
+    ],
+    "inventory": [
+      "在庫数"
+    ],
+    "price": [
+      "販売価格amazon"
+    ],
+    "hazmat": [
+      "▼マスタ(Amz:危険物規制)"
     ]
   },
   "required_master_fields": [
@@ -272,24 +362,20 @@
     "bullet1",
     "tax_code",
     "origin",
-    "unit_count",
-    "unit_uom",
     "ingredients"
   ],
   "passthrough_fields": [
     "number_items",
-    "temperature_rating",
     "flavor",
     "expiration_dated",
     "expiration_type",
     "shelf_life",
     "shelf_life_unit",
-    "item_form",
     "grind_type",
     "item_weight",
     "item_weight_unit"
   ],
-  "notes": "FOOD系複合テンプレ本線。PT/browseはマスタ必須（p4b_require_master_pt_browse）。唐辛子等の既定browse埋込禁止。許可PT=FOOD/SEASONING/HPC。ハイライト=楽天キャッチ→Yahooキャッチ→箇条書き①（タイトル≤75）。テーマ既定SET_NAME・形式既定ホール。検索KWは1枠のみ（99016）。B-T1: xlsm_header_aliases。",
+  "notes": "FOOD_FISH_GROCERY複合。本線PT=GROCERY。テーマ=サイズ（プルダウンのみ）。size=ATのsize属性（package_size_nameではない）。入数/ユニット=セット缶数、重量=サイズからg解析。色・形態・温度定格はGROCERY黒セル対策で未出力。親総個数/総重量/一人分数量禁止。",
   "keyword_max_slots": 1,
   "highlight_max_title_chars": 75,
   "highlight_priority": [
@@ -297,9 +383,12 @@
     "catch_yahoo",
     "bullet1"
   ],
+  "browse_catalog_path": "shelf_browse_catalog.json",
   "p4b_require_master_pt_browse": true,
   "p4b_c1_product_types": [
+    "GROCERY",
     "FOOD",
+    "FISH",
     "SEASONING",
     "HEALTH_PERSONAL_CARE"
   ],
@@ -358,35 +447,43 @@
     ],
     "other_image1": [
       "other_product_image_locator_1[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL1"
     ],
     "other_image2": [
       "other_product_image_locator_2[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL2"
     ],
     "other_image3": [
       "other_product_image_locator_3[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL3"
     ],
     "other_image4": [
       "other_product_image_locator_4[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL4"
     ],
     "other_image5": [
       "other_product_image_locator_5[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL5"
     ],
     "other_image6": [
       "other_product_image_locator_6[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL6"
     ],
     "other_image7": [
       "other_product_image_locator_7[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL7"
     ],
     "other_image8": [
       "other_product_image_locator_8[marketplace_id=A1VC38T7YXB528]#1.media_location",
-      "その他の画像のURL"
+      "その他の画像のURL",
+      "その他の画像のURL8"
     ],
     "desc": [
       "product_description[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
@@ -394,23 +491,28 @@
     ],
     "spec1": [
       "bullet_point[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
-      "箇条書き"
+      "箇条書き",
+      "箇条書き1"
     ],
     "spec2": [
       "bullet_point[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#2.value",
-      "箇条書き"
+      "箇条書き",
+      "箇条書き2"
     ],
     "spec3": [
       "bullet_point[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#3.value",
-      "箇条書き"
+      "箇条書き",
+      "箇条書き3"
     ],
     "spec4": [
       "bullet_point[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#4.value",
-      "箇条書き"
+      "箇条書き",
+      "箇条書き4"
     ],
     "spec5": [
       "bullet_point[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#5.value",
-      "箇条書き"
+      "箇条書き",
+      "箇条書き5"
     ],
     "keyword1": [
       "generic_keyword[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
@@ -434,7 +536,8 @@
     ],
     "exclusive": [
       "is_exclusive_product[marketplace_id=A1VC38T7YXB528]#1.value",
-      "この商品はAmazon.co.jp限定商品ですか？"
+      "この商品はAmazon.co.jp限定商品ですか？",
+      "Amazon.co.jp限定商品ですか？"
     ],
     "heat": [
       "is_heat_sensitive[marketplace_id=A1VC38T7YXB528]#1.value",
@@ -481,8 +584,8 @@
       "商品のユニット数の単位"
     ],
     "size": [
-      "package_size_name[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
-      "パッケージサイズ名"
+      "size[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
+      "サイズ"
     ],
     "grind_type": [
       "grind_type[marketplace_id=A1VC38T7YXB528][language_tag=ja_JP]#1.value",
@@ -510,23 +613,28 @@
     ],
     "fulfillment": [
       "fulfillment_availability#1.fulfillment_channel_code",
-      "フルフィルメントチャネルコード (JP)"
+      "フルフィルメントチャネルコード (JP)",
+      "フルフィルメントチャネルコード"
     ],
     "inventory": [
       "fulfillment_availability#1.quantity",
-      "在庫数 (JP)"
+      "在庫数 (JP)",
+      "在庫数"
     ],
     "price": [
       "purchasable_offer[marketplace_id=A1VC38T7YXB528][audience=ALL]#1.our_price#1.schedule#1.value_with_tax",
-      "商品の販売価格 JPY (Amazonで販売, JP)"
+      "商品の販売価格 JPY (Amazonで販売, JP)",
+      "商品の販売価格"
     ],
     "shipping": [
       "merchant_shipping_group[marketplace_id=A1VC38T7YXB528]#1.value",
-      "配送テンプレート (JP)"
+      "配送テンプレート (JP)",
+      "配送テンプレート"
     ],
     "package_length": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.length.value",
-      "商品パッケージの長さ"
+      "商品パッケージの長さ",
+      "梱包:奥(cm)"
     ],
     "package_length_unit": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.length.unit",
@@ -534,7 +642,8 @@
     ],
     "package_width": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.width.value",
-      "商品パッケージサイズ：幅"
+      "商品パッケージサイズ：幅",
+      "梱包:幅(cm)"
     ],
     "package_width_unit": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.width.unit",
@@ -542,7 +651,8 @@
     ],
     "package_height": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.height.value",
-      "商品パッケージサイズ：高さ"
+      "商品パッケージサイズ：高さ",
+      "梱包:高(cm)"
     ],
     "package_height_unit": [
       "item_package_dimensions[marketplace_id=A1VC38T7YXB528]#1.height.unit",
@@ -550,7 +660,8 @@
     ],
     "package_weight": [
       "item_package_weight[marketplace_id=A1VC38T7YXB528]#1.value",
-      "商品パッケージ重量"
+      "商品パッケージ重量",
+      "梱包:重量(g)"
     ],
     "package_weight_unit": [
       "item_package_weight[marketplace_id=A1VC38T7YXB528]#1.unit",
@@ -562,7 +673,8 @@
     ],
     "hazmat": [
       "supplier_declared_dg_hz_regulation[marketplace_id=A1VC38T7YXB528]#1.value",
-      "商品に適用される危険物規制の種類"
+      "商品に適用される危険物規制の種類",
+      "危険物規制の種類"
     ],
     "liquid": [
       "contains_liquid_contents[marketplace_id=A1VC38T7YXB528]#1.value",
@@ -572,5 +684,20 @@
   "header_alias_rows": [
     4,
     5
-  ]
+  ],
+  "map_sheet_sync": {
+    "syncedAt": "2026-08-08T07:46:29Z",
+    "sheetTitle": "▼設定(Amazonマッピング)",
+    "source": "MAP",
+    "rowCountApplied": 66,
+    "diffKeys": {
+      "defaults": [],
+      "master_columns": [],
+      "policy": [
+        "omit_temperature_rating",
+        "omit_item_form"
+      ],
+      "aliases_ja": []
+    }
+  }
 }

@@ -1,0 +1,18 @@
+{
+  "templatePath": "G:\\マイドライブ\\04.amazonカタログ作成（CSV一括UL）\\09.SC純正バルクxlsm保存（人間がDLして保存→Agent確認後06へ）\\FOOD_FISH_GROCERY.xlsm",
+  "preferredFileName": "FOOD_FISH_GROCERY.xlsm",
+  "sheetName": "テンプレート",
+  "rows": [
+    3,
+    4,
+    5
+  ],
+  "maxCol": 310,
+  "sha256": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+  "productTypes": [
+    "GROCERY",
+    "FOOD",
+    "FISH"
+  ],
+  "notes": "B-T0 20260802 FOOD_FISH_GROCERY"
+}

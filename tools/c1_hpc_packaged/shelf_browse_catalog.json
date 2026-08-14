@@ -1,0 +1,3213 @@
+{
+  "version": "SHELF-BROWSE-1",
+  "updatedAt": "2026-08-02T03:54:35Z",
+  "notes": "データを閲覧する 全行網羅。照合キー=browseNodeId。",
+  "rows": [
+    {
+      "browseNodeId": "4489960051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 佃煮 > 魚介類の佃煮",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2425452051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 鮮魚",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71173051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > 煮干し",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71175051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > 削り節・鰹節",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172924051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍魚介類 > 冷凍魚",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172926051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍魚介類 > フィッシュケーキ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71238051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71588051",
+      "browsePath": "食品・飲料・お酒 > お酒",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2425555051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品 > 肉加工品 > ベーコン",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948716051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71427051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > ごはんのベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71158051",
+      "browsePath": "食品・飲料・お酒 > ジャム・はちみつ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2422738051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・お茶・粉末ドリンク",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4849947051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > スープの缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427329051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > ディップ・サルサ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964669051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > カット野菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71078051",
+      "browsePath": "食品・飲料・お酒 > 米・雑穀",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10490373051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・飲み物",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948725051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍弁当",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10475777051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > スイーツ・ガム",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71229051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > たれ・料理ソース",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71196051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > ソースの缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4489962051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 煮豆",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71167051",
+      "browsePath": "食品・飲料・お酒 > 乾物",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71442051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・飲み物 > 飲料-ASINフロー用",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948719051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍パン",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70935051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品 > 肉加工品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2426291051",
+      "browsePath": "食品・飲料・お酒 > 乳製品・卵・植物由来代替品 > チーズ > ナチュラルチーズ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10461944051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 冷蔵デザート",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71132051",
+      "browsePath": "食品・飲料・お酒 > 粉類",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172893051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 代替肉",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964643051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > 豆類",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71058051",
+      "browsePath": "食品・飲料・お酒 > 豆腐・納豆・こんにゃく・練り物",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71371051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > ケーキ菓子・デニッシュ菓子",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "7474208051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > スープ・カレー・シチュー > スープ・シチュー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427754051",
+      "browsePath": "食品・飲料・お酒 > パン・ケーキ > トルティーヤ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10430134051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・お茶・粉末ドリンク > バブルティー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71038051",
+      "browsePath": "食品・飲料・お酒 > 乳製品・卵・植物由来代替品 > 乳製品・植物由来ヨーグルト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427694051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 弁当",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71422051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172896051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍魚介類",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71436051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用飲料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10459458051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > シリアル・エナジーバー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71365051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > 中華菓子",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2439434051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用副菜・素材",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10490375051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・お茶・粉末ドリンク > 飲料シロップ・濃縮液",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70904051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2439520051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > 豆・豆腐のベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "215473966051",
+      "browsePath": "食品・飲料・お酒 > お酒 > 洋酒・リキュール > アルコールフリースピリッツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71431051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > ベビー用飲料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430224051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 飾り・トッピング材料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71425051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > 肉のベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948720051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍惣菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70927051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "205863344051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 精製脂肪とショートニング",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71255051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > スープ・味噌汁",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71142051",
+      "browsePath": "食品・飲料・お酒 > パン・ケーキ > パン",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71165051",
+      "browsePath": "食品・飲料・お酒 > ジャム・はちみつ > スプレッド",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71440051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用主食",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2422338051",
+      "browsePath": "食品・飲料・お酒 > お酒 > ノンアルコール飲料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70918051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 海藻類",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "57240051",
+      "browsePath": "食品・飲料・お酒",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71198051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71439051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用スープ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71213051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 砂糖・甘味料・製菓シロップ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427330051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > 漬物の素・糠床",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2439418051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > ほぐし・フレーク",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "18331835051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 生地・シェル・クラスト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70924051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 蒲焼き",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172902051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍ケーキ・スイーツ > パイ・タルト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71434051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用デザート",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948734051",
+      "browsePath": "食品・飲料・お酒 > アイスクリーム・氷菓",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4490047051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品 > 肉加工品 > 味付肉",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964595051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 惣菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964604051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > サラダ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71329051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > ドライフルーツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71250051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > レトルトおかず",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172930051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍肉類 > 野生のゲーム＆家禽肉",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71233051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > パスタソース",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71074051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 佃煮",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172892051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 前菜・スナック",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172905051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 前菜・スナック > チーズ・野菜カツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71240051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > スパイス・ハーブ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10424610051",
+      "browsePath": "食品・飲料・お酒 > パン・ケーキ > パン > ロールパン・バンズ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71314051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71192051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > 肉の缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948729051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍野菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964607051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964697051",
+      "browsePath": "食品・飲料・お酒 > 果物 > カットフルーツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71068051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 漬物",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964588051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964659051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > 薬味・ハーブ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71272051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 小麦粉・ミックス粉",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4489928051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 氷",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2431102051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > にんにく調味料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3958302051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・お茶・粉末ドリンク > ココア・ホットチョコレート",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71328051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > ナッツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71323051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > スナック菓子",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2132233051",
+      "browsePath": "食品・飲料・お酒 > 米・雑穀 > 麦・はと麦・押麦",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2422382051",
+      "browsePath": "食品・飲料・お酒 > コーヒー・紅茶・飲み物 > 飲料-ASINフロー用 > 割り材",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4490010051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > 水煮野菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71432051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4849946051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > サラダトッピング",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427328051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > ごはん・料理の素",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70943051",
+      "browsePath": "食品・飲料・お酒 > 野菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71426051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > 魚のベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71188051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71638051",
+      "browsePath": "食品・飲料・お酒 > お酒 > シードル",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71220051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 塩および代用塩",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10490374051",
+      "browsePath": "食品・飲料・お酒 > 乳製品・卵・植物由来代替品 > 乳製品・植物由来ミルク",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4522742051",
+      "browsePath": "食品・飲料・お酒 > グルメギフト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71086051",
+      "browsePath": "食品・飲料・お酒 > 麺類・パスタ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71277051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 製菓用ナッツ・種",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71143051",
+      "browsePath": "食品・飲料・お酒 > パン・ケーキ > パン > 食パン",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71195051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > フルーツの缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172932051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍惣菜 > 主菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70919051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 干物・燻製",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2429933051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 中華だし",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70936051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品 > 肉加工品 > ソーセージ・ウインナー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71322051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > クラッカー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71429051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > ベビー用デザート・菓子",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70923051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 塩辛・珍味",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172894051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > ハーブ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71028051",
+      "browsePath": "食品・飲料・お酒 > 乳製品・卵・植物由来代替品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71181051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > 乾燥野菜",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3948718051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍麺・パスタ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71246051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "7474209051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > スープ・カレー・シチュー > カレー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427937051",
+      "browsePath": "食品・飲料・お酒 > 粉類 > 小麦胚芽・ふすま",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71189051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > 魚介の缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2433886051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > しょうが調味料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2421968051",
+      "browsePath": "食品・飲料・お酒 > 米・雑穀 > 雑穀・古代米",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427323051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71062051",
+      "browsePath": "食品・飲料・お酒 > 豆腐・納豆・こんにゃく・練り物 > 豆腐 > 卵豆腐・風味豆腐",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71194051",
+      "browsePath": "食品・飲料・お酒 > 缶詰・瓶詰 > 野菜の缶詰・瓶詰",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71416051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > 栄養補助スナック",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10282198051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > パックスイーツ＆デザート",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172897051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍肉類",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71259051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "10306162051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > インスタントデザートミックス",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2431737051",
+      "browsePath": "食品・飲料・お酒 > 製菓・製パン材料 > 和菓子用粉",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172891051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍ケーキ・スイーツ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71413051",
+      "browsePath": "食品・飲料・お酒 > 健康食品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70920051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 漬け・酢〆魚",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2422288051",
+      "browsePath": "食品・飲料・お酒 > お酒 > 濃縮カクテル",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427699051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 漬物 > メンマ・ザーサイ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71206051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 洋風だし",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430219051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > 中華醤",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71042051",
+      "browsePath": "食品・飲料・お酒 > 乳製品・卵・植物由来代替品 > チーズ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71424051",
+      "browsePath": "食品・飲料・お酒 > ベビーフード > 卵のベビーフード",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71141051",
+      "browsePath": "食品・飲料・お酒 > パン・ケーキ",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71438051",
+      "browsePath": "ドラッグストア > シニアサポート・介護 > 食事・調理介助 > 介護用食品 > 介護用おかず",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4489944051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > スープ・カレー・シチュー",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "70934051",
+      "browsePath": "食品・飲料・お酒 > 精肉・肉加工品 > スペシャリティーミート",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2425454051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > しらす・ちりめん",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964698051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍生地",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172934051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍パン > パンケーキ、ワッフル、フレンチトースト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4849920051",
+      "browsePath": "食品・飲料・お酒 > 菓子・スナック > 和菓子 > おしるこ・ぜんざい",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "17622485051",
+      "browsePath": "DIY・工具・ガーデン > 安全・セキュリティ > 非常用品・備品 > 非常用食品",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4522750051",
+      "browsePath": "食品・飲料・お酒 > グルメギフト > 缶詰・瓶詰ギフト",
+      "templateFile": "FOOD_FISH_GROCERY.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "FOOD",
+        "FISH",
+        "GROCERY"
+      ],
+      "preferredProductType": "GROCERY",
+      "fingerprintSha": "74ccdcf96c22879dc80cbe87e8b41aa615e923529f151f091552ccbe3cefb010",
+      "columnMapPath": "food_fish_grocery_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964615051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > たまねぎ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964638051",
+      "browsePath": "食品・飲料・お酒 > 野菜 > ねぎ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4489960051",
+      "browsePath": "食品・飲料・お酒 > 惣菜・チルド食品 > 漬物・佃煮・煮豆 > 佃煮 > 魚介類の佃煮",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2425452051",
+      "browsePath": "食品・飲料・お酒 > 生鮮魚介類・水産加工品 > 鮮魚",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71173051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > 煮干し",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71175051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > 削り節・鰹節",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172924051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍魚介類 > 冷凍魚",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172926051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍魚介類 > フィッシュケーキ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172903051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍ケーキ・スイーツ > ホイップトッピング",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2428760051",
+      "browsePath": "食品・飲料・お酒 > ジャム・はちみつ > フルーツソース",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427327051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > すしの素",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71207051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > しょうゆ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71224051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > ポン酢",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2429935051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > ウスター・中濃・とんかつソース",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430213051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > ホットソース・チリソース",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427651051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > ナンプラー",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430216051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > オイスターソース",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2434466051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > みりん",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2434467051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 料理酒",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2431123051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > ハヤシ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2435476051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > ハヤシルー",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71212051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > めんつゆ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2435475051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > シチュールー",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2435474051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > カレールー",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "4522754051",
+      "browsePath": "食品・飲料・お酒 > グルメギフト > 香辛料・スパイスギフト",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2433504051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 塩麹",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430221051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > 果汁",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71199051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 味噌",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "179808011",
+      "browsePath": "食品・飲料・お酒 > 乾物 > とろろ昆布",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71244051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > ふりかけ",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "204337529051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 塩および代用塩 > 代用塩",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2430212051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 香辛料・スパイス > 唐辛子",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2435765051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > どんぶり",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "26172951051",
+      "browsePath": "食品・飲料・お酒 > 冷凍食品 > 冷凍惣菜 > 主菜 > 冷凍牛肉惣菜・おかず",
+      "templateFile": "FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "VEGETABLE",
+        "FISH",
+        "SAUCE",
+        "SEASONING",
+        "HERB",
+        "FOOD"
+      ],
+      "preferredProductType": "SEASONING",
+      "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
+      "columnMapPath": "food_seasoning_column_map.json",
+      "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    }
+  ]
+}

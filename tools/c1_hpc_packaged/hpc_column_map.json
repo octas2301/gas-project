@@ -91,7 +91,9 @@
     "ingredients": ["特記すべき原材料／原料", "原料"],
     "list_price": ["定価、市場価格", "定価", "市場価格"],
     "color": ["カラー", "色"],
-    "product_name_amazon": ["最終商品名amazon", "商品名amazon", "商品名案(Amazon)"]
+    "product_name_amazon": ["最終商品名amazon", "商品名amazon", "商品名案(Amazon)"],
+    "amazon_product_type": ["Amazon Product Type"],
+    "amazon_browse_node": ["Amazon Browse Node"]
   },
   "required_master_fields": [
     "mfr_name",
@@ -101,5 +103,6 @@
     "unit_count",
     "unit_uom"
   ],
-  "notes": "C1-1b: 成功PACKAGED差分＋マスタ列名正。タックスはマスタ参照（固定禁止）。行5・行6非書込。"
+  "notes": "C1-1b: 成功PACKAGED差分＋マスタ列名正。タックスはマスタ参照（固定禁止）。行5・行6非書込。P4b: Amazon Product Type / Browse Node は HEALTH_PERSONAL_CARE のときのみ defaults より優先。",
+  "p4b_c1_product_types": ["SEASONING", "HEALTH_PERSONAL_CARE"]
 }
