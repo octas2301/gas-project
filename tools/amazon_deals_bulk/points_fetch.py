@@ -301,7 +301,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="出品者ポイント取得→現在%スナップ")
     ap.add_argument("--config", type=Path, default=None)
     ap.add_argument("--sku", type=str, default="")
-    ap.add_argument("--write", action="store_true", help="出品者ポイント現在%／円だけシートへ書く")
+    ap.add_argument("--write", action="store_true", help="出品者ポイント現在パーセントと円だけシートへ書く")
     ap.add_argument(
         "--method",
         choices=("auto", "listings", "feed"),

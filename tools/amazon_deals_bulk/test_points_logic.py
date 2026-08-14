@@ -8,6 +8,7 @@ from points_logic import (
     period_percent,
     restore_percent,
     select_diff_rows,
+    send_percent,
 )
 
 
@@ -62,6 +63,11 @@ def test_restore_calendar_catchup():
     assert restore_percent(r, today=date(2026, 8, 12)) == 22
     assert restore_percent(r, today=date(2026, 8, 14)) == 18
     assert restore_percent(r, today=date(2026, 8, 28)) == 14
+    r["出品者ポイント現在%"] = "18"
+    got = select_diff_rows(
+        [r], mode=MODE_RESTORE, today=date(2026, 9, 4)
+    )
+    assert got and send_percent(got[0], MODE_RESTORE, today=date(2026, 9, 4)) == 14
 
 
 def test_point_status_vocab():

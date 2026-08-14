@@ -184,6 +184,7 @@ def apply_sheet_after_send(
     *,
     mode: str,
     status: str,
+    today=None,
 ) -> None:
     """送信成功SKUの 出品者ポイント現在%・状態 を更新。"""
     svc = sheets_service(write=True)
@@ -195,7 +196,7 @@ def apply_sheet_after_send(
         sku = str(r.get("SKU") or "").strip()
         d = {h: r.get(h, "") for h in MASTER_HEADERS}
         if sku in want:
-            d[POINT_CURRENT_COL] = str(send_percent(want[sku], mode))
+            d[POINT_CURRENT_COL] = str(send_percent(want[sku], mode, today=today))
             d[POINT_STATUS_COL] = status
         values.append([d.get(h, "") for h in MASTER_HEADERS])
     write_headers_and_rows(svc, sid, MASTER_SHEET, MASTER_HEADERS, values, clear=True)
@@ -219,12 +220,17 @@ def main(argv=None) -> int:
         default=1,
         help="施策連動: apply=開始まで0..N日or実施中 / restore=終了から0..N日（既定1）",
     )
-    ap.add_argument("--today", type=str, default=None, help="施策連動の基準日 YYYY-MM-DD")
+    ap.add_argument(
+        "--today",
+        type=str,
+        default=None,
+        help="base date YYYY-MM-DD (sale window and restore calendar pct)",
+    )
     ap.add_argument(
         "--mode",
         choices=(MODE_APPLY, MODE_RESTORE),
         default=MODE_APPLY,
-        help="apply=period percent / restore=before percent",
+        help="apply=period percent / restore=calendar taper percent",
     )
     ap.add_argument(
         "--prod",
@@ -250,6 +256,10 @@ def main(argv=None) -> int:
     )
     args = ap.parse_args(argv)
     mode = args.mode
+    from schedule_class import parse_ymd as _parse_ymd_today
+
+    today_d = _parse_ymd_today(args.today) if args.today else date.today()
+    assert today_d
 
     local = HERE / "config.local.json"
     deals_cfg = load_config(
@@ -279,24 +289,20 @@ def main(argv=None) -> int:
     sku_allow = None
     sale_linked = not bool(args.all_master) and not str(args.sku or "").strip()
     if sale_linked:
-        from schedule_class import parse_ymd as _parse_ymd
-
-        today = _parse_ymd(args.today) if args.today else date.today()
-        assert today
         svc = sheets_service(write=False)
         sid = str(deals_cfg.get("ads_spreadsheet_id") or "").strip()
         _sh, sales = read_sheet_rows(svc, sid, SALE_SHEET)
         sku_allow = sale_skus_for_points(
             sales,
             mode=mode,
-            today=today,
+            today=today_d,
             within_days=int(args.within_days),
         )
         LOG.info(
             "施策連動 mode=%s within_days=%s today=%s SKU=%s",
             mode,
             args.within_days,
-            today.isoformat(),
+            today_d.isoformat(),
             len(sku_allow),
         )
         if not sku_allow:
@@ -321,6 +327,7 @@ def main(argv=None) -> int:
             force_all=bool(args.all),
             enabled_only=True,
             sku_allow=sku_allow,
+            today=today_d,
         )
     except ValueError as e:
         LOG.error("%s", e)
@@ -347,12 +354,12 @@ def main(argv=None) -> int:
 
     for r in targets:
         try:
-            send_percent(r, mode)
+            send_percent(r, mode, today=today_d)
         except ValueError as e:
             LOG.error("SKU=%s: %s", r.get("SKU"), e)
             return 1
 
-    tsv = build_points_tsv(targets, mode=mode)
+    tsv = build_points_tsv(targets, mode=mode, today=today_d)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_dir = HERE / "_work"
     out_dir.mkdir(exist_ok=True)
@@ -360,7 +367,7 @@ def main(argv=None) -> int:
     tsv_path.write_text(tsv, encoding="utf-8")
     summary = [
         {"sku": s, "current": c, "send": t, "before": b}
-        for s, c, t, b in diff_summary(targets, mode)
+        for s, c, t, b in diff_summary(targets, mode, today=today_d)
     ]
     meta: Dict[str, Any] = {
         "stamp": stamp,
@@ -453,7 +460,9 @@ def main(argv=None) -> int:
         if meta.get("feed"):
             feed_st = str(meta["feed"].get("processingStatus") or "") or None
         status = status_after_send(mode, feed_st)
-        apply_sheet_after_send(deals_cfg, targets, mode=mode, status=status)
+        apply_sheet_after_send(
+            deals_cfg, targets, mode=mode, status=status, today=today_d
+        )
 
     print(
         json.dumps(

@@ -1,7 +1,39 @@
 # P1b — Amazonタイムセール人間手順
 
-**状態**: 2026-08-12 P1c実装済（2層減衰・メニュー分割）。clasp push 済。レーンAは**未運用**／数量確認メール§9.7。次は 8/14 taper 1SKU prod  
+**状態**: 2026-08-14 **taper 1段目 prod 済**（Cinderellas b/s 22→18、feed DONE、**店頭ともに18%確認済**）。日次 dry_run は Windows タスク **`OctasAmazonTaperDryRun`**（09:00・`--poll --mail`・`--prod`なし）。レーンAは**未運用**。  
+**後続タスク（開発完了後）**: 人間向け**運用マニュアル**化。本ファイルと要件§10.13–10.14を正本に要約する。  
+**スコープ外（後で再提案）**: B開始の自動 apply／B終了後の自動 restore／数量メール `--send`／P1c-2 URL／P1c-C HTTP／レーンA／P3 RPA。  
 **要件**: [D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md](D_MENU_AMAZON_DEALS_BULK_REQUIREMENTS.md)（§0.1 不変条件・§2.1.0 事実記載）
+
+---
+
+## 0. 8/14 本番（2026-08-14）
+
+| SKU | feedId | 店頭 |
+|-----|--------|------|
+| b `originalM-1803--KOUS--Cinderellas b` | `185913020679` DONE | **18% 確認済**（4480円・806pt） |
+| s `originalM-810--KOUS--Cinderellas s` | `185917020679` DONE | **18% 確認済**（2480円・446pt） |
+
+restore dry_run（s）: send=**18**（終着1ではない）。`--poll` 直後は対象0（カレンダー同期済・次回8/28）。
+
+仮想（Amazon非書込）:
+- `--poll --today 2026-08-28` → 18→14・**sheet_only=2**（Smile B中）
+- `--mode restore --today 2026-09-04` → send=**14**（終着1／販促22ではない）
+
+## 0.1 8/14 前点検（2026-08-13 Agent）
+
+```text
+cd tools/amazon_deals_bulk
+python taper_send.py --poll --mail --today 2026-08-13   # count=0
+python taper_send.py --poll --today 2026-08-14          # count=2 sendable=2
+```
+
+| SKU | from→to | next |
+|-----|---------|------|
+| `originalM-1803--KOUS--Cinderellas b` | 22→18 | 2026-08-28 |
+| `originalM-810--KOUS--Cinderellas s` | 22→18 | 2026-08-28 |
+
+**8/14 手順**: まず `--poll --mail`（dry_run）→ 問題なければ上記を **1SKUずつ** `--prod --i-confirm-prod --wait --update-sheet --mail`。
 
 ---
 
@@ -268,17 +300,16 @@ GAS: **6-②** 今すぐ印／**99-⑦** 手動1回（日次失敗時）。※�
 日次: `python taper_send.py --poll --mail`（安定後に `--prod --i-confirm-prod --wait --update-sheet`）。  
 dry_run ではフラグを消さない（同じ計画が毎日メールされる）。本番成功後に `減衰実行依頼` をクリア。
 
-### 日次タスク（Windows・人手で登録）
+### 日次タスク（Windows）
 
-タスクスケジューラ例（最初1週間は dry_run）:
+登録済: **`OctasAmazonTaperDryRun`**（毎日 09:00・ログオン中のみ）。
 
 ```text
-プログラム: python
-引数: taper_send.py --poll --mail
-開始: C:\Users\takuy\Desktop\gas-project\tools\amazon_deals_bulk
-時刻: 例 09:00（PC起動中のみ）
+C:\Users\takuy\Desktop\gas-project\tools\amazon_deals_bulk\run_taper_poll_dry.bat
+→ python taper_send.py --poll --mail
 ```
 
+`--prod` は付けない。削除: `schtasks /Delete /TN "OctasAmazonTaperDryRun" /F`  
 PCが寝ていると動かない。HTTP化（C）は後続。
 
 ### マスタ列並び・色分け

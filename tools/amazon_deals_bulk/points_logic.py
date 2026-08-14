@@ -67,7 +67,12 @@ def restore_percent(row: Dict[str, Any], today=None) -> int:
 
     from schedule_class import parse_ymd
 
-    d = today if isinstance(today, _date) else _date.today()
+    if isinstance(today, _date):
+        d = today
+    elif today:
+        d = parse_ymd(today) or _date.today()
+    else:
+        d = _date.today()
     start = parse_ymd(row.get(TAPER_START_COL))
     if start:
         from price_recovery_logic import calendar_active_pct
@@ -94,15 +99,15 @@ def target_percent(row: Dict[str, Any]) -> int:
     return period_percent(row)
 
 
-def send_percent(row: Dict[str, Any], mode: str) -> int:
+def send_percent(row: Dict[str, Any], mode: str, today=None) -> int:
     if mode == MODE_RESTORE:
-        return restore_percent(row)
+        return restore_percent(row, today=today)
     return period_percent(row)
 
 
-def needs_sync(row: Dict[str, Any], mode: str = MODE_APPLY) -> bool:
+def needs_sync(row: Dict[str, Any], mode: str = MODE_APPLY, today=None) -> bool:
     try:
-        want = send_percent(row, mode)
+        want = send_percent(row, mode, today=today)
     except ValueError:
         return mode == MODE_RESTORE  # 空でも一覧に出してエラーにする
     cur = current_percent(row)
@@ -119,6 +124,7 @@ def select_diff_rows(
     force_all: bool = False,
     enabled_only: bool = True,
     sku_allow: Optional[set] = None,
+    today=None,
 ) -> List[Dict[str, Any]]:
     """
     sku_allow: 指定時はそのSKU集合に限定（施策連動・P0-G4）。
@@ -141,10 +147,10 @@ def select_diff_rows(
                 continue
         if mode == MODE_RESTORE and not force_all:
             try:
-                restore_percent(r)
+                restore_percent(r, today=today)
             except ValueError:
                 continue
-        if force_all or needs_sync(r, mode):
+        if force_all or needs_sync(r, mode, today=today):
             out.append(r)
     return out
 
@@ -211,19 +217,19 @@ def sale_skus_for_points(
     return out
 
 
-def build_points_tsv(rows: List[Dict[str, Any]], mode: str = MODE_APPLY) -> str:
+def build_points_tsv(rows: List[Dict[str, Any]], mode: str = MODE_APPLY, today=None) -> str:
     """SC/SP-API Pointsフィード用 TSV（sku / points_percent）。"""
     lines = ["sku\tpoints_percent"]
     for r in rows:
         sku = str(r.get("SKU") or "").strip()
         if not sku:
             continue
-        lines.append("%s\t%s" % (sku, send_percent(r, mode)))
+        lines.append("%s\t%s" % (sku, send_percent(r, mode, today=today)))
     return "\n".join(lines) + ("\n" if lines else "")
 
 
 def diff_summary(
-    rows: List[Dict[str, Any]], mode: str = MODE_APPLY
+    rows: List[Dict[str, Any]], mode: str = MODE_APPLY, today=None
 ) -> List[Tuple[str, Optional[int], int, Optional[int]]]:
     """(sku, current, send, before) 一覧。"""
     out = []
@@ -231,7 +237,9 @@ def diff_summary(
         sku = str(r.get("SKU") or "").strip()
         if not sku:
             continue
-        out.append((sku, current_percent(r), send_percent(r, mode), before_percent(r)))
+        out.append(
+            (sku, current_percent(r), send_percent(r, mode, today=today), before_percent(r))
+        )
     return out
 
 
