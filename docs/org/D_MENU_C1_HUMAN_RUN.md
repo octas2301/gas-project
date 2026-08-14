@@ -1,10 +1,12 @@
 # C1 — PACKAGED HPC／SEASONING（人間手順）
 
-**状態**: **HPC C1-1b SC合格／SEASONING 七味実データPACKAGED再送済**（SC停止中・再送結果待ち）
+**状態**: **HPC C1-1b SC合格／SEASONING 七味＝出品中（SUCCESS）／GROCERY 缶飯＝100521待ち**  
+**台帳**: [LANE_B_SC_ERROR_LEDGER.md](LANE_B_SC_ERROR_LEDGER.md)（SC結果はここに追記）  
 **承認**: C1実装承認／**C1-1b実装承認**  
 **正本**: [D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md](D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)  
 **列マップ**: [D_MENU_C1_MASTER_HPC_COLUMN_MAP.md](D_MENU_C1_MASTER_HPC_COLUMN_MAP.md)／[SEASONING](D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md)  
 **ツール**: `tools/c1_hpc_packaged/c1_packaged.py`  
+**実行**: **ローカル Python は Agent モードで実行**（人間へのメニュー案内だけで終わらせない。[P4b HUMAN_RUN §0](D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)）  
 **入力取得（案A）**: `c1_fetch_inputs.py`／[D_MENU_C1_FETCH_INPUTS_REQUIREMENTS.md](D_MENU_C1_FETCH_INPUTS_REQUIREMENTS.md)  
 **安眠外出先メモ**: [D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md](D_MENU_C1_ANMIN_REMOTE_CHECKLIST.md)
 
@@ -16,10 +18,11 @@
 |------|-----|
 | subBatch | `CK_daba393f8055_B2` |
 | 最新PACKAGED | `…_20260731_032459.xlsm`（Drive 03） |
-| 初回サマリ | 処理2／成功0／その他エラー2。**99016**（KW5枠）＋**100521**（審査） |
-| 再送 | KW1枠修正版をUP済。結果待ち |
-| SC在庫 | 親`B0HC9S8PRN`／子`B0HC9RRCBP` は**停止中** |
-| 必須既定 | 粉末／グラム／KW1枠。詳細は [列マップ](D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md) |
+| 初回サマリ（`…235409`） | 処理2／成功0／その他エラー2。**99016**＋**100521** |
+| **再送サマリ（`…032459`・確定）** | 処理2／成功0／その他エラー2／失敗0。**100521のみ**（**99016なし**）。親子とも「成功(その他のエラー)」 |
+| SC在庫（07-31メモ） | 親`B0HC9S8PRN`／子`B0HC9RRCBP` は**停止中** → ライブ確認は別途 |
+| 必須既定 | **2026-08-02改定**: PT/browseはマスタ必須（既定埋込禁止）。形式既定ホール・テーマSET_NAME・KW1枠。詳細は [列マップ](D_MENU_C1_MASTER_FOOD_SEASONING_COLUMN_MAP.md) |
+| 台帳 | [LANE_B_SC_ERROR_LEDGER.md](LANE_B_SC_ERROR_LEDGER.md) |
 
 ---
 
@@ -136,7 +139,7 @@ python c1_packaged.py --config config.local.json --mode prod
 | DRY_RUN（骨格） | **OK** |
 | DRY_RUN（C1-1b） | **OK**（サンプルmaster） |
 | DRY_RUN（全マスタCSV A） | **OK**（2026-07-26・`master_export.csv`・tax=`A_GEN_STANDARD`・親URLは確認用override） |
-| 定価の都度修正 | **子SKU行の `定価、市場価格`（数字）を優先**。親行は子の値を使用。足りなければ `list_price_override_map`。フルCSV再DLは骨格変更時のみ |
+| 定価の都度修正 | **子SKU行の `定価、市場価格`（数字）を優先**。親行は子の値を使用。**定価が空のときのみ** 販売価格amazon／GENERATED `priceAmazon` へフォールバック。強制が必要なら `list_price_override_map`。フルCSV再DLは骨格変更時のみ |
 | SC | **合格**（2026-07-26）`relax_PACKAGED_HPC_lifec-4560151300405-oya_20260726_042714` → Drive05 `…-processing-summary.xlsm`。処理SKU=2／成功=2／失敗=0／警告=0／エラー総数=0。親=`lifec-4560151300405-oya`・子=`…-16s184` |
 | SC（安眠・本線） | **合格**（2026-07-27）`relax_PACKAGED_HPC_lifec-4560151300924-oya` → Downloads `…-processing-summary.xlsm`。処理SKU=2／成功=2／失敗=0／警告=0／エラー総数=0。親=`…0924-oya`・子=`…19s124`。**E-5済** `A1_20260726_225610_4f0558_B2` |
 | 21-③ | **スキップ（代替記録）**（0405手置きのみ）。安眠は **E-5** で同一 subBatchId 記録済。 |
@@ -197,6 +200,11 @@ AI同期は **`定価、市場価格` へ転記しない**（式の上書き防�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-05 | **定価**: マスタ数字優先。**空のときのみ**販売価格へフォールバック（`c1_packaged.resolve_list_price`）。缶飯B3再PACKAGEDで定価≠販売価格を確認。 |
+| 2026-08-02 | **C1-1d FOOD**: 許可PTにFOOD・PT/browse必須・既定禁止・ハイライトB・HJ型番。空マスタは親除外。 |
+| 2026-08-01 | **P4b-b**: マスタHERBのまま dry_run → xlsm PT=`SEASONING`（不採用OK）。実行はAgent。ローカルPython=Agent実行を明記。 |
+| 2026-08-01 | **七味再送サマリ確定**: 99016解消・100521のみ。台帳反映。 |
+| 2026-08-01 | レーンB台帳リンク。SC結果は台帳へ。 |
 | 2026-07-30 | **C1-1c SEASONING**: 新321列テンプレの指紋・行8開始・唐辛子ノードで機械DRY_RUN合格。 |
 | 2026-07-27 | **C1-clean**: `generated_csv`=`{subBatchId}_GENERATED.csv`／`sub_batch_id`・`--sub-batch`。`relax` 固定廃止。 |
 | 2026-07-27 | **安眠 SC合格＋E-5**: 処理2／成功2／エラー0。サマリ=Downloads。subBatchId=`A1_20260726_225610_4f0558_B2`。 |

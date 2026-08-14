@@ -26,9 +26,10 @@
 
 | キー | 既定 | 内容 |
 |------|------|------|
-| `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **false** | 主トグル（⑩〜⑬共通） |
-| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **false** | prod 許可（⑪・⑬共通） |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `5` | 上限 |
+| `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **true（未設定）** | 主スイッチ。明示 false で緊急停止 |
+| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **true（未設定）** | prod 許可。開始前確認は残る |
+| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY` | **false** | マスタ在庫送信のみ。常時ONにしない |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `10`（未設定時） | 1〜50。Property省略可 |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | **true** | 在庫0 |
 | `SPAPI_LWA_CLIENT_ID` | — | LWA（秘密・Git禁止） |
 | `SPAPI_LWA_CLIENT_SECRET` | — | LWA |
@@ -37,6 +38,7 @@
 | `SPAPI_MARKETPLACE_ID` | 空→`A1VC38T7YXB528` | JP |
 | `SPAPI_ENDPOINT` | **空推奨**→FE endpoint | `https:\` 誤記はコードが `https://` に正規化。空なら既定 |
 
+**2026-08-10**: 本番常時ONセット（[CURRENT_PHASE](../CURRENT_PHASE.md) §0）。旧 false キーは削除 or true に1回。  
 ローカル `tools/spapi_smoke/config.local.json` の値を Properties に転記（チャットに貼らない）。  
 `SPAPI_ENDPOINT` は **空のまま**が安全（既定URL使用）。手入力する場合は必ず `https://`。
 

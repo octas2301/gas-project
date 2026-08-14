@@ -25,20 +25,35 @@
 | `AMAZON_U4_URL_EMBED_ENABLED` | `true`（実行時のみ → 終わったら **false**） |
 | `AMAZON_U4_MAX_SKUS` | 省略可（既定 20） |
 | `AMAZON_U4_SKU_LIST` | 任意。カンマ区切り子SKU（最優先） |
+| `AMAZON_U4_FORCE_REUPLOAD` | 省略可。`true` のとき既存 URL があっても再 Put（終わったら **false**） |
+| `AMAZON_U4_SLICE_MS` | 省略可（既定 270000＝4.5分）。超過で残りを約1分後トリガー再開 |
 | `AMAZON_DRIVE_IMAGE_FOLDER_ID` | 空なら Drive `02` 既定 |
-| `R2_*` | T2と同じ（ACCOUNT / ACCESS / SECRET。BUCKET・PUBLIC_BASE 省略可） |
+| `R2_*` | T2と同じ（ACCOUNT / ACCESS / SECRET。**BUCKET・PUBLIC_BASE は未設定で可**＝コード既定） |
 
 ※ 21-⑦は **U4トグルのみ**で R2 Put（`AMAZON_DRIVE_R2_UPLOAD_ENABLED` は 21-⑥用）。
+※ C②も同じ U4 コア。再開トリガーは `runAmazonU4ResumeFromTrigger`（トグル false でも再開可）。
 
 ---
 
+## 1b. 途中切れ対策（2026-08-08）
+
+| 対策 | 挙動 |
+|------|------|
+| URL充足スキップ | `Amazon MAIN URL` と `Amazon PT URL` がどちらも使える https（`r2.cloudflarestorage.com` 除外）なら **SKU全体スキップ**。MAINのみ／PTのみも個別スキップ可 |
+| 1SKU失敗 | 例外でも **他SKU継続**（全体を落とさない） |
+| Put／楽天GETリトライ | 最大3回 |
+| 時間スライス | 既定4.5分超で残りを Property 保存→約1分後自動再開。ログ `state=SLICE` / `CONTINUE` |
+
+**再実行のコツ**: 成功済みはスキップされるので、C②または 21-⑦ をそのまま再実行してよい（`AMAZON_U4_SKU_LIST` は任意）。
+
+---
 ## 2. clasp push
 
 ```text
 clasp push
 ```
 
-含む: `AmazonDriveImageExport.js`／`AmazonApprovalExport.js`／`コード.js`（21-⑦）
+含む: `AmazonDriveImageExport.js`／`コード.js`（C②トースト）
 
 ---
 

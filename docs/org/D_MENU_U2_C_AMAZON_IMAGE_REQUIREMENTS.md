@@ -1,7 +1,7 @@
 # U2 — C（画像）× Amazon MAIN／サブ（REUSE）要件
 
 **文書種別**: 要件定義（**U2 v1 実機合格**）  
-**最終更新**: 2026-07-25  
+**最終更新**: 2026-08-02
 **状態**: **実機合格**（[HUMAN_RUN §0](D_MENU_U2_HUMAN_RUN.md)）
 **親**: [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §7 ・ [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) §2.1 ・ [BATCH_EXPORT_IMAGE_GATE_REQUIREMENTS.md](../BATCH_EXPORT_IMAGE_GATE_REQUIREMENTS.md)  
 **多数決**: [D_MENU_U2_THREE_REVIEW_MAJORITY.md](D_MENU_U2_THREE_REVIEW_MAJORITY.md)  
@@ -35,7 +35,7 @@
 - `generateRakutenCSV` 本体改変  
 - `Yahoo.js` 出品 API 改変  
 - T3 ZIP 自動（U5・別承認）  
-- **ε**: セット数等による MAIN 自動紐付け（§10）  
+- **ε**: セット数等による MAIN 自動紐付け（§10）… **子SKUファイル名一致の MAIN 自動投入は 2026-08-08 実装**（セット個数マッチは引き続きバックログ）。**楽天側の同型（ファイル名→楽天メイン1／_subN）は 2026-08-09 実装**（[楽天SKU紐付け](D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md)）  
 - 21-⑥ 量産化・R2 URL の xlsm 埋め（U4）  
 - SC API（U7）  
 - 楽天 `03\02` フォルダの破壊的整理  
@@ -53,7 +53,9 @@
 | **再生成** | `generateAiImageMatrix` の `clear()` 後、**マスタ→sheet へ復元** |
 | **MAIN 出口** | Drive `02\{sellerSku}.MAIN.jpg`（**コピー**。必須） |
 | **白抜き候補** | **Amazon 用ソースフォルダ**（楽天 `DRIVE_IMAGE_SOURCE_FOLDER_ID` と分離） |
+| **候補の並べ方** | **1子SKU＝1枚**（2026-08-01）。全行タイルはしない。ファイル名に子SKU（無ければ親SKU）を含めばその行、残りは候補が無い子SKU行へ順に。戻しは `AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED=true` |
 | サブ `REUSE_RAKUTEN` | マスタ「楽天サブ画像1〜n」→ U4 が R2 へ上げ `Amazon PT URL`（中身再判定なし）。**マッチングsheetの Amazon PT ドラッグは不要**（2026-07-31）。正本はマスタ列優先 |
+| 兄弟PT補完 | U4末尾で、**今回U4対象かつ `Amazon PT URL` 空欄の子SKUだけ**、同一親内の最上位の非空子SKUからURLをコピー。既存値・対象外SKUは変更しない（2026-08-02） |
 | サブ `AMAZON_ONLY` | **マッチング sheet で PT 紐付け**が本線。`02` 手置きは例外・復旧のみ |
 | フォールバック | REUSE だが楽天サブ0枚 → AMAZON_ONLY（ログ） |
 | モード粒度 | **子SKU単位を優先可能**（親一括のみでは不足しうる） |
@@ -164,7 +166,7 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 | **U2-2** | コピー → Drive `02` | **実機合格**（MAIN成功=1） |
 | **U2-3** | ログ | **v1 実装**（Logger） |
 | **U2-HR** | HUMAN_RUN | **実機合格** → [D_MENU_U2_HUMAN_RUN.md](D_MENU_U2_HUMAN_RUN.md) §0 |
-| **U2-ε** | 自動＋修正のみ | **バックログ** |
+| **U2-ε** | 子SKU名一致→MAIN自動（目視ゲート） | **実装**（2026-08-08）。セット個数マッチはバックログ |
 
 ### 実装承認パッケージ（必須添付）
 
@@ -188,6 +190,7 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 - [x] MAIN＝sheet＋マスタ永続＋再生成復元（③列追加・更新行=2）  
 - [x] `02` コピー出力・命名（④ MAIN成功=1）  
 - [x] Amazon U2有効時の楽天画像0件続行＋C-Amazon②のレ点／sheet不一致安全停止
+- [x] U4対象SKU限定の兄弟 `Amazon PT URL` 空欄補完（最上位の非空兄弟を使用・既存値非上書き）
 - [ ] ONLY PT＝sheet（本試験は `REUSE_RAKUTEN`／PT=0。ONLY は別サンプルで可）  
 - [x] 楽天／Yahoo 経路退行なし（本試験範囲：楽天アップ未実行・Amazon枠のみ）  
 - [x] HUMAN_RUN 実機合格  
@@ -221,6 +224,7 @@ sheet は作業面。列追加は実装前に再承認（列番号マスタ・�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-01 | 候補表示を **1子SKU＝1枚**へ（全行タイル廃止・Property で戻し可）。 |
 | 2026-07-30 | Amazon単独時は楽天画像0件でも C 続行。C-Amazon②に現在レ点／sheet親子SKUの完全一致ゲートを追加。 |
 | 2026-07-25 | **実機合格**記録。C子レ点・候補`07`。 |
 | 2026-07-25 | U2 v1 実装: `AmazonImageMatrixExport.js`＋Cメニュー。HUMAN_RUN。 |

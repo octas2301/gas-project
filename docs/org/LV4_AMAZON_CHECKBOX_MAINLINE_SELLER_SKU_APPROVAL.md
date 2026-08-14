@@ -70,7 +70,7 @@ Amazon 出品方式はラジオではなく **複数選択可能なチェック�
 
 本承認後は、このチェックボックスUIが [LV4_SPAPI_D_ENTRY_APPROVAL.md](LV4_SPAPI_D_ENTRY_APPROVAL.md) の相互排他ラジオに代わる **D本線の正**となる。E／Z-21 の復旧用入口は残す。
 
-`フル → Amazon` でも新規・相乗りを両方選択でき、相乗りprodも許可する。ただし **楽天／Yahooの開始前**に、Amazon prodの全トグル・対象件数・SKU例・送信在庫=0を表示し、人間が確認ダイアログでOKする。取消時はフル全体を開始しない。
+`フル → Amazon` でも新規・相乗りを両方選択でき、相乗りprodも許可する。ただし **楽天／Yahooの開始前**に、Amazon prodの全トグル・対象件数・SKU例・送信在庫（既定0。マスタqty経路ON時はそのqty）を表示し、人間が確認ダイアログでOKする。取消時はフル全体を開始しない。
 
 E／Z-21 はテスト・復旧用に残す。本線定着後の E 縮小は別承認。
 
@@ -111,9 +111,10 @@ E／Z-21 はテスト・復旧用に残す。本線定着後の E 縮小は別�
 
 - `出品CK=true` かつ子SKUあり（X列の相乗り値は不要。発送区分はD選択）
 - SP-API `LISTING_OFFER_ONLY`
-- 自己発送は `fulfillment_channel_code=DEFAULT`＋**送信quantityは常に0**
-- FBAは `fulfillment_channel_code=AMAZON_JP`。FBA在庫はAmazon管理のためquantityを送らない
-- マスタ在庫>0でもスキップしない（ただしAmazonへは常に0。非0出品はしない）
+- 自己発送は `fulfillment_channel_code=DEFAULT`＋**送信quantityは原則0**（承認①＝掲載）
+- **例外（P0・承認②相当・2026-08-01）**: D で「マスタ在庫で出す」を選び、専用トグル（例: `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY`）が true のときのみ、自己発へマスタ由来 quantity を送ってよい。詳細は [LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md](LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md)／[MAJORITY](LV4_D_P0_THREE_REVIEW_MAJORITY.md)。マスタ列への書込は禁止のまま
+- FBAは `fulfillment_channel_code=AMAZON_JP`。FBA在庫はAmazon管理のためquantityを送らない（P0でも変更しない）
+- マスタ在庫>0でもスキップしない（承認①経路ではAmazonへは0。非0は上記承認②例外のみ）
 - dry_run VALID 後にのみ prod 可
 - 承認①済み経路（21-⑫⑬）は残すが、当面の D 本線では使わない
 
@@ -133,12 +134,14 @@ JAN → Catalog Items API 自動検索は本件に含めない。
 
 | ヘッダ | 入力者 | 用途 |
 |--------|--------|------|
-| `Amazon相乗りSKU`（NF列） | GAS | 既存カタログ相乗りで実際に送る sellerSku |
+| `Amazon相乗りSKU`（NF列） | GAS | **自己発（MFN）専用** sellerSku |
+| `Amazon相乗りSKU_FBA` | GAS | **FBA専用** sellerSku（[デュアル Phase1](LV4_DUAL_OFFER_MFN_FBA_APPROVAL.md)・2026-08-01） |
 
 - 物理列番号は固定しない。ヘッダ名で解決
-- 列が無ければ相乗りを拒否し、追加手順を案内
+- 列が無ければ **当該系統**の相乗りを拒否し、追加手順を案内
 - `子SKU` は変更しない（楽天／Yahoo／新規Amazonへの波及防止）
 - 人間手入力を正にしない
+- Dは1回1系統のまま。自己発実行はNFのみ／FBA実行は `_FBA` のみ更新（他系統列は触らない）
 - 列追加前後に `[セット構成提案][列範囲チェック]` を確認し、親SKU／子SKU等がコピー範囲内であることを実機検収する
 
 ### 4.4 Amazon相乗りSKU生成
@@ -175,13 +178,14 @@ Amazon API／登録処理は sellerSku 単位の upsert とする。
 
 ### 4.5 書き込みタイミング
 
-- dry_run が **status=VALID かつ issues=0** のSKUだけ `Amazon相乗りSKU` へ保存
-- prod は `Amazon相乗りSKU` が空なら停止し「先にdry_run」を案内
-- prod は保存済み値をそのまま再利用し、再生成しない
+- dry_run（上級・任意）が **status=VALID かつ issues=0** のSKUだけ **当該系統の列**へ保存
+- **通常運用はprod直**。当該系統列が空なら **prodでSKUを生成してPUT**し、成功後に列へ保存（dry_run必須にしない）
+- 保存済み値が正しい as/af なら再利用し、再生成しない
+- 列の `s` 残存は prod／dry_run とも as/af へ正規化し、成功後に保存
 - prod ACCEPTED は runId／SKU／ASIN とともにログへ記録
-- prod失敗時も列値は保持し、同じsellerSkuで再試行可能
+- prod失敗時に未保存なら列は空のまま。再実行で同じ規則で再生成可
 
-これにより dry_run と prod の間で sellerSku が変わる事故を防ぐ。別の仮／確定列は追加しない。
+これにより、通常運用では dry_run なしで新規＋相乗り同時出品できる。系統別の仮／確定列は追加しない（Phase1は2列で完結）。
 
 ---
 
@@ -214,7 +218,7 @@ Amazon API／登録処理は sellerSku 単位の upsert とする。
 | `APPROVAL_AMAZON_LV4_ENABLED` | false | 新規カタログGENERATED |
 | `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | false | 相乗りSP-API |
 | `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | false | prod許可 |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | 5 | 上限 |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | 10（未設定時） | 上限（1〜50） |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | true | 在庫0 |
 
 ### 6.2 承認①を再接続する条件
@@ -286,8 +290,9 @@ Amazon API／登録処理は sellerSku 単位の upsert とする。
 - [ ] D選択で新規／相乗りへ独立に載せる（両方時は同行列を両方へ）。X列は新規SKU式用であり経路分割に使わない
 - [ ] 新規と相乗りを同時選択でき、確認画面に件数・SKU例（両方時は同時出品の注記）
 - [ ] 新規は既存 Da の成果物・`02`ゲートを維持
-- [x] 相乗りdry_run VALID/issues=0後だけ `Amazon相乗りSKU` を保存（自己発1SKU）
+- [x] 相乗りdry_run VALID/issues=0後だけ `Amazon相乗りSKU` を保存（自己発1SKU・任意経路）
 - [x] prodは保存値でACCEPTED（自己発1SKU）
+- [ ] **prod直**: SKU列空でも生成→PUT→成功後保存（2026-08-02実装。実機待ち）
 - [x] prodは主トグル＋ALLOW_PROD＋確認OKが必須。フル時も他モール開始前に確認（開始前確認UIは実装済・フル経路の実機は未）
 - [x] 同一sellerSkuは更新、未登録sellerSkuは新規登録。旧JAN型と新ASIN型を混同しない（自己発1SKUで確認）
 - [ ] ASIN不一致で停止し自動上書きしない

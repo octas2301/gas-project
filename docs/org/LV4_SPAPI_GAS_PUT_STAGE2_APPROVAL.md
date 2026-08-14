@@ -71,7 +71,7 @@
 |------|------|------|
 | `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **false** | 主トグル |
 | `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **false** | prod 許可 |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `5` | 超過は拒否 |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `10`（未設定時） | 超過は拒否。Property省略可 |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | **true** | 在庫0強制 |
 | LWA 3点／`SPAPI_SELLER_ID`／marketplace／endpoint | — | 第1段と共用。`SPAPI_ENDPOINT` は空推奨 |
 

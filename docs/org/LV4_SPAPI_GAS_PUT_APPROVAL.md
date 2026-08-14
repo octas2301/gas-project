@@ -62,7 +62,7 @@
 |------|------|------|
 | `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **false** | メニュー全体の主トグル |
 | `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **false** | prod 許可（dry_run のみなら false のまま） |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `5` | 1〜50。超過は拒否 |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `10`（未設定時） | 1〜50。超過は拒否。Property省略可 |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | **true** | 在庫0強制 |
 | `SPAPI_LWA_CLIENT_ID` / `SPAPI_LWA_CLIENT_SECRET` / `SPAPI_REFRESH_TOKEN` | （秘密） | ローカル smoke と同系統。**Git・チャット禁止** |
 | `SPAPI_SELLER_ID` / `SPAPI_MARKETPLACE_ID` | （設定） | 出品者トークン／marketplace |

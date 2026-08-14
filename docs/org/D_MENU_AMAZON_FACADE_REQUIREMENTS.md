@@ -120,25 +120,31 @@ D×Amazon = **準備完了まで**（掲載完了ではない）
 
 **人間作業（当面・明示）**
 
-5. **PACKAGED**: 純正 `.xlsm` へ埋め（当面 Cursor／手＝C0。[LV4 §1.4](LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) D-1）  
+5. **PACKAGED**: 純正 `.xlsm` へ埋め。本線は **D完了ダイアログの Cursor Agent 全文コピペ**（B-T1／ローカル Python。GAS→PC自動起動はしない）。正本: [LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)  
 6. **SCの2手**（この2つのみを「SCの2手」と呼ぶ）  
    - PACKAGED `.xlsm` を SC「商品スプレッドシート」へ UP  
    - 画像 ZIP を Upload Images へ UP（**手 ZIP＝当面の正**。Drive `04`。命名例 `{親SKU}_MAIN_images_for_SC.zip`）  
-7. 親子目視後 **21-③** `UPLOADED_OK`（当面 **Z**。将来 D から記録可は未決）  
+7. **`UPLOADED_OK`**: **SC処理サマリ自動（21-⑮系）を本線**（監視フォルダへサマリ配置）。21-③／E-5 は自動失敗時の逃げ道  
 8. Property トグルをオフに戻す（定常チェック）  
+
+**新規プレフライト（実装済 2026-08-02）**: D で新規 ON 時、先頭で PT 空なら P4b → 棚に PT 無ければハード停止＋DL指示。棚は Drive `AMAZON_SHELF_REGISTRY_FILE_ID`。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)
+
+**失敗後の再GENERATED（実装済 2026-08-02）**: 専用メニューは作らない。Dダイアログのレ点「失敗後の再GENERATED」ON 時、確認後にレ点付き親の **最新 open subBatch のみ** を `UPLOAD_FAILED` してから通常D続行。`UPLOADED_OK` は触らない。[LV4_D_REMAKE_MENU_APPROVAL.md](LV4_D_REMAKE_MENU_APPROVAL.md)
 
 **将来**: 人間の SC UP／状態記録は **API連携必須**（§6.3 Dc）。Da の人手は当面の過渡形。
 
-### 6.1.1 Da完了ダイアログ最低仕様（U3）
+### 6.1.1 Da完了ダイアログ最低仕様（U3＋2026-08-01改定）
 
 D×Amazon 完了時に少なくとも次を示す:
 
 - GENERATED の `runId`／`subBatchId`（あれば）  
+- **新規成功時**: 冒頭で「次の枠を一字残さず Cursor Agent に貼れ」＋自己完結の長い依頼文（方式B）  
 - PACKAGED の置き場案内（Drive `03` 等）  
 - 手 ZIP の置き場・命名（Drive `04`）  
 - SCの2手のチェックリスト  
-- 「21-③は当面 Z」  
+- `UPLOADED_OK`＝サマリ自動本線（21-③は逃げ道）  
 - `AMAZON_DRIVE_R2_UPLOAD_ENABLED`／`APPROVAL_AMAZON_LV4_ENABLED` を false に戻すこと  
+- 相乗りのみのときは Cursor 依頼枠を出さない（または PACKAGED 不要と1行）
 
 ### 6.2 Db（自動化予定・後）
 
@@ -151,6 +157,10 @@ D×Amazon 完了時に少なくとも次を示す:
 
 - **Seller Central API（または公式連携）による UP／結果取得** … 社長確定: 将来必須。Da 人手は過渡。  
 - 可能なら 21-③ 相当の自動記録  
+- **段階定義（2026-08-01）**: ①バルクUP → ②時間トリガーで結果取得 → ③自動取込 → ④原因分析・対策 → ⑤バルク再作成。詳細・順序は [AMAZON_DEV_ROADMAP_P0_P4.md](AMAZON_DEV_ROADMAP_P0_P4.md)。  
+- **リトライ**: 失敗側のみ **最大2回**（[AI_APPROVAL_MATRIX.md](AI_APPROVAL_MATRIX.md) §5）。①←⑤ループ実装は後回し。  
+- **過渡の③**: 監視フォルダ＋ファイル名（21-⑮系）は Dc③の過渡。  
+- **方針ロック（2026-08-01）**: 既存カタログ＝SP-API本線(A)／新規＝xlsm取り貯め(B)／新規JSON＝ゲート後(C)。正本 [P2 §7.4](LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)。  
 
 ### 6.4 T3（ZIP 自動）条件
 
@@ -192,7 +202,8 @@ flowchart TB
 
 C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 
-**現状**: U2／U3 実機済。T2再検証合格。次＝**U4 実装承認**（[U4要件](D_MENU_U4_R2_URL_EMBED_REQUIREMENTS.md)）。
+**現状**: U2／U3／U4 実機済。  
+**Cメニュー統合（2026-08-01 方針ロック）**: トップは **Cコース1本**。C-Amazon①〜④は逃げ道。E-1/E-2はCへ一本化。U4は **Amazon新規のC-2のみ**。MAINドラッグ自動化・P1は後。三点は今回スキップ。正本: [LV4_C_COURSE_CONSOLIDATION_APPROVAL.md](LV4_C_COURSE_CONSOLIDATION_APPROVAL.md)。次＝実装承認。
 
 ---
 
@@ -220,7 +231,10 @@ C（sheet）→ マスタ永続 → `02` コピー → D×Amazon、が理想。
 | **C1** | PACKAGED xlsm ほぼ自動（ローカル／Cursor） | U4・HPC | **要件起草** → [C1要件](D_MENU_C1_PACKAGED_XLSM_REQUIREMENTS.md)／[承認包](LV4_C1_IMPLEMENTATION_APPROVAL.md)。**次＝3者** |
 | **U5** | T3 ZIP 自動 | §6.4。T2再検証後は **急がない** | 保留 |
 | **U6** | M2／21-⑤ 等 | **M2 v1実装済**（案L・発汗試験定義）。実機は [D_MENU_M2_HUMAN_RUN.md](D_MENU_M2_HUMAN_RUN.md) | 実機待ち |
-| **U7** | Dc: SC API 連携（将来必須） | Da運用安定後 | 未 |
+| **U7** | Dc: SC API 連携（将来必須） | Da運用安定後 | **要件化**: [ROADMAP](AMAZON_DEV_ROADMAP_P0_P4.md) P2〜P3。実装未 |
+| **P0** | D: 在庫0\|マスタ・prod既定・E吸収 | ロードマップ確定 | **三点待ち** → [承認包](LV4_D_P0_E_ABSORB_INVENTORY_APPROVAL.md) |
+| **P4a** | カテゴリ/PT・Keepa読取PoC | 並列・最優先調査 | **実機合格** → [P4a](LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md)／[HUMAN_RUN](LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md)。次＝P1 |
+| **P1〜P3** | 画像File最少／Dc①〜⑤ | P0後〜 | **P2調査＋方針ロック**（[§7.4](LV4_P2_DC_123_INVESTIGATION_APPROVAL.md): A本線／B xlsm／Cゲート後）。次＝レーンA or 七味 |
 
 U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** を提示し社長承認を得る（新規ファイル・複数ファイル・EC 関連の可能性）。
 
@@ -281,12 +295,21 @@ U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** �
 
 > **U2 三点＋社長（2026-07-25）**: ONLY PT＝sheet（`02`手置き＝例外）。永続＝マスタ／再生成後復元。候補＝Amazon用フォルダ。MAJORITY保存＋要件・POC整合。
 
+> **Cコース統合 承認（2026-08-01）**: トップCコース1本。U4はAmazon新規のC-2のみ。E-1/E-2一本化。三点スキップ。P1・MAINドラッグ自動化は後。[LV4_C_COURSE_CONSOLIDATION_APPROVAL](LV4_C_COURSE_CONSOLIDATION_APPROVAL.md)。
+
 ---
 
 ## 14. 更新履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-02 | **失敗後再GENERATED＝D内レ点実装**（§6.1）。要 clasp push。[LV4_D_REMAKE_MENU_APPROVAL](LV4_D_REMAKE_MENU_APPROVAL.md)。 |
+| 2026-08-02 | **失敗後再GENERATED＝D内レ点**方針を§6.1に追記。[LV4_D_REMAKE_MENU_APPROVAL](LV4_D_REMAKE_MENU_APPROVAL.md)。 |
+| 2026-08-02 | **D新規ゲート＋Cursor手渡し実装**（Drive棚）。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
+| 2026-08-01 | **D新規ゲート＋Cursor手渡し**方針を§6.1／§6.1.1に反映（実装は別承認）。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
+| 2026-08-01 | **方針ロック** A/B/C を P2/ROADMAP へ（既存API本線／新規xlsm／JSONゲート後）。 |
+| 2026-08-01 | **Cコース統合**方針を§7にリンク（実装は別承認）。 |
+| 2026-08-01 | **ロードマップ P0〜P4／Dc**: [AMAZON_DEV_ROADMAP_P0_P4](AMAZON_DEV_ROADMAP_P0_P4.md)。§6.3 Dc①〜⑤・最大2回。U7/P0/P4aチケット追記。 |
 | 2026-07-26 | **C1要件リンク**（ローカル本線・次＝3者）。 |
 | 2026-07-26 | **U4要件＋承認パッケージ**リンク。U2/U3済・T2再検証後。T3急がない。 |
 | 2026-07-25 | U2三点＋社長回答を§7・チケットに反映。MAJORITYリンク。 |
