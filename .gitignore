@@ -19,6 +19,7 @@ tools/_tmp_*
 tools/**/__pycache__/
 __pycache__/
 *.pyc
+tools/c1_hpc_packaged/_x.py
 
 node_modules/
 .DS_Store

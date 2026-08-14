@@ -4,3 +4,6 @@ __pycache__/
 secrets/
 *.local.json
 glyphs/rakuten/*.png
+_*.py
+tmp_*
+**/tmp_*
