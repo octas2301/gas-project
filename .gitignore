@@ -12,6 +12,13 @@ B実行タイムオーバー履歴.txt
 *.local_backup
 *.bak
 *.bak_*
+_local_backup/
+
+# 調査用の一時スクリプト・出力（コミットしない）
+tools/_tmp_*
+tools/**/__pycache__/
+__pycache__/
+*.pyc
 
 node_modules/
 .DS_Store

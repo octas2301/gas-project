@@ -6,6 +6,7 @@ inventory-app/**
 
 # ローカル専用ツール（GAS へ送らない。xlsm/CSVもここに置かない）
 tools/**
+_local_backup/**
 
 # ドキュメント・参考資料（GAS コードではない。push 対象外）
 docs/**
