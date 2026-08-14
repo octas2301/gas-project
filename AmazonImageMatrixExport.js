@@ -11,6 +11,7 @@
  *   AMAZON_IMAGE_CANDIDATE_FOLDER_ID … 白抜き候補（楽天ソースと分離）
  *   AMAZON_DRIVE_IMAGE_FOLDER_ID … 02 出口（空なら既定 ID）
  *   AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED … ④成功分を 07/アップロード済み画像 へ退避（未設定=true／false でOFF）
+ *   AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED … 未設定=true。子SKU名一致の候補を Amazon MAIN(BX) へ自動投入
  */
 
 var AMAZON_IMAGE_U2_PROP = 'AMAZON_IMAGE_U2_ENABLED';
@@ -19,6 +20,12 @@ var AMAZON_IMAGE_DRIVE02_PROP = 'AMAZON_DRIVE_IMAGE_FOLDER_ID';
 var AMAZON_IMAGE_DRIVE02_DEFAULT = '1T6_E6T-qd9whSF8Re8lyRVB2n-P4BM84';
 var AMAZON_IMAGE_CANDIDATE_ARCHIVE_PROP = 'AMAZON_IMAGE_CANDIDATE_ARCHIVE_ENABLED';
 var AMAZON_IMAGE_CANDIDATE_ARCHIVE_FOLDER_NAME = 'アップロード済み画像';
+/** true で旧・全行タイル表示（既定 false＝子SKU行に1枚ずつ） */
+var AMAZON_IMAGE_CANDIDATE_TILE_ALL_PROP = 'AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED';
+/** 未設定=true。子SKUファイル名一致のみ MAIN 自動投入（U2-ε） */
+var AMAZON_IMAGE_MAIN_AUTOBIND_PROP = 'AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED';
+/** 1行1枚モードで読む候補ファイルの上限（行数分あれば足りる） */
+var AMAZON_MX_CAND_FILE_MAX = 300;
 
 /** 1-based。楽天候補は 26〜75 → Amazon は 76 以降 */
 var AMAZON_MX_COL_MAIN = 76;
@@ -102,7 +109,8 @@ function menuAmazonImageMatrixExportTo02() {
   var conf = ui.alert(
     'Amazon → Drive 02',
     'マトリクス／マスタの Amazon MAIN（ONLY時は PT）を Drive 02 へコピーします。\n' +
-      '同名ファイルは置き換えます。楽天アップは実行しません。\n実行しますか？',
+      '同名ファイルは置き換えます。成功分は 07/アップロード済み へ自動退避します。\n' +
+      '手コピー・手退避は不要です。楽天アップは実行しません。\n実行しますか？',
     ui.ButtonSet.OK_CANCEL
   );
   if (conf !== ui.Button.OK) return;
@@ -114,7 +122,10 @@ function menuAmazonImageMatrixExportTo02() {
       '\nPT成功=' + summary.ptOk +
       '\n失敗=' + summary.failed +
       '\n候補退避=' + (summary.archived != null ? summary.archived : 0) +
-      '\n' + (summary.message || '')
+      '\n' + (summary.message || '') +
+      (Number(summary.failed) > 0
+        ? '\n\n次: sheetでMAINドラッグ見直し→C-2（02手置きは復旧例外のみ）'
+        : '\n\n02を手で触る必要はありません。次は U4／C-2／D。')
   );
 }
 
@@ -144,9 +155,21 @@ function menuAmazonImageMatrixLoadCandidates() {
   }
   Logger.log('[' + fn + '] state=RUNNING folderId=' + folderId);
   amazonImageMatrixEnsureZone_(sheet);
-  var n = amazonImageMatrixLoadCandidates_(sheet, folderId);
+  var res = amazonImageMatrixLoadCandidatesDetail_(sheet, folderId);
+  var n = res.placed;
   Logger.log('[' + fn + '] state=DONE placed=' + n);
-  SpreadsheetApp.getUi().alert('Amazon候補を列' + AMAZON_MX_COL_CAND1 + '以降に並べました（' + n + '枚）。子SKU行の Amazon MAIN／PT へドラッグしてください。');
+  SpreadsheetApp.getUi().alert(
+    'Amazon候補を列' + AMAZON_MX_COL_CAND1 + '以降に並べました（' + n + '枚）。\n' +
+      (res.tileAll
+        ? '旧・全行タイル表示（Property ON）'
+        : '子SKU行に1枚ずつ（名前一致=' + res.matched + '／対象行=' + res.rows +
+          (res.leftover ? '／未配置=' + res.leftover : '') +
+          (res.autobind != null ? '／MAIN自動=' + res.autobind : '') + '）') +
+      '\n' +
+      (res.autobind > 0
+        ? '子SKU名一致の分は Amazon MAIN（列' + AMAZON_MX_COL_MAIN + '）へ自動投入済み。目視してから C-2。'
+        : '子SKU行の Amazon MAIN／PT へドラッグしてください。')
+  );
 }
 
 function amazonImageU2Guard_(fn) {
@@ -477,6 +500,9 @@ function amazonImageMatrixExportTo02_(ss, matrixSheet) {
 
   var archiveResult = amazonImageArchiveUsedCandidates_(Object.keys(usedIds));
   if (archiveResult.note) notes.push(archiveResult.note);
+  if (failed > 0) {
+    notes.push('次: C-1→MAINドラッグ→C-2。Drive 02手置きは復旧例外のみ。');
+  }
   Logger.log(
     '[amazonImageMatrixExportTo02_] archive moved=' +
       archiveResult.moved +
@@ -577,25 +603,199 @@ function amazonImageCopyTo02_(destFolder, fileId, destName) {
 }
 
 function amazonImageMatrixLoadCandidates_(sheet, folderId) {
+  return amazonImageMatrixLoadCandidatesDetail_(sheet, folderId).placed;
+}
+
+/**
+ * 候補を子SKU行へ「1行＝1枚」で配置する（Amazon MAIN は子SKUごとに1枚）。
+ * ファイル名に子SKUを含むものはその行へ（最長一致優先）。親SKUのみ一致／残りは候補のみ。
+ * 子SKU一致かつ MAIN 空なら BX(Amazon MAIN) へ自動投入（U2-ε・Property でOFF可）。
+ * Property AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED=true で旧・全行タイル表示に戻す。
+ * @return {{files:number, placed:number, matched:number, leftover:number, rows:number, tileAll:boolean,
+ *   autobind:number, autobindSkippedExisting:number}}
+ */
+function amazonImageMatrixLoadCandidatesDetail_(sheet, folderId) {
+  var fn = 'amazonImageMatrixLoadCandidatesDetail_';
+  var tileAll = getBoolScriptProperty_(AMAZON_IMAGE_CANDIDATE_TILE_ALL_PROP, false);
+  var maxFiles = tileAll ? AMAZON_MX_CAND_COUNT : AMAZON_MX_CAND_FILE_MAX;
   var folder = DriveApp.getFolderById(folderId);
   var files = folder.getFiles();
   var list = [];
-  while (files.hasNext() && list.length < AMAZON_MX_CAND_COUNT) {
+  while (files.hasNext() && list.length < maxFiles) {
     var f = files.next();
     if (String(f.getMimeType() || '').indexOf('image/') === 0) list.push(f);
   }
+  var out = {
+    files: list.length,
+    placed: 0,
+    matched: 0,
+    leftover: 0,
+    rows: 0,
+    tileAll: tileAll,
+    autobind: 0,
+    autobindSkippedExisting: 0
+  };
   var lastRow = sheet.getLastRow();
-  if (lastRow < 3) return 0;
+  if (lastRow < 3) return out;
+
+  sheet.getRange(3, AMAZON_MX_COL_CAND1, lastRow - 2, AMAZON_MX_CAND_COUNT).clearContent();
+
   var j;
+  var rr;
+  if (tileAll) {
+    for (j = 0; j < list.length; j++) {
+      amazonImageCandidateShare_(list[j]);
+      var formulaAll = amazonImageFormula_(list[j].getId());
+      for (rr = 3; rr <= lastRow; rr++) {
+        sheet.getRange(rr, AMAZON_MX_COL_CAND1 + j).setFormula(formulaAll);
+      }
+    }
+    out.placed = list.length;
+    Logger.log('[' + fn + '] state=DONE mode=tile_all files=' + list.length);
+    return out;
+  }
+
+  var keys = sheet.getRange(3, 1, lastRow - 2, 2).getValues();
+  var targets = [];
+  for (j = 0; j < keys.length; j++) {
+    var parentSku = String(keys[j][0] || '').trim();
+    var childSku = String(keys[j][1] || '').trim();
+    if (!parentSku || !childSku) continue;
+    targets.push({
+      row: j + 3,
+      parent: parentSku,
+      child: childSku,
+      count: 0,
+      matchedChild: false
+    });
+  }
+  out.rows = targets.length;
+  if (!targets.length) return out;
+
+  var remain = [];
   for (j = 0; j < list.length; j++) {
-    try { list[j].setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eS) {}
-    var formula = amazonImageFormula_(list[j].getId());
-    var rr;
-    for (rr = 3; rr <= lastRow; rr++) {
-      sheet.getRange(rr, AMAZON_MX_COL_CAND1 + j).setFormula(formula);
+    var name = amazonImageCandidateNormalize_(list[j].getName());
+    var hitChild = amazonImageCandidateFindChildRow_(targets, name);
+    if (hitChild) {
+      amazonImageCandidatePlace_(sheet, hitChild, list[j]);
+      hitChild.matchedChild = true;
+      out.matched++;
+      out.placed++;
+      continue;
+    }
+    var hitParent = amazonImageCandidateFindParentRow_(targets, name);
+    if (hitParent) {
+      amazonImageCandidatePlace_(sheet, hitParent, list[j]);
+      out.placed++;
+    } else {
+      remain.push(list[j]);
     }
   }
-  return list.length;
+  var ti = 0;
+  for (j = 0; j < remain.length; j++) {
+    while (ti < targets.length && targets[ti].count > 0) ti++;
+    if (ti >= targets.length) {
+      out.leftover = remain.length - j;
+      break;
+    }
+    amazonImageCandidatePlace_(sheet, targets[ti], remain[j]);
+    out.placed++;
+  }
+
+  var bind = amazonImageMatrixAutobindMainFromCandidates_(sheet, targets);
+  out.autobind = bind.bound;
+  out.autobindSkippedExisting = bind.skippedExisting;
+
+  Logger.log('[' + fn + '] state=DONE mode=one_per_row files=' + out.files +
+    ' placed=' + out.placed + ' matched=' + out.matched +
+    ' leftover=' + out.leftover + ' rows=' + out.rows +
+    ' autobind=' + out.autobind + ' autobindSkipExisting=' + out.autobindSkippedExisting);
+  return out;
+}
+
+/**
+ * 子SKU名一致で候補に置いた行について、MAIN 空なら同じ IMAGE 式を BX へコピー（U2-ε）。
+ * @return {{bound:number, skippedExisting:number, skippedOff:number}}
+ */
+function amazonImageMatrixAutobindMainFromCandidates_(sheet, targets) {
+  var out = { bound: 0, skippedExisting: 0, skippedOff: 0 };
+  if (!getBoolScriptProperty_(AMAZON_IMAGE_MAIN_AUTOBIND_PROP, true)) {
+    out.skippedOff = targets.length;
+    Logger.log('[amazonImageMatrixAutobindMainFromCandidates_] state=SKIP prop_off');
+    return out;
+  }
+  var i;
+  for (i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    if (!t.matchedChild || t.count < 1) continue;
+    var mainRange = sheet.getRange(t.row, AMAZON_MX_COL_MAIN);
+    var existingF = String(mainRange.getFormula() || '').trim();
+    var existingV = String(mainRange.getDisplayValue() || '').trim();
+    if (existingF || existingV) {
+      out.skippedExisting++;
+      continue;
+    }
+    var candF = String(sheet.getRange(t.row, AMAZON_MX_COL_CAND1).getFormula() || '').trim();
+    if (!candF) continue;
+    mainRange.setFormula(candF);
+    out.bound++;
+  }
+  Logger.log('[amazonImageMatrixAutobindMainFromCandidates_] bound=' + out.bound +
+    ' skippedExisting=' + out.skippedExisting);
+  return out;
+}
+
+/** ファイル名・SKUの比較用（小文字化＋英数字以外を除去） */
+function amazonImageCandidateNormalize_(s) {
+  return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** ファイル名に子SKUを含む行（最長一致優先・未使用行優先）。 */
+function amazonImageCandidateFindChildRow_(targets, normalizedName) {
+  var best = null;
+  var bestLen = 0;
+  var i;
+  for (i = 0; i < targets.length; i++) {
+    if (targets[i].count > 0) continue;
+    var childKey = amazonImageCandidateNormalize_(targets[i].child);
+    if (!childKey || normalizedName.indexOf(childKey) < 0) continue;
+    if (childKey.length > bestLen) {
+      best = targets[i];
+      bestLen = childKey.length;
+    }
+  }
+  return best;
+}
+
+/** ファイル名に親SKUを含む未使用行（候補配置のみ・MAIN自動対象外）。 */
+function amazonImageCandidateFindParentRow_(targets, normalizedName) {
+  var i;
+  for (i = 0; i < targets.length; i++) {
+    if (targets[i].count > 0) continue;
+    var parentKey = amazonImageCandidateNormalize_(targets[i].parent);
+    if (parentKey && normalizedName.indexOf(parentKey) >= 0) return targets[i];
+  }
+  return null;
+}
+
+/** @deprecated 互換: 子優先→親。新規は FindChild / FindParent を使う */
+function amazonImageCandidateFindRow_(targets, normalizedName) {
+  return amazonImageCandidateFindChildRow_(targets, normalizedName) ||
+    amazonImageCandidateFindParentRow_(targets, normalizedName);
+}
+
+function amazonImageCandidatePlace_(sheet, target, file) {
+  if (target.count >= AMAZON_MX_CAND_COUNT) return;
+  amazonImageCandidateShare_(file);
+  sheet.getRange(target.row, AMAZON_MX_COL_CAND1 + target.count)
+    .setFormula(amazonImageFormula_(file.getId()));
+  target.count++;
+}
+
+function amazonImageCandidateShare_(file) {
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (eS) {}
 }
 
 function amazonImageEnsureMasterColumns_(masterSheet, headerRowIdx) {

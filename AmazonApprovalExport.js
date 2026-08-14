@@ -7,8 +7,8 @@
  * - 純正 .xlsm 編集・SC自動UPはしない（PACKAGED/UPは人間＋ローカル）
  * - TRACK 未設定は実行しない
  *
- * Script Properties:
- *   APPROVAL_AMAZON_LV4_ENABLED … 既定 false
+ * Script Properties（本番常時ONセット 2026-08-10）:
+ *   APPROVAL_AMAZON_LV4_ENABLED … 未設定時 **true**（明示 false で緊急停止）
  *   APPROVAL_AMAZON_LV4_TRACK … A | B | BOTH（必須。空＝実行しない）
  *   APPROVAL_AMAZON_LV4_SKIP_EXPORT … 既定 false（true=Drive書込スキップのドライラン）
  *   APPROVAL_AMAZON_LV4_SHIPPING_TEMPLATE … 既定 送料無料パターン
@@ -18,8 +18,12 @@
  *   APPROVAL_AMAZON_LV4_STATE … レジューム用（自動）
  *   APPROVAL_AMAZON_LV4_BRAND_GATE_MODE … M2(A): manual_ok 必須（人間が制限なし確認後）。未設定＝SKIPPED_BRAND_GATE
  *   APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK … Dレ点新規のみ在庫>0でも続行（未設定＝true。false で旧 SKIPPED_IN_STOCK に戻す）
+ *   APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP … 親SKU→PT|BrowseNodeId（条件付き自動再GENERATED）
+ * 送信在庫: inventoryMode ZERO（既定0）/ ONE / MASTER（マスタ「在庫数」生値・ALLOW_MASTER_QTY必須）
+ * Track B 親行の inventory は常に0（MASTERでも親マスタ在庫は読まない。実在庫は子のみ）
+ * マスタ「在庫数」「JAN」への書込禁止（読取のみ）
  *   APPROVAL_AMAZON_LV4_EXEMPTION_ALL_CATEGORIES … 21-⑭ を全カテゴリ `*` で記録（既定 false＝レ点カテゴリのみ）
- *   APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED … SC処理サマリ自動記録の有効化（既定 false＝fail-closed）
+ *   APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED … 未設定時 **true**（監視本番。明示 false で停止）
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID … サマリ監視フォルダ（必須。未設定なら実行しない）
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_MIN … 監視トリガー間隔分（5/10/15/30/60。既定 15）
  *   APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_ID … トリガー用スプレッドシートID（21-⑯設置時に自動保存）
@@ -35,6 +39,8 @@ var APPROVAL_AMAZON_LV4_PARENTS_PER_SUB_PROP = 'APPROVAL_AMAZON_LV4_PARENTS_PER_
 var APPROVAL_AMAZON_LV4_STATE_PROP = 'APPROVAL_AMAZON_LV4_STATE';
 var APPROVAL_AMAZON_LV4_BRAND_GATE_MODE_PROP = 'APPROVAL_AMAZON_LV4_BRAND_GATE_MODE';
 var APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK_PROP = 'APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK';
+/** 親SKU → GENERATED時点の PT|BrowseNodeId 指紋（条件付き自動再GENERATED用） */
+var APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP = 'APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP';
 var APPROVAL_AMAZON_LV4_EXEMPTION_ALL_PROP = 'APPROVAL_AMAZON_LV4_EXEMPTION_ALL_CATEGORIES';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_ENABLED';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID';
@@ -42,6 +48,9 @@ var APPROVAL_AMAZON_LV4_SC_SUMMARY_INTERVAL_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMA
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_SS_ID';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT_PROP = 'APPROVAL_AMAZON_LV4_SC_SUMMARY_WAIT';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_TRIGGER_FN = 'runApprovalAmazonLv4ScSummaryFromTrigger';
+/** 本番常時ON: 未設定時 true */
+var AMAZON_PROD_DEFAULT_LV4_ENABLED_ = true;
+var AMAZON_PROD_DEFAULT_SC_SUMMARY_ = true;
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_DONE_FOLDER = '_処理済';
 var APPROVAL_AMAZON_LV4_SC_SUMMARY_MAX_FILES = 20;
 /** 待ちリスト上限（ms）。超過した subBatchId は待ちから外し、空ならトリガー削除 */
@@ -65,8 +74,9 @@ var APPROVAL_AMAZON_LV4_LOG_HEADERS = [
  */
 /**
  * メニュー 21-① / D×Amazon ファサード共用。
- * @param {{silent?:boolean, source?:string, track?:string, includeOffer?:boolean}=} opts
+ * @param {{silent?:boolean, source?:string, track?:string, includeOffer?:boolean, inventoryMode?:string}=} opts
  *   source='child_ck' は人間レ点の新規カタログ行のみ。既定は承認①済。
+ *   inventoryMode='MASTER' はバルク在庫列へマスタ「在庫数」生値（承認②・ALLOW_MASTER_QTY必須）
  * @return {{ok:boolean, cancelled?:boolean, runId?:string, track?:string, summary?:Object, reason?:string, error?:string}}
  */
 function menuApprovalAmazonLv4Run(opts) {
@@ -75,8 +85,16 @@ function menuApprovalAmazonLv4Run(opts) {
   var silent = !!opts.silent;
   var source = String(opts.source || 'approved') === 'child_ck' ? 'child_ck' : 'approved';
   var includeOfferForSplit = !!opts.includeOffer;
-  if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_PROP, false)) {
-    var off = 'Lv4 Amazonは無効です。Script Properties の ' + APPROVAL_AMAZON_LV4_PROP + ' を true にしてください。';
+  var inventoryModeOpt = String(opts.inventoryMode || 'ZERO').toUpperCase();
+  if (inventoryModeOpt !== 'MASTER' && inventoryModeOpt !== 'ONE') inventoryModeOpt = 'ZERO';
+  if (!getBoolScriptProperty_(
+        APPROVAL_AMAZON_LV4_PROP,
+        (typeof AMAZON_PROD_DEFAULT_LV4_ENABLED_ !== 'undefined')
+          ? AMAZON_PROD_DEFAULT_LV4_ENABLED_
+          : true
+      )) {
+    var off = 'Lv4 Amazonは無効です。Script Properties の ' + APPROVAL_AMAZON_LV4_PROP +
+      ' を true にするかキー削除（未設定=ON）。緊急停止は明示 false。';
     Logger.log('[' + fn + '] state=FAILED ' + off);
     try { SpreadsheetApp.getUi().alert(off); } catch (e0) {}
     return { ok: false, reason: off };
@@ -118,10 +136,12 @@ function menuApprovalAmazonLv4Run(opts) {
   var runId = 'LV4_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') + '_' +
     ('000000' + Math.floor(Math.random() * 1e6)).slice(-6);
   Logger.log('[' + fn + '] state=RUNNING runId=' + runId + ' track=' + track +
-    ' source=' + source + ' includeOffer=' + includeOfferForSplit + ' silent=' + silent);
+    ' source=' + source + ' includeOffer=' + includeOfferForSplit +
+    ' inventoryMode=' + inventoryModeOpt + ' silent=' + silent);
   try {
     var summary = amazonApprovalLv4Run_(ss, runId, 0, null, track, source, {
-      includeOffer: includeOfferForSplit
+      includeOffer: includeOfferForSplit,
+      inventoryMode: inventoryModeOpt
     });
     Logger.log('[' + fn + '] state=DONE runId=' + runId + ' ' + JSON.stringify(summary));
     if (!silent) {
@@ -524,8 +544,14 @@ function runApprovalAmazonLv4ScSummaryFromTrigger() {
  * @return {{recorded:Array<string>, already:Array<string>, ignored:number, errors:Array<string>}}
  */
 function amazonApprovalLv4ScanScSummaries_(ss, fn) {
-  if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP, false)) {
-    throw new Error('SC処理サマリ自動記録は無効です。' + APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP + ' を true にしてください。');
+  if (!getBoolScriptProperty_(
+        APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP,
+        (typeof AMAZON_PROD_DEFAULT_SC_SUMMARY_ !== 'undefined')
+          ? AMAZON_PROD_DEFAULT_SC_SUMMARY_
+          : true
+      )) {
+    throw new Error('SC処理サマリ自動記録は無効です。' + APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP +
+      ' を true にするかキー削除（未設定=ON）。');
   }
   var folderId = String(PropertiesService.getScriptProperties()
     .getProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP) || '').trim();
@@ -786,7 +812,12 @@ function amazonApprovalLv4ScSummaryReconcileWait_(ss, logFn) {
 function amazonApprovalLv4ScSummaryEnsureTrigger_(ss, opts) {
   opts = opts || {};
   var props = PropertiesService.getScriptProperties();
-  if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP, false)) {
+  if (!getBoolScriptProperty_(
+        APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP,
+        (typeof AMAZON_PROD_DEFAULT_SC_SUMMARY_ !== 'undefined')
+          ? AMAZON_PROD_DEFAULT_SC_SUMMARY_
+          : true
+      )) {
     return { ok: false, skipped: true, reason: APPROVAL_AMAZON_LV4_SC_SUMMARY_PROP + ' が false' };
   }
   if (!String(props.getProperty(APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_PROP) || '').trim()) {
@@ -956,7 +987,12 @@ function runApprovalAmazonLv4FromTrigger() {
     PropertiesService.getScriptProperties().deleteProperty(APPROVAL_AMAZON_LV4_STATE_PROP);
     return;
   }
-  if (!getBoolScriptProperty_(APPROVAL_AMAZON_LV4_PROP, false)) {
+  if (!getBoolScriptProperty_(
+        APPROVAL_AMAZON_LV4_PROP,
+        (typeof AMAZON_PROD_DEFAULT_LV4_ENABLED_ !== 'undefined')
+          ? AMAZON_PROD_DEFAULT_LV4_ENABLED_
+          : true
+      )) {
     Logger.log('[' + fn + '] state=FAILED disabled');
     return;
   }
@@ -971,7 +1007,8 @@ function runApprovalAmazonLv4FromTrigger() {
   try {
     // doneParents 除外後にサブバッチ再採番するため startIndex は常に 0
     amazonApprovalLv4Run_(ss, state.runId, 0, state, track, state.source || 'approved', {
-      includeOffer: !!state.includeOffer
+      includeOffer: !!state.includeOffer,
+      inventoryMode: state.inventoryMode || 'ZERO'
     });
   } catch (err) {
     Logger.log('[' + fn + '] state=FAILED ' + ((err && err.message) || err));
@@ -986,7 +1023,7 @@ function runApprovalAmazonLv4FromTrigger() {
  * @param {Object|null} resumeState
  * @param {string} track
  * @param {string=} source approved | child_ck
- * @param {{includeOffer?:boolean}=} runOpts
+ * @param {{includeOffer?:boolean, inventoryMode?:string}=} runOpts
  * @return {Object}
  */
 function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track, source, runOpts) {
@@ -1012,7 +1049,24 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
       '。21-②で状態クリアしてから再実行してください。'
     );
   }
-  var inventoryMode = String(batch.inventoryMode || 'ZERO').toUpperCase() === 'ONE' ? 'ONE' : 'ZERO';
+  var inventoryModeRaw = String(
+    runOpts.inventoryMode ||
+    (resumeState && resumeState.inventoryMode) ||
+    batch.inventoryMode ||
+    'ZERO'
+  ).toUpperCase();
+  var inventoryMode = inventoryModeRaw === 'MASTER'
+    ? 'MASTER'
+    : (inventoryModeRaw === 'ONE' ? 'ONE' : 'ZERO');
+  if (inventoryMode === 'MASTER') {
+    var allowMasterProp = (typeof APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP === 'string')
+      ? APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP
+      : 'APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY';
+    if (!getBoolScriptProperty_(allowMasterProp, false)) {
+      throw new Error('マスタ在庫送信には ' + allowMasterProp +
+        '=true が必要です（承認②・既定は無効）。');
+    }
+  }
   var stockOut = inventoryMode === 'ONE' ? 1 : 0;
   var shipping = amazonApprovalLv4ShippingTemplate_();
   var skipExport = getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SKIP_EXPORT_PROP, false);
@@ -1121,7 +1175,7 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
       ' subBatchId=' + subBatchId + ' parents=' + sub.length + ' track=' + track);
 
     try {
-      var built = amazonApprovalLv4BuildRows_(masterCtx, sub, track, stockOut, shipping);
+      var built = amazonApprovalLv4BuildRows_(masterCtx, sub, track, stockOut, shipping, inventoryMode);
       // Build 内で想定外スキップがあればログ（Resolve 済みなら通常0件）
       if (built.skipped && built.skipped.length) {
         amazonApprovalLv4LogSkippedParents_(ss, runId, batchId, track, built.skipped);
@@ -1153,6 +1207,8 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
         var file = folder.createFile(blob);
         fileName = file.getName();
         fileUrl = file.getUrl();
+        var parentSkuList = amazonApprovalLv4ParentSkuList_(built.okParents);
+        var parentFpMap = amazonApprovalLv4BuildParentPtBrowseFpMap_(masterCtx, built.okParents);
         var meta = {
           runId: runId,
           batchId: batchId,
@@ -1162,7 +1218,8 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
           stockOut: stockOut,
           shippingTemplate: shipping,
           brand: APPROVAL_AMAZON_LV4_BRAND,
-          parents: amazonApprovalLv4ParentSkuList_(built.okParents),
+          parents: parentSkuList,
+          parentPtBrowseFp: parentFpMap,
           rowCount: built.rows.length,
           note: 'GAS GENERATED only. PACKAGED=.xlsm is local. Do not wipe master JAN/stock.'
         };
@@ -1173,6 +1230,7 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
           'application/json',
           metaName
         ));
+        amazonApprovalLv4SaveParentPtBrowseFpMap_(parentFpMap);
       } else {
         fileName = '(SKIP_EXPORT)';
         fileUrl = '';
@@ -1330,7 +1388,8 @@ function amazonCheckboxMainlineRouteFromShipping_(raw) {
  * - 相乗りのみ: レ点子SKUすべて → offer
  * - 新規のみ: レ点子SKUすべて → new
  * - 両方: 同じレ点子SKUを新規と相乗りの両方へ出す（相互排他しない）
- *   新規=子SKU／相乗り=Amazon相乗りSKU。相乗りは後段でN列ASIN必須。
+ *   新規=子SKU／相乗り=Amazon相乗りSKU（自己発）または Amazon相乗りSKU_FBA（FBA・D選択）。
+ *   相乗りは後段でN列ASIN必須。系統別列の読取・保存は AmazonSpapiPut.js。
  * @param {Object} masterCtx
  * @param {{includeNew?:boolean, includeOffer?:boolean}=} opts
  * @return {{newRows:Array, offerRows:Array, unknown:Array, parentCkOnly:number}}
@@ -1494,9 +1553,7 @@ function amazonApprovalLv4ResolveParents_(masterCtx, lines, track, doneParents, 
       continue;
     }
 
-    // 販売中スキップ: 親または承認済み子のいずれか在庫>0
-    // Dレ点新規は別カタログ（ノーブランドセット）を作るため、在庫>0でも続行できる。
-    // マスタ在庫は読取のみで、GENERATED の送信在庫は inventoryMode に従い常に 0/1。
+    // マスタ在庫は読取のみで、GENERATED の送信在庫は inventoryMode に従う（ZERO/ONE/MASTER）。
     var stockHit = amazonApprovalLv4AnyInStock_(masterCtx, g);
     if (stockHit) {
       if (!allowInStock) {
@@ -1829,7 +1886,9 @@ function amazonApprovalLv4ParentSkuList_(parents) {
  * 万一不足時は skipped に入れ、okParents には含めない。
  * @return {{headers:Array<string>, rows:Array<Array>, childCount:number, okParents:Array, skipped:Array}}
  */
-function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, shipping) {
+function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, shipping, inventoryMode) {
+  inventoryMode = String(inventoryMode || 'ZERO').toUpperCase();
+  if (inventoryMode !== 'MASTER' && inventoryMode !== 'ONE') inventoryMode = 'ZERO';
   var headers = [
     'track', 'parentSku', 'childSku', 'sellerSku', 'manufacturerPart',
     'productName', 'brand', 'priceAmazon', 'inventory', 'gtin', 'asin',
@@ -1894,10 +1953,13 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
         });
         continue;
       }
+      // Track B 親行の inventory は常に0（実在庫・MASTER読取は子のみ）。
+      // 親マスタ「在庫数」の #DIV/0! 等で送信全体を止めない。
+      var parentInv = 0;
       rows.push([
         'B', parent.parentSku, '', parent.parentSku, '',
         catalogName || amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '商品名'),
-        APPROVAL_AMAZON_LV4_BRAND, price, stockOut, '', '',
+        APPROVAL_AMAZON_LV4_BRAND, price, parentInv, '', '',
         mainImg, amazonApprovalLv4SubImages_(masterCtx, parent.parentRowIndex0),
         cat, amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'A.セット商品数'),
         shipping, 'parent'
@@ -1912,9 +1974,17 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
         var childName = catalogName ||
           amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, '商品名') ||
           amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '商品名');
+        var childInv;
+        try {
+          childInv = amazonApprovalLv4ResolveInventoryOut_(
+            masterCtx, ch.rowIndex0, stockOut, inventoryMode);
+        } catch (eInvC) {
+          throw new Error('親SKU=' + parent.parentSku + ' 子=' + ch.childSku + ' ' +
+            String(eInvC && eInvC.message || eInvC));
+        }
         rows.push([
           'B', parent.parentSku, ch.childSku, ch.childSku, mfr,
-          childName, APPROVAL_AMAZON_LV4_BRAND, childPrice, stockOut, '', '',
+          childName, APPROVAL_AMAZON_LV4_BRAND, childPrice, childInv, '', '',
           childMain, amazonApprovalLv4SubImages_(masterCtx, ch.rowIndex0),
           cat, amazonApprovalLv4Cell_(masterCtx, ch.rowIndex0, 'A.セット商品数'),
           shipping, 'child'
@@ -1945,11 +2015,19 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
           });
           continue;
         }
+        var offerInv;
+        try {
+          offerInv = amazonApprovalLv4ResolveInventoryOut_(
+            masterCtx, t.rowIndex0, stockOut, inventoryMode);
+        } catch (eInvA) {
+          throw new Error('親SKU=' + parent.parentSku + ' sku=' + sku + ' ' +
+            String(eInvA && eInvA.message || eInvA));
+        }
         rows.push([
           'A', parent.parentSku, t.childSku || '', sku, mfrA,
           amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '商品名'),
           '', amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, '販売価格amazon') || price,
-          stockOut, jan, asinOffer,
+          offerInv, jan, asinOffer,
           amazonApprovalLv4ResolveMainImageUrl_(masterCtx, t.rowIndex0),
           amazonApprovalLv4SubImages_(masterCtx, t.rowIndex0),
           cat, amazonApprovalLv4Cell_(masterCtx, t.rowIndex0, 'A.セット商品数'),
@@ -1968,6 +2046,72 @@ function amazonApprovalLv4BuildRows_(masterCtx, parents, trackProp, stockOut, sh
     okParents: okParents,
     skipped: skipped
   };
+}
+
+/**
+ * GENERATED の inventory 列値。MASTER=マスタ「在庫数」生値（不正は throw）。マスタ非書込。
+ * @return {number}
+ */
+function amazonApprovalLv4ResolveInventoryOut_(masterCtx, rowIndex0, stockOut, inventoryMode) {
+  if (String(inventoryMode || '').toUpperCase() !== 'MASTER') {
+    return Number(stockOut) || 0;
+  }
+  if (typeof amazonSpapiPutReadMasterQtyStrict_ === 'function') {
+    var r = amazonSpapiPutReadMasterQtyStrict_(masterCtx, rowIndex0);
+    if (!r.ok) throw new Error('マスタ在庫不正のため送信停止: ' + r.reason);
+    return r.qty;
+  }
+  var qRaw = amazonApprovalLv4Cell_(masterCtx, rowIndex0, '在庫数');
+  if (qRaw === '' || qRaw == null) throw new Error('マスタ在庫不正のため送信停止: 在庫数空');
+  var qNum = Number(qRaw);
+  if (isNaN(qNum) || qNum < 0) {
+    throw new Error('マスタ在庫不正のため送信停止: 在庫数 raw=' + String(qRaw));
+  }
+  return Math.floor(qNum);
+}
+
+/**
+ * D確認用: 新規カタログ行のマスタ「在庫数」内訳。不正は throw（P0・承認②）。
+ * GENERATED inventory 列へ書く値と同じ読取契約。
+ * @param {Object} masterCtx
+ * @param {Array<{rowIndex0:number,row1:number,childSku:string}>} newRows
+ * @return {string}
+ */
+function amazonApprovalLv4FormatNewQtyConfirm_(masterCtx, newRows) {
+  var items = [];
+  var bad = [];
+  var rows = newRows || [];
+  for (var i = 0; i < rows.length; i++) {
+    var one = rows[i];
+    var sku = String(one.childSku || '').trim() || ('(行' + one.row1 + ')');
+    if (typeof amazonSpapiPutReadMasterQtyStrict_ !== 'function') {
+      bad.push(sku + ': amazonSpapiPutReadMasterQtyStrict_ がありません');
+      continue;
+    }
+    var r = amazonSpapiPutReadMasterQtyStrict_(masterCtx, one.rowIndex0);
+    if (!r.ok) {
+      bad.push('行' + one.row1 + ' ' + sku + ': ' + r.reason);
+      continue;
+    }
+    items.push({ sku: sku, quantity: r.qty });
+  }
+  if (bad.length) {
+    throw new Error(
+      '新規カタログのマスタ在庫が不正のため停止しました（在庫0で出すかマスタ「在庫数」を直してください）。\n' +
+        bad.slice(0, 15).join('\n') +
+        (bad.length > 15 ? '\n…他' + (bad.length - 15) + '件' : '')
+    );
+  }
+  var sum = 0;
+  var lines = [];
+  var n = Math.min(items.length, 8);
+  for (var j = 0; j < items.length; j++) {
+    var q = Math.floor(Number(items[j].quantity) || 0);
+    sum += q;
+    if (j < n) lines.push((j + 1) + '. ' + items[j].sku + ' qty=' + q);
+  }
+  if (items.length > n) lines.push('…他' + (items.length - n) + '件');
+  return '送信qty合計=' + sum + '（新規GENERATED在庫列・マスタ在庫数生値）\n内訳:\n' + lines.join('\n');
 }
 
 function amazonApprovalLv4SubImages_(masterCtx, rowIndex0) {
@@ -2196,6 +2340,276 @@ function amazonApprovalLv4AppendLog_(ss, obj) {
     obj.exemptionDate || '',
     obj.evidenceUrl || ''
   ]);
+}
+
+/**
+ * 親SKUの最新 meaningful 状態（GENERATED/UPLOADED_OK/PACKAGED/UPLOAD_FAILED）と subBatchId。
+ * batchId 横断（child_ck 冪等と同じ）。行順で後勝ち。
+ * @return {{subBatchId:string,status:string}|null}
+ */
+function amazonApprovalLv4LatestMeaningfulForParent_(ss, parentSku) {
+  var want = String(parentSku || '').trim();
+  if (!want) return null;
+  var sh = ss.getSheetByName(APPROVAL_AMAZON_LV4_LOG_SHEET);
+  if (!sh || sh.getLastRow() < 2) return null;
+  var data = sh.getDataRange().getValues();
+  var meaningful = {
+    GENERATED: true,
+    UPLOADED_OK: true,
+    PACKAGED: true,
+    UPLOAD_FAILED: true
+  };
+  var last = null;
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    if (String(row[0]) !== 'RUN') continue;
+    var status = String(row[7] || '');
+    if (!meaningful[status]) continue;
+    var parents = String(row[5] || '').split(',');
+    var hit = false;
+    for (var p = 0; p < parents.length; p++) {
+      if (String(parents[p] || '').trim() === want) {
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) continue;
+    var sid = String(row[3] || '').trim();
+    if (!sid) continue;
+    last = { subBatchId: sid, status: status };
+  }
+  return last;
+}
+
+/**
+ * D内レ点・案A: 親ごとに最新が GENERATED/PACKAGED の open subBatch だけ UPLOAD_FAILED。
+ * UPLOADED_OK は触らない。同一 subBatchId は1回だけ mark。
+ * @param {Spreadsheet} ss
+ * @param {string[]} parentSkus
+ * @param {string=} note
+ * @return {{unlocked:Array<{parentSku:string,subBatchId:string,status:string}>,
+ *   skippedOk:string[], skippedClosed:string[], skippedNone:string[]}}
+ */
+function amazonApprovalLv4RemakeUnlockParents_(ss, parentSkus, note) {
+  var fn = 'amazonApprovalLv4RemakeUnlockParents_';
+  var unlocked = [];
+  var skippedOk = [];
+  var skippedClosed = [];
+  var skippedNone = [];
+  var seenSub = {};
+  var list = parentSkus || [];
+  for (var i = 0; i < list.length; i++) {
+    var ps = String(list[i] || '').trim();
+    if (!ps) continue;
+    var latest = amazonApprovalLv4LatestMeaningfulForParent_(ss, ps);
+    if (!latest) {
+      skippedNone.push(ps);
+      Logger.log('[' + fn + '] skip parent=' + ps + ' reason=no_meaningful');
+      continue;
+    }
+    if (latest.status === 'UPLOADED_OK') {
+      skippedOk.push(ps);
+      Logger.log('[' + fn + '] skip parent=' + ps + ' reason=UPLOADED_OK subBatchId=' +
+        latest.subBatchId);
+      continue;
+    }
+    if (latest.status === 'UPLOAD_FAILED') {
+      skippedClosed.push(ps);
+      Logger.log('[' + fn + '] skip parent=' + ps + ' reason=already_UPLOAD_FAILED subBatchId=' +
+        latest.subBatchId);
+      continue;
+    }
+    if (latest.status !== 'GENERATED' && latest.status !== 'PACKAGED') {
+      skippedNone.push(ps);
+      Logger.log('[' + fn + '] skip parent=' + ps + ' reason=status=' + latest.status);
+      continue;
+    }
+    if (seenSub[latest.subBatchId]) {
+      unlocked.push({
+        parentSku: ps,
+        subBatchId: latest.subBatchId,
+        status: latest.status,
+        shared: true
+      });
+      continue;
+    }
+    seenSub[latest.subBatchId] = true;
+    amazonApprovalLv4MarkStatus_(
+      ss,
+      latest.subBatchId,
+      'UPLOAD_FAILED',
+      (note || 'D内レ点・失敗後再GENERATED（案A）') + ' prior=' + latest.status
+    );
+    unlocked.push({
+      parentSku: ps,
+      subBatchId: latest.subBatchId,
+      status: latest.status
+    });
+    Logger.log('[' + fn + '] state=DONE unlocked parent=' + ps +
+      ' subBatchId=' + latest.subBatchId + ' prior=' + latest.status);
+  }
+  Logger.log('[' + fn + '] summary unlocked=' + unlocked.length +
+    ' skippedOk=' + skippedOk.length +
+    ' skippedClosed=' + skippedClosed.length +
+    ' skippedNone=' + skippedNone.length);
+  return {
+    unlocked: unlocked,
+    skippedOk: skippedOk,
+    skippedClosed: skippedClosed,
+    skippedNone: skippedNone
+  };
+}
+
+/**
+ * 親の Amazon Product Type + Browse Node ID 指紋（条件付き自動再GENERATED比較用）。
+ * @return {string} 例: "GROCERY|71188051"
+ */
+function amazonApprovalLv4PtBrowseFpFromCells_(pt, browse) {
+  var ptN = String(pt || '').trim().toUpperCase();
+  var browseRaw = String(browse || '').trim();
+  var node = '';
+  if (browseRaw && typeof amazonP4bExtractBrowseNodeId_ === 'function') {
+    node = String(amazonP4bExtractBrowseNodeId_(browseRaw) || '').trim();
+  }
+  if (!node && browseRaw) {
+    node = browseRaw.replace(/\s+/g, ' ').substring(0, 120);
+  }
+  return ptN + '|' + node;
+}
+
+/**
+ * @param {Object} masterCtx
+ * @param {number} parentRowIndex0
+ * @return {string}
+ */
+function amazonApprovalLv4PtBrowseFpFromMasterRow_(masterCtx, parentRowIndex0) {
+  var colPt = masterCtx.col['Amazon Product Type'];
+  var colBrowse = masterCtx.col['Amazon Browse Node'];
+  var pt = (colPt != null) ? masterCtx.values[parentRowIndex0][colPt] : '';
+  var browse = (colBrowse != null) ? masterCtx.values[parentRowIndex0][colBrowse] : '';
+  return amazonApprovalLv4PtBrowseFpFromCells_(pt, browse);
+}
+
+/**
+ * @param {Object} masterCtx
+ * @param {Array<{parentSku:string,parentRowIndex0:number}>} parents
+ * @return {Object<string,string>}
+ */
+function amazonApprovalLv4BuildParentPtBrowseFpMap_(masterCtx, parents) {
+  var out = {};
+  var list = parents || [];
+  for (var i = 0; i < list.length; i++) {
+    var p = list[i];
+    var sku = String(p.parentSku || '').trim();
+    if (!sku) continue;
+    out[sku] = amazonApprovalLv4PtBrowseFpFromMasterRow_(masterCtx, p.parentRowIndex0);
+  }
+  return out;
+}
+
+/** @return {Object<string,string>} */
+function amazonApprovalLv4LoadParentPtBrowseFpMap_() {
+  var raw = '';
+  try {
+    raw = String(PropertiesService.getScriptProperties()
+      .getProperty(APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP) || '');
+  } catch (eLoad) {
+    return {};
+  }
+  if (!raw) return {};
+  try {
+    var obj = JSON.parse(raw);
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch (eParse) {
+    return {};
+  }
+}
+
+/**
+ * 既存マップに merge して保存。
+ * @param {Object<string,string>} patch
+ */
+function amazonApprovalLv4SaveParentPtBrowseFpMap_(patch) {
+  if (!patch) return;
+  var map = amazonApprovalLv4LoadParentPtBrowseFpMap_();
+  var keys = Object.keys(patch);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (!k) continue;
+    map[k] = String(patch[k] || '');
+  }
+  PropertiesService.getScriptProperties().setProperty(
+    APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP,
+    JSON.stringify(map)
+  );
+}
+
+/**
+ * 条件付き自動再GENERATED: 冪等ブロック中かつ PT/Browse 指紋が前回GENERATEDと違う親。
+ * 指紋未保存（旧GENERATED）は「差分あり」扱いで解除対象（1回移行）。
+ * UPLOADED_OK は対象外。
+ * @param {Spreadsheet} ss
+ * @param {Object} masterCtx
+ * @param {string[]} parentSkus
+ * @return {{needUnlock:string[], unchanged:string[], uploadedOk:string[], details:Array}}
+ */
+function amazonApprovalLv4CollectParentsForConditionalRemake_(ss, masterCtx, parentSkus) {
+  var fn = 'amazonApprovalLv4CollectParentsForConditionalRemake_';
+  var stored = amazonApprovalLv4LoadParentPtBrowseFpMap_();
+  var needUnlock = [];
+  var unchanged = [];
+  var uploadedOk = [];
+  var details = [];
+  var list = parentSkus || [];
+  var seen = {};
+  for (var i = 0; i < list.length; i++) {
+    var ps = String(list[i] || '').trim();
+    if (!ps || seen[ps]) continue;
+    seen[ps] = true;
+    var latest = amazonApprovalLv4LatestMeaningfulForParent_(ss, ps);
+    if (!latest) continue;
+    if (latest.status === 'UPLOADED_OK') {
+      uploadedOk.push(ps);
+      details.push({ parentSku: ps, reason: 'UPLOADED_OK', subBatchId: latest.subBatchId });
+      continue;
+    }
+    if (latest.status !== 'GENERATED' && latest.status !== 'PACKAGED') continue;
+
+    var parentRow = amazonApprovalLv4FindMasterRow_(masterCtx, ps, '');
+    if (!parentRow) {
+      details.push({ parentSku: ps, reason: 'master_row_missing' });
+      continue;
+    }
+    var currentFp = amazonApprovalLv4PtBrowseFpFromMasterRow_(masterCtx, parentRow.rowIndex0);
+    var prevFp = stored[ps] != null ? String(stored[ps]) : '';
+    if (prevFp && prevFp === currentFp) {
+      unchanged.push(ps);
+      details.push({
+        parentSku: ps,
+        reason: 'fp_unchanged',
+        fp: currentFp,
+        subBatchId: latest.subBatchId
+      });
+      continue;
+    }
+    needUnlock.push(ps);
+    details.push({
+      parentSku: ps,
+      reason: prevFp ? 'fp_changed' : 'fp_missing_legacy',
+      prevFp: prevFp || '(none)',
+      currentFp: currentFp,
+      subBatchId: latest.subBatchId,
+      status: latest.status
+    });
+  }
+  Logger.log('[' + fn + '] needUnlock=' + needUnlock.length +
+    ' unchanged=' + unchanged.length + ' uploadedOk=' + uploadedOk.length);
+  return {
+    needUnlock: needUnlock,
+    unchanged: unchanged,
+    uploadedOk: uploadedOk,
+    details: details
+  };
 }
 
 /**
