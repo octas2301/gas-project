@@ -41,6 +41,7 @@
 | 5 | [RUNBOOK_DAY_WEEK_MONTH.md](RUNBOOK_DAY_WEEK_MONTH.md) | 日次・週次・隔週・月次の定型タスク（Runbook） |
 | 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の列メモ（参考）。**Lv4正本**は [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) |
 | 7 | [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | リサーチ・見積もりの整理（出品時 vs 仕入れ時の項目・取得方法の選択肢・見積もり） |
+| 7.1 | [SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md) | **リサーチ・見積もり担当のセッション入口**。実装済み／次タスク／Property／再実装禁止。詳細は §8.8.22〜 |
 | 8 | [ROADMAP.md](ROADMAP.md) | フェーズ案・依存関係・既存 gas-project の位置づけ |
 | 9 | [PRICING_V1_REQUIREMENTS.md](PRICING_V1_REQUIREMENTS.md) | **価格・送料・再③ v1**、Script Properties による切戻し、ログ（`価格送料ロジックログ` 任意） |
 | 10 | [AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md) | **商品情報まわりの Gemini / OpenAI の役割**、11-③ と B Step7 の差、429 時の挙動の正 |
@@ -100,6 +101,7 @@
 
 ## 6. 更新履歴
 
+- 2026-08-14: **リサーチ・見積もり セッション引継ぎ**: CPO V2／画像ガード／F/P／3D物流の「実装済みと次タスク」を1本化。[SESSION](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md)／[CURRENT_PHASE §0re](CURRENT_PHASE.md)。次は異常 setCount 除外。楽天CSV・利益レール復活・ネコポス最安回帰は禁止。
 - 2026-08-14: **B Step1 上挿入・実装（ローカル）**: 既存AK/IB値固定・テンプレ1–2新式・`B_STEP1_TOP_INSERT_ENABLED`（未設定=旧末尾）。人間: clasp push → Property true → HUMAN_RUN。[要件](org/B_STEP1_TOP_INSERT_REQUIREMENTS.md)／[HUMAN_RUN](org/B_STEP1_TOP_INSERT_HUMAN_RUN.md)。復元: `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`。
 - 2026-08-14: **B Step1 上挿入・要件ロック**: 三点多数決＋1A/2A/3A。[多数決](org/B_STEP1_TOP_INSERT_THREE_REVIEW_MAJORITY.md)。
 - 2026-08-13: **B Step1 上挿入メモ**（初版）: ヘッダー直後・末尾追記廃止。式方針は 08-14 で値固定＋テンプレ新式に更新。
