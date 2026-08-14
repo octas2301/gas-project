@@ -1,0 +1,6 @@
+_smoke_out/
+__pycache__/
+*.pyc
+secrets/
+*.local.json
+glyphs/rakuten/*.png

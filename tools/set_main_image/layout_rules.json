@@ -1,0 +1,618 @@
+{
+  "canvas": 1200,
+  "amazon": {
+    "background": "transparent_or_pure_white",
+    "preprocess": "remove_near_white_bg_to_alpha_before_compose",
+    "layoutFromSamples": {
+      "dominantPatterns": {
+        "hero_right_stack_left": 5,
+        "hero_left_stack_right": 6,
+        "centered_cluster": 1
+      },
+      "rules": [
+        "白（または透過）背景のみ。影は最小。",
+        "縦横比変更は厳禁（ストレッチ／縦伸び・横伸び・偽パースによる比率改変禁止）。等倍スケール＋平行移動＋弱い影のみ。",
+        "商品は提供画像（01単体）のピクセル貼付。ラベル・蓋印字の描き直し・捏造文字は禁止。",
+        "蓋・プルタブ等の曖昧部のみ競合／参考事実画像で照合可。デザイン・レイアウトのコピーや新文案の創作は禁止。",
+        "Amazon貼付は『単体』のみ（ヒーロー画像は中止）。大＝単体拡大、小＝同単体縮小。",
+        "N≤4: 画面上のスケールは全個体同一（奥行きで単体を小さくしない）。重なりはN≥5より強めてよい。",
+        "N≥5の支援個もベースロック（ストレッチ禁止）。わずかな大小差は可だが縦横比は常にロック。",
+        "販売セット数と画像内の個数は完全一致。数え切れない裏積み・奥行きの暗示は禁止。",
+        "縦列・横列は規則的に（不規則なにじり禁止）。軽い重なりは各個体が数えられる範囲のみ。",
+        "見本は配置・埋まりの参考のみ（見本の商品デザイン／蓋文字はコピーしない）。",
+        "SEO/サムネ用に動きを付ける: 縦長は斜め、缶など低背は扇状・弧・軽い回転（アスペクトは維持。埋まりと衝突しても歪めない）。",
+        "よくある型: 左側に数量スタック、右にヒーロー。格子の極小コピペ禁止。",
+        "食品の Octas はシール画像のまま別レイヤ合成（商品ラベルに貼った見た目禁止）。左右に軽い回転（|θ|≈6〜10°既定8°）。",
+        "特別セット（箸上げ・特殊ポージング）は都度応相談。"
+      ]
+    },
+    "gemini": {
+      "recommended": true,
+      "note": "PoCで品質改善を確認。プロンプトで LAYOUT_BLUEPRINT 拘束。"
+    },
+    "openai": {
+      "recommended": false,
+      "note": "ラベル文字崩れがあり本線候補外（比較用残置可）。"
+    },
+    "tuningDraft": {
+      "status": "draft_tuning",
+      "activeKnob": "pairOverlapMax",
+      "noteJa": "縁際edge_fillは重なり硬制約→スケール最大化。pairOverlapMax/heroVisibleMinを適用中。",
+      "inkFillMinByN": {
+        "n1": 0.3,
+        "n2_3": 0.48,
+        "n4_6": 0.52,
+        "n8_plus": 0.58
+      },
+      "whiteThresh": 245,
+      "sizeMetric": {
+        "status": "accepted_ok",
+        "mode": "body_contain_WH",
+        "topSkipRatio": 0.18
+      },
+      "pairOverlapMax": 0.35,
+      "heroVisibleMin": 0.7,
+      "smallN": {
+        "maxN": 4,
+        "sameSizeAsHero": true,
+        "strongerOverlapAllowed": true
+      },
+      "octasSeal": {
+        "mode": "floating_composite",
+        "notStuckOnLabel": true,
+        "anchor": "hero_bottom_right_area_kiss",
+        "overlapFrac": 0.1,
+        "sizeMode": "opaque_pixel_ratio",
+        "productAreaRatio": 0.075,
+        "n2ProductAreaRatio": 0.075,
+        "n3n4ProductAreaRatio": 0.075,
+        "widthMinCanvasRatio": 0.03,
+        "widthMaxCanvasRatio": 0.35,
+        "sizeNoteJa": "商品不透明ピクセル×0.075＝シール不透明（標準0.05の1.5倍）。N共通でロック。",
+        "tiltDegAbsMin": 8,
+        "tiltDegAbsMax": 8,
+        "tiltDegAbsDefault": 8,
+        "tiltDirection": "top_to_right",
+        "status": "locked_pass",
+        "lockedAt": "2026-08-07",
+        "n5plusAvoidUnits": true,
+        "n5plusPinFrameBottom": true,
+        "n5plusMaxUnitCover": 0.005,
+        "n5plusMinHeroOverlap": 0.05,
+        "n5plusMaxHeroCover": 0.05,
+        "n5plusAreaRatioFallbacks": [0.055, 0.04, 0.03],
+        "noteJa": "合格固定。浮遊合成・hero右下キス（重なり≈10%）。面積比0.075（1.5倍）。傾き|θ|=8°固定・上部を右へ。N≥5はunit非被覆＋下枠接触（X左スライド）。hero隠し＞5%なら面積比を一回り縮小。"
+      },
+      "baseFileTags": {
+        "hero": "ヒーロー",
+        "unit": "単体",
+        "policyJa": "Amazon貼付は単体のみ使用（ヒーロー画像は中止）。レイアウト上の大＝単体拡大。",
+        "folder": "01.amazon白抜きベース"
+      },
+      "portraitTilt": {
+        "status": "locked_pass",
+        "lockedAt": "2026-08-08",
+        "canvasStillSquare": true,
+        "exportUprightQuadAnnot": true,
+        "exportUprightQuadAnnotOncePerUnit": true,
+        "exportUprightQuadAnnotScale": 0.9,
+        "exportUprightQuadAnnotNoteJa": "portrait本番: 直立1個四隅注釈を素材(unit)単位で1枚だけ _meta/upright_quad__{unitStem}.jpg へ保存（セット数ごとには出さない）",
+        "noteJa": "合格固定・縦長タイプ（Cメニュー②）。N=2の字／N=3扇／N=4扇／N≥5右傾け積み。素材=01白抜き。Octas 0.075・8°。キャンバスは正方形。",
+        "menuJa": "②縦長タイプ（合格固定）",
+        "aspectId": "portrait",
+        "heroTiltDegCw": -12,
+        "unitTiltDegCw": 16,
+        "unitTiltStepDegCw": 3,
+        "n1TiltDegCw": 0,
+        "hOverlap": 0.5,
+        "vOverlap": 0.55,
+        "pairOverlapMax": 0.45,
+        "heroVisibleMin": 0.65,
+        "maxN": 99,
+        "n2": {
+          "status": "locked_pass",
+          "lockedAt": "2026-08-07",
+          "heroTiltDegCw": -12,
+          "unitTiltDegCw": 23,
+          "sameScale": true,
+          "unitVisibleMin": 0.5,
+          "unitCoveredMax": 0.5,
+          "scaleSearchIters": 18,
+          "scaleFloor": 0.15,
+          "heroInsideFrame": true,
+          "heroHeightFill": 1.1,
+          "heroMaxWidthRatio": 0.92,
+          "unitScaleRatio": 0.97,
+          "sharedFootYRatio": 0.9992,
+          "heroFootXRatio": 0.4167,
+          "unitFootXRatio": 0.55,
+          "unitBaseCropRatio": 0.03,
+          "unitOverlapXRatio": 0.42,
+          "unitDownShiftRatio": 0.05,
+          "heroLeftBiasRatio": 0.08,
+          "octasProductAreaRatio": 0.075,
+          "noteJa": "合格固定。同尺最大化。hero青枠内+unit可視≥0.50。unit:TR右+BR下、上隙間時TL上+TR右。Octas面積比0.075（1.5倍）・傾き8°。傾き-12/+23"
+        },
+        "n3": {
+          "status": "locked_pass",
+          "lockedAt": "2026-08-08",
+          "layoutEngine": "upright_quad_fan",
+          "heroTiltDegCw": -14,
+          "unit0TiltDegCw": 18,
+          "unit1TiltDegCw": 50,
+          "unit1RightOverflowRatio": 0.10,
+          "slenderMinHw": 1.75,
+          "slenderLayoutEngine": "top_arc_legacy",
+          "heroHeightFillMaxSlender": 0.92,
+          "slenderHeroTiltDegCw": -14,
+          "slenderUnit0TiltDegCw": 18,
+          "slenderUnit1TiltDegCw": 38,
+          "slenderUnit0ScaleRatio": 1.0,
+          "slenderUnit1ScaleRatio": 1.0,
+          "pinHeroFrameBottom": true,
+          "heroInsideFrame": true,
+          "unit0TopEdgeMidOnArcNormal": true,
+          "unit0NudgeUpAlongNormalPx": 35,
+          "unit0AabbCenterMidX": false,
+          "topArcAnglesDeg": [3.65, 8.835, 14.02],
+          "sameScale": true,
+          "unit0VisibleMin": 0.40,
+          "unit1VisibleMin": 0.30,
+          "scaleSearchIters": 18,
+          "scaleFloor": 0.15,
+          "heroInsideFrame": true,
+          "unit0XMode": "mid_between_hero_unit1",
+          "unit0Contact": "tl_top",
+          "unit1Contact": "tr_right_overflow_br_bottom",
+          "octasProductAreaRatio": 0.075,
+          "legacyNoteJa": "細長: Q=四隅上辺(TL-TR)中点→円弧中点Mの後、緑法線上へ+35px。幅広は upright_quad_fan。",
+          "noteJa": "合格固定。幅広(H/W<1.75): upright扇。細長: top_arc＋hero枠内＋下辺接地＋Q(四隅上辺中点)=M→緑法線上+35px。Octas 0.075・8°。C②→07→D本線"
+        },
+        "n4": {
+          "status": "locked_pass",
+          "lockedAt": "2026-08-08",
+          "layoutEngine": "upright_quad_fan",
+          "heroTiltDegCw": -14,
+          "unit0TiltDegCw": 18,
+          "unit1TiltDegCw": 36,
+          "unit2TiltDegCw": 60,
+          "unit2RightOverflowRatio": 0.15,
+          "unit2BottomOverflowRatio": 0.0,
+          "slenderMinHw": 1.75,
+          "slenderLayoutEngine": "n4_legacy",
+          "heroHeightFillMaxSlender": 0.92,
+          "slenderHeroTiltDegCw": -15,
+          "slenderUnit0TiltDegCw": 15,
+          "slenderUnit1TiltDegCw": 35,
+          "slenderUnit2TiltDegCw": 55,
+          "slenderUnit1TopMode": "perp_mid",
+          "sameScale": true,
+          "unit0VisibleMin": 0.30,
+          "unit1VisibleMin": 0.25,
+          "unit2VisibleMin": 0.20,
+          "scaleSearchIters": 18,
+          "scaleFloor": 0.15,
+          "heroInsideFrame": true,
+          "octasProductAreaRatio": 0.075,
+          "legacyNoteJa": "細長は slenderLayoutEngine=n4_legacy（頂円弧・高さ扇）。幅広は upright_quad_fan。",
+          "noteJa": "合格固定。幅広(H/W<1.75): upright_quad（unit1直角線・TL枠上／unit2 TR右+BR下）。細長(缶・瓶≥1.75): n4_legacy 頂円弧・高さ扇（hero高さ≤92%・添付相当）。Octas 0.075"
+        },
+        "n5plus": {
+          "status": "locked_pass",
+          "lockedAt": "2026-08-06",
+          "lockedIter": "v2_stack",
+          "heroTiltDegCw": 0,
+          "unitTiltDegCw": 30,
+          "overlap": 0.32,
+          "octasAvoidUnits": true,
+          "octasPinFrameBottom": true,
+          "octasMaxUnitCover": 0.005,
+          "octasMinHeroOverlap": 0.05,
+          "octasMaxHeroCover": 0.05,
+          "octasAreaRatioFallbacks": [0.055, 0.04, 0.03],
+          "noteJa": "合格固定。hero直立・上下枠接触・左右余白均等。unit≈30°右列積み。Octasは下枠接触＋unit非被覆（左スライド）。hero隠し＞5%なら面積比縮小。列分割はedge_layout共用。"
+        },
+        "sampleFolderJa": "03.amazon見本/縦型レイアウト基本"
+      },
+      "landscapeTilt": {
+        "status": "locked_pass",
+        "lockedAt": "2026-08-09",
+        "canvasStillSquare": true,
+        "aspectId": "landscape",
+        "menuJa": "③横長タイプ（合格固定）",
+        "noteJa": "合格固定・横長タイプ（Cメニュー③）。N=1中央／N=2縦二段／N=3–4階段枠ピン／N≥5上hero+下グリッド（右Octas帯・半端行中央）。素材=01白抜き。Octas 0.075・8°。キャンバスは正方形。",
+        "marginPx": 36,
+        "gapPx": 14,
+        "stairStepDxFrac": 0.22,
+        "n5OctasRightBand": 140,
+        "n1": {
+          "status": "locked_pass",
+          "noteJa": "枠内最大・高さ中央揃え＋左右中央"
+        },
+        "n2": {
+          "status": "locked_pass",
+          "noteJa": "下hero左辺／上unit右辺"
+        },
+        "n3": {
+          "status": "locked_pass",
+          "noteJa": "階段＋枠ピン・横進み≥22%幅"
+        },
+        "n4": {
+          "status": "locked_pass",
+          "noteJa": "階段＋枠ピン・横進み≥22%幅"
+        },
+        "n5plus": {
+          "status": "locked_pass",
+          "octasAvoidUnits": true,
+          "octasPinFrameBottom": false,
+          "octasMaxUnitCover": 0.005,
+          "octasMinHeroOverlap": 0.05,
+          "octasMaxHeroCover": 0.05,
+          "octasAreaRatioFallbacks": [0.055, 0.04, 0.03],
+          "noteJa": "hero左+上・右Octas帯。半端行中央寄せ。Octas下枠ピンなし"
+        },
+        "sampleFolderJa": "03.amazon見本/横長画像見本"
+      },
+      "pendingNext": [
+        "motion_vs_static",
+        "paste_batch_to_07"
+      ]
+    }
+  },
+  "rakuten": {
+    "mode": "layer_only_base_locked_python",
+    "masterUnitHeader": "バリエーション単位",
+    "badgeBBox1000": {
+      "ymin": 0,
+      "xmin": 759,
+      "ymax": 245,
+      "xmax": 1000,
+      "note": "Gemini正規化［ymin,xmin,ymax,xmax］。金丸外枠の検算用。"
+    },
+    "goldCircle1200": {
+      "cx": 1056,
+      "cy": 148,
+      "diameter": 289,
+      "note": "Gemini外枠中心(880,123)・一辺≈241 を×1.2。文字は絶対番地優先。"
+    },
+    "badgeTypography": {
+      "description": "Canva 95: unitset(単位+セット一体)＋digit/pair。1桁と2桁でunitsetRectとnumberHoleが異なる。",
+      "clearOldText": false,
+      "renderMode": "glyph_alpha",
+      "useAbsoluteAddress": true,
+      "addressGrid": 1000,
+      "canvaUnitset": {
+        "enabled": false,
+        "1digit": {
+          "unitsetRect1000": [
+            836,
+            26,
+            136,
+            146
+          ],
+          "numberHoleNorm": [
+            0.03,
+            0.11,
+            0.46,
+            0.45
+          ],
+          "numberPadLeftRatio": 0.06,
+          "allowStretch": true,
+          "align": "top_left",
+          "note": "IoU=0.300 vs sanky-...-oya.jpg (1袋)"
+        },
+        "2digit": {
+          "unitsetRect1000": [
+            806,
+            39,
+            185,
+            139
+          ],
+          "numberHoleNorm": [
+            0.02,
+            0.09,
+            0.57,
+            0.47
+          ],
+          "numberPadLeftRatio": 0.02,
+          "allowStretch": true,
+          "align": "top_left",
+          "note": "IoU=0.329 vs sanky-...-oya_6.jpg (10袋)"
+        },
+        "allowStretch": false
+      },
+      "addresses1000": {
+        "1digit": {
+          "numberStart": [
+            844,
+            26
+          ],
+          "numberHeight": 90,
+          "unitStart": [
+            917,
+            58
+          ],
+          "unitHeight": 56,
+          "setStart": [
+            835,
+            125
+          ],
+          "setHeight": 42,
+          "setMaxWidth": 135,
+          "note": "legacy fallback"
+        },
+        "2digit": {
+          "numberStart": [
+            812,
+            30
+          ],
+          "numberHeight": 78,
+          "unitStart": [
+            932,
+            52
+          ],
+          "unitHeight": 50,
+          "setStart": [
+            835,
+            125
+          ],
+          "setHeight": 42,
+          "setMaxWidth": 135
+        }
+      },
+      "contentInsetRatioOfDiameter": 0.12,
+      "blockVerticalBias": 0,
+      "number": {
+        "1digit": {
+          "heightRatioOfDiameter": 0.36,
+          "maxWidthRatioOfContent": 0.5
+        },
+        "2digit": {
+          "heightRatioOfDiameter": 0.3,
+          "maxWidthRatioOfContent": 0.62
+        }
+      },
+      "unit": {
+        "heightRatioOfNumber": 0.63,
+        "gapAfterNumberRatioOfNumberHeight": 0.06,
+        "verticalAlign": "top_of_number"
+      },
+      "setLabel": {
+        "text": "セット",
+        "heightRatioOfNumber": 0.44,
+        "gapBelowNumberRowRatioOfDiameter": 0.07,
+        "centerUnderNumberUnitGroup": false
+      },
+      "fillColorDefault": [
+        128,
+        0,
+        32,
+        255
+      ],
+      "textColors": {
+        "note": "Cメニュー／CLIは番号または日本語名で指定。RGBは正本。見本は94.文字色見本/01_〜05_。",
+        "defaultId": "1",
+        "palette": [
+          {
+            "id": "1",
+            "nameJa": "えんじ",
+            "hex": "#800020",
+            "rgb": [
+              128,
+              0,
+              32
+            ],
+            "sampleFile": "01_えんじ.png"
+          },
+          {
+            "id": "2",
+            "nameJa": "青",
+            "hex": "#001b44",
+            "rgb": [
+              0,
+              27,
+              68
+            ],
+            "sampleFile": "02_青.png"
+          },
+          {
+            "id": "3",
+            "nameJa": "黒",
+            "hex": "#0d1321",
+            "rgb": [
+              13,
+              19,
+              33
+            ],
+            "sampleFile": "03_黒.png"
+          },
+          {
+            "id": "4",
+            "nameJa": "緑",
+            "hex": "#1b4332",
+            "rgb": [
+              27,
+              67,
+              50
+            ],
+            "sampleFile": "04_緑.png"
+          },
+          {
+            "id": "5",
+            "nameJa": "茶",
+            "hex": "#3d2b1f",
+            "rgb": [
+              61,
+              43,
+              31
+            ],
+            "sampleFile": "05_茶.png"
+          }
+        ]
+      },
+      "margins": {
+        "minSidePaddingRatioOfDiameter": 0.1,
+        "minTopPaddingRatioOfDiameter": 0.12,
+        "minBottomPaddingRatioOfDiameter": 0.16
+      },
+      "lockedUnitSet1000": {
+        "enabled": true,
+        "note": "unitset一体・等倍。①②③パターン位置固定（2026-08-02合格）。勝手に座標を変えない。",
+        "freezeUnitSet": true,
+        "1digit": {
+          "patternId": "1_one_digit",
+          "unitsetRect1000": [
+            834,
+            58,
+            137,
+            109
+          ],
+          "align": "top_left",
+          "numberBox": [
+            848,
+            26,
+            47,
+            88
+          ],
+          "numberFitMode": "contain",
+          "freezeUnitSet": true,
+          "freezeNumber": true,
+          "note": "①一桁 FIXED — digit_* contain。unitset+number 変更禁止。"
+        },
+        "2digit": {
+          "patternId": "2_pair_or_3_digits",
+          "unitsetRect1000": [
+            845,
+            59,
+            136,
+            109
+          ],
+          "align": "top_left",
+          "numberBox": [
+            818,
+            30,
+            103,
+            85
+          ],
+          "numberFitMode": "contain",
+          "preferPair": true,
+          "freezeUnitSet": true,
+          "freezeNumber": true,
+          "note": "②pairあり=pair_* contain / ③pairなし=digit組合せ right_bottom。numberBoxは両パターン共通基準（変更禁止）。"
+        }
+      },
+      "badgeLayoutPatternsLocked": {
+        "lockedAt": "2026-08-02",
+        "status": "ACCEPTED",
+        "canvaAspectLock": true,
+        "patterns": [
+          {
+            "id": 1,
+            "name": "一桁",
+            "when": "set_count 1..9",
+            "numberAsset": "digit_N.png",
+            "place": "numberBox contain（等倍）",
+            "unitsetRect1000": [
+              834,
+              58,
+              137,
+              109
+            ],
+            "numberBox": [
+              848,
+              26,
+              47,
+              88
+            ]
+          },
+          {
+            "id": 2,
+            "name": "二桁・素材アリ",
+            "when": "set_count>=10 かつ pair_NN.png あり",
+            "numberAsset": "pair_NN.png",
+            "place": "numberBox contain（等倍）",
+            "unitsetRect1000": [
+              845,
+              59,
+              136,
+              109
+            ],
+            "numberBox": [
+              818,
+              30,
+              103,
+              85
+            ]
+          },
+          {
+            "id": 3,
+            "name": "二桁・素材なし",
+            "when": "set_count>=10 かつ pair_NN.png なし",
+            "numberAsset": "digit_A.png + digit_B.png",
+            "place": "右縁・下端を numberBox（②と同座標）に合わせる right_bottom",
+            "unitsetRect1000": [
+              845,
+              59,
+              136,
+              109
+            ],
+            "numberBox": [
+              818,
+              30,
+              103,
+              85
+            ],
+            "gapRatioOfHeight": 0.04
+          }
+        ]
+      },
+      "canvaAspectLock": {
+        "enabled": true,
+        "rule": "Canva素材（digit / pair / unitset）の縦横比を変えない。stretch禁止。contain（等倍縮小）のみ。",
+        "fitModeAllowed": [
+          "contain",
+          "right_bottom"
+        ],
+        "fitModeForbidden": [
+          "stretch"
+        ]
+      },
+      "digitCompose2": {
+        "preferPair": true,
+        "alignRightBottomToNumberBox": true,
+        "gapRatioOfHeight": 0.04,
+        "frozen": true,
+        "note": "③固定: pair無し時 digit横並び。右縁・下端＝2digit.numberBox（②と同一）。"
+      }
+    },
+    "digitBoxByDigitLen1200": {
+      "1": {
+        "x": 1022,
+        "y": 32,
+        "w": 54,
+        "h": 103
+      },
+      "2": {
+        "x": 982,
+        "y": 41,
+        "w": 120,
+        "h": 86
+      }
+    },
+    "fonts": {
+      "canvaPreferred": [
+        "筑紫明朝H",
+        "源柔ゴシック"
+      ],
+      "localFontIds": {
+        "badge_number": "tsukushi_mincho_like",
+        "badge_unit": "tsukushi_mincho_like",
+        "badge_set": "tsukushi_mincho_like"
+      }
+    },
+    "specialSets": "例外レイアウトは都度応相談"
+  },
+  "scanMeta": {
+    "note": "2026-08-02: ①一桁/②pair/③digit組合せ 3パターン合格固定。Canva縦横比ロック必須。"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "description": "楽天バッジ数字の書体カタログ。Canva常用（筑紫明朝H／源柔ゴシック）に近いWindowsフォントへ対応。",
+  "default_font_id": "tsukushi_mincho_like",
+  "layout_rules_file": "layout_rules.json",
+  "default_digit_box_1200": { "x": 955, "y": 55, "w": 100, "h": 125 },
+  "fonts": [
+    {
+      "id": "tsukushi_mincho_like",
+      "label": "筑紫明朝H 近似（金丸の数字・単位・推奨）",
+      "canva_like": ["筑紫明朝H", "筑紫明朝"],
+      "gemini_prompt_hint": "heavy Japanese Mincho / Tsukushi Mincho H style numerals",
+      "openai_prompt_hint": "Tsukushi Mincho H / heavy serif Japanese digits",
+      "windows_paths": [
+        "C:/Windows/Fonts/yumindb.ttf",
+        "C:/Windows/Fonts/yumin.ttf",
+        "C:/Windows/Fonts/YuMincho.ttc",
+        "C:/Windows/Fonts/BIZ-UDMinchoM.ttc",
+        "C:/Windows/Fonts/msmincho.ttc"
+      ]
+    },
+    {
+      "id": "genjyuu_gothic_like",
+      "label": "源柔ゴシック 近似（見出し・ゴシック寄り）",
+      "canva_like": ["源柔ゴシック", "源ノ角ゴシック"],
+      "gemini_prompt_hint": "rounded Japanese Gothic / GenJyuu Gothic style",
+      "openai_prompt_hint": "GenJyuu Gothic / soft rounded Japanese sans",
+      "windows_paths": [
+        "C:/Windows/Fonts/YuGothB.ttc",
+        "C:/Windows/Fonts/BIZ-UDGothicB.ttc",
+        "C:/Windows/Fonts/meiryob.ttc",
+        "C:/Windows/Fonts/msgothic.ttc"
+      ]
+    },
+    {
+      "id": "helvetica_bold",
+      "label": "Helvetica系・太いゴシック（欧文数字向き）",
+      "canva_like": ["02 Helvetica", "01 DIN Next", "06 League Spartan"],
+      "gemini_prompt_hint": "bold Helvetica / DIN numerals",
+      "openai_prompt_hint": "bold Helvetica numerals",
+      "windows_paths": [
+        "C:/Windows/Fonts/arialbd.ttf",
+        "C:/Windows/Fonts/ARIALBD.TTF",
+        "C:/Windows/Fonts/segoeuib.ttf"
+      ]
+    },
+    {
+      "id": "futura_like",
+      "label": "幾何ゴシック（Futura寄り）",
+      "canva_like": ["03 Futura", "04 Century Gothic"],
+      "windows_paths": [
+        "C:/Windows/Fonts/seguisb.ttf",
+        "C:/Windows/Fonts/arial.ttf"
+      ]
+    },
+    {
+      "id": "times",
+      "label": "セリフ／Times系",
+      "canva_like": ["08 Times New Roman", "09 Abril Fatface"],
+      "windows_paths": [
+        "C:/Windows/Fonts/timesbd.ttf",
+        "C:/Windows/Fonts/times.ttf"
+      ]
+    },
+    {
+      "id": "mincho",
+      "label": "明朝（tsukushi_mincho_like の別名）",
+      "canva_like": ["筑紫明朝", "IPAex明朝"],
+      "windows_paths": [
+        "C:/Windows/Fonts/yumindb.ttf",
+        "C:/Windows/Fonts/yumin.ttf",
+        "C:/Windows/Fonts/msmincho.ttc"
+      ]
+    },
+    {
+      "id": "gothic",
+      "label": "日本語ゴシック太字（源柔の別名候補）",
+      "canva_like": ["源柔ゴシック", "太め見出し"],
+      "windows_paths": [
+        "C:/Windows/Fonts/YuGothB.ttc",
+        "C:/Windows/Fonts/meiryob.ttc",
+        "C:/Windows/Fonts/msgothic.ttc"
+      ]
+    }
+  ]
+}

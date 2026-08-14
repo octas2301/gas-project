@@ -1,0 +1,867 @@
+{
+  "rakutenRefs": {
+    "count": 34,
+    "withGold": 34,
+    "goldBBoxMedian": {
+      "x0": 744,
+      "y0": 0,
+      "x1": 1199,
+      "y1": 503,
+      "nSamples": 34
+    },
+    "digitBox1": null,
+    "digitBox2": {
+      "x": 798,
+      "y": 54,
+      "w": 346,
+      "h": 244,
+      "nSamples": 34
+    },
+    "items": [
+      {
+        "file": "lifec-4560151300139-oya.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 151
+        },
+        "inkPixels": 18828,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_1.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 151
+        },
+        "inkPixels": 19766,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_2.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 151
+        },
+        "inkPixels": 19530,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_3.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 151
+        },
+        "inkPixels": 19395,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_4.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 151
+        },
+        "inkPixels": 19204,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_5.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 152
+        },
+        "inkPixels": 21634,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "lifec-4560151300139-oya_6.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 152
+        },
+        "inkPixels": 22003,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 90875,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_1.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 24112,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_2.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 25086,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_3.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 25093,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_4.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 27432,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_5.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 27067,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_6.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 28846,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_8.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 28537,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya2_9.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 93
+        },
+        "inkPixels": 28190,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_1.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 91768,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_2.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 91567,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_3.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 91395,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_4.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 91237,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_5.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 91938,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_6.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 93741,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045515-oya_7.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 93316,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 34979,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_1.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 35918,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_2.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 35681,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_3.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 35546,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_4.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 35356,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_5.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 36055,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_6.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 37931,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_7.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 37540,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_8.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 37711,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "sanky-4906283045614-oya_9.jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 38923,
+        "digitLenGuess": 2
+      },
+      {
+        "file": "吉野家Ama楽枠あり1200×1200px (7).jpg",
+        "size": [
+          1200,
+          1200
+        ],
+        "goldBBox": [
+          744,
+          0,
+          1199,
+          503
+        ],
+        "digitBox": {
+          "x": 798,
+          "y": 54,
+          "w": 346,
+          "h": 244
+        },
+        "inkPixels": 42123,
+        "digitLenGuess": 2
+      }
+    ]
+  },
+  "amazonRefs": {
+    "count": 12,
+    "patternCounts": {
+      "hero_right_stack_left": 5,
+      "hero_left_stack_right": 6,
+      "centered_cluster": 1
+    },
+    "items": [
+      {
+        "file": "131.jpg",
+        "cx": 0.472,
+        "cy": 0.517,
+        "leftShare": 0.525,
+        "rightShare": 0.475,
+        "topShare": 0.482,
+        "bottomShare": 0.518,
+        "patternHint": "hero_right_stack_left"
+      },
+      {
+        "file": "132.jpg",
+        "cx": 0.523,
+        "cy": 0.504,
+        "leftShare": 0.477,
+        "rightShare": 0.523,
+        "topShare": 0.491,
+        "bottomShare": 0.509,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "133.jpg",
+        "cx": 0.521,
+        "cy": 0.564,
+        "leftShare": 0.46,
+        "rightShare": 0.54,
+        "topShare": 0.383,
+        "bottomShare": 0.617,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "134.jpg",
+        "cx": 0.506,
+        "cy": 0.508,
+        "leftShare": 0.497,
+        "rightShare": 0.503,
+        "topShare": 0.488,
+        "bottomShare": 0.512,
+        "patternHint": "centered_cluster"
+      },
+      {
+        "file": "135.jpg",
+        "cx": 0.518,
+        "cy": 0.533,
+        "leftShare": 0.469,
+        "rightShare": 0.531,
+        "topShare": 0.457,
+        "bottomShare": 0.543,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "136.jpg",
+        "cx": 0.515,
+        "cy": 0.518,
+        "leftShare": 0.476,
+        "rightShare": 0.524,
+        "topShare": 0.475,
+        "bottomShare": 0.525,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "137.jpg",
+        "cx": 0.461,
+        "cy": 0.495,
+        "leftShare": 0.539,
+        "rightShare": 0.461,
+        "topShare": 0.503,
+        "bottomShare": 0.497,
+        "patternHint": "hero_right_stack_left"
+      },
+      {
+        "file": "138.jpg",
+        "cx": 0.483,
+        "cy": 0.527,
+        "leftShare": 0.482,
+        "rightShare": 0.518,
+        "topShare": 0.453,
+        "bottomShare": 0.547,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "139.jpg",
+        "cx": 0.486,
+        "cy": 0.525,
+        "leftShare": 0.472,
+        "rightShare": 0.528,
+        "topShare": 0.455,
+        "bottomShare": 0.545,
+        "patternHint": "hero_left_stack_right"
+      },
+      {
+        "file": "140.jpg",
+        "cx": 0.468,
+        "cy": 0.552,
+        "leftShare": 0.555,
+        "rightShare": 0.445,
+        "topShare": 0.419,
+        "bottomShare": 0.581,
+        "patternHint": "hero_right_stack_left"
+      },
+      {
+        "file": "141.jpg",
+        "cx": 0.471,
+        "cy": 0.521,
+        "leftShare": 0.545,
+        "rightShare": 0.455,
+        "topShare": 0.457,
+        "bottomShare": 0.543,
+        "patternHint": "hero_right_stack_left"
+      },
+      {
+        "file": "142.jpg",
+        "cx": 0.453,
+        "cy": 0.525,
+        "leftShare": 0.564,
+        "rightShare": 0.436,
+        "topShare": 0.448,
+        "bottomShare": 0.552,
+        "patternHint": "hero_right_stack_left"
+      }
+    ]
+  }
+}
