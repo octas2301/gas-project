@@ -4,6 +4,69 @@
 
 | 日付 | 対象 | 目的 | 戻し方 |
 |------|------|------|--------|
+| 2026-08-14 | `points_logic`／`points_send` | restore の `--today` をカレンダー%に渡す | Git revert |
+| 2026-08-14 | `コード.js` | **AI列名引き**: ASIN貼り付け式・参考画像・卸値。`原価税込`別名 | Git revert。要 clasp push |
+| 2026-08-14 | DEALS HUMAN_RUN／PHASE | **taper 1段目 prod**: b=`185913020679`／s=`185917020679` DONE。運用マニュアル化を後続タスクにメモ | docs Git revert |
+| 2026-08-14 | `コード.js`／`B_HARD_DEATH_SCOPE_*`／PHASE／WATCHDOG | **Bハード死対策**: 入口3・Step1切断・insertedProductsマージ・集合フィルタ・getUi安全・番犬非設置 | Prop トグルOFF／Git revert。要 clasp push。`B_WATCHDOG_ENABLED=false` は残してよい |
+| 2026-08-14 | `コード.js` | Step1で **依頼日(D)** を1行目→親／2行目→子へ式コピー（Qより左の個別対応） | 当該関数削除／revert |
+| 2026-08-14 | `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`（gitignore）／CHANGE_LEDGER | **復元点**: 上挿入実装前の `コード.js`／Yahoo.js／appsscript／clasp をローカル退避。HEAD=`2f9ef6c` | フォルダから Copy-Item（RESTORE.md） |
+| 2026-08-14 | `docs/org/B_STEP1_TOP_INSERT_*`（多数決／要件／HUMAN_RUN）／PHASE／HANDOVER | **上挿入要件ロック**: 1A/2A/3A・既存値固定・テンプレ1–2。コード未 | docs Git revert |
+| 2026-08-13 | `docs/org/B_STEP1_TOP_INSERT_REQUIREMENTS.md`／PHASE／HANDOVER | **上挿入改修メモ**初版（式方針は08-14で更新） | docs Git revert |
+| 2026-08-13 | `コード.js` masterColorApplyLocked*／15-㉑㉒／色 docs §11–13／スプシ11–775 | **⑧f 列ロック確定**。親赤白薄赤。Step1自動塗 | Git revert。スプシ色は再塗or手戻し。要 clasp push |
+| 2026-08-13 | `コード.js` MASTER_COLOR／CPO・Step1・カテゴリ等／色 docs | **⑧c 役割色実装**。オレンジ後回し。条件付き書式非変更 | Git revert。要 clasp push |
+| 2026-08-13 | `docs/org/B_MASTER_CELL_COLOR_RULES_*`／PHASE／HANDOVER | **⑧a マスタ色ルール正本**（灰・オレンジ含む）。コード一斉塗なし | docs Git revert |
+| 2026-08-13 | `コード.js` B Step8／WATCHDOG §7.1／PHASE／HANDOVER | **⑪親行高さ60px**。⑨改修不要・⑩運用検証メモ | Prop `B_PARENT_ROW_HEIGHT_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` Step1／17-⑦／MASTER_LINKAGE／RESEARCH／PHASE | **⑦ DF割引式**: 先頭子より下へ DF2 `ROUND` コピー。DDは対象外 | Prop `B_DF_STRATEGY_FORMULA_COPY_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑳／承認包／B_SPAPI docs | **⑤競合空のみ自動**: U3高信頼→競合列。U7本線当面不要を明記 | Prop `B_COMP_ASIN_AUTOFILL_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑲／B_SPAPI docs／⑤承認包 | **U7診断**: Catalog型番 vs Keepa。マスタ非書込。⑤競合列は承認包のみ | Prop `B_U7_PART_DIAG_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | CURRENT_PHASE／DEALS HUMAN_RUN／HANDOVER | **8/14前 taper dry_run**: 当日0・Cinderellas2SKU予定。FBA完了→減衰へフォーカス切替 | docs Git revert |
+| 2026-08-13 | B_SPAPI要件／HUMAN_RUN／PHASE／HANDOVER | **FBAゲート暫定OK**: 必須=HTTP+梱包。型番/JAN→U7。U7未着手 | docs Git revert |
+| 2026-08-13 | B_SPAPI HUMAN_RUN／PHASE／HANDOVER | **P1b実機** `P1b_20260813_162652_6111aa`: ティア/手数料 11/11書込。U7は型番JAN方針待ち | docs Git revert。マスタ値は手戻し |
+| 2026-08-13 | マスタ出品CK／B_SPAPI HUMAN_RUN／PHASE | **P1a `595a71f2`集計**: HTTP20/20・梱包11/20。生姜湯2ASINレ点OFF→梱包あり6ASINのみON（P1b用） | レ点は手で戻す。docsは Git revert |
+| 2026-08-13 | `コード.js` B統合 | **U6**: Step**6.6** メーカー品番（U5 quiet）。`B_INTEGRATED_STEP_FUNCTIONS` | Prop `B_MAKER_MODEL_FETCH_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` U5 | **U5自社品番**: `INT-`＋8桁hex（計12）。旧20字から短縮 | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` U5 | **U5候補ガード**: JAN同一却下／純数字は4桁未満のみ却下（16100可） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑤⑥ | **U5メーカー**: `メーカー名ベース`のみ（`メーカー名`不使用） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑥ | **U5結果シート**: setValues行数不一致修正（getRange第3=行数） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑤⑥ | **U5書込先**: **`メーカー品番下書き`のみ**（メーカー型番等NG） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑤⑥ | **U5列名**: `メーカー品番`無し→`メーカー品番下書き`／`メーカー型番`フォールバック | 次行で下書きのみに訂正 |
+| 2026-08-13 | `コード.js` 15-⑤⑥／B_SPAPI docs | **U5 メーカー品番**: Keepa→Serp→INT-自社（黄）。型番不明廃止。空のみ | Prop `B_MAKER_MODEL_FETCH_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | マスタ列／`コード.js` 15-⑱／B_SPAPI docs | **FBA P1b**: `FBAティア`／`FBA手数料_円` 空のみ書込（自己発列非改変） | Prop `B_FBA_P1B_WRITE_ENABLED=false`／Git revert。列は手削除可 |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.4f**: brandのみ照合・セット親×Catalog単品ヒント（0s1） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／`AmazonCategoryPt.js`／B_SPAPI docs | **⑤ U3.4e**: brand/製造者のみ照合・タイトル除外・unknown非推奨 | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.4d**: U3メーカー正＝`メーカー名ベース`のみ | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.4c**: maker一般照合（カナ↔ローマ字＋Catalog brand。別名表なし） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.4b**: brand yes Catalog優先（0s1）／conflictはmakerInTitle／兄弟は他親のみ | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.4a**: Catalogタイトル bi-gram≥0.80＋LCS。P4b関数は不変更 | Prop `B_KEEPA_ASIN_VOTE_U3_TITLE_SCORE`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.3**: 同一JAN同セットの兄弟競合票＋Catalogタイトル不一致抑制 | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.2**: ブランド一致・Catalogヒント・競合404・set_mismatch を推奨に反映 | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **⑤ U3.1b**: 親`A.セット商品数`空→同一親SKUの子から継承（1優先／min） | Git revert。要 clasp push |
+| 2026-08-13 | `コード.js`／`AmazonCategoryPt.js`／B_SPAPI docs | **⑤ U3.1**: 親セット数ゲート・setGuess/ブランド一致列・Catalog票は単品親のみ | Prop `B_KEEPA_ASIN_VOTE_U3_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 15-⑯／B_SPAPI docs | **⑤ U3**: 競合ASIN投票診断（◎／N列／競合店／Catalog JAN→`競合ASIN投票診断_U3`）。マスタ非書込 | Prop `B_KEEPA_ASIN_VOTE_U3_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 12-⑧／B_SPAPI docs | **⑤ U2**: Keepa取得_ログ→archive（90日超 or JAN最新3実行以外）。マスタ非書込 | Prop `B_KEEPA_LOG_ARCHIVE_ENABLED=false`／archiveから手戻し／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` Keepaログ／B_SPAPI docs | **⑤ U1**: Keepa取得_ログに partNumber／ブランド／製造者／梱包寸法・重量（追加APIなし） | Prop `B_KEEPA_LOG_EXT_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `00_設定マスタ` FBA手数料／`update_fba_fee_table_00.py`／承認包 | **FBA手数料を公式現行（1,000円超）へ更新**。FBA末尾に行挿入。販売手数料等は非改変 | スプシ版履歴／承認包旧値 |
+| 2026-08-13 | `コード.js` FBA P1a | **設定マスタFBA手数料連動**: 仮ティア＝区分名／手数料円。F備考をbox・三辺和でパース | 要 clasp push／Git revert |
+| 2026-08-13 | `コード.js` `fbaP1aLengthToCm_` | **FBA P1a単位バグ修正**: `centimeters` が meters 誤判定→×100。cmを先判定・mは厳密一致 | 要 clasp push／Git revert |
+| 2026-08-13 | `コード.js`／B_SPAPI docs | **FBA P1a**: Z 15-⑰ Catalog寸法→`FBAティア診断_P1a`・仮ティア。マスタサイズ列は書かない | Prop `B_FBA_P1A_DIAG_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-13 | `コード.js` 3Dフィット | **rigid優先**（softは rigid 全滅後）。Compact stagger 当面維持 | 要 clasp push |
+| 2026-08-13 | `コード.js` 3Dフィット | **ずらしバグ修正**（半辺で誤OK）。`[3D][try]` で内寸・soft・bestCap・ok をログ | 要 clasp push |
+| 2026-08-13 | `コード.js` Step3.1 | **AI梱包寸法**: 商品名＋卸値(税込)優先／JAN+卸値／JANフォールバック。同JAN複数行で誤寸法を防止 | 要 clasp push |
+| 2026-08-13 | `コード.js` Step3.1 | **サイズ昇順 first-fit**。送料=自己発送／箱代=資材D／合計=利益のみ。寸法あり不適合は空（ネコポス埋め禁止） | 要 clasp push。Git revert |
+| 2026-08-13 | `コード.js` Step3.1 | **ネコポス利益上書き廃止**。3D時はサイズのみで箱選定。利益不足はフラグのみ | 要 clasp push。Git revert |
+| 2026-08-13 | `コード.js` Step3.1／設定マスタ exclude／B_SPAPI docs | **④自己発3D**: 内寸フィット・exclude除外。`B_LOGISTICS_USE_3D_FIT` | Prop `false`／Git revert。要 clasp push |
+| 2026-08-13 | `00_設定マスタ` E〜H／`write_box_inner_dims.py`／B_SPAPI_RESEARCH docs | **④⑤⑥要件＋ダンボール内寸列** | 列E〜H手削除／docs revert |
+| 2026-08-12 | `コード.js` Step5/6／SERIES_INFER docs | **シリーズ不明禁止＋商品名推定（方針A）** | Prop `SERIES_INFER_FROM_NAME_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-12 | AI_ADOPT 要件／HUMAN_RUN | **商品名ベース可変不可**を要件明文化（読取のみ） | docs revert |
+| 2026-08-12 | `コード.js` メニュー8／Yahoo Stage／E・YAHOO docs | **7.5維持／7.6 popular_only＋38074。B Step7.6差し替え** | Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` Step5／メニュー8／E docs | **E本線化**: ジャンル／Yahoo未設定=ON＋Step5ジャンルAI・Drive候補スキップ | 各Prop `false`／`B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` Step6.5／15-⑮／B_ASIN_N docs | **⑥ N列ASIN自動**: ◎×ブランド＝メーカー→空Nのみ＋黄セル要確認 | **Property** `B_ASIN_N_AUTO_FILL_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` メニュー8／AI_ADOPT docs | **v1.13**: FO二重計上解消・商品名非削り・表示文字数trim | Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` メニュー8／AI_ADOPT docs | **v1.12**: 短すぎ対策（FO非削り・下限ブレーキ・特徴用途を空にしない） | Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` メニュー8／AI_ADOPT docs／B Step7.5 | **v1.11**: =LEN()厳格trim・FO先頭・B統合載せ | **Property** `B_INTEGRATED_MENU8_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-12 | `コード.js` 15-⑬⑭／要件 | **P2-A**: 月次メーカー辞書（手修正維持）＋保存方法改行→読点 | Git revert。要 clasp push |
+| 2026-08-12 | `コード.js`／設定マスタA181／AI G列／要件 | **B P1**: シリーズ揃え・メーカー辞書・カタログスラッグ13 | Property各`false`／Git revert。要 clasp push |
+| 2026-08-12 | `コード.js`／`B_WATCHDOG_*`／要件 | **B番犬P0**: ハード死後自動再開・Step5行CP・プルダウンTIME_SLICE・サマリ・進捗メニュー | **Property** `B_WATCHDOG_ENABLED=false` または **Git** revert。要 clasp push |
 | 2026-08-12 | DEALS／HUMAN_RUN／HANDOVER | **表記揃え**: P1c実装済。G8＝終着空でもapply可。復元済＝減衰中%へ | **Git**: revert 当該docs |
 | 2026-08-12 | `price_recovery_logic`／`taper_send`／`points_*`／GAS／DEALS§10.13-14 | **2層**: カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。fetchは現在%のみ。列`減衰開始日` | **Git**: revert。`--schema-only`＋clasp push |
 | 2026-08-12 | `sheets_io` 次回減衰後%数式 | **f-string 二重引用で `{c_pct}` が残るバグ修正** | **Git**: revert。`--schema-only` 再実行 |

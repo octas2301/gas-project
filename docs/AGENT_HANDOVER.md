@@ -100,6 +100,57 @@
 
 ## 6. 更新履歴
 
+- 2026-08-14: **B Step1 上挿入・実装（ローカル）**: 既存AK/IB値固定・テンプレ1–2新式・`B_STEP1_TOP_INSERT_ENABLED`（未設定=旧末尾）。人間: clasp push → Property true → HUMAN_RUN。[要件](org/B_STEP1_TOP_INSERT_REQUIREMENTS.md)／[HUMAN_RUN](org/B_STEP1_TOP_INSERT_HUMAN_RUN.md)。復元: `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`。
+- 2026-08-14: **B Step1 上挿入・要件ロック**: 三点多数決＋1A/2A/3A。[多数決](org/B_STEP1_TOP_INSERT_THREE_REVIEW_MAJORITY.md)。
+- 2026-08-13: **B Step1 上挿入メモ**（初版）: ヘッダー直後・末尾追記廃止。式方針は 08-14 で値固定＋テンプレ新式に更新。
+- 2026-08-13: **⑧f マスタ色列ロック**: 親水色＋赤白`#f4cccc`／子白灰黄緑。`masterColorApplyLocked*`・Step1・Z 15-㉑㉒。要件§11〜§13（基本／例外列／列追加の聞き方）。11–775塗色。要 clasp push。[要件](org/B_MASTER_CELL_COLOR_RULES_REQUIREMENTS.md)。
+- 2026-08-13: **⑧c マスタ色実装**: `MASTER_COLOR_*`＋主要パス（Step1／CPO／15-⑳／N／U5／カテゴリ）。オレンジは必要時追加。条件付き書式非変更。要 clasp push。[要件](org/B_MASTER_CELL_COLOR_RULES_REQUIREMENTS.md)／[凡例](org/B_MASTER_CELL_COLOR_RULES_HUMAN_RUN.md)。
+- 2026-08-13: **⑧a マスタ色ルール正本**: 親水色／黄＝人が触る（確認後クリア不要）／緑・ピンク・灰・オレンジ（後回し）・濃赤白字。
+- 2026-08-13: **⑪ B Step8**: レ点親行の行高さ60px。`B_PARENT_ROW_HEIGHT_ENABLED`。⑨改修不要／⑩運用検証メモは [B_WATCHDOG §7.1](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)。要 clasp push。
+- 2026-08-14: **販促 taper 1段目 prod**: Cinderellas b `185913020679`／s `185917020679` DONE（22→18）。**店頭ともに18%**。日次タスク `OctasAmazonTaperDryRun`。restore `--today` をカレンダーへ接続。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md) §0。
+- 2026-08-13: **⑦ DF割引式**: Step1で先頭子より下へ amazon価格戦略(DF2)の `ROUND` を自動コピー。修復 **17-⑦**（空のみ）。DDは対象外。OFF=`B_DF_STRATEGY_FORMULA_COPY_ENABLED=false`。要 clasp push。[MASTER_LINKAGE](MASTER_LINKAGE_TASKS.md)／[CURRENT_PHASE](CURRENT_PHASE.md)。
+- 2026-08-13: **⑮競合空のみ 15-⑳**: `brand_yes`/`brand_set_match` のみ・◎矛盾停止・黄セル。U7本線は当面不要（JAN汚染）。要 clasp push。[承認](org/LV4_B_COMPETITOR_ASIN_AUTOFILL_APPROVAL.md)。
+- 2026-08-13: **U7診断 15-⑲**: Catalog型番 vs Keepa →`メーカー品番診断_U7`（マスタ非書込）。⑤競合列空のみ本線は[承認包](org/LV4_B_COMPETITOR_ASIN_AUTOFILL_APPROVAL.md)。要 clasp push。
+- 2026-08-13: **次フォーカス＝販促減衰**: 8/14前 dry_run点検（当日0・Cinderellas2SKUが8/14 sendable）。FBA本線OK・B①〜⑥クローズ表は CURRENT_PHASE。[HUMAN_RUN](org/D_MENU_AMAZON_DEALS_BULK_P1B_HUMAN_RUN.md) §0。
+- 2026-08-13: **FBA本線いったんOK**: ゲート必須＝HTTP+梱包。型番/JANはU7へ移管（社長OK・クリティカル無し）。U7コードは別承認。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §5／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-13: **FBA P1b実機** `P1b_20260813_162652_6111aa`: 親11・ティア/手数料書込11・スキップ0。自己発列未変更。U7は型番/JANゲート方針待ち。[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md) U4b。
+- 2026-08-13: **FBA P1a `595a71f2`**: HTTP200 20/20・梱包11/20・乖離0。梱包なし=`B0FL2CH7NL`/`B0FL2FX1WZ`。P1b用レ点を梱包あり6ASINに絞り済。型番/JAN未計測→U7未開放。[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md) U4。
+- 2026-08-12: **マスタシリーズ**: 「不明」禁止＋商品名推定（方針A・空可）。`SERIES_INFER_FROM_NAME_ENABLED` 未設定=ON。要 clasp push。[要件](org/SERIES_INFER_FROM_NAME_REQUIREMENTS.md)。
+- 2026-08-12: **メニュー8 要件**: **`商品名ベース` は可変不可**（読取のみ。dedupe／trim／正規化禁止）を明文化。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)。
+- 2026-08-12: **メニュー8 Yahoo 7.5／7.6**: Z 7.5＝`price_aware`維持。Z **7.6**＝売れ筋のみ＋ブランドメーカー優先／**38074**。**B統合は Step7.6**（旧7.5差し替え）。要 clasp push。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md) §0.1／[E確認](org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md)。
+- 2026-08-12: **E本線化**: 楽天ジャンル／Yahoo cat トグル**未設定=ON**。Step5はジャンル・Yahoo AI生成とDrive CSV候補をスキップ（`B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED` 未設定=ON）。正本はメニュー8都度APIの上書き。要 clasp push。[確認](org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md)。
+- 2026-08-13: **AI梱包寸法突合**: 同JAN複数行対策で **商品名正規化＋卸値(税込)** 優先（→名のみ→JAN+卸値→JAN先頭警告）。要 clasp push。
+- 2026-08-13: **FBA P1b**: マスタに `FBAティア`／`FBA手数料_円`（自己発列の右隣）。Z 15-⑱ 空のみ書込・乖離>15%スキップ。`B_FBA_P1B_WRITE_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md) U4b。
+- 2026-08-13: **⑤→U4**: U3.4f実機後、公式単品ASIN手入れ→FBA P1a（15-⑰）。…81514等はスキップ。[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md) U4。
+- 2026-08-13: **⑤ U3.4f**: メーカー照合を **brand のみ**に（製造者除外）。セット親×Catalog単品+brand yes は `brand_catalog_hint`（…0s1）。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.4e**: メーカー照合を brand／製造者のみに（タイトル除外）。unknown は推奨しない。Catalog brand/manufacturer 分離。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.4d**: U3メーカー照合の正を **`メーカー名ベース` のみ**に変更（`メーカー名`等は見ない）。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.4c**: maker照合を一般化（カナ↔ローマ字＋Catalog brand。個別別名表なし）。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.4b**: titleScore実測踏まえ、brand yes Catalogを兄弟より優先（0s1）。conflict+brand unknownはmaker照合必須（0446）。兄弟は他親のみ。要 clasp push。
+- 2026-08-13: **⑥ U6 B Step6.6**: `B_INTEGRATED_STEP_FUNCTIONS` にメーカー品番（U5 quiet）。`menuFetchMakerModelForBIntegratedStep_`。`B_MAKER_MODEL_FETCH_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §4／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-13: **⑥ U5 メーカー品番**: Z 15-⑤／15-⑥。Keepa partNumber → SerpAPI → 自社 `INT-`（黄セル）。空のみ・型番不明廃止。`B_MAKER_MODEL_FETCH_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §4／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-13: **⑤ U3.4a**: Catalogタイトルを U3専用スコア（bi-gram≥0.80＋LCS）でゲート。`B_KEEPA_ASIN_VOTE_U3_TITLE_SCORE`。P4b関数不変更。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.3**: 同一JAN・同セットの兄弟競合を票に。`sibling_set_match`／タイトル不一致でCatalog抑制。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.2**: ブランド一致を推奨に反映。単品 conflict→Catalogヒント。set≠1でも CatalogHint。競合404=dead。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.1b**: 親セット空→同一親SKUの子から継承（子に1があれば1、なければmin）。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3.1**: セット数確定後前提。診断列（親セット数／setGuess／ブランド一致）。Catalog JAN票は親セット=1のみ。`B_KEEPA_ASIN_VOTE_U3_REQUIRE_SET`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U3 競合ASIN投票診断**: Z 15-⑯。◎／N列／競合店／Catalog JAN→`競合ASIN投票診断_U3`。マスタ非書込。`B_KEEPA_ASIN_VOTE_U3_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U2 Keepaログ整理**: Z 12-⑧。直近90日かつJAN最新3実行以外を`Keepa取得_ログ_archive`へ。実機 archived=3262 kept=249。`B_KEEPA_LOG_ARCHIVE_ENABLED`。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **⑤ U1 Keepaログ拡張**: `Keepa取得_ログ` に partNumber／ブランド／製造者／梱包寸法・重量（同一API・追加呼出なし）。`B_KEEPA_LOG_EXT_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md) §3.2。
+- 2026-08-13: **FBA P1a 診断**: Z 15-⑰ Catalog属性から梱包寸法・仮FBAティア→シート`FBAティア診断_P1a`のみ。マスタ`サイズ＆自己発/FBA`非書込。`B_FBA_P1A_DIAG_ENABLED`。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-13: **④サイズ昇順 first-fit**: 箱代最安廃止。Nekopos→Compact→50…の順で最初に入る箱。送料=自己発送表／箱代=資材D／合計=利益判定のみ。寸法あり不適合は空欄（ネコポス埋め禁止）。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)。
+- 2026-08-13: **④サイズのみ箱選定**: 利益不可時のネコポス強制上書きを廃止。3Dフィット結果を維持し、`送料利益確保不可`は警告のみ。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)。
+- 2026-08-13: **④自己発3D**: 設定マスタ内寸＋`exclude`（商品入荷箱・Nekopos封筒他）。Step3.1で向き自由フィット（N≤40・1箱）。`B_LOGISTICS_USE_3D_FIT` 未設定=ON。FBA／⑤／⑥は後続。要 clasp push。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-13: **④⑤⑥ SP-APIリサーチ要件ロック**: 公式単品ASIN・3D箱（向き自由・N≤40・1箱）・人間◎上限・品番自社生成。設定マスタダンボール **E〜H内寸**済。[要件](org/B_SPAPI_RESEARCH_P0_P2_REQUIREMENTS.md)／[承認](org/LV4_B_SPAPI_RESEARCH_APPROVAL.md)／[HUMAN_RUN](org/B_SPAPI_RESEARCH_P0_P2_HUMAN_RUN.md)。
+- 2026-08-12: **⑥ N列ASIN自動**: ◎（Keepaログ／貼付）×ブランド＝メーカー → N列空のみ記入＋黄セル＋`要確認_ASINN`。B **Step6.5**／Z **15-⑮**。`B_ASIN_N_AUTO_FILL_ENABLED` 未設定=ON。要 clasp push。[要件](org/B_ASIN_N_AUTO_FILL_REQUIREMENTS.md)／[HUMAN_RUN](org/B_ASIN_N_AUTO_FILL_HUMAN_RUN.md)。E確認案 [D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md](org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md)。
+- 2026-08-12: **メニュー8 v1.13**: FOと商品名ベース二重計上で過トリムしていた不具合を修正。商品名本体はtrim不可。最終名**表示文字数**で判定。要 clasp push。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)。
+- 2026-08-12: **メニュー8 v1.12**: 短すぎ対策（FO非削り・下限ブレーキ・特徴用途を空にしない・console二重）。要 clasp push。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)。
+- 2026-08-12: **メニュー8 v1.11**: 文字数をシート`=LEN()`一致（半角0.5廃止）／Amazon式にFO先頭／**B統合 Step7.5**（`B_INTEGRATED_MENU8_ENABLED` 未設定=ON）。要 clasp push。[要件](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)。
+- 2026-08-12: **B P2-A**: 月次メーカー辞書更新（既存手修正は上書きしない）／保存方法改行→読点。Z 15-⑬⑭。要 clasp push。[要件](org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md)。
+- 2026-08-12: **B P1**: AI `シリーズID`(G)／`00_設定マスタ`メーカー辞書A181／同JAN時カタログスラッグ13。マスタから辞書シード。要 clasp push。[要件](org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md)。
+- 2026-08-14: **AI列名引き**: B済挿入後もASIN貼り付け式・参考画像・卸値がヘッダー追随。`原価税込`等を別名として扱う。要 clasp push。 AI 1列目`B済`。未処理を上から最大3（次のシリーズ3は割らず温存、4行以上は3+余り）。完了後に次パック連鎖。Step5は列名引き。要 clasp push。[要件](org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md)。
+- 2026-08-14: **Bハード死対策**: AI最大3＋名前/税込ゲート／Step1後強制切断／`insertedProducts`マージ／Step2〜8集合のみ／`getUi`トリガー安全／番犬非設置。Z単独は全レ点。要 clasp push＋`B_WATCHDOG_ENABLED=false`。[要件](org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_HARD_DEATH_SCOPE_HUMAN_RUN.md)。
+- 2026-08-12: **B番犬P0実装**: ハード死後の自動再開（1発20分＋定期15分）／Step5 行CP＋中間TIME_SLICE／プルダウンTIME_SLICE／`▼B実行サマリ`／進捗メニュー。未設定=`B_WATCHDOG_ENABLED` ON。要 clasp push。[要件](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)／[CURRENT_PHASE](CURRENT_PHASE.md)。
 - 2026-08-10: **Amazon本番常時ONセット**: `PUT_ENABLED`／`ALLOW_PROD`／`LV4_ENABLED`／`SC_SUMMARY` の未設定既定=true（明示falseで緊急停止）。`MASTER_QTY`／`P4B`／`U2`／`U4`は常時OFF。A1〜B2・A3合格。要 clasp push＋旧falseキー削除or true。[CURRENT_PHASE](CURRENT_PHASE.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
 - 2026-08-10: **サブ画像ベース色 PoC 3択**（beige/warm_white/soft_gray）: B-④ドロップダウン → compose `--base-color`（別名 `--tonmana`）。`tonmana_palette.py`／GAS `b4TonmanaPalette_` 同期。背景・カードのみ（PACKAGE_LOCK）。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
 - 2026-08-10: **B-④正本人間紐付け／写真実写ルール／サブファイル名にpattern**: Driveの`01.amazon白抜きベース`画像をJANと対応付け（`--package-truth`）。`photo_realism_rules.py`をcomposeが毎回読込。exportは`{子SKU}_{themeSlug}_subN.jpg`。要 clasp push／任意 Property `SET_MAIN_AMAZON_BASE_FOLDER_ID`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
@@ -465,6 +516,9 @@
 **【現在の実装状況】**  
 - 時間制限対策（`Date.now()`監視、途中保存、再開）が実装済み。Step5/Step7 の長時間処理はチェックポイント再開対応済み。  
 - **B 統合 × Step7（2026-03 追補）**: `B_INTEGRATED_SAFE_BUDGET_MS` を **21 分**に短縮、`B_INTEGRATED_MAX_TRIGGER_RUNS` **12**。統合の Step7 は `menuProductNameAndDropdownForBIntegratedStep_` が `runStep7TitleJob(..., { deferStep7Trigger: true, bIntegratedRunId })` を呼び、**Step7 専用トリガーを二重に立てず**未完了時は `TIME_SLICE` で **統合トリガーが同じ Step7 を再開**。`menuRunBIntegrated` で **続きから**選ぶときは保存済み **`runId` を引き継ぎ**（Step7 状態の `bIntegratedRunId` と整合）。Z メニュー「7」は未完了時 **続き／最初から** を `ui.alert` で選択。  
+- **B番犬P0（2026-08-12）**: ハード死（状態残・トリガー無し）対策。[org/B_WATCHDOG_RESUME_REQUIREMENTS.md](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)。メニュー開始時1発＋定期 `runBWatchdogFromTrigger`、Step5/プルダウンの共同デッドラインと行CP、`▼B実行サマリ`、メニュー「Bの進捗を表示」。  
+- **B P1（2026-08-12）**: [org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md](org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md)。AI G=`シリーズID` セット数和集合揃え／設定マスタメーカー辞書／同JAN親でカタログスラッグ13。  
+- **⑥ N列ASIN自動（2026-08-12）**: [org/B_ASIN_N_AUTO_FILL_REQUIREMENTS.md](org/B_ASIN_N_AUTO_FILL_REQUIREMENTS.md)。Step6.5／15-⑮。◎×ブランド＝メーカー→空Nのみ＋黄セル。  
 - `LAST_PROGRESS` 等の Script Properties で進捗追跡を実装済み。  
 - 物流費AI試算は「利益確保不可」時も最小物流費で仮入力し、理由を別列で管理する仕様へ変更済み。  
 - **Step2.5 追伸（実装）**: 00_設定マスタ「自己発送/自己配送」行。**B=サイズ名**、**C=並び兼3辺和上限(cm)**（10〜500 を数値として解釈できるとき制約として利用）、**D=送料**。ランクは **C の value1 昇順**（同順位は価格・元行順）。**物理下限は重量を使わない**。`AI情報取得data` の AI 梱包寸法が取れているとき（`okDims`）のみ、**3辺和 = 幅+奥行+高さ×セット数** で `physMinRank` を決定；寸法未取得時は `physMin` なし（従来どおり `maxLogistics` のみ）。**`lastChosenRank+1` は廃止**（セット数が増えても同一送料帯の使い回し可）。**送料単調**（前より送料が下がらないよう前段に揃える）は維持。宅急便コンパクトは **B列名**で判定し、Script Properties **`B_LOGISTICS_COMPACT_EDGE_SUM_A` / `B_LOGISTICS_COMPACT_EDGE_SUM_B`**（既定 **50 / 58.8**）の **OR** で収まるか判定。ネコポス等は **`B_LOGISTICS_NEKOPOS_MAX_EDGE_SUM`**（既定 **60**）または B 列名からの推定。AI梱包参照は `B_LOGISTICS_USE_AI_PACK_DIMS`（既定 true）。  
@@ -511,8 +565,15 @@
   - Step **4**: `menuRunRound3PriceAdjustIntegrated_`（再③・全モール）  
   - Step **5**: `generateListingDataComparison`  
   - Step **6**: `syncAiDataToMaster`  
+  - Step **6.5**（統合）: `menuFillAsinNForBIntegratedStep_`（◎×ブランド＝メーカー → N列ASIN空のみ。`B_ASIN_N_AUTO_FILL_ENABLED` 未設定=ON）  
+  - Step **6.6**（統合）: `menuFetchMakerModelForBIntegratedStep_`（メーカー品番下書き・空のみ。U5。`B_MAKER_MODEL_FETCH_ENABLED` 未設定=ON）  
   - Step **7**（統合）: `menuProductNameAndDropdownForBIntegratedStep_`（チェックポイント維持・未完了時 `TIME_SLICE` で統合トリガー再開）  
+  - Step **7.6**（統合）: `menuAmazonAiAdopt76ForBIntegratedStep_`（メニュー8 KW・trim・ジャンル・**Yahoo売れ筋のみ＋38074**。`B_INTEGRATED_MENU8_ENABLED` 未設定=ON）  
+  - Step **8**（統合）: `menuSetParentRowHeightForBIntegratedStep_`（レ点親行の行高さ **60px**。`B_PARENT_ROW_HEIGHT_ENABLED` 未設定=ON）  
   - Step **7**（Z メニュー単体）: `menuProductNameAndDropdownForCheckedParentRows`（続き／最初からダイアログ）  
+  - Step **7.5**（Z 単体）: `menuAmazonAiGenerateAndAdoptForCheckedParents`（Yahoo **価格参照**。`AMAZON_AI_AUTO_ADOPT_ENABLED`）  
+  - Step **7.6**（Z 単体）: `menuAmazonAiGenerateAndAdopt76ForCheckedParents`（Yahoo **売れ筋のみ**。同トグル）  
+  - Z **15-⑮**: `menuFillAsinNFromOfficialCompetitorForCheckedParents`（N列ASIN自動・単体）  
 - **送料F/Pマスタ**: `00_設定マスタ` 同一シート **行120列A〜**。未シード時に表B（SS/S/M/L×関東自己配送F）・表A（帯1〜50000＋50001〜・`r_max`・`暫定区分_R1`）を自動作成。Script Properties: `CPO_FP_GUARD_ENABLE_ROUND1`（既定false）, `CPO_FP_GUARD_ENABLE_ROUND2`（既定true）, `CPO_AI_STRATEGY_WRITE`, `CPO_AI_NOTE_MAX_CHARS`, `CPO_FP_REVIEW_SHIPPING_DELTA_YEN`。  
 - **単独メニュー** Z「3. Amazon…(V2・単体)」は `menuCPOProposePricesV2Standalone`。**旧CPO** サブメニューに `menuCPOProposePrices`（legacy 2ラウンド）等。**B-②** は `menuCPOProposePricesRound2Only`（②.5後・V2 時は送料参照付き V2）。
 
@@ -531,7 +592,11 @@
 - Step3（Amazon CPO）: `[CPO]` + `round=` / V2 ログ（`パース結果のセット数` / `反映できませんでした` / F/Pガードログを確認）  
 - Step5: AI出品取得のStep専用プレフィックス（実装時に統一）  
 - Step6: 同期処理のStep専用プレフィックス（実装時に統一）  
+- Step6.5: `[N列ASIN自動]` / `menuFillAsinNForBIntegratedStep_`
+- Step6.6: `[B.統合実行][6.6]` / `menuFetchMakerModelForBIntegratedStep_`  
 - Step7: `[Step7]`（必要に応じて `[キーワードプルダウン]`）
+- Step7.6: `[メニュー8]` / `menuAmazonAiAdopt76ForBIntegratedStep_` / `yahooCatMode=popular_only`
+- Step8: `[親行高さ]` / `menuSetParentRowHeightForBIntegratedStep_`
 
 **【差分復元（前に戻す）運用】**  
 - MDのみでの復元運用は禁止。必ず Git の差分を正とする。  

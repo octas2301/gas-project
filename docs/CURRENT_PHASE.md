@@ -1,11 +1,146 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-08-12（販促 **2層減衰**：カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。要 clasp push／`--schema-only`）
+**最終更新**: 2026-08-14（**B統合ハード死対策・実装済み（ローカル）**／clasp・Property・HUMAN_RUN待ち）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0. セッション引き継ぎ（2026-08-10）
+## 0. セッション引き継ぎ（2026-08-14）
+
+**場所**: **B統合ハード死対策** — `B済`キュー自動パック（最大3・シリーズ温存）・Step1後切断・当B集合・番犬非設置。  
+**コミット**: 未（指示時）。  
+**正本**: [org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md](org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_HARD_DEATH_SCOPE_HUMAN_RUN.md)
+
+### 次にやること（人間）
+1. Script Properties: **`B_WATCHDOG_ENABLED=false`**
+2. 残っている `runBWatchdogFromTrigger` トリガーを削除
+3. `clasp push`
+4. AIにストック可。Bを1回起動。1列目`B済`が付く。完了後に次パックが連鎖  
+
+### Property
+| Key | 推奨 |
+|-----|------|
+| `B_WATCHDOG_ENABLED` | **`false`（本対策中必須）** |
+| `B_SCOPE_INSERTED_PRODUCTS_ONLY` | 未設定=ON |
+| `B_STEP1_FORCE_SLICE_AFTER` | 未設定=ON |
+| `B_STEP1_TOP_INSERT_ENABLED` | 上挿入するなら **`true`**／戻すなら `false` または削除 |
+
+---
+
+## 0t. セッション引き継ぎ（2026-08-14・上挿入）※履歴
+
+**場所**: **B Step1 上挿入** — スプシ AK/IB 値固定＋テンプレ1–2＋GAS（Property 未設定=旧末尾）。  
+**復元**: `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`
+
+### 済（当時）
+- [多数決](org/B_STEP1_TOP_INSERT_THREE_REVIEW_MAJORITY.md)／[要件](org/B_STEP1_TOP_INSERT_REQUIREMENTS.md)／[HUMAN_RUN](org/B_STEP1_TOP_INSERT_HUMAN_RUN.md)
+
+### Property（当時）
+| Key | 推奨 |
+|-----|------|
+| `B_STEP1_TOP_INSERT_ENABLED` | 上挿入するなら **`true`**／戻すなら `false` または削除 |
+| `B_PARENT_ROW_HEIGHT_ENABLED` | 未設定=ON／緊急 `false` |
+| `B_DF_STRATEGY_FORMULA_COPY_ENABLED` | 未設定=ON |
+| `B_WATCHDOG_ENABLED` | 本対策中は **false**（下記0節） |
+
+---
+
+## 0f. セッション引き継ぎ（2026-08-13・⑧f）※履歴
+
+**場所**: **⑧f 列ロック確定実装**（基本ロジック＋例外列は要件 §11〜§13）。  
+
+### 済
+- **⑧f**: [要件](org/B_MASTER_CELL_COLOR_RULES_REQUIREMENTS.md) §11〜§13／[凡例](org/B_MASTER_CELL_COLOR_RULES_HUMAN_RUN.md)
+  - `masterColorApplyLockedRow_`／`MASTER_COLOR_*_LETTERS_`／Step1適用
+  - Z **15-㉑** 選択行／**15-㉒** 11〜775
+  - スプシ: レ点行＋**11〜775** をロック色で塗色（API）
+  - 親赤白 `#f4cccc`（白字なし）／エラー濃赤は別
+- **⑧a＋⑧c** ほか（オレンジ未導入／条件付き書式非変更）
+
+### Property
+| Key | 推奨 |
+|-----|------|
+| `B_PARENT_ROW_HEIGHT_ENABLED` | 未設定=ON／緊急 `false` |
+| `B_DF_STRATEGY_FORMULA_COPY_ENABLED` | 未設定=ON |
+| `B_WATCHDOG_ENABLED` | 本対策中は **false**（§0） |
+
+---
+
+## 0s. セッション引き継ぎ（2026-08-12・シリーズ推定）※履歴
+
+**場所**: **マスタシリーズ 不明禁止＋商品名推定**（7.6合格後）。  
+**コミット**: 未（指示時）。  
+
+### 次にやること（当時）
+1. 人間: `clasp push` → シート再読込
+2. 「不明」の親: **Step6 同期** → `マスタシリーズ` が推定名 or 空
+3. 緊急停止: `SERIES_INFER_FROM_NAME_ENABLED=false`
+
+### 正本
+- [org/SERIES_INFER_FROM_NAME_REQUIREMENTS.md](org/SERIES_INFER_FROM_NAME_REQUIREMENTS.md)
+
+---
+
+## 0y. セッション引き継ぎ（2026-08-12・7.5／7.6）※履歴
+
+**場所**: **メニュー8 Yahoo 7.5／7.6**。  
+**コミット**: 未（指示時）。  
+
+### 次にやること（当時）
+1. clasp push → Z 7.6／B Step7.6 試験 → **7.6合格**
+
+---
+
+## 0z. セッション引き継ぎ（2026-08-12・E本線化）※履歴
+
+**場所**: **E本線化**（楽天ジャンル／Yahoo cat＝メニュー8都度API）＋⑥ N列ASIN。  
+**コミット**: 未（指示時）。  
+
+### 次にやること（当時）
+1. 人間: `clasp push` → シート再読込
+2. 旧 false キー削除
+3. レ点 3〜10親で B または手動7.5
+
+### 正本
+- [org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md](org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md)
+
+---
+
+## 0a. セッション引き継ぎ（2026-08-12・⑥N列）※履歴
+
+**場所**: **⑥ N列ASIN自動**（◎×ブランド＝メーカー → N列＋黄セル）。  
+**コミット**: 未（指示時）。  
+
+### 次にやること（当時）
+1. 人間: `clasp push` → シート再読込
+2. 試験: Z→**15-⑮**
+3. E: 要件確認 → **本線化済**（§0へ）
+
+---
+
+## 0b. セッション引き継ぎ（2026-08-12・メニュー8）※履歴
+
+**場所**: メニュー8 **v1.13**（ログで判明: 列J=商品名ベースまで削っていた＋FO二重計上）。  
+**コミット**: 未（指示時）。  
+
+### 次にやること（当時）
+1. 人間: 版履歴で **7.5前**に戻す（商品名ベース回復）
+2. 人間: `clasp push`（v1.13）
+3. 7.5を **1回** → GD≒70–75・商品名ベース残存を確認 → Property false
+
+### 正本
+- [org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)（v1.13）
+- [org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)
+
+### Property
+| Key | 推奨 |
+|-----|------|
+| `AMAZON_AI_AUTO_ADOPT_ENABLED` | **false**（手動7.5のときだけ一時 true） |
+| `B_INTEGRATED_MENU8_ENABLED` | 未設定／true |
+
+---
+
+## 0b. セッション引き継ぎ（2026-08-10）※履歴
 
 **場所**: Amazon出品は **本番運用可**（缶飯・相乗り等 SC出品中確認済。A3サブ画像も合格）。開発フォーカスはサブ画像楽天出口の品質改善など。  
 **コミット**: 未（指示時）。  
@@ -158,11 +293,13 @@
 
 ## 4. 次にやること（優先順）
 
-1. （済）広告運用GAS `clasp push`／`--schema-only`／Cinderellas 減衰開始日=2026-08-14。  
-2. 8/14: `python taper_send.py --poll --mail` → 1SKU `--prod --i-confirm-prod --wait --update-sheet --mail`（都度承認）。  
-3. 日次 dry_run。安定後に `--prod` または Windowsタスク。  
-4. T3／ε／U7（Dc④⑤）は各ゲート承認後。  
-5. remote `git push` は指示時。  
+1. （済）8/14 taper prod: Cinderellas b/s 22→18。**店頭ともに18%確認済**。  
+2. 日次 `taper_send.py --poll --mail`（dry_run）。Windows タスク **`OctasAmazonTaperDryRun`** 09:00。安定後に `--prod`。  
+3. **開発完了後**: タイムセール運用マニュアル化。  
+4. 8/27 Smile apply リマインド。9/4 restore＝減衰中%（仮想: 14）。  
+5. T3／ε／U7（B SP-API品番・Dc④⑤）は各ゲート承認後。  
+6. remote `git push` は指示時。  
+7. スコープ外（後で再提案）: B開始自動 apply／B終了自動 restore／数量メール `--send`／P1c-2／P1c-C／レーンA。  
 
 ---
 
@@ -184,6 +321,8 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-12 | **B P1実装**: シリーズID／メーカー辞書A181／カタログスラッグ13。要 clasp push。[要件](org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md)。 |
+| 2026-08-12 | **B番犬P0実装**: ハード死後自動再開・Step5行CP・プルダウンTIME_SLICE・サマリ・進捗メニュー。要 clasp push。[要件](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)。 |
 | 2026-08-12 | **販促2層減衰**: カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。`減衰開始日`。fetchは現在%のみ。要 clasp push／`--schema-only`。 |
 | 2026-08-10 | **本番常時ONセット**: PUT／ALLOW_PROD／LV4／SCサマリの未設定既定=true。MASTER_QTY・P4B・U2・U4は常時OFF。A1〜B2・A3合格反映。要 clasp push。 |
 | 2026-08-02 | **セットMAIN Phase A 実装**（`tools/set_main_image`・スモークOK）。実素材はHUMAN_RUN。[承認](org/LV4_SET_MAIN_IMAGE_PHASE_A_APPROVAL.md)。 |
