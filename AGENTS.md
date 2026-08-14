@@ -159,6 +159,8 @@ Cloud Agent は **リポジトリのコードだけがある隔離VM**で動く�
 4. スプレッドシートのメニューから該当機能を実行し、**`▼ログ(システム用)` 等でログ確認**（`runId`→失敗Step特定→Step別ログ）。
 5. 問題なければ **対象ファイルだけを `git add`** → 小さなコミット → push。
 
+**ローカル Python ツール**（例: `tools/c1_hpc_packaged/c1_packaged.py`・`c1_fetch_inputs.py`・`tools/spapi_smoke` 等）は、**ローカル Agent モードでターミナル実行する**（人間に「メニュー／手元で dry_run して」と丸投げしない）。GASメニュー操作・SCアップロード・Script Properties は人間。詳細は [docs/org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md](docs/org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md) §0。
+
 > `コード.js` は巨大な単一ファイル。**全文書き換え型の編集は避け**、対象関数の周辺だけを最小差分で変更する。
 
 ---

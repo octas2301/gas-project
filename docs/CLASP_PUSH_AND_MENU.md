@@ -9,7 +9,39 @@
 
 **「同時に両方のプロジェクトを反映」はできません。** メインと広告運用は **別々に**、それぞれの push 用フォルダで push します。
 
-### もし「Pushed ○ files」に inventory-app\… や docs\… や 参考資料\… が含まれていたら
+---
+
+## Cursor / ターミナルから実行ログを読む（clasp logs）
+
+**状態（2026-08-12）**: GAS は標準 GCP `gen-lang-client-0933127937`（番号 `510017297758`）に紐づけ済み。ルート `.clasp.json` に `"projectId"` を記載済み。`clasp setup-logs` / `clasp logs` は認証エラーなく通る。
+
+### 人間が1回だけやること
+
+1. Cloud Logging API を有効化:  
+   https://console.cloud.google.com/apis/library/logging.googleapis.com?project=gen-lang-client-0933127937  
+2. （任意）ログビューア: `clasp open-logs` または  
+   https://console.cloud.google.com/logs/viewer?project=gen-lang-client-0933127937&resource=app_script_function
+
+### Cursor ターミナル
+
+```powershell
+cd c:\Users\takuy\Desktop\gas-project
+clasp logs
+# または
+clasp tail-logs --watch
+```
+
+`PAST gen-lang-client-0933127937` のあとに行が出なければ、Cloud Logging 側にエントリが無い状態（正常な空）。
+
+### 注意（メニュー8など）
+
+- GAS エディタの「実行数」ログは主に **`Logger.log`**。
+- `clasp logs` が見る Cloud Logging は主に **`console.log` / `console.info`**。
+- メニュー8を Cursor から追うなら、主要ログを `console.log` にも出す改修が別途必要（または当面は「実行数」を見る）。
+
+---
+
+## もし「Pushed ○ files」に inventory-app\… や docs\… や 参考資料\… が含まれていたら
 
 - それらは **メインプロジェクト（AI出品ツール）に誤って取り込まれた**状態です。別プロジェクトのコードが混ざるとメニューや動作がおかしくなります。
 - **今すぐやること**は下記「誤 push したときの対処（メインプロジェクトを元に戻す）」を参照してください。

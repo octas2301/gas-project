@@ -1,11 +1,12 @@
 # Yahooカテゴリ／ブランド — Stage 要件（都度API・マスタ書込）
 
 **文書種別**: requirements（実装前の正）  
-**最終更新**: 2026-07-26  
-**状態**: **実装済**（SHP `getShopCategoryList`／`getShopBrandList` 正本検証を含む）  
+**最終更新**: 2026-08-12  
+**状態**: **実装済**（SHP 正本検証＋**7.5 price_aware／7.6 popular_only**）  
 **承認パッケージ**: [org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md](org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md)  
 **手順**: [org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)  
 **親**: メニュー8（[org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)）／楽天同型 [RAKUTEN_NAV_GENRE_STAGE3.md](RAKUTEN_NAV_GENRE_STAGE3.md)
+**E確認**: [org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md](org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md)
 
 ---
 
@@ -17,13 +18,24 @@
 | 候補ソース | Yahoo!ショッピング商品検索 v3（売れ筋＋最安）／競合ゼロ時は AI列・Drive CSV（**候補のみ**） |
 | AIの★推奨Yahooカテゴリ／ブランド | **正本にしない**（候補・フォールバックのみ） |
 | 書込先（親行） | `YahooカテゴリID` / `(Yahooカテゴリ名)` / `Yahooブランドコード` |
-| **YahooカテゴリID の選定** | 候補抽出（売れ筋＋自社最安）→ **SHP検証OKのものだけ書込** |
+| **YahooカテゴリID の選定** | **モード分岐**（下表）。いずれも書込前に **SHP検証OKのみ** |
 | `(Yahooカテゴリ名)` | SHP の `PathName` を優先（`＞`/`>` → `:`）。無ければ候補の階層連結 |
 | ショップ運用 | プロダクト階層をショップ path に写す前提 |
-| 入口 | **メニュー8** |
+| 入口 | **Z 7.5**＝`price_aware`／**Z 7.6**＝`popular_only`／**B統合は 7.6**（7.5は差し替え） |
 | 聖域 | `generateRakutenCSV`／**Yahoo.js の editItem／画像／在庫送信は非改変**（認証再利用と SHP 読取ヘルパのみ追加可）／B統合境界非改変 |
-| トグル | `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED` 既定 **false** |
+| トグル | `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED` 未設定＝**ON**（緊急停止のみ false） |
 | 認証（SHP） | `▼設定(Yahooマッピング)` の Client／Secret／Refresh／**seller_id(B15)**（出品と同じ） |
+
+---
+
+## 0.1 モード（2026-08-12 確定）
+
+| モード | 入口 | カテゴリ | ブランド |
+|--------|------|----------|----------|
+| `price_aware` | Z **7.5** | 売れ筋重み＋自社 `Yahoo!価格設定` 最安プローブ（従来） | 市場投票／AI・Drive FB → SHP |
+| `popular_only` | Z **7.6**／**B Step7.6** | 売れ筋重み最大のみ（価格・最安プローブなし） | **メーカー名 SHP 優先** → 失敗時 **`38074`（ブランド登録なし）**。AI/Drive ブランド候補は使わない |
+
+定数: `YAHOO_CAT_MODE_PRICE_AWARE_` / `YAHOO_CAT_MODE_POPULAR_ONLY_` / `YAHOO_BRAND_CODE_NO_BRAND_='38074'`。
 
 ---
 
@@ -42,23 +54,26 @@
 
 ---
 
-## 2. 処理フロー（v1.1）
+## 2. 処理フロー（v1.2）
 
 ```text
 メニュー8（レ点親）・YahooトグルON
-  → 【候補】JAN/商品名 → itemSearch 売れ筋＋最安（従来）
-       失敗時 → AI列 / Drive CSV（§2.7）
-  → 【正本検証】getShopCategoryList（Yahoo ID連携）
-       1) 候補IDを category_code＋query で照会
-       2) 不一致・0件 → 葉名（path末尾）で query 検索し SC上の CategoryCode を採用
-       3) それでも無し → カテゴリ非書込＋要確認
-       4) OK時: ID＝CategoryCode、path＝PathName（:正規化）、理由に shp_validated / shp_resolved
+  → 【候補】JAN/商品名 → itemSearch sort=-review_count
+       price_aware: 重み上位Kを最安プローブ＋自社価格比較
+       popular_only: 重み最大のみ（プローブなし）
+       price_aware かつ失敗時 → AI列 / Drive CSV（§2.7）
+       popular_only かつ失敗時 → カテゴリは要確認（ブランドは38074可）
+  → 【正本検証】getShopCategoryList（Yahoo ID連携）… §2.8
+  → ブランド:
+       price_aware: 市場投票／§2.7 → getShopBrandList
+       popular_only: メーカー名 name 検索 → 無ければ 38074
   → 親行へ書込
 ```
 
 ### 2.1〜2.3（候補ルール）
 
-（従来どおり: 売れ筋＋自社最安／ブランド投票／`:` 連結は候補用。書込 path は SHP PathName 優先）
+- `price_aware`: 売れ筋＋自社最安／ブランド投票／`:` 連結は候補用。書込 path は SHP PathName 優先  
+- `popular_only`: `amazonAiPickYahooCategoryPopularWeightOnly_`（TOP_N 重み最大）
 
 ### 2.8 SHP 正本検証（必須）
 
@@ -76,11 +91,12 @@
 
 | 段階 | 規則 |
 |------|------|
-| 候補 | 市場ヒットの `brand.id` 投票、または §2.7 AI/Drive |
-| **正本** | Circus **`getShopBrandList`**（カテゴリの getShopCategoryList と同型） |
-| 検証 | 候補コードを `type=code` で照会 → OKなら書込（`shp_brand_validated`） |
-| API取得 | 候補が無い／無効なら **メーカー名**で `type=name` 検索し BrandCode を採用（`shp_brand_from_maker` / `shp_brand_resolved_*`） |
-| 失敗 | ブランド非書込＋要確認 |
+| 候補（`price_aware`） | 市場ヒットの `brand.id` 投票、または §2.7 AI/Drive |
+| 候補（`popular_only`） | **市場投票・AI/Drive 不使用**。メーカー名のみ |
+| **正本** | Circus **`getShopBrandList`** |
+| 検証（`price_aware`） | 候補コード `type=code` → 無ければメーカー `type=name` |
+| 検証（`popular_only`） | メーカー `type=name` を先に照合 → 失敗／認証失敗時 **`38074`**（`no_brand_fallback`） |
+| 失敗（`price_aware`） | ブランド非書込＋要確認 |
 
 ### 2.9 SHPブランド正本（必須）
 
@@ -129,7 +145,7 @@
 | Key | 既定 | 意味 |
 |-----|------|------|
 | `AMAZON_AI_AUTO_ADOPT_ENABLED` | false | メニュー8本体（既存） |
-| `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED` | **false** | Yahooカテゴリ／ブランド。false なら当該3列を触らない |
+| `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED` | **未設定＝ON** | Yahooカテゴリ／ブランド。false なら当該3列を触らない |
 | `YAHOO_SHOPPING_CLIENT_ID` | （既存） | 商品検索 v3（候補用） |
 | `AMAZON_AI_ADOPT_YAHOO_CAT_CANDIDATE_K` | **3**（任意） | 最安プローブ候補数 |
 | Yahooマッピング B12–B15 | （既存） | SHP用 Client／Secret／Refresh／seller_id |
@@ -185,6 +201,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-12 | **7.5維持／7.6 popular_only＋38074**。B統合は Step7.6 に差し替え。 |
 | 2026-07-26 | Stage3/4 は**必要時メモのみ**（実装しない）。 |
 | 2026-07-26 | **ブランド正本=getShopBrandList**。コード検証＋メーカー名でAPI取得。 |
 | 2026-07-26 | **正本=SHP getShopCategoryList**。候補は市場/AI、書込前検証必須。 |

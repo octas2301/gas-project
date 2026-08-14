@@ -17,7 +17,7 @@
 | 書込先 | `楽天ジャンルID` / `楽天ジャンルID名`（親行） |
 | 入口 | **メニュー8**（KW・テーマの後フェーズ） |
 | 聖域 | `generateRakutenCSV`／楽天CSV・FTP **非改変** |
-| トグル | `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED` 既定 **false** |
+| トグル | `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED` 未設定＝**ON**（緊急停止のみ false） |
 
 ---
 
@@ -69,7 +69,7 @@ NavigationAPI 2.0 の `genres.get` は **ID指定の取得**のみ（フリー�
 | Key | 既定 | 意味 |
 |-----|------|------|
 | `AMAZON_AI_AUTO_ADOPT_ENABLED` | false | メニュー8本体（既存） |
-| `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED` | **false** | ジャンル都度APIフェーズ。false ならメニュー8でもジャンルを触らない |
+| `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED` | **未設定＝ON** | ジャンル都度API。false ならメニュー8でもジャンルを触らない |
 
 認証:
 

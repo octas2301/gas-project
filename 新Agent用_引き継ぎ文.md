@@ -31,6 +31,8 @@
 | **運用構成メモ.md** | 運用上のメモ（必要に応じて参照）。 |
 | **.clasp.json** | clasp 用の scriptId。GAS への push/pull に使用。 |
 
+**リサーチ・見積もり（B統合 Step1〜4）を引き継ぐとき**は、先に `docs/SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md` を読む。CPO V2・画像ガード・物流3D・次タスク（異常 setCount 除外など）が1本にまとまっている。
+
 その他、`check-rakuten-32byte.js` や `export-tax-list/` 内のドキュメントなどは、該当機能の開発時に参照。
 
 ---
