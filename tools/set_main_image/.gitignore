@@ -7,3 +7,5 @@ glyphs/rakuten/*.png
 _*.py
 tmp_*
 **/tmp_*
+_portrait_samples/
+_sub_bg_photos/
