@@ -272,6 +272,7 @@ def spapi_item_offers_cap(asin: str, sess: dict, cap: int = 100) -> dict:
         "retries": retries,
         "limit": "",
         "head": seen[:8],
+        "ids": seen,
         "offers_in_last": len(offers) if pages else 0,
     }
 

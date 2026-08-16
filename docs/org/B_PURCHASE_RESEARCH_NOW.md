@@ -174,7 +174,13 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
 | T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
 | T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
-| T-p12-curry-list | カレー通過11をリスト追記 append11 既存105 式33非書 | **フェーズ1合格** |
+| T-spapi-memo | FLOW §5.5 2026-08-16。ItemOffers 1/秒・明細最大20・429待ち | **フェーズ1合格** |
+| T-a1b-dry | after=B0DT4XNK46 remain104 seller23 cap81 sleep1.1 smoke200 | **フェーズ2合格** |
+| T-a1b-col | 新規+3（累計bb+spapi=22）。api19で429 last=B0D8HVYGK3 | **フェーズ3合格（打ち切り）** |
+| T-a1-skip-mix | 構成比は店指定なしのため未実施 | **フェーズ4スキップ** |
+| T-a1-huge | A3L1 メモ洗わない total=2834。queryなし | **フェーズ5合格** |
+| T-a1-dry | pass116 seller4 bb_hit97 bb_new0 smoke200 uniq1 | **フェーズ2合格** |
+| T-a1-col | 新規19追記。api12で429停止。cap100未達。構成比なし | **フェーズ3合格（打ち切り）** |
 | T-p12-join | JOIN list159 miss0 cells0 | **フェーズ2合格** |
 | T-p2from | フロム通過13をリスト追記 append13 既存92 式33非書 | **フェーズ2合格** |
 | T-p3join | JOIN list148 miss0 cells0 | **フェーズ3合格** |
