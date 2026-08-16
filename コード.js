@@ -1070,7 +1070,7 @@ var B_COMP_ASIN_AUTOFILL_YELLOW_ = MASTER_COLOR_HUMAN_;
 /** 子行・灰（式／転記／触らない）— 列字母。正本は要件 §12 */
 var MASTER_COLOR_CHILD_GRAY_LETTERS_ = [
   'B', 'D', 'I', 'J', 'L', 'M', 'U', 'V', 'W', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO',
-  'AP', 'AQ', 'AZ', 'BA', 'BB', 'BK', 'BL', 'BW', 'BX', 'BY', 'BZ', 'CA', 'CT', 'CU', 'CV', 'CZ', 'DA', 'DB', 'DD', 'DF',
+  'AP', 'AQ', 'BK', 'BL', 'BW', 'BX', 'BY', 'BZ', 'CA', 'CT', 'CU', 'CV', 'CZ', 'DA', 'DB', 'DD', 'DF',
   'DG', 'DH', 'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DP', 'DQ', 'DR', 'DS', 'DT', 'DU', 'DW', 'DX', 'DY', 'EE', 'EF', 'EG',
   'EH', 'EI', 'EJ', 'EK', 'EL', 'EM', 'EN', 'EO', 'EQ', 'ER', 'ES', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG',
   'FL', 'FO', 'FQ', 'GF', 'GN', 'GO', 'GP', 'GQ', 'GR', 'GS', 'GT', 'HI', 'HL', 'HO', 'HP', 'HR', 'HS', 'HW', 'HX', 'HY',
@@ -16088,6 +16088,11 @@ function menuInsertMissingSetCountRows() {
       var dstAll = masterSheet.getRange(newRow, FORMULA_TMPL_COL_START, 1, formulaTmplNumCols);
       srcAll.copyTo(dstAll, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
       Logger.log('[抜けセット数行]   テンプレ行' + templateRow1Based + 'から 列' + FORMULA_TMPL_COL_START + '-' + FORMULA_TMPL_COL_END + ' を数式コピー（⇒AI作業エリアまで）');
+      var comboSkip = r12CollectComboExcludeCols1Based_(masterColMap, FORMULA_TMPL_COL_START, FORMULA_TMPL_COL_END);
+      for (var cs = 0; cs < comboSkip.length; cs++) {
+        masterSheet.getRange(newRow, comboSkip[cs]).clearContent();
+      }
+      if (comboSkip.length) Logger.log('[抜けセット数行]   セット構成列を子行からクリア cols=' + comboSkip.join(','));
     }
 
     // A-B: 挿入行は直前行参照の連番数式を直接設定。挿入行の下は1回の範囲書きで連番数式を設定。
@@ -23951,6 +23956,270 @@ function getBusinessSetCount(productName, maxCompetitive) {
   }
 }
 
+/** AI 2行目(index1) = Keepaブロック0。パック内の 0,1,2 ではない。R12-2 */
+function r12KeepaBlockFromAiRowIndex0_(rowIndex0) {
+  var n = Number(rowIndex0);
+  if (!isFinite(n) || n < 1) return -1;
+  return n - 1;
+}
+
+function r12IsAiMixRow_(aiRow, aiColMap) {
+  if (!aiRow || !aiColMap) return false;
+  var n = 0;
+  for (var i = 1; i <= 5; i++) {
+    var idx = aiColMap['構成' + i + '_商品名'];
+    if (idx === undefined) continue;
+    if (String(aiRow[idx] || '').trim() !== '') n++;
+  }
+  return n >= 2;
+}
+
+function r12CollectComboExcludeCols1Based_(masterColMap, start1, end1) {
+  var out = [];
+  if (!masterColMap) return out;
+  var names = Object.keys(masterColMap);
+  for (var i = 0; i < names.length; i++) {
+    var name = names[i];
+    if (String(name).indexOf('セット構成') !== 0) continue;
+    var c1 = masterColMap[name] + 1;
+    if (c1 >= start1 && c1 <= end1 && out.indexOf(c1) < 0) out.push(c1);
+  }
+  out.sort(function (a, b) { return a - b; });
+  return out;
+}
+
+function r12MergeExcludedCols1Based_(baseList, extraList) {
+  var out = (baseList || []).slice();
+  var extra = extraList || [];
+  for (var i = 0; i < extra.length; i++) {
+    if (out.indexOf(extra[i]) < 0) out.push(extra[i]);
+  }
+  out.sort(function (a, b) { return a - b; });
+  return out;
+}
+
+/**
+ * JAN→Keepaブロック。AI行番号対応。同一JANが複数またはミックスJANは載せない（単品Keepaを流さない）。
+ */
+function r12BuildJanToKeepaBlockMap_(aiData, aiColMap) {
+  var janToBlock = {};
+  var janHits = {};
+  var mixJans = {};
+  if (!aiData || aiData.length < 2 || !aiColMap) return janToBlock;
+  var janIdx = aiColMap['JANコード'];
+  for (var ar = 1; ar < aiData.length; ar++) {
+    var row = aiData[ar];
+    var jan = janIdx === undefined ? '' : String(row[janIdx] || '').trim();
+    if (r12IsAiMixRow_(row, aiColMap) && jan) mixJans[jan] = true;
+    if (!jan) continue;
+    janHits[jan] = (janHits[jan] || 0) + 1;
+    if (janToBlock[jan] === undefined) janToBlock[jan] = r12KeepaBlockFromAiRowIndex0_(ar);
+  }
+  var keys = Object.keys(janToBlock);
+  for (var k = 0; k < keys.length; k++) {
+    var j = keys[k];
+    if (janHits[j] > 1 || mixJans[j]) delete janToBlock[j];
+  }
+  Logger.log('[R12 Keepa] janToBlock=' + Object.keys(janToBlock).length + ' mixJans=' + Object.keys(mixJans).length);
+  return janToBlock;
+}
+
+function r12MasterIsComboParentRow_(mRow, masterColMap) {
+  if (!mRow || !masterColMap) return false;
+  var idx = masterColMap['セット構成1_親SKU'];
+  if (idx === undefined) return false;
+  return String(mRow[idx] || '').trim() !== '';
+}
+
+function r12FindParentRowIdx_(values, headerRowIdx, row, colChild) {
+  if (colChild === undefined || !values) return -1;
+  for (var r = row; r > headerRowIdx; r--) {
+    if (String(values[r][colChild] || '').trim() === '') return r;
+  }
+  return -1;
+}
+
+function r12NormName_(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim();
+}
+
+function r12NormCost_(s) {
+  var n = Number(String(s == null ? '' : s).replace(/,/g, '').trim());
+  return isFinite(n) ? n : NaN;
+}
+
+function r12ParseQty_(s) {
+  var n = parseInt(String(s == null ? '' : s).replace(/[^0-9]/g, ''), 10);
+  return (!isNaN(n) && n >= 1) ? n : 0;
+}
+
+function r12FindSingleParentByNameCost_(masterValues, headerRowIdx, masterColMap, name, costIn) {
+  var colChild = masterColMap['子SKU'];
+  var colName = masterColMap['商品名ベース'] !== undefined ? masterColMap['商品名ベース'] : (masterColMap['商品名'] !== undefined ? masterColMap['商品名'] : masterColMap['商品名amazon']);
+  var colCost = masterColMap['卸値(税込)'];
+  var colParent = masterColMap['親SKU'];
+  if (colName === undefined || colCost === undefined || colParent === undefined) return null;
+  var wantName = r12NormName_(name);
+  var wantCost = r12NormCost_(costIn);
+  if (!wantName || isNaN(wantCost)) return null;
+  for (var r = headerRowIdx + 1; r < masterValues.length; r++) {
+    var row = masterValues[r];
+    if (colChild !== undefined && String(row[colChild] || '').trim() !== '') continue;
+    if (r12MasterIsComboParentRow_(row, masterColMap)) continue;
+    if (r12NormName_(row[colName]) !== wantName) continue;
+    if (r12NormCost_(row[colCost]) !== wantCost) continue;
+    var sku = String(row[colParent] || '').trim();
+    if (!sku) continue;
+    return { rowIdx: r, parentSku: sku, row: row };
+  }
+  return null;
+}
+
+function r12MinCompInFamily_(masterValues, headerRowIdx, parentRowIdx, masterColMap, priceHeader) {
+  var colPrice = masterColMap[priceHeader];
+  var colChild = masterColMap['子SKU'];
+  if (colPrice === undefined) return null;
+  var min = Infinity;
+  for (var r = parentRowIdx; r < masterValues.length; r++) {
+    if (r > parentRowIdx && colChild !== undefined && String(masterValues[r][colChild] || '').trim() === '') break;
+    var p = r12NormCost_(masterValues[r][colPrice]);
+    if (!isNaN(p) && p >= 10 && p < min) min = p;
+  }
+  return min === Infinity ? null : min;
+}
+
+function r12PackDim_(row, masterColMap, header) {
+  var idx = masterColMap[header];
+  if (idx === undefined) return null;
+  var n = r12NormCost_(row[idx]);
+  return (!isNaN(n) && n > 0) ? n : null;
+}
+
+/**
+ * ミックス親に構成SKU・状態・3辺・競合足し算を書く。子行の構成列は触らない。偽ASINは書かない。
+ */
+function r12ApplyComboBomToParentBlock_(ss, masterSheet, masterColMap, aiRow, aiColMap, parentRow1Based, nRows) {
+  if (!r12IsAiMixRow_(aiRow, aiColMap)) return;
+  var colSku1 = masterColMap['セット構成1_親SKU'];
+  if (colSku1 === undefined) {
+    Logger.log('[R12 combo] マスタにセット構成1_親SKUが無いのでスキップ');
+    return;
+  }
+  SpreadsheetApp.flush();
+  var masterValues = masterSheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(masterValues.length, 25); hr++) {
+    if ((masterValues[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
+  }
+  if (headerRowIdx < 0) return;
+  var found = [];
+  var missing = false;
+  for (var i = 1; i <= 5; i++) {
+    var nIdx = aiColMap['構成' + i + '_商品名'];
+    var qIdx = aiColMap['構成' + i + '_数量'];
+    var nm = nIdx === undefined ? '' : String(aiRow[nIdx] || '').trim();
+    if (!nm) continue;
+    var qty = qIdx === undefined ? 0 : r12ParseQty_(aiRow[qIdx]);
+    if (qty < 1) qty = 1;
+    var costIn = '';
+    var costIdx = aiColMap['卸値(税込)'];
+    if (costIdx !== undefined) costIn = aiRow[costIdx];
+    var hit = r12FindSingleParentByNameCost_(masterValues, headerRowIdx, masterColMap, nm, costIn);
+    if (!hit) {
+      missing = true;
+      Logger.log('[R12 combo] 欠け 構成' + i + ' name=' + nm);
+      found.push({ i: i, sku: '', qty: qty, hit: null });
+    } else {
+      Logger.log('[R12 combo] hit 構成' + i + ' sku=' + hit.parentSku + ' qty=' + qty);
+      found.push({ i: i, sku: hit.parentSku, qty: qty, hit: hit });
+    }
+  }
+  var status = missing ? '欠け' : 'OK';
+  var amzSum = 0;
+  var rakSum = 0;
+  var yahSum = 0;
+  var amzOk = !missing;
+  var rakOk = !missing;
+  var yahOk = !missing;
+  var wSum = 0;
+  var dSum = 0;
+  var hSum = 0;
+  var dimOk = !missing;
+  for (var f = 0; f < found.length; f++) {
+    var it = found[f];
+    var skuCol = masterColMap['セット構成' + it.i + '_親SKU'];
+    var qtyCol = masterColMap['セット構成' + it.i + '_数量'];
+    if (skuCol !== undefined) masterSheet.getRange(parentRow1Based, skuCol + 1).setValue(it.sku);
+    if (qtyCol !== undefined) masterSheet.getRange(parentRow1Based, qtyCol + 1).setValue(it.qty || '');
+    if (!it.hit) continue;
+    var q = it.qty;
+    var am = r12MinCompInFamily_(masterValues, headerRowIdx, it.hit.rowIdx, masterColMap, COL_COMPETITIVE_PRICE_AMAZON);
+    var rk = r12MinCompInFamily_(masterValues, headerRowIdx, it.hit.rowIdx, masterColMap, COL_COMPETITIVE_PRICE_RAKUTEN);
+    var yh = r12MinCompInFamily_(masterValues, headerRowIdx, it.hit.rowIdx, masterColMap, COL_COMPETITIVE_PRICE_YAHOO);
+    if (am == null) amzOk = false; else amzSum += am * q;
+    if (rk == null) rakOk = false; else rakSum += rk * q;
+    if (yh == null) yahOk = false; else yahSum += yh * q;
+    var w = r12PackDim_(it.hit.row, masterColMap, '梱包:幅(cm)');
+    var d = r12PackDim_(it.hit.row, masterColMap, '梱包:奥(cm)');
+    var h = r12PackDim_(it.hit.row, masterColMap, '梱包:高(cm)');
+    if (w == null || d == null || h == null) dimOk = false;
+    else {
+      wSum += w * q;
+      dSum += d * q;
+      hSum += h * q;
+    }
+  }
+  if (!amzOk || !rakOk || !yahOk || !dimOk) {
+    if (status === 'OK') status = '人が見る';
+  }
+  var stCol = masterColMap['セット構成_状態'];
+  if (stCol !== undefined) masterSheet.getRange(parentRow1Based, stCol + 1).setValue(status);
+  var colW = masterColMap['セット構成_幅_cm'];
+  var colD = masterColMap['セット構成_奥_cm'];
+  var colH = masterColMap['セット構成_高_cm'];
+  var colPackW = masterColMap['梱包:幅(cm)'];
+  var colPackD = masterColMap['梱包:奥(cm)'];
+  var colPackH = masterColMap['梱包:高(cm)'];
+  if (dimOk) {
+    if (colW !== undefined) masterSheet.getRange(parentRow1Based, colW + 1).setValue(wSum);
+    if (colD !== undefined) masterSheet.getRange(parentRow1Based, colD + 1).setValue(dSum);
+    if (colH !== undefined) masterSheet.getRange(parentRow1Based, colH + 1).setValue(hSum);
+    if (colPackW !== undefined) masterSheet.getRange(parentRow1Based, colPackW + 1).setValue(wSum);
+    if (colPackD !== undefined) masterSheet.getRange(parentRow1Based, colPackD + 1).setValue(dSum);
+    if (colPackH !== undefined) masterSheet.getRange(parentRow1Based, colPackH + 1).setValue(hSum);
+  }
+  var colAmz = masterColMap[COL_COMPETITIVE_PRICE_AMAZON];
+  var colRak = masterColMap[COL_COMPETITIVE_PRICE_RAKUTEN];
+  var colYah = masterColMap[COL_COMPETITIVE_PRICE_YAHOO];
+  var colCompAsin = masterColMap['競合店ASINコード'];
+  if (colCompAsin !== undefined) {
+    masterSheet.getRange(parentRow1Based, colCompAsin + 1, nRows, 1).setValue('');
+  }
+  function writeMall(col, ok, unitSum) {
+    if (col === undefined) return;
+    if (!ok) {
+      masterSheet.getRange(parentRow1Based, col + 1, nRows, 1).clearContent();
+      return;
+    }
+    var vals = [[Math.round(unitSum)]];
+    for (var c = 1; c < nRows; c++) {
+      var setQtyIdx = masterColMap[COL_MASTER_TOTAL_QTY];
+      var setN = 1;
+      if (setQtyIdx !== undefined) {
+        var raw = masterSheet.getRange(parentRow1Based + c, setQtyIdx + 1).getValue();
+        setN = r12ParseQty_(raw) || 1;
+      }
+      vals.push([Math.round(unitSum * setN)]);
+    }
+    masterSheet.getRange(parentRow1Based, col + 1, nRows, 1).setValues(vals);
+  }
+  writeMall(colAmz, amzOk, amzSum);
+  writeMall(colRak, rakOk, rakSum);
+  writeMall(colYah, yahOk, yahSum);
+  Logger.log('[R12 combo] parentRow=' + parentRow1Based + ' status=' + status +
+    ' amzOk=' + amzOk + ' rakOk=' + rakOk + ' yahOk=' + yahOk + ' dimOk=' + dimOk);
+}
+
 /**
  * ASIN貼り付けシートの指定ブロックから、◎行のみを対象にセット数別の
  * 最低価格・そのASIN・商品URLを返す。
@@ -24459,17 +24728,7 @@ function menuProposeSalesPrices() {
   var aiData = aiSheet.getDataRange().getValues();
   var aiColMap = getAiColumnIndexMap_(aiData[0] || []);
   var aiJanIdx = aiColMap['JANコード'];
-  var janToBlock = {};
-  if (aiJanIdx !== undefined) {
-    var blockNo = 0;
-    for (var ar = 1; ar < aiData.length; ar++) {
-      var jan = String(aiData[ar][aiJanIdx] || '').trim();
-      if (jan !== '') {
-        if (janToBlock[jan] === undefined) janToBlock[jan] = blockNo;
-        blockNo++;
-      }
-    }
-  }
+  var janToBlock = r12BuildJanToKeepaBlockMap_(aiData, aiColMap);
 
   var blockCache = {};
   function getCachedBlock(blockIndex) {
@@ -29641,8 +29900,9 @@ function menuSetCompositionProposal() {
       ''
     ];
     // セット数別の最低価格とそのASINを取得（◎行のみ）
-    var priceAndAsinBySet = getMinPriceAndAsinBySetCountFromAsinPasteBlock(asinSheet, i);
-    Logger.log('[セット構成提案] index=' + i + ' 商品名=' + getAiProductName(aiRow));
+    var keepaBlock = r12KeepaBlockFromAiRowIndex0_(aiDataRows[i].rowIndex);
+    var priceAndAsinBySet = getMinPriceAndAsinBySetCountFromAsinPasteBlock(asinSheet, keepaBlock);
+    Logger.log('[セット構成提案] index=' + i + ' keepaBlock=' + keepaBlock + ' aiRow=' + (aiDataRows[i].rowIndex + 1) + ' mix=' + r12IsAiMixRow_(aiRow, aiColMap) + ' 商品名=' + getAiProductName(aiRow));
     Logger.log('[セット構成提案] priceAndAsinBySet=' + JSON.stringify(priceAndAsinBySet));
     // 親行用: 全セット中の最低価格とそのASIN・URL
     var parentCompetitivePrice = '';
@@ -29659,7 +29919,7 @@ function menuSetCompositionProposal() {
         parentUrl  = entry.url || '';
       }
     }
-    var block = i < blockResults.length ? blockResults[i] : null;
+    var block = (keepaBlock >= 0 && keepaBlock < blockResults.length) ? blockResults[keepaBlock] : null;
     var productName4Gap = getAiProductName(aiRow);
     var packetsPerBag = extractPacketsPerBag(productName4Gap);
     // 3ヶ月（90日）絶対上限（異常値カット用）
@@ -29914,7 +30174,8 @@ function menuSetCompositionProposal() {
     var excludedCols = [];
     if (strategyCol1Based >= FORMULA_TMPL_COL_START && strategyCol1Based <= FORMULA_TMPL_COL_END) excludedCols.push(strategyCol1Based);
     if (expiryCol1Based >= FORMULA_TMPL_COL_START && expiryCol1Based <= FORMULA_TMPL_COL_END && excludedCols.indexOf(expiryCol1Based) < 0) excludedCols.push(expiryCol1Based);
-    excludedCols.sort(function(a, b) { return a - b; });
+    excludedCols = r12MergeExcludedCols1Based_(excludedCols, r12CollectComboExcludeCols1Based_(masterColMap, FORMULA_TMPL_COL_START, FORMULA_TMPL_COL_END));
+    Logger.log('[セット構成提案] 式コピー除外(セット構成含む)=' + JSON.stringify(excludedCols));
     var prev = FORMULA_TMPL_COL_START - 1;
     for (var ex = 0; ex < excludedCols.length; ex++) {
       var c = excludedCols[ex];
@@ -30042,6 +30303,11 @@ function menuSetCompositionProposal() {
       } catch (eColor) {
         Logger.log('[セット構成提案] 色付けスキップ: ' + (eColor && eColor.message));
       }
+      try {
+        r12ApplyComboBomToParentBlock_(ss, masterSheet, masterColMap, aiRow, aiColMap, rowCursor, nRows);
+      } catch (eCombo) {
+        Logger.log('[R12 combo] 適用失敗: ' + (eCombo && eCombo.message));
+      }
       if (isBInsertedScopeActive_()) {
         SpreadsheetApp.flush();
         var parentSkuRead = '';
@@ -30124,17 +30390,7 @@ function menuUpdateCompetitivePriceOnly() {
   var aiData = aiSheet.getDataRange().getValues();
   var aiColMap = getAiColumnIndexMap_(aiData[0] || []);
   var aiJanIdx = aiColMap['JANコード'];
-  var janToBlock = {};
-  if (aiJanIdx !== undefined) {
-    var blockNo = 0;
-    for (var ar = 1; ar < aiData.length; ar++) {
-      var jan = String(aiData[ar][aiJanIdx] || '').trim();
-      if (jan !== '') {
-        if (janToBlock[jan] === undefined) janToBlock[jan] = blockNo;
-        blockNo++;
-      }
-    }
-  }
+  var janToBlock = r12BuildJanToKeepaBlockMap_(aiData, aiColMap);
 
   // マスタのヘッダー行検出
   var masterValues = masterSheet.getDataRange().getValues();
@@ -30181,6 +30437,12 @@ function menuUpdateCompetitivePriceOnly() {
     if (jan === '' || setVal === '') continue; // 子行のみ対象（セット数あり）
     var setNum = parseInt(setVal, 10);
     if (isNaN(setNum) || setNum < 1) continue;
+    var colChildB1 = masterColMap['子SKU'];
+    var parentIdxB1 = r12FindParentRowIdx_(masterValues, headerRowIdx, r, colChildB1);
+    if (parentIdxB1 >= 0 && r12MasterIsComboParentRow_(masterValues[parentIdxB1], masterColMap)) {
+      skippedCount++;
+      continue;
+    }
 
     var blockIndex = janToBlock[jan];
     if (blockIndex === undefined) { skippedCount++; continue; }

@@ -1,6 +1,6 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-08-16（実行時間は B Step＋Step5 API のみ。全関数計測はしない）
+**最終更新**: 2026-08-16（組み合わせセット要件正本化。実装は列追加・Keepa対応が先）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
@@ -23,6 +23,7 @@
 | R9 | キュー3→4 | **しない**（R3/R5の実測後に別承認） |
 | R10 | 楽天CSV／Yahoo.js／B順 | 触らない |
 | R11 | 処理時間 | 済。シート `▼実行時間`。配線は B Step と Step5 の geminiSearch／geminiVision／openaiVision のみ。共通 `logOpTiming_`。切戻し `OP_TIMING_ENABLED=false`。**全関数 `console.time` 禁止**（再指示時は `.cursor/rules/op-timing-scope.mdc` で止める） |
+| R12 | 異種組み合わせセット | R12-0〜4 コード済。[org/COMBO_SET_BOM_REQUIREMENTS.md](org/COMBO_SET_BOM_REQUIREMENTS.md)。上限3維持。次＝R12-5 人がチーズかつお＋だしでB検収。要 clasp |
 
 ---
 
