@@ -171,7 +171,10 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p2c-seller | A3L1BD8LA6USKU storefront=0 食品61.5 cats10 n台帳3 | **合格** |
 | T-p3c-q | A3P240C6ET053M query page0 total=163 n=100 in_cand=4。1000以下 | **合格** |
 | T-p1-pg1 | 同店 page1 n=63 total=163。全件ダンプなし | **フェーズ1合格** |
-| T-p2-k20 | page1 miss63のうちKeepa20 rest43。製造者は天然生活7件ほか | **フェーズ2合格（残りあり）** |
+| T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
+| T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
+| T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
+| T-p15-5 | リスト+4 JOIN miss0 式非書 | **合格** |
 | T-p4-osu | 永谷園お吸いもの Catalog1頁 タイトル13 Keepa13 pass1/drop12 ①+13 リスト+1 | **フェーズ4・5合格** |
 | T-p2-skip | A3L1 メモ「洗わない」。出品一覧GETなし | **確定** |
 | T-p1f | 永谷園ふりかけ Catalog1頁 タイトル17 Keepa17 pass1/drop16 ①+17 ヒット不変 リスト+1 | **合格** |
