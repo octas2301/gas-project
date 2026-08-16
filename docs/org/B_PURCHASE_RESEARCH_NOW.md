@@ -174,7 +174,10 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
 | T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
 | T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
-| T-spapi-memo | FLOW §5.5 2026-08-16。ItemOffers 1/秒・明細最大20・429待ち | **フェーズ1合格** |
+| T-a1c-2s | after=B0D8HVYGK3 sleep2 新規+7 api45で429 last=B0G5DHJ5L7 | **フェーズ1合格（打ち切り）** |
+| T-a1-batch | まとめ20件 200。2本目429。新規+34。成功末尾 B0DK6SBFQ7 | **フェーズ2合格（打ち切り）** |
+| T-a1-mix-skip | 洗う店の指定なし。構成比未実施 | **フェーズ3スキップ** |
+| T-a1-huge2 | A3L1 洗わない。queryなし | **フェーズ4合格** |
 | T-a1b-dry | after=B0DT4XNK46 remain104 seller23 cap81 sleep1.1 smoke200 | **フェーズ2合格** |
 | T-a1b-col | 新規+3（累計bb+spapi=22）。api19で429 last=B0D8HVYGK3 | **フェーズ3合格（打ち切り）** |
 | T-a1-skip-mix | 構成比は店指定なしのため未実施 | **フェーズ4スキップ** |
@@ -182,6 +185,7 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-a1-dry | pass116 seller4 bb_hit97 bb_new0 smoke200 uniq1 | **フェーズ2合格** |
 | T-a1-col | 新規19追記。api12で429停止。cap100未達。構成比なし | **フェーズ3合格（打ち切り）** |
 | T-p12-join | JOIN list159 miss0 cells0 | **フェーズ2合格** |
+| T-loop-1 | 台帳上から未巡回1店 A18COIYGTMT3AC。構成比食品97.2%。query894。Keepa20。門11/9。リスト+11 JOIN170。通過1件SP-API店増0 | **輪1周（20キャップ）合格。残りKeepaは別** |
 | T-p2from | フロム通過13をリスト追記 append13 既存92 式33非書 | **フェーズ2合格** |
 | T-p3join | JOIN list148 miss0 cells0 | **フェーズ3合格** |
 | T-p4curry | 永谷園カレー Catalog1頁 want18 Keepa18 pass11/drop7 ①+18 ヒット425 | **フェーズ4合格。公式第2語はこれで洗い切り** |
