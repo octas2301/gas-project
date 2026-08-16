@@ -1241,3 +1241,95 @@ function amazonSpapiPutFail_(stepName, runId, reason, silent) {
   }
   return { ok: false, reason: reason, runId: runId };
 }
+
+/**
+ * 競合定時用: Amazon 在庫を sellerSku 1件だけ GET。マスタ非書込。トリガーなし。
+ * Listings fulfillmentAvailability を正。取れなければ FBA summaries。
+ */
+function menuReadAmazonInventoryOneSku() {
+  var ui = bTryUi_();
+  if (!ui) {
+    Logger.log('[競合ストア] Amazon在庫1SKUはUIから指定');
+    return;
+  }
+  var resp = ui.prompt(
+    'Amazon在庫 1 SKU 読取',
+    '子SKU（sellerSku）を1つ。マスタには書きません。全件取得しません。',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  var sku = String(resp.getResponseText() || '').trim().split(/[\s,;]+/)[0];
+  if (!sku) {
+    ui.alert('SKUが空です。');
+    return;
+  }
+  var out = amazonSpapiReadInventoryOneSku_(sku);
+  Logger.log('[競合ストア] Amazon在庫1SKU sku=' + sku + ' qty=' + out.qty +
+    ' source=' + out.source + ' http=' + out.http + ' マスタ非書');
+  ui.alert(
+    'SKU=' + sku + '\n在庫=' + (out.qty == null ? '(なし)' : out.qty) +
+    '\n取得元=' + out.source + '\nHTTP=' + out.http +
+    '\nマスタは未変更です。'
+  );
+}
+
+function amazonSpapiReadInventoryOneSku_(sku) {
+  var acc = amazonSpapiPutAcquireAccess_();
+  var creds = acc.creds;
+  var token = acc.accessToken;
+  var listingsPath = '/listings/2021-08-01/items/' +
+    amazonSpapiPutEncodePath_(creds.sellerId) + '/' +
+    amazonSpapiPutEncodePath_(sku);
+  var listings = amazonSpapiPutHttpGet_(creds, token, listingsPath, {
+    marketplaceIds: creds.marketplaceId,
+    includedData: 'fulfillmentAvailability,summaries'
+  });
+  var qty = amazonSpapiInventoryQtyFromListingsJson_(listings.json);
+  if (qty != null) {
+    return { sku: sku, qty: qty, source: 'listings', http: listings.code };
+  }
+  var fba = amazonSpapiPutHttpGet_(creds, token, '/fba/inventory/v1/summaries', {
+    details: 'true',
+    granularityType: 'Marketplace',
+    granularityId: creds.marketplaceId,
+    marketplaceIds: creds.marketplaceId,
+    sellerSkus: sku
+  });
+  var fbaQty = amazonSpapiInventoryQtyFromFbaJson_(fba.json, sku);
+  return {
+    sku: sku,
+    qty: fbaQty,
+    source: fbaQty != null ? 'fba_summaries' : 'none',
+    http: String(listings.code) + '/' + String(fba.code)
+  };
+}
+
+function amazonSpapiInventoryQtyFromListingsJson_(json) {
+  if (!json) return null;
+  var arr = json.fulfillmentAvailability || json.fulfillment_availability || [];
+  var i;
+  var found = null;
+  for (i = 0; i < arr.length; i++) {
+    var q = arr[i] && arr[i].quantity;
+    if (q == null || q === '') continue;
+    var n = Number(q);
+    if (!isFinite(n)) continue;
+    if (found == null || n > found) found = n;
+  }
+  return found;
+}
+
+function amazonSpapiInventoryQtyFromFbaJson_(json, sku) {
+  if (!json) return null;
+  var rows = json.inventorySummaries || [];
+  var i;
+  for (i = 0; i < rows.length; i++) {
+    var row = rows[i] || {};
+    if (sku && String(row.sellerSku || '').trim() !== String(sku).trim()) continue;
+    var q = row.totalQuantity;
+    if (q == null || q === '') continue;
+    var n = Number(q);
+    if (isFinite(n)) return n;
+  }
+  return null;
+}

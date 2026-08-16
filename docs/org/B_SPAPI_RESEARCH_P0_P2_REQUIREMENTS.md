@@ -60,7 +60,7 @@
 
 ### 1.3 人間◎（⑤）
 
-Amazon競合ASINの正解上限は**人間◎継続**。自動は候補・ログ・要確認のみ。
+Amazon競合ASINの正解上限は**人間◎継続**（名前＋画像を見た人の判断。機械は◎を付けない）。自動は **候補列**・ログ・要確認のみ。評価列の上書き禁止。貼付自動化の要件メモ（実装しない）: [B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md](B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)。
 
 ### 1.4 フェーズ
 
@@ -146,7 +146,7 @@ Amazon競合ASINの正解上限は**人間◎継続**。自動は候補・ログ
 |------|------|
 | 入口 | Z→15-⑱ `menuFbaTierCatalogWriteP1bForCheckedParents` |
 | 対象 | レ点親。最大 `B_FBA_P1B_MAX_PARENTS`（未設定時は P1a と同じ既定） |
-| ASIN | `ASINコード` → なければ `競合店ASIN` |
+| ASIN | N列`ASINコード`（＝競合ASINの相乗り先）→ なければ `競合店ASIN` |
 | 入力 | Catalog **梱包**寸法＋重量（AI寸法のみでは書かない） |
 | 判定 | 設定マスタ `FBA手数料` first-fit（`source=settings` のみ書込） |
 | 乖離 | Catalog↔AI 3辺和差 **>15%** → 書込スキップ |
@@ -182,7 +182,7 @@ Amazon競合ASINの正解上限は**人間◎継続**。自動は候補・ログ
    列: `partNumber`／`ブランド`／`製造者`／`梱包_L_cm`／`梱包_W_cm`／`梱包_H_cm`／`梱包_重量_g`  
    - 入口: 既存 Keepa取得（ASIN貼付）。`ensureKeepaFetchLogSheet` が欠列を末尾追加  
    - 寸法: Keepa `packageLength` 等（mm）→ cm  
-   - キャッシュヒット時は新列が空になりうる（次回API取得で埋まる）  
+   - キャッシュヒット時はブランド／製造者／梱包_* をログへコピー追記（既存ログ非改変）。**読取はヘッダー名**（setCount空でも旧形式と誤判定しない）。梱包が空かつ `梱包_checked` 未記入なら API再取得。API更新時は既存ブランド／製造者／梱包を空で上書きしない。梱包が空なら itemLength 等で補完。  
    - OFF: `B_KEEPA_LOG_EXT_ENABLED=false`  
 2. **行数対策（U2・実装済）**: 直近90日 **かつ** JANあたり最新3実行のみ本体に残し、他は `Keepa取得_ログ_archive` へ移動。Z→**12-⑧**  
    - OFF: `B_KEEPA_LOG_ARCHIVE_ENABLED=false`  
@@ -342,6 +342,7 @@ P1b: … 3.05 SP-API/3D寸法（3.1の前）… 6.7 SP-API品番（6.6の後）
 | 2026-08-13 | **P1a実機 `595a71f2`**: HTTP20/20・梱包11/20。生姜湯2ASINは梱包属性なし。型番/JANは診断シート未計測。P1bは梱包ありに限定 |
 | 2026-08-13 | **⑤ U2**: Keepa取得_ログ整理。90日超 or JAN最新3実行以外→`Keepa取得_ログ_archive`。Z 12-⑧ |
 | 2026-08-13 | **⑤ U1**: Keepa取得_ログに partNumber／ブランド／製造者／梱包寸法・重量。追加APIなし。`B_KEEPA_LOG_EXT_ENABLED` |
+| 2026-08-15 | §1.3: ◎は人間のみ・候補列。貼付自動化メモ（未実装）[B_AMAZON_COMPETITOR_PASTE](B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md) |
 | 2026-08-13 | **FBA P1a×設定マスタ**: 仮ティア＝`FBA手数料` first-fit＋手数料円。備考Fをbox/三辺和パース |
 | 2026-08-13 | **FBA P1a**: Z 15-⑰ Catalog寸法診断シート・仮ティア。マスタサイズ列は書かない。`B_FBA_P1A_DIAG_ENABLED` |
 | 2026-08-13 | **rigid優先**: 段ボ等を先にサイズ昇順。soft（紙袋等）は rigid 全滅後。Compact stagger 当面維持 |

@@ -108,6 +108,10 @@ var SERIES_INFER_FROM_NAME_ENABLED_PROP = 'SERIES_INFER_FROM_NAME_ENABLED';
  * 未設定=ON（正本はメニュー8都度API）。docs/org/D_MENU_E_GENRE_YAHOO_REQUIREMENTS_CONFIRM.md
  */
 var B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED_PROP = 'B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED';
+/** Step5: Gemini Vision JSONが取れたら OpenAI Vision しない。未設定=ON。falseで旧（両方）。 */
+var B_STEP5_SKIP_OPENAI_IF_GEMINI_OK_PROP = 'B_STEP5_SKIP_OPENAI_IF_GEMINI_OK';
+/** Step5: AI梱包・配送タリフ・データ根拠を出さない。正は Keepa／6.55。未設定=ON。 */
+var B_STEP5_SKIP_PACK_AI_PROP = 'B_STEP5_SKIP_PACK_AI';
 /** Step5スキップ対象（TITLE_DROPDOWN／COMPARE 論理名） */
 var B_STEP5_SKIP_GENRE_YAHOO_LOGICAL_ = {
   '★推奨楽天ジャンルID': true,
@@ -276,6 +280,9 @@ var B_VERBOSE_MAIN_KW_LOG_PROP = 'B_VERBOSE_MAIN_KW_LOG';
 var B_INTEGRATED_SLICE_STARTED_AT_PROP = 'B_INTEGRATED_SLICE_STARTED_AT_MS';
 var B_DROPDOWN_RESUME_INDEX_PROP = 'B_DROPDOWN_RESUME_INDEX';
 var B_RUN_SUMMARY_SHEET_NAME = '▼B実行サマリ';
+/** 処理時間。B Step／Step5 API。他メニューは logOpTiming_ を1か所呼べば足りる。全関数への計測はしない。 */
+var OP_TIMING_SHEET_NAME = '▼実行時間';
+var OP_TIMING_ENABLED_PROP = 'OP_TIMING_ENABLED';
 var B_WATCHDOG_LOCK_NAME = 'B_INTEGRATED_RUN_LOCK';
 /** docs/org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md */
 var B_SCOPE_INSERTED_PRODUCTS_ONLY_PROP = 'B_SCOPE_INSERTED_PRODUCTS_ONLY';
@@ -510,6 +517,11 @@ function onOpen() {
   try {
     // AI出品ツールメニュー（A/E/Z=サブ、B/C/D=階層なし。Eは一時Amazonコース）
     ui.createMenu('AI出品ツール')
+      .addSubMenu(ui.createMenu('A.準備（ASIN抽出）')
+        .addItem('1. dry_run（空欄のみ・未書込）', 'menuAPrepAsinExtractDryRun')
+        .addItem('2. 書込（Catalog・◎と既存ASINは触らない）', 'menuAPrepAsinExtractApply')
+        .addItem('3. 商品名SEOスペース dry_run', 'menuAPrepSeoNameSpacesDryRun')
+        .addItem('4. 商品名SEOスペース 書込', 'menuAPrepSeoNameSpacesApply'))
       .addSubMenu(ui.createMenu('A. ASIN貼付⇒Keepa抽出（token制限注意）')
         .addItem('1. Keepa取得（20件）', 'menuKeepaFetchAsinPasteSheet20')
         .addItem('2. Keepa取得（50件）', 'menuKeepaFetchAsinPasteSheet50')
@@ -867,6 +879,21 @@ function createZSplitMenu(ui) {
       .addItem('12-① ASIN貼り付け準備（Keepa用）', 'menuPrepareAsinPasteSheet')
       .addItem('12-② ASIN貼り付けリセット', 'menuResetAsinPasteSheet')
       .addItem('12-⑦ Keepaキャッシュの古い行を削除（30日超過）', 'menuPurgeKeepaCacheOlderThanDays')
+      .addItem('12-⑨ 競合ストア90日超を削除（専用のみ・マスタ非対象）', 'menuPurgeCompetitorStoreOlderThanDays')
+      .addItem('12-⑩ 定時対象JANをログ（読取のみ・再検索しない）', 'menuLogCompetitorScheduledCandidates')
+      .addItem('12-⑪ 競合ストアをDrive退避（最新1本・専用のみ）', 'menuBackupCompetitorStoreKeepLatest')
+      .addItem('12-⑫ 定時モール再検索（JAN1件・専用追記）', 'menuFetchCompetitorScheduledOneJan')
+      .addItem('12-⑬ Amazon在庫1SKU読取（マスタ非書）', 'menuReadAmazonInventoryOneSku')
+      .addItem('12-⑭ 専用モールヒットをマスタへセット数紐付け（レ点）', 'menuApplyCompetitorStoreHitsToMaster')
+      .addItem('12-⑮ Catalogで貼付空欄ASIN埋め（dry_run）', 'menuAmazonPasteCatalogFillEmptyAsinsDryRun')
+      .addItem('12-⑯ Catalogで貼付空欄ASIN埋め（書込）', 'menuAmazonPasteCatalogFillEmptyAsins')
+      .addItem('12-⑰ 貼付ブロック非候補化（dry_run）', 'menuAmazonPasteP2RankDryRun')
+      .addItem('12-⑱ 貼付ブロック非候補化（並べ替え書込）', 'menuAmazonPasteP2RankApply')
+      .addItem('12-⑲ 貼付◎をマスタAmazonへ（dry_run）', 'menuAmazonPasteP3MasterDryRun')
+      .addItem('12-⑳ 貼付◎をマスタAmazonへ（書込・Property）', 'menuAmazonPasteP3MasterApply')
+      .addItem('12-㉑ Keepaフル upsert（dry_run・専用非書）', 'menuKeepaFullUpsertDryRun')
+      .addItem('12-㉒ Keepaフル upsert（書込・Property）', 'menuKeepaFullUpsertApply')
+      .addItem('12-㉓ Keepaフル90日読計画（dry・GETしない）', 'menuKeepaFullW4ReadDryRun')
       .addItem('12-⑧ Keepa取得ログを整理（90日超or JAN最新3実行以外→archive）', 'menuArchiveKeepaFetchLogU2')
       .addItem('12-③ 競合・穴のセット数提案（ASIN貼り付け）', 'menuProposeSetCountFromAsinPasteSheet')
       .addItem('12-④ 販売価格提案（天井・セット構成提案後）', 'menuProposeSalesPrices')
@@ -976,6 +1003,7 @@ function createZSplitMenu(ui) {
     .addSubMenu(ui.createMenu('99. テストメニュー')
       .addItem('99-① Yahoo! セット別価格 取得テスト', 'menuTestYahooSetPrices')
       .addItem('99-② 楽天・Yahoo 競合価格APIテスト', 'menuTestRakutenYahooCompetitivePriceApi')
+      .addItem('99-⑪ 楽天Yahoo 検索ベイクオフA〜E（診断シート）', 'runRakutenYahooBakeoffToSheet')
       .addItem('99-③ 楽天 90件＋セット数・最安テスト', 'menuTestRakuten90ItemsSetCountMinPrice')
       .addItem('99-④ 楽天 90件スコア一覧（降順・URL付き）', 'menuTestRakuten90ItemsScoreList')
       .addItem('99-⑤ 楽天 セット数 Gemini一括判定テスト', 'menuTestRakutenSetCountBatchGemini')
@@ -994,25 +1022,24 @@ var B_INTEGRATED_TIME_LIMIT_MS = 25 * 60 * 1000;
 var B_INTEGRATED_MENU8_ENABLED_PROP = 'B_INTEGRATED_MENU8_ENABLED';
 /** B Step6.5（N列ASIN自動）: 未設定=ON。docs/org/B_ASIN_N_AUTO_FILL_REQUIREMENTS.md */
 var B_ASIN_N_AUTO_FILL_ENABLED_PROP = 'B_ASIN_N_AUTO_FILL_ENABLED';
-/** 実行順: 1→2→3→3.1→3.2→4→5→6→6.5→6.6→7→7.6→8。3/3.2 は CPO V2。 */
+/** 実行順: 1→2→2.1→3→3.1→3.2→4→5→6→6.05→6.5→6.55→6.6→7→7.6。2.1/6.05/6.55 は直後追加。行高さStepは廃止。 */
 var B_INTEGRATED_STEP_FUNCTIONS = [
   { name: '1. セット構成を決める', fn: menuSetCompositionProposal },
   { name: '2. 楽天Yahoo!の不足セット抽出', fn: menuResearchBatchCrossMallAndPropose },
+  { name: '2.1 専用ヒットをセット数でマスタへ（12-⑭）', fn: menuApplyCompetitorStoreHitsForBIntegratedStep_ },
   { name: '3. Amazon販売価格をAI提案(V2・単体)', fn: menuCPOProposePricesRound1 },
   { name: '3.1 想定物流費AI試算', fn: runEstimateLogisticsCostStep },
   { name: '3.2 楽天Yahoo!販売価格をAI提案(V2・単体)', fn: menuRakutenYahooCpoProposePricesV2ForBIntegrated_ },
   { name: '4. 再③ 価格調整（全モール）', fn: menuRunRound3PriceAdjustIntegrated_ },
   { name: '5. AI出品取得', fn: generateListingDataComparison },
   { name: '6. 取得dataのマスタsheet同期', fn: syncAiDataToMaster },
+  { name: '6.05 保存方法の改行除去', fn: menuSanitizeStorageForBIntegratedStep_ },
   { name: '6.5 N列ASIN自動（◎×ブランド＝メーカー）', fn: menuFillAsinNForBIntegratedStep_ },
+  { name: '6.55 FBAティア・手数料（Catalog・空のみ）', fn: menuFbaP1bForBIntegratedStep_ },
   { name: '6.6 メーカー品番（下書き・空のみ）', fn: menuFetchMakerModelForBIntegratedStep_ },
   { name: '7. 商品名案を生成＆プルダウン設定', fn: menuProductNameAndDropdownForBIntegratedStep_ },
-  { name: '7.6 KW・ジャンル・Yahoo売れ筋カテゴリ（価格非参照）', fn: menuAmazonAiAdopt76ForBIntegratedStep_ },
-  { name: '8. 親行の行高さを60pxに', fn: menuSetParentRowHeightForBIntegratedStep_ }
+  { name: '7.6 KW・ジャンル・Yahoo売れ筋カテゴリ（価格非参照）', fn: menuAmazonAiAdopt76ForBIntegratedStep_ }
 ];
-/** ⑪ B末尾: レ点親行の行高さ(px)。未設定=ON */
-var B_PARENT_ROW_HEIGHT_ENABLED_PROP = 'B_PARENT_ROW_HEIGHT_ENABLED';
-var B_PARENT_ROW_HEIGHT_PX_ = 60;
 
 /**
  * ⑧ マスタ色定数（docs/org/B_MASTER_CELL_COLOR_RULES_REQUIREMENTS.md）
@@ -1229,18 +1256,8 @@ function masterColorCellHadValue_(v) {
  */
 function masterColorWritePriceWithRole_(cell, priceValue, role) {
   if (!cell) return;
-  var hadPrior = masterColorCellHadValue_(cell.getValue());
   cell.setValue(priceValue);
-  if (role === 'alert') {
-    masterColorPaintAlert_(cell);
-    try { cell.setFontSize(14); } catch (eA) {}
-  } else if (role === 'human') {
-    masterColorPaintHuman_(cell);
-    try { cell.setFontWeight('normal').setFontSize(14); } catch (eH) {}
-  } else {
-    masterColorPaintProgramOrOverwrite_(cell, hadPrior);
-    try { cell.setFontWeight('normal').setFontSize(10); } catch (eP) {}
-  }
+  Logger.log('[CPO] skip_color_paint role=' + (role || '') + ' val=' + priceValue);
 }
 
 /** Zメニュー: 選択行に⑧ロック色を適用 */
@@ -1363,6 +1380,46 @@ function isAmazonAiYahooCategoryBrandEnabled_() {
 /** Step5 でジャンル／Yahoo AI・Drive候補をスキップ（未設定=ON） */
 function isBStep5SkipGenreYahooAi_() {
   return getBoolScriptProperty_(B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED_PROP, true);
+}
+
+function isBStep5SkipOpenaiIfGeminiOk_() {
+  return getBoolScriptProperty_(B_STEP5_SKIP_OPENAI_IF_GEMINI_OK_PROP, true);
+}
+
+function isBStep5SkipPackAi_() {
+  return getBoolScriptProperty_(B_STEP5_SKIP_PACK_AI_PROP, true);
+}
+
+/** Gemini Vision が使えるJSONか（OpenAIスキップ判定）。 */
+function isListingGeminiVisionOk_(gData) {
+  if (!gData || typeof gData !== 'object') return false;
+  if (gData.error) return false;
+  if (gData.main_kw && ((Array.isArray(gData.main_kw) && gData.main_kw.length) || String(gData.main_kw).trim())) return true;
+  if (gData.description && String(gData.description).trim()) return true;
+  if (gData.kw_feature && ((Array.isArray(gData.kw_feature) && gData.kw_feature.length) || String(gData.kw_feature).trim())) return true;
+  return false;
+}
+
+function stripPackAiFromListingJson_(jsonData) {
+  if (!jsonData || typeof jsonData !== 'object') return jsonData;
+  jsonData.package = { width: '', depth: '', height: '', weight: '' };
+  jsonData.data_source = '';
+  return jsonData;
+}
+
+/** 仮想テスト。APIしない。 */
+function dryBStep5R3R5SelfTest_() {
+  var fails = [];
+  if (isListingGeminiVisionOk_({ error: 'JSON parse error' })) fails.push('err_ok');
+  if (isListingGeminiVisionOk_({})) fails.push('empty_ok');
+  if (!isListingGeminiVisionOk_({ main_kw: ['だし'] })) fails.push('kw');
+  if (!isListingGeminiVisionOk_({ description: '文' })) fails.push('desc');
+  var x = stripPackAiFromListingJson_({ package: { width: 10 }, data_source: 'Web', main_kw: ['a'] });
+  if (String(x.package.width) !== '' || String(x.data_source) !== '') fails.push('strip');
+  var ok = fails.length === 0;
+  Logger.log('[dryBStep5R3R5] ok=' + ok + ' fails=' + fails.join(','));
+  console.log('[dryBStep5R3R5] ok=' + ok + ' fails=' + fails.join(','));
+  return ok;
 }
 
 /** シリーズ不明禁止＋商品名推定（未設定=ON） */
@@ -2019,6 +2076,56 @@ function sendBWatchdogResumeMail_(state, phase) {
   }
 }
 
+function isOpTimingEnabled_() {
+  return getBoolScriptProperty_(OP_TIMING_ENABLED_PROP, true);
+}
+
+/**
+ * 処理時間を ▼実行時間 へ1行。job/name は呼び出し側が決める（A Keepa 等も同じ関数）。
+ * 全関数に埋め込まない。失敗しても本処理は続行。
+ * @param {{job?:string, grain?:string, name?:string, durationMs?:number, runId?:string, row?:*, detail?:string, spreadsheetId?:string}} row
+ */
+function logOpTiming_(row) {
+  row = row || {};
+  if (!isOpTimingEnabled_()) return;
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss && row.spreadsheetId) {
+      try { ss = SpreadsheetApp.openById(row.spreadsheetId); } catch (e0) {}
+    }
+    if (!ss) return;
+    var sh = ss.getSheetByName(OP_TIMING_SHEET_NAME);
+    if (!sh) {
+      sh = ss.insertSheet(OP_TIMING_SHEET_NAME);
+      sh.appendRow(['日時', 'job', 'grain', 'name', 'durationMs', 'runId', 'row', 'detail']);
+    }
+    sh.appendRow([
+      new Date(),
+      row.job || '',
+      row.grain || '',
+      row.name || '',
+      row.durationMs != null ? row.durationMs : '',
+      row.runId || '',
+      row.row != null ? row.row : '',
+      row.detail || ''
+    ]);
+    Logger.log('[実行時間] job=' + (row.job || '') + ' grain=' + (row.grain || '') +
+      ' name=' + (row.name || '') + ' ms=' + row.durationMs + ' ' + (row.detail || ''));
+  } catch (e) {
+    Logger.log('[実行時間] 追記失敗: ' + (e && e.message));
+  }
+}
+
+function getActiveOpTimingRunId_() {
+  try {
+    var json = PropertiesService.getScriptProperties().getProperty(B_INTEGRATED_STATE_PROP);
+    var state = json ? JSON.parse(json) : null;
+    return (state && state.runId) ? String(state.runId) : '';
+  } catch (e) {
+    return '';
+  }
+}
+
 function appendBRunSummary_(row) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2638,6 +2745,7 @@ function runBIntegratedSteps(spreadsheetId, startStepIndex, fromTrigger, runId) 
       saveBIntegratedState(spreadsheetId, i, runId);
       setBIntegratedTrigger();
       setLastProgress_({ job: 'B_INTEGRATED', runId: runId || null, spreadsheetId: spreadsheetId, phase: 'runBIntegratedSteps:timeBudgetStop', nextStepIndex: i, elapsedMs: (Date.now() - startedAtMs) });
+      logOpTiming_({ job: 'B_INTEGRATED', grain: 'b_slice', name: 'timeBudgetStop', durationMs: Date.now() - startedAtMs, runId: runId || '', spreadsheetId: spreadsheetId, detail: 'nextStepIndex=' + i });
       appendBRunSummary_({ event: 'timeBudgetStop', runId: runId || '', nextStepIndex: i, phase: 'runBIntegratedSteps:timeBudgetStop', spreadsheetId: spreadsheetId, reason: 'SAFE_BUDGET' });
       try { ss.toast('時間のため一旦終了します。約1分後に続きから自動実行します。', 'B. 統合実行', 8); } catch (t) {}
       Logger.log('[B.統合実行] 時間制限のためステップ' + (i + 1) + 'の手前で保存。nextStepIndex=' + i);
@@ -2647,7 +2755,19 @@ function runBIntegratedSteps(spreadsheetId, startStepIndex, fromTrigger, runId) 
     try {
       try { ss.toast('B. 統合実行: ' + step.name + ' を実行中...', '統合実行', 3); } catch (t) {}
       setLastProgress_({ job: 'B_INTEGRATED', runId: runId || null, spreadsheetId: spreadsheetId, phase: 'runBIntegratedSteps:beforeStep', stepIndex: i, stepName: step.name });
-      if (typeof step.fn === 'function') step.fn();
+      var stepT0 = Date.now();
+      try {
+        if (typeof step.fn === 'function') step.fn();
+      } finally {
+        logOpTiming_({
+          job: 'B_INTEGRATED',
+          grain: 'b_step',
+          name: step.name,
+          durationMs: Date.now() - stepT0,
+          runId: runId || '',
+          spreadsheetId: spreadsheetId
+        });
+      }
       setLastProgress_({ job: 'B_INTEGRATED', runId: runId || null, spreadsheetId: spreadsheetId, phase: 'runBIntegratedSteps:afterStep', stepIndex: i, stepName: step.name });
     } catch (e) {
       Logger.log('[B.統合実行] ステップ' + (i + 1) + ' ' + step.name + ' でエラー: ' + (e && e.message));
@@ -5093,10 +5213,33 @@ function generateListingDataComparison() {
   } catch (e) {}
   setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'generateListingDataComparison:start', resumeRow: resumeRow, lastRow: lastRow });
 
-  // 最初からのときだけ出力領域をクリア
+  // 最初からのときだけ出力領域をクリア（B実行中は当B行だけ。他JANの Gemini を消さない）
   if (resumeRow === 2 && maxCols >= startOutputCol) {
-    setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'generateListingDataComparison:clearOutput', fromRow: 2, toRow: lastRow, startOutputCol: startOutputCol, maxCols: maxCols });
-    sheet.getRange(2, startOutputCol, lastRow - 1, maxCols - startOutputCol + 1).clearContent();
+    var clearWidth = maxCols - startOutputCol + 1;
+    var queuedAiRows = [];
+    if (bScopeAi.active && !bScopeAi.emptyHalt) {
+      for (var qr = 2; qr <= lastRow; qr++) {
+        var qCost = (aiCostCol !== undefined) ? sheet.getRange(qr, aiCostCol + 1).getValue() : '';
+        var qName = (aiNameCol !== undefined) ? sheet.getRange(qr, aiNameCol + 1).getValue() : '';
+        if (isAiRowInBInsertedProducts_(qName, qCost, bScopeAi.products)) queuedAiRows.push(qr);
+      }
+      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'generateListingDataComparison:clearOutputBOnly', queuedAiRows: queuedAiRows, startOutputCol: startOutputCol, maxCols: maxCols });
+      Logger.log('[generateListingDataComparison] clearOutput B-only rows=' + queuedAiRows.join(',') +
+        ' n=' + queuedAiRows.length);
+      try {
+        props.setProperty(GEN_STATE_PROP, JSON.stringify({
+          spreadsheetId: ss.getId(), nextRow: 2, queuedAiRows: queuedAiRows, updatedAt: new Date().toISOString()
+        }));
+      } catch (eQs) {}
+      for (var qc = 0; qc < queuedAiRows.length; qc++) {
+        sheet.getRange(queuedAiRows[qc], startOutputCol, 1, clearWidth).clearContent();
+      }
+    } else if (!bScopeAi.active) {
+      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'generateListingDataComparison:clearOutput', fromRow: 2, toRow: lastRow, startOutputCol: startOutputCol, maxCols: maxCols });
+      sheet.getRange(2, startOutputCol, lastRow - 1, clearWidth).clearContent();
+    } else {
+      Logger.log('[generateListingDataComparison] skip clearOutput emptyHalt');
+    }
   }
 
 
@@ -5180,11 +5323,14 @@ function generateListingDataComparison() {
     let searchResultText = "（検索未実行）";
     try {
       setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiSearch:start', row: r });
-      // 調査専用のプロンプトを作成
-      const searchPrompt = createSearchPrompt(inputName, inputJan, inputMaker);
-      // 検索専用APIを呼び出し（結果はテキスト）
-      searchResultText = callGeminiSearchAPI(searchPrompt);
-      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiSearch:done', row: r });
+      var geminiSearchT0 = Date.now();
+      try {
+        const searchPrompt = createSearchPrompt(inputName, inputJan, inputMaker);
+        searchResultText = callGeminiSearchAPI(searchPrompt);
+        setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiSearch:done', row: r });
+      } finally {
+        logOpTiming_({ job: 'GEN_LISTING', grain: 'api', name: 'geminiSearch', durationMs: Date.now() - geminiSearchT0, runId: getActiveOpTimingRunId_(), row: r, spreadsheetId: ss.getId() });
+      }
     } catch (e) {
       searchResultText = "（検索エラー: " + e.message + "）";
       setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiSearch:error', row: r, error: (e && e.message) ? String(e.message) : String(e) });
@@ -5207,13 +5353,15 @@ function generateListingDataComparison() {
     // Gemini生成 (JSONモードON)
     try { 
       setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiVision:start', row: r });
+      var geminiVisionT0 = Date.now();
       gData = callGeminiVisionAPI(prompt, imgBase64, mime);
       if (skipGenreYahooAi) {
         stripGenreYahooAiFromListingJson_(gData);
       } else {
         gData = refineGenreData(gData, RAKUTEN_GENRE_FOLDER_ID, YAHOO_CATEGORY_FOLDER_ID, YAHOO_BRAND_FOLDER_ID);
       }
-      sheet.getRange(r, jsonColG).setValue(JSON.stringify(gData)); 
+      sheet.getRange(r, jsonColG).setValue(JSON.stringify(gData));
+      logOpTiming_({ job: 'GEN_LISTING', grain: 'api', name: 'geminiVision', durationMs: Date.now() - geminiVisionT0, runId: getActiveOpTimingRunId_(), row: r, spreadsheetId: ss.getId() });
       setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:geminiVision:done', row: r });
     } catch (e) {
       Logger.log('[Gemini調査] 行' + r + ' API例外 商品名=' + (inputName || '') + ' エラー=' + (e && e.message));
@@ -5232,20 +5380,36 @@ function generateListingDataComparison() {
       throw new Error(B_TIME_SLICE_ERROR_PREFIX + 'generateListingDataComparison nextRow=' + r);
     }
 
-    // OpenAI生成 (検索結果を流用)
-    try { 
-      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:start', row: r });
-      oData = callOpenAIVisionAPI(prompt, imgBase64, mime); 
-      if (skipGenreYahooAi) {
-        stripGenreYahooAiFromListingJson_(oData);
-      } else {
-        oData = refineGenreData(oData, RAKUTEN_GENRE_FOLDER_ID, YAHOO_CATEGORY_FOLDER_ID, YAHOO_BRAND_FOLDER_ID);
+    // OpenAI生成 (検索結果を流用)。Gemini JSONが取れたら既定スキップ。
+    var skipOai = isBStep5SkipOpenaiIfGeminiOk_() && isListingGeminiVisionOk_(gData);
+    if (skipOai) {
+      oData = {};
+      Logger.log('[generateListingDataComparison] 行' + r + ' OpenAI Vision skip (Gemini OK) prop=' +
+        B_STEP5_SKIP_OPENAI_IF_GEMINI_OK_PROP);
+      console.log('[generateListingDataComparison] row=' + r + ' openai_skip=gemini_ok');
+      logOpTiming_({ job: 'GEN_LISTING', grain: 'api', name: 'openaiVision', durationMs: 0, runId: getActiveOpTimingRunId_(), row: r, spreadsheetId: ss.getId(), detail: 'skip=gemini_ok' });
+    } else {
+      try {
+        setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:start', row: r });
+        var openaiVisionT0 = Date.now();
+        oData = callOpenAIVisionAPI(prompt, imgBase64, mime);
+        if (skipGenreYahooAi) {
+          stripGenreYahooAiFromListingJson_(oData);
+        } else {
+          oData = refineGenreData(oData, RAKUTEN_GENRE_FOLDER_ID, YAHOO_CATEGORY_FOLDER_ID, YAHOO_BRAND_FOLDER_ID);
+        }
+        sheet.getRange(r, jsonColO).setValue(JSON.stringify(oData));
+        logOpTiming_({ job: 'GEN_LISTING', grain: 'api', name: 'openaiVision', durationMs: Date.now() - openaiVisionT0, runId: getActiveOpTimingRunId_(), row: r, spreadsheetId: ss.getId() });
+        setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:done', row: r });
+      } catch (e) {
+        sheet.getRange(r, jsonColO).setValue(e.message);
+        setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:error', row: r, error: (e && e.message) ? String(e.message) : String(e) });
       }
-      sheet.getRange(r, jsonColO).setValue(JSON.stringify(oData)); 
-      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:done', row: r });
-    } catch (e) { 
-      sheet.getRange(r, jsonColO).setValue(e.message); 
-      setLastProgress_({ job: 'GEN_LISTING', spreadsheetId: ss.getId(), phase: 'row:openaiVision:error', row: r, error: (e && e.message) ? String(e.message) : String(e) });
+    }
+
+    if (isBStep5SkipPackAi_()) {
+      stripPackAiFromListingJson_(gData);
+      stripPackAiFromListingJson_(oData);
     }
 
     // メインKWの選択経緯をログ出力（調査時のみ。B_VERBOSE_MAIN_KW_LOG=true）
@@ -7082,11 +7246,18 @@ function menuFetchRakutenSetPricesToMaster() {
     if (res.error && res.items.length === 0) {
       Logger.log('[楽天セット別] JAN=' + jan + ' 検索エラー: ' + res.error);
     }
+    var janKeywordHits = (res.items && res.items.length > 0);
     if (res.items.length === 0 && fallbackKeyword.length >= 2) {
       Utilities.sleep(300);
       res = fetchRakutenIchibaItems(appId, accessKey, fallbackKeyword);
       keywordUsed = fallbackKeyword;
       Logger.log('[楽天セット別] JAN=' + jan + ' フォールバック keyword="' + fallbackKeyword.substring(0, 40) + (fallbackKeyword.length > 40 ? '...' : '') + '" 取得件数=' + res.items.length);
+    }
+    if (res.items.length === 0 && name.length >= 2) {
+      Utilities.sleep(300);
+      res = fetchRakutenIchibaItems(appId, accessKey, name);
+      keywordUsed = name;
+      Logger.log('[楽天セット別] JAN=' + jan + ' 商品名のみフォールバック "' + name.substring(0, 40) + '" 取得件数=' + res.items.length);
     }
     var allItems = (res.items || []).slice();
     for (var page = 2; page <= 3; page++) {
@@ -7103,6 +7274,10 @@ function menuFetchRakutenSetPricesToMaster() {
     if (RAKUTEN_NAME_MATCH_USE_WORD) activeRules.push('単語一致');
     if (RAKUTEN_NAME_MATCH_USE_MAKER) activeRules.push('メーカー一致');
     if (RAKUTEN_NAME_MATCH_USE_CHAR) activeRules.push('文字一致');
+    if (janKeywordHits) {
+      th = Math.min(th, 30);
+      Logger.log('[楽天商品名一致] JANキーワードヒットのため閾値緩和=' + th);
+    }
     Logger.log('[楽天商品名一致] 閾値=' + th + ' 有効ルール=' + (activeRules.length ? activeRules.join(',') : 'なし'));
     var applyNameFilter = (maker.length > 0 || nameForScore.length > 0);
     if (!applyNameFilter) Logger.log('[楽天商品名一致] 期待メーカー・商品名が両方空のためスコアフィルタなし（全件対象）');
@@ -8209,7 +8384,6 @@ function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerR
 
     for (var mi = 0; mi < malls.length; mi++) {
       var mall = malls[mi];
-      var seenMall = {};
       for (var li = 0; li < mall.letters.length; li++) {
         var letter = mall.letters[li];
         var headerName = letterMap[letter] || letterMap[String(letter).toUpperCase()] || '';
@@ -8221,7 +8395,7 @@ function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerR
         if (logical && mall.writeLogical[logical]) {
           amazonAiProcessKwLogicalCol_(
             masterSheet, masterValues, headerRowIdx, masterColMap, row1Based, row,
-            logical, seenMall, true, capacityState, stats, LOG
+            logical, seenShared, true, capacityState, stats, LOG
           );
         } else {
           var cellText = amazonAiGetCellByHeader_(row, masterColMap, headerName);
@@ -8233,7 +8407,7 @@ function amazonAiAdoptAndDedupeKwNineColumns_(masterSheet, masterValues, headerR
             }
           }
           var readTokens = amazonAiSplitSpaceTokens_(cellText);
-          amazonAiAddTokensToSeen_(readTokens, seenMall);
+          amazonAiAddTokensToSeen_(readTokens, seenShared);
           amazonAiRegisterCapacityKeys_(readTokens, capacityState);
         }
       }
@@ -8538,12 +8712,12 @@ function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx
     if (wasEmpty) {
       return;
     }
-    // 既存があった場合は filter で空になっても元値を残す
-    nextVal = curStr;
-    mode = 'keep_existing_after_filter';
-    amazonAiMenu8Log_(LOG + ' 行' + row1Based + ' ' + colName + ' mode=keep_existing_after_filter');
+    // 左セル既出のみなら空（商品名ベースは触らない。ここは特徴・用途）
+    nextVal = '';
+    mode = 'drop_all_cross_seen';
+    amazonAiMenu8Log_(LOG + ' 行' + row1Based + ' ' + colName + ' mode=drop_all_cross_seen');
   }
-  if (nextVal === curStr && (mode === 'keep_suitable' || mode === 'keep_existing' || mode === 'keep_existing_after_filter')) {
+  if (nextVal === curStr && (mode === 'keep_suitable' || mode === 'keep_existing')) {
     amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(nextVal), seen);
     stats.skippedUnchanged++;
     return;
@@ -8570,6 +8744,8 @@ function amazonAiProcessFeatureUsageCol_(masterSheet, masterValues, headerRowIdx
     stats.crossDeduped++;
     stats.tokensRemovedCross += filtered.removed.length;
   }
+  amazonAiAddTokensToSeen_(amazonAiSplitSpaceTokens_(nextVal), seen);
+  amazonAiRegisterCapacityKeys_(amazonAiSplitSpaceTokens_(nextVal), capacityState);
   amazonAiMenu8Log_(LOG + ' 行' + row1Based + ' ' + colName + ' mode=' + mode +
     ' → "' + String(nextVal).substring(0, 80) + '"');
 }
@@ -11398,7 +11574,8 @@ function fetchRakutenIchibaItems(appId, accessKey, keyword, opt) {
         itemUrl: (it.itemUrl != null) ? String(it.itemUrl) : '',
         imageUrl: imageUrl,
         postageFlag: (it.postageFlag != null) ? parseInt(it.postageFlag, 10) : 0,
-        pointRate: (it.pointRate != null) ? parseInt(it.pointRate, 10) : 0
+        pointRate: (it.pointRate != null) ? parseInt(it.pointRate, 10) : 0,
+        _raw: it
       });
     }
     Logger.log('[楽天セット別] API keyword="' + (keyword ? String(keyword).substring(0, 30) : '') + '" 取得件数=' + rawItems.length + ' パース後=' + result.items.length);
@@ -12933,6 +13110,7 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
   var headerRow24 = ['順位', 'モール', 'スコア', '商品名', '画像', 'URL', '価格', '価格+送料', '仮定送料', '仮定手数料率', '比較用補正価格', 'ローカル候補セット数', 'ローカル根拠', 'ローカル比較単価', 'ローカル原価倍率', 'ローカル想定原価', 'ローカル想定利益額', '統合セット数', '統合根拠', '不明理由種別', '統合比較単価', '統合原価倍率', '統合想定原価', '統合想定利益額'];
   var allRows = [];
   var totalCandidates = 0;
+  var competitorHitRows = [];
   for (var ji = 0; ji < uniqueJans.length; ji++) {
     var jan = uniqueJans[ji];
     var dataIdx = firstRowByJan[jan];
@@ -12974,6 +13152,12 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
     rakutenRes = fetchRakutenIchibaItems(appId, accessKey, fallbackKeyword);
     rakutenKeyword = fallbackKeyword;
   }
+  if (rakutenRes.items.length === 0 && name.length >= 2) {
+    Utilities.sleep(300);
+    rakutenRes = fetchRakutenIchibaItems(appId, accessKey, name);
+    rakutenKeyword = name;
+    Logger.log('[モール横断セット数] JAN=' + jan + ' 楽天 商品名のみフォールバック 件数=' + (rakutenRes.items ? rakutenRes.items.length : 0));
+  }
   var rakutenItems = (rakutenRes.items || []).slice();
   for (var rp = 2; rp <= 3; rp++) {
     Utilities.sleep(1000);
@@ -12987,8 +13171,14 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
       for (var rpi = 0; rpi < rakutenPage.items.length; rpi++) rakutenItems.push(rakutenPage.items[rpi]);
     }
   }
+  try {
+    collectCompetitorMallHitRows_(competitorHitRows, '楽天', jan, rakutenKeyword, rakutenItems, 'rakuten');
+  } catch (eHitR) {
+    Logger.log('[競合ストア] 楽天ヒット収集失敗 JAN=' + jan + ' ' + (eHitR && eHitR.message ? eHitR.message : eHitR));
+  }
   for (var ri = 0; ri < rakutenItems.length; ri++) {
     var rItem = rakutenItems[ri];
+    if (isOwnOctasCompetitorHit_('rakuten', rItem)) continue;
     var rScore = evalRakutenItemNameMatchScore(maker, coreName, rItem.itemName);
     var rParsed = parseSetCountFromItemNameWithSource(rItem.itemName);
     var rShippingInfo = (function () {
@@ -13029,6 +13219,20 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
   // Yahoo candidates
   var yahooRes = fetchYahooShoppingItemsByJan(yahooId, jan, 50);
   var yahooHits = yahooRes && yahooRes.hits ? yahooRes.hits : [];
+  Logger.log('[Yahoo!セット数] JAN=' + jan + ' jan_code件数=' + yahooHits.length +
+    (yahooRes && yahooRes.error ? (' error=' + yahooRes.error) : ''));
+  if (yahooHits.length === 0 && jan && String(jan).trim().length >= 8) {
+    Logger.log('[Yahoo!セット数] JAN=' + jan + ' jan_code 0件のため query=JAN（サイト検索相当）');
+    Utilities.sleep(300);
+    var yahooJanQueryRes = fetchYahooShoppingItemsByQuery(yahooId, String(jan).trim(), 50);
+    if (yahooJanQueryRes && yahooJanQueryRes.hits && yahooJanQueryRes.hits.length > 0) {
+      yahooHits = yahooJanQueryRes.hits;
+      Logger.log('[Yahoo!セット数] JAN=' + jan + ' query=JAN 取得件数=' + yahooHits.length);
+    } else {
+      Logger.log('[Yahoo!セット数] JAN=' + jan + ' query=JAN も0件' +
+        (yahooJanQueryRes && yahooJanQueryRes.error ? (' error=' + yahooJanQueryRes.error) : ''));
+    }
+  }
   if (yahooHits.length === 0 && fallbackKeyword && fallbackKeyword.length >= 2) {
     Logger.log('[Yahoo!セット数] JAN=' + jan + ' JAN検索0件のためフォールバック keyword="' + fallbackKeyword.substring(0, 60) + (fallbackKeyword.length > 60 ? '...' : '') + '"');
     Utilities.sleep(300);
@@ -13041,8 +13245,14 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
     }
   }
   if (yahooRes && yahooRes.error) Logger.log('[Yahoo!セット数] JAN=' + jan + ' JAN検索 error=' + yahooRes.error);
+  try {
+    collectCompetitorMallHitRows_(competitorHitRows, 'Yahoo!', jan, jan, yahooHits, 'yahoo');
+  } catch (eHitY) {
+    Logger.log('[競合ストア] Yahooヒット収集失敗 JAN=' + jan + ' ' + (eHitY && eHitY.message ? eHitY.message : eHitY));
+  }
   for (var yi = 0; yi < yahooHits.length; yi++) {
     var yItem = yahooHits[yi];
+    if (isOwnOctasCompetitorHit_('yahoo', yItem)) continue;
     var yScore = evalRakutenItemNameMatchScore(maker, coreName, yItem.name);
     var yParsed = parseSetCountFromItemNameWithSource(yItem.name);
     var yShippingInfo = (function () {
@@ -13302,6 +13512,11 @@ function menuTestCrossMallSetCountJudge(onlyJans) {
   for (var ri = 0; ri < rows.length; ri++) allRows.push(rows[ri]);
   totalCandidates += candidates.length;
   Logger.log('[モール横断セット数] JAN=' + jan + ' 楽天=' + rakutenItems.length + ' Yahoo=' + yahooHits.length + ' Amazon=' + (candidates.filter(function (x) { return x.source === 'amazon'; }).length) + ' 合計=' + candidates.length);
+  }
+  try {
+    flushCompetitorMallHits_(competitorHitRows);
+  } catch (eFlushHits) {
+    Logger.log('[競合ストア] モールヒット追記失敗（Step2は続行）: ' + (eFlushHits && eFlushHits.message ? eFlushHits.message : eFlushHits));
   }
   if (allRows.length > 0) {
     sheet.getRange(1, 1, allRows.length, 24).setValues(allRows);
@@ -13743,81 +13958,6 @@ function getCompetitorAsinsFromMasterForJan_(masterValues, headerRowIdx, masterC
  */
 function isBAsinNAutoFillEnabled_() {
   return getBoolScriptProperty_(B_ASIN_N_AUTO_FILL_ENABLED_PROP, true);
-}
-
-/**
- * B統合 Step8: レ点付き親行のみ行高さを 60px に。
- */
-function menuSetParentRowHeightForBIntegratedStep_() {
-  if (!getBoolScriptProperty_(B_PARENT_ROW_HEIGHT_ENABLED_PROP, true)) {
-    Logger.log('[B.統合実行][8] skipped prop=' + B_PARENT_ROW_HEIGHT_ENABLED_PROP + ' off');
-    return;
-  }
-  var stats = setCheckedParentRowHeights_({ quiet: true, heightPx: B_PARENT_ROW_HEIGHT_PX_ });
-  Logger.log('[B.統合実行][8] parentRows=' + stats.parents + ' heightPx=' + stats.heightPx +
-    ' runId=' + (stats.runId || ''));
-}
-
-/**
- * 出品CK付き・子SKU空（親行）の行高さを変更する。
- * @param {{quiet?:boolean, heightPx?:number}} opts
- * @return {{parents:number, heightPx:number, runId:string}}
- */
-function setCheckedParentRowHeights_(opts) {
-  opts = opts || {};
-  var quiet = !!opts.quiet;
-  var heightPx = opts.heightPx != null ? Number(opts.heightPx) : B_PARENT_ROW_HEIGHT_PX_;
-  if (!(heightPx > 0)) heightPx = B_PARENT_ROW_HEIGHT_PX_;
-  var runId = 'PROW_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss') + '_' +
-    Utilities.getUuid().slice(0, 6);
-  var stats = { parents: 0, heightPx: heightPx, runId: runId };
-  var LOG = '[親行高さ][' + runId + ']';
-
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
-  if (!masterSheet) {
-    Logger.log(LOG + ' master missing');
-    return stats;
-  }
-  var values = masterSheet.getDataRange().getValues();
-  var headerRowIdx = -1;
-  for (var hr = 0; hr < Math.min(values.length, 25); hr++) {
-    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
-  }
-  if (headerRowIdx < 0) {
-    Logger.log(LOG + ' header missing');
-    return stats;
-  }
-  var colMap = getColumnIndexMap(values[headerRowIdx]);
-  var colCk = colMap[CHECKBOX_HEADER_NAME];
-  var colChild = colMap['子SKU'];
-  if (colCk === undefined || colChild === undefined) {
-    Logger.log(LOG + ' required columns missing');
-    return stats;
-  }
-  var bScopeH = getBRunScope_(ss);
-  for (var r = headerRowIdx + 1; r < values.length; r++) {
-    var row = values[r];
-    if (!bRunAllowMasterRow_(r, row[colCk], bScopeH)) continue;
-    if (String(row[colChild] || '').trim() !== '') continue;
-    var row1 = r + 1;
-    try {
-      masterSheet.setRowHeight(row1, heightPx);
-      stats.parents++;
-      Logger.log(LOG + ' row=' + row1 + ' height=' + heightPx);
-    } catch (eH) {
-      Logger.log(LOG + ' row=' + row1 + ' error=' + (eH && eH.message));
-    }
-  }
-  Logger.log(LOG + ' DONE parents=' + stats.parents + ' heightPx=' + heightPx);
-  if (!quiet) {
-    try {
-      SpreadsheetApp.getUi().alert(
-        '親行の行高さ変更 完了\nrunId=' + runId + '\n対象親=' + stats.parents + '\n高さ=' + heightPx + 'px'
-      );
-    } catch (eUi) {}
-  }
-  return stats;
 }
 
 /**
@@ -16086,13 +16226,18 @@ function menuResearchBatchCrossMallAndPropose() {
     else Logger.log('[抜けセット] ' + (e && e.message));
     return;
   }
-  try { SpreadsheetApp.getActive().toast('3/3 モール横断結果をマスタに反映中...', '楽天Yahoo!リサーチ一括', 3); } catch (t3) {}
-  try {
-    menuApplyCrossMallResultToRakutenYahooMaster();
-  } catch (e) {
-    if (ui) ui.alert('モール横断結果の反映でエラー: ' + (e && e.message));
-    else Logger.log('[横断反映] ' + (e && e.message));
-    return;
+  if (competitorStoreReplaceCrossMallApply_()) {
+    Logger.log('[横断反映] skip 横断シート直書き（B 2.1 / 12-⑭ に任せる）');
+    try { SpreadsheetApp.getActive().toast('3/3 マスタ反映は次ステップ 2.1（12-⑭）', '楽天Yahoo!リサーチ一括', 3); } catch (t3s) {}
+  } else {
+    try { SpreadsheetApp.getActive().toast('3/3 モール横断結果をマスタに反映中...', '楽天Yahoo!リサーチ一括', 3); } catch (t3) {}
+    try {
+      menuApplyCrossMallResultToRakutenYahooMaster();
+    } catch (e) {
+      if (ui) ui.alert('モール横断結果の反映でエラー: ' + (e && e.message));
+      else Logger.log('[横断反映] ' + (e && e.message));
+      return;
+    }
   }
   try { SpreadsheetApp.getActive().toast('リサーチ一括が完了しました。競合・セット数を確認し、対象行を選択して「楽天Yahoo!販売価格を提案」を実行してください。', '楽天Yahoo!リサーチ一括', 8); } catch (t4) {}
 }
@@ -16178,7 +16323,7 @@ function fetchYahooShoppingItemsByQuery(clientId, query, maxResults) {
       if (!imageUrl && h.image && h.image.id != null) imageUrl = String(h.image.id || '');
       var shippingCode = (h.shipping && h.shipping.code != null) ? parseInt(h.shipping.code, 10) : 1;
       if (isNaN(shippingCode)) shippingCode = 1;
-      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode });
+      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode, _raw: h });
     }
     Logger.log('[Yahoo!セット数] API query="' + (String(query).substring(0, 50) + (query.length > 50 ? '...' : '')) + '" 取得件数=' + result.hits.length);
     return result;
@@ -16297,6 +16442,9 @@ function fetchYahooShoppingItemsByJan(clientId, janCode, maxResults) {
       return result;
     }
     var json = JSON.parse(text);
+    Logger.log('[Yahoo!セット数] jan_code HTTP200 jan=' + janCode +
+      ' hits=' + ((json.hits || []).length) +
+      ' totalResultsAvailable=' + (json.totalResultsAvailable != null ? json.totalResultsAvailable : ''));
     var rawHits = (json.hits || []);
     for (var i = 0; i < rawHits.length; i++) {
       var h = rawHits[i];
@@ -16310,7 +16458,7 @@ function fetchYahooShoppingItemsByJan(clientId, janCode, maxResults) {
       if (!imageUrl && h.image && h.image.id != null) imageUrl = String(h.image.id || '');
       var shippingCode = (h.shipping && h.shipping.code != null) ? parseInt(h.shipping.code, 10) : 1;
       if (isNaN(shippingCode)) shippingCode = 1;
-      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode });
+      result.hits.push({ name: name, price: price, url: itemUrl, imageUrl: imageUrl, shippingCode: shippingCode, _raw: h });
     }
     return result;
   } catch (e) {
@@ -16744,12 +16892,30 @@ function parseSetCountFromItemName(name) {
 
 /**
  * 商品名からセット数を推定し、どのパターンでマッチしたかも返す。数字+P（4P等）は内容量の可能性があるため、fromP=true のときは Gemini 判定を推奨。
+ * 2026-08-15: 計N袋を最優先。各N袋／N袋ずつはセットにしない（2種ミックス誤クラスタ対策）。課題は docs/org/COMPETITOR_SETCOUNT_ACCURACY.md。
  * @param {string} name - 商品名（タイトル）
  * @return {{ setCount: number|null, fromP: boolean }|null} 取れなければ null
  */
+function normalizeFullwidthDigits_(s) {
+  return String(s || '').replace(/[０-９]/g, function (ch) {
+    return String(ch.charCodeAt(0) - 0xFF10);
+  });
+}
+
 function parseSetCountFromItemNameWithSource(name) {
   if (!name || typeof name !== 'string') return null;
-  var s = name.trim();
+  var s = normalizeFullwidthDigits_(name.trim());
+  var totalBag = s.match(/(?:合計|計|全)\s*(\d+)\s*袋/i);
+  if (totalBag) {
+    var tn = parseInt(totalBag[1], 10);
+    if (tn >= 1 && tn <= 999) return { setCount: tn, fromP: false };
+  }
+  var kindM = s.match(/(?:【)?(\d+)\s*種類?(?:】)?/);
+  var eachM = s.match(/各\s*(\d+)\s*袋/);
+  if (kindM && eachM) {
+    var ke = parseInt(kindM[1], 10) * parseInt(eachM[1], 10);
+    if (ke >= 1 && ke <= 999) return { setCount: ke, fromP: false };
+  }
   var patterns = [
     { re: /×\s*(\d+)\s*缶\s*セット/i, fromP: false },
     { re: /(\d+)\s*缶\s*セット/i, fromP: false },
@@ -16758,6 +16924,8 @@ function parseSetCountFromItemNameWithSource(name) {
     { re: /(\d+)\s*個\s*セット/i, fromP: false },
     { re: /(\d+)\s*個\s*入/i, fromP: false },
     { re: /(\d+)\s*食\s*入/i, fromP: false },
+    { re: /×\s*(\d+)\s*袋/i, fromP: false },
+    { re: /(?<!各)(\d+)\s*袋(?:セット|入)?(?!\s*ずつ)/i, fromP: false },
     { re: /(\d+)\s*[Pp]\s*(?:セット)?/, fromP: true }
   ];
   for (var i = 0; i < patterns.length; i++) {
@@ -16767,7 +16935,7 @@ function parseSetCountFromItemNameWithSource(name) {
       if (n >= 1 && n <= 999) return { setCount: n, fromP: patterns[i].fromP };
     }
   }
-  if (/\[1袋\]|1\s*袋|1\s*個(?:セット)?|1\s*食\s*入?/i.test(s)) return { setCount: 1, fromP: false };
+  if (/\[1袋\]|(?<!各)1\s*袋(?!\s*ずつ)|1\s*個(?:セット)?|1\s*食\s*入?/i.test(s)) return { setCount: 1, fromP: false };
   return null;
 }
 
@@ -17905,6 +18073,35 @@ var PROP_B_DF_STRATEGY_FORMULA_COPY_ENABLED = 'B_DF_STRATEGY_FORMULA_COPY_ENABLE
 var PROP_B_STEP1_TOP_INSERT_ENABLED = 'B_STEP1_TOP_INSERT_ENABLED';
 /** Keepa取得キャッシュ用シート名。同一ASINは取得から指定日数までは再取得せずトークン節約。Script Property KEEPA_CACHE_DAYS で日数（既定30）、KEEPA_CACHE_ENABLED=false で無効。削除はKeepa取得時には行わず、メニュー「12-⑦ Keepaキャッシュの古い行を削除」で実行。 */
 const KEEPA_CACHE_SHEET_NAME = 'Keepa取得_キャッシュ';
+/** 競合専用スプシへ Keepa を追加書き。未設定/false＝現行のみ（マスタキャッシュは常に書く） */
+var PROP_COMPETITOR_STORE_ENABLED = 'COMPETITOR_STORE_ENABLED';
+var PROP_COMPETITOR_SS_ID = 'COMPETITOR_SS_ID';
+/** false で 12-⑭ マスタ紐付けを止める。未設定=ON。 */
+var PROP_COMPETITOR_MASTER_APPLY_ENABLED = 'COMPETITOR_MASTER_APPLY_ENABLED';
+/** 12-⑳ Amazon④書込。未設定=OFF。人がミックス目視後に true。 */
+var PROP_AMAZON_PASTE_P3_WRITE_ENABLED = 'AMAZON_PASTE_P3_WRITE_ENABLED';
+/** A成功後に Keepaフルへ追記。未設定=OFF。スナップショット dual-write とは別。 */
+var PROP_KEEPA_FULL_WRITE_ENABLED = 'KEEPA_FULL_WRITE_ENABLED';
+/** Aが90日内 Keepaフルを読んで GET を省く。未設定=OFF（現行どおりマスタキャッシュのみ）。 */
+var PROP_KEEPA_FULL_READ_ENABLED = 'KEEPA_FULL_READ_ENABLED';
+/** A成功後に貼付P2並べ替え。未設定=ON。falseで旧（Aの評価降順のみ）。 */
+var PROP_AMAZON_PASTE_P5_RANK_AFTER_A_ENABLED = 'AMAZON_PASTE_P5_RANK_AFTER_A_ENABLED';
+var COMPETITOR_KEEPA_FULL_SHEET_ = 'Keepaフル';
+/** 12-⑭: 同一JAN・同一モールの他セット単価中央値のこの倍率以上ならそのセットを捨てる（誤袋数の安全網）。 */
+var COMPETITOR_UNIT_PRICE_OUTLIER_RATIO = 2;
+var COMPETITOR_KEEPA_SNAPSHOT_SHEET_ = 'Keepaスナップショット';
+var COMPETITOR_HITS_SHEET_ = 'モールヒット';
+var COMPETITOR_HITS_HEADERS_ = [
+  '取得日時', '目的', 'モール', '検索JAN', 'YahooヒットJAN', 'ASIN',
+  '店名', '店舗コード', '店舗URL', '店商品コード', 'モール商品コード',
+  '商品名', '表示価格', '税抜価格', '楽天税フラグ', 'Yahoo税込', '楽天価格min購入可', 'セール価格',
+  '送料フラグ', '送料条件名',
+  '楽天ポイント％', '楽天還元円', '楽天ポイント開始', '楽天ポイント終了',
+  'Yahooポイント数', 'Yahooポイント倍率',
+  '在庫', 'レビュー件数', '画像有無', '画像URL', '画像URL小', '画像ID',
+  '商品URL', '説明文', 'ブランド名',
+  'ヒット順位', 'クエリ', 'マップ版', '生JSON', '競合確定価格'
+];
 /** キャッシュ保持日数（Script Property 未設定時の既定値）。約1か月。 */
 const KEEPA_CACHE_DAYS_DEFAULT = 30;
 /** キャッシュシートの列。Keepa取得データ（調査用）と同じ項目＋取得日時＋セット数項目。調査・回収用。 */
@@ -17916,7 +18113,8 @@ const KEEPA_CACHE_HEADERS = [
   'Buy Box: 現在価格', 'Buy Box: 30 日平均', 'Buy Box: 90 日平均',
   'Amazon: 現在価格', 'Amazon: 30 日平均', 'Amazon: 90 日平均',
   '新品: 90 日平均', '参考価格: 90 日平均',
-  'setCount', 'setCountFromTitle', 'setCountReason'
+  'setCount', 'setCountFromTitle', 'setCountReason',
+  '梱包_L_cm', '梱包_W_cm', '梱包_H_cm', '梱包_重量_g', '梱包_checked'
 ];
 /** キャッシュの「調査用」部分のみのヘッダー（buildKeepaTableRow 用）。KEEPA_CACHE_HEADERS の取得日時と setCount 系を除く。 */
 var KEEPA_CACHE_DEBUG_PART_HEADERS = [
@@ -18203,6 +18401,28 @@ function keepaCacheEntryNeedsImageRefetch_(entry) {
   return img === '' || img.indexOf('http') !== 0;
 }
 
+function keepaCacheHasPkgDims_(entry) {
+  if (!entry) return false;
+  function nonempty_(v) {
+    return v != null && String(v).trim() !== '';
+  }
+  return nonempty_(entry.packageLCm) || nonempty_(entry.packageWCm) ||
+    nonempty_(entry.packageHCm) || nonempty_(entry.packageWeightG);
+}
+
+/**
+ * キャッシュに梱包寸法・重量が無いとき再取得する。
+ * 列ずれ時代の 梱包_checked=1 は「空なのに確認済み」になり得るため再取得する。
+ * 名前列書き込み後に Keepa 側も空なら 梱包_checked=2 とし、以降は再取得しない。
+ */
+function keepaCacheEntryNeedsPkgRefetch_(entry) {
+  if (!entry) return true;
+  if (keepaCacheHasPkgDims_(entry)) return false;
+  var chk = String(entry.packageChecked != null ? entry.packageChecked : '').trim().toLowerCase();
+  if (chk === '2' || chk === 'ok' || chk === 'empty') return false;
+  return true;
+}
+
 /**
  * Keepa product から Amazon 画像URLをすべて列挙（image / images[] / imagesCSV）。重複は除く。
  * @param {Object} p Keepa product
@@ -18394,7 +18614,8 @@ function fetchKeepaProductsForSheet(apiKey, asins) {
     var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     if (res.getResponseCode() !== 200) return null;
     var json = JSON.parse(res.getContentText());
-    if (!json.products) return { list: [], raw: [] };
+    if (!json.products) return { list: [], raw: [], tokensLeft: json.tokensLeft, tokensConsumed: json.tokensConsumed };
+    Logger.log('[Keepa] tokensLeft=' + json.tokensLeft + ' tokensConsumed=' + json.tokensConsumed + ' n=' + json.products.length);
     var out = [];
     json.products.forEach(function(p) {
       var asin = p.asin;
@@ -18458,7 +18679,7 @@ function fetchKeepaProductsForSheet(apiKey, asins) {
         Utilities.sleep(350);
       }
     }
-    return { list: out, raw: json.products };
+    return { list: out, raw: json.products, tokensLeft: json.tokensLeft, tokensConsumed: json.tokensConsumed };
   } catch (e) {
     console.warn('[Keepa] ' + e.message);
     return null;
@@ -18475,27 +18696,44 @@ function extractKeepaProductExtrasForLog_(p) {
     packageLCm: '', packageWCm: '', packageHCm: '', packageWeightG: ''
   };
   if (!p) return empty;
-  function mmToCm_(v) {
+  function keepaScalar_(v) {
     if (v == null || v === '' || v === -1) return '';
-    var n = Number(v);
+    if (Array.isArray(v)) return keepaScalar_(v.length ? v[0] : '');
+    if (typeof v === 'object') {
+      if (v.value != null) return keepaScalar_(v.value);
+      if (v.length != null) return keepaScalar_(v.length);
+      if (v.mm != null) return keepaScalar_(v.mm);
+      return '';
+    }
+    return v;
+  }
+  function mmToCm_(v) {
+    var n = Number(keepaScalar_(v));
     if (!isFinite(n) || n <= 0) return '';
     return Math.round((n / 10) * 100) / 100;
   }
   function numOrEmpty_(v) {
-    if (v == null || v === '' || v === -1) return '';
-    var n = Number(v);
+    var n = Number(keepaScalar_(v));
     if (!isFinite(n) || n < 0) return '';
     return n;
   }
   var pn = (p.partNumber != null) ? String(p.partNumber).trim() : '';
+  var l = mmToCm_(p.packageLength);
+  var w = mmToCm_(p.packageWidth);
+  var h = mmToCm_(p.packageHeight);
+  var wt = numOrEmpty_(p.packageWeight);
+  if (l === '') l = mmToCm_(p.itemLength);
+  if (w === '') w = mmToCm_(p.itemWidth);
+  if (h === '') h = mmToCm_(p.itemHeight);
+  if (wt === '') wt = numOrEmpty_(p.itemWeight);
   return {
     partNumber: pn,
     brand: (p.brand != null) ? String(p.brand).trim() : '',
     manufacturer: (p.manufacturer != null) ? String(p.manufacturer).trim() : '',
-    packageLCm: mmToCm_(p.packageLength),
-    packageWCm: mmToCm_(p.packageWidth),
-    packageHCm: mmToCm_(p.packageHeight),
-    packageWeightG: numOrEmpty_(p.packageWeight)
+    packageLCm: l,
+    packageWCm: w,
+    packageHCm: h,
+    packageWeightG: wt
   };
 }
 
@@ -19723,7 +19961,7 @@ function ensureKeepaFetchLogSheet(ss) {
 /**
  * Keepa取得の1行分のログを「Keepa取得_ログ」シートに追記する。URL・画像紐付き・画像一致内訳の原因追及に利用。
  * rowData.jan は AI情報取得data の JAN（Keepa EAN 不可）。ヘッダー名に合わせて書き込む。
- * U1: partNumber／ブランド／製造者／梱包寸法・重量（同一API応答。キャッシュヒット時は空になりうる）。
+ * U1: partNumber／ブランド／製造者／梱包寸法・重量。キャッシュヒット時はキャッシュのブランド／製造者／梱包をコピーして追記（既存ログ行は書き換えない）。
  */
 function appendKeepaFetchLogRow(ss, rowData) {
   var sheet = ss.getSheetByName(KEEPA_FETCH_LOG_SHEET_NAME);
@@ -19771,6 +20009,55 @@ function appendKeepaFetchLogRow(ss, rowData) {
   }
   if (row.length === 0) return;
   sheet.appendRow(row);
+  fillKeepaFetchLogPkgIfEmpty_(sheet, headers, rowData);
+}
+
+/**
+ * 同一ASINの既存ログ行で、梱包列が空なら今回の値だけ埋める（他列は触らない）。
+ * B08W56WVHD のように Keepa に寸法があるのにキャッシュ列ずれでログが空のまま残った行向け。
+ */
+function fillKeepaFetchLogPkgIfEmpty_(sheet, headers, rowData) {
+  if (!sheet || !headers || !rowData || !rowData.asin) return;
+  var pkgNames = ['梱包_L_cm', '梱包_W_cm', '梱包_H_cm', '梱包_重量_g'];
+  var pkgVals = [
+    rowData.packageLCm, rowData.packageWCm, rowData.packageHCm, rowData.packageWeightG
+  ];
+  var hasVal = false;
+  var pi;
+  for (pi = 0; pi < pkgVals.length; pi++) {
+    if (pkgVals[pi] != null && String(pkgVals[pi]).trim() !== '') hasVal = true;
+  }
+  if (!hasVal) return;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  var idxAsin = -1;
+  var pkgIdx = [];
+  var hi;
+  for (hi = 0; hi < headers.length; hi++) {
+    var h = String(headers[hi] || '').trim();
+    if (h === 'ASIN') idxAsin = hi;
+    for (pi = 0; pi < pkgNames.length; pi++) {
+      if (h === pkgNames[pi]) pkgIdx[pi] = hi;
+    }
+  }
+  if (idxAsin < 0) return;
+  var want = String(rowData.asin).trim();
+  var data = sheet.getRange(2, 1, lastRow, headers.length).getValues();
+  var filled = 0;
+  for (var r = 0; r < data.length; r++) {
+    if (String(data[r][idxAsin] || '').trim() !== want) continue;
+    for (pi = 0; pi < pkgNames.length; pi++) {
+      var col = pkgIdx[pi];
+      if (col == null || col < 0) continue;
+      var nv = pkgVals[pi];
+      if (nv == null || String(nv).trim() === '') continue;
+      var ov = data[r][col];
+      if (ov != null && String(ov).trim() !== '') continue;
+      sheet.getRange(r + 2, col + 1).setValue(nv);
+      filled++;
+    }
+  }
+  if (filled) Logger.log('[Keepa] ログ梱包の空セルを埋めた ASIN=' + want + ' cells=' + filled);
 }
 
 /**
@@ -21598,8 +21885,103 @@ function getKeepaCacheSheet(ss) {
   if (sheet.getLastRow() === 0 && typeof KEEPA_CACHE_HEADERS !== 'undefined') {
     sheet.getRange(1, 1, 1, KEEPA_CACHE_HEADERS.length).setValues([KEEPA_CACHE_HEADERS]);
     sheet.getRange(1, 1, 1, KEEPA_CACHE_HEADERS.length).setFontWeight('bold');
+  } else {
+    ensureKeepaCacheSheetHeaders_(sheet);
   }
   return sheet;
+}
+
+/**
+ * キャッシュ1行目に欠ける標準列（梱包など）を末尾追加。既存データ行は触らない。
+ * 旧形式の title / imageUrl / price / ean がある場合は、同義の日本語列を重複追加しない。
+ * ヘッダー空の列には、標準レイアウトの同じ位置の列名を入れる（列の追加はしない）。
+ */
+function ensureKeepaCacheSheetHeaders_(sheet) {
+  if (!sheet || typeof KEEPA_CACHE_HEADERS === 'undefined') return;
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+  var have = {};
+  var i;
+  for (i = 0; i < headers.length; i++) {
+    var h0 = String(headers[i] || '').trim();
+    if (h0) have[h0] = true;
+  }
+  var aliases = {
+    '画像': ['画像', 'imageUrl'],
+    '商品名': ['商品名', 'title'],
+    '商品コード: EAN': ['商品コード: EAN', 'ean'],
+    'Buy Box: 現在価格': ['Buy Box: 現在価格', 'price']
+  };
+  var newHdr = [];
+  var filledEmpty = [];
+  for (i = 0; i < headers.length; i++) {
+    var cur = String(headers[i] || '').trim();
+    if (cur) {
+      newHdr.push(cur);
+      continue;
+    }
+    var nameAtPos = (i < KEEPA_CACHE_HEADERS.length) ? KEEPA_CACHE_HEADERS[i] : '';
+    var label = nameAtPos || ('空き列_' + (i + 1));
+    newHdr.push(label);
+    have[label] = true;
+    filledEmpty.push((i + 1) + ':' + label);
+  }
+  if (filledEmpty.length) {
+    sheet.getRange(1, 1, 1, newHdr.length).setValues([newHdr]);
+    sheet.getRange(1, 1, 1, newHdr.length).setFontWeight('bold');
+    Logger.log('[Keepa] 空ヘッダーを列名で埋めた: ' + filledEmpty.join(','));
+    headers = newHdr;
+  }
+  var toAdd = [];
+  for (var j = 0; j < KEEPA_CACHE_HEADERS.length; j++) {
+    var name = KEEPA_CACHE_HEADERS[j];
+    if (!name) continue;
+    if (have[name]) continue;
+    var als = aliases[name];
+    var skip = false;
+    if (als) {
+      for (var a = 0; a < als.length; a++) {
+        if (have[als[a]]) { skip = true; break; }
+      }
+    }
+    if (!skip) toAdd.push(name);
+  }
+  if (!toAdd.length) return;
+  lastCol = Math.max(sheet.getLastColumn(), 1);
+  sheet.getRange(1, lastCol + 1, 1, toAdd.length).setValues([toAdd]);
+  sheet.getRange(1, lastCol + 1, 1, toAdd.length).setFontWeight('bold');
+  Logger.log('[Keepa] キャッシュへ列追加: ' + toAdd.join(','));
+}
+
+function keepaCacheHdrIdxPrefer_(hdr, names) {
+  for (var n = 0; n < names.length; n++) {
+    for (var hi = 0; hi < hdr.length; hi++) {
+      if (String(hdr[hi] || '').trim() === names[n]) return hi;
+    }
+  }
+  return -1;
+}
+
+function keepaLooksLikeAsin_(s) {
+  return /^[A-Z0-9]{10}$/i.test(String(s || '').trim());
+}
+
+/** 位置ずれで梱包_checked がブランド列に入った行を除外する */
+function keepaCacheBrandLooksCorrupt_(brand, mfr) {
+  var b = String(brand || '').trim();
+  var m = String(mfr || '').trim();
+  if (b === '1' || b.toLowerCase() === 'true') return true;
+  if (/^\d+(\.\d+)?$/.test(m) && (b === '1' || b === '')) return true;
+  return false;
+}
+
+function keepaCacheSetNamedAll_(hdr, row, names, val) {
+  if (val == null || String(val).trim() === '') return;
+  for (var n = 0; n < names.length; n++) {
+    for (var hi = 0; hi < hdr.length; hi++) {
+      if (String(hdr[hi] || '').trim() === names[n]) row[hi] = val;
+    }
+  }
 }
 
 /**
@@ -21631,9 +22013,10 @@ function purgeKeepaCacheOlderThanDays(ss, days) {
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
  * @param {string[]|null} asins ASINの配列。null のときはキャッシュ全体を有効期限内で返す（1回読みで使い回す用）。
  * @param {number} days 有効日数（この日数以内の取得のみ有効）
- * @return {Object.<string, {asin:string, title:string, price:number|null, imageUrl:string, setCount:number|null, setCountFromTitle:number|null, setCountReason:string|null, ean:string|null}>} ASINをキーにしたキャッシュオブジェクト
+ * @return {Object.<string, {asin:string, title:string, price:number|null, imageUrl:string, setCount:number|null, setCountFromTitle:number|null, setCountReason:string|null, ean:string|null, brand:string, manufacturer:string, packageLCm:string|number, packageWCm:string|number, packageHCm:string|number, packageWeightG:string|number}>} ASINをキーにしたキャッシュオブジェクト
  */
 function getKeepaCachedResults(ss, asins, days) {
+  // 読取は常にマスタ Keepa取得_キャッシュ（専用ストアは dual-write のみ）
   var out = {};
   var sheet = getKeepaCacheSheet(ss);
   if (!sheet || sheet.getLastRow() <= 1) return out;
@@ -21644,30 +22027,41 @@ function getKeepaCachedResults(ss, asins, days) {
     asins.forEach(function(a) { if (a) asinSet[a] = true; });
   }
   var numCols = sheet.getLastColumn();
+  var hdr = sheet.getRange(1, 1, 1, numCols).getValues()[0] || [];
+  function keepaCacheHdrIdx_(name) {
+    for (var hi = 0; hi < hdr.length; hi++) {
+      if (String(hdr[hi] || '').trim() === name) return hi;
+    }
+    return -1;
+  }
+  var idxDate = 0;
+  var idxAsin = keepaCacheHdrIdxPrefer_(hdr, ['ASIN']);
+  var idxTitle = keepaCacheHdrIdxPrefer_(hdr, ['title', '商品名']);
+  var idxPrice = keepaCacheHdrIdxPrefer_(hdr, ['price', 'Buy Box: 現在価格']);
+  var idxImage = keepaCacheHdrIdxPrefer_(hdr, ['imageUrl', '画像']);
+  var idxSetCount = keepaCacheHdrIdxPrefer_(hdr, ['setCount']);
+  var idxSetCountFromTitle = keepaCacheHdrIdxPrefer_(hdr, ['setCountFromTitle']);
+  var idxSetCountReason = keepaCacheHdrIdxPrefer_(hdr, ['setCountReason']);
+  var idxEan = keepaCacheHdrIdxPrefer_(hdr, ['ean', '商品コード: EAN']);
+  var idxBrand = keepaCacheHdrIdxPrefer_(hdr, ['ブランド']);
+  var idxMfr = keepaCacheHdrIdxPrefer_(hdr, ['製造者']);
+  var idxPkgL = keepaCacheHdrIdx_('梱包_L_cm');
+  var idxPkgW = keepaCacheHdrIdx_('梱包_W_cm');
+  var idxPkgH = keepaCacheHdrIdx_('梱包_H_cm');
+  var idxPkgWt = keepaCacheHdrIdx_('梱包_重量_g');
+  var idxPkgChk = keepaCacheHdrIdx_('梱包_checked');
+  var isOldFormat = idxBrand < 0 && idxMfr < 0 && (numCols <= 10 || String(hdr[1] || '').trim() === 'ASIN');
+  if (isOldFormat) {
+    idxAsin = 1; idxTitle = 2; idxPrice = 3; idxImage = 4; idxSetCount = 5;
+    idxSetCountFromTitle = 6; idxSetCountReason = 7; idxEan = 8;
+  }
   var rows = sheet.getRange(2, 1, sheet.getLastRow(), numCols).getValues();
   for (var r = 0; r < rows.length; r++) {
     var row = rows[r];
-    var isOldFormat = (numCols <= 10) || ((row[24] == null || row[24] === '') && (row[25] == null || row[25] === '') && (row[26] == null || row[26] === ''));
-    var idxDate = 0, idxAsin, idxTitle, idxPrice, idxImage, idxSetCount, idxSetCountFromTitle, idxSetCountReason, idxEan;
-    if (isOldFormat) {
-      idxAsin = 1; idxTitle = 2; idxPrice = 3; idxImage = 4; idxSetCount = 5; idxSetCountFromTitle = 6; idxSetCountReason = 7; idxEan = 8;
-    } else {
-      if (typeof KEEPA_CACHE_HEADERS !== 'undefined') {
-        idxAsin = KEEPA_CACHE_HEADERS.indexOf('ASIN');
-        idxTitle = KEEPA_CACHE_HEADERS.indexOf('商品名');
-        idxPrice = KEEPA_CACHE_HEADERS.indexOf('Buy Box: 現在価格');
-        idxImage = KEEPA_CACHE_HEADERS.indexOf('画像');
-        idxSetCount = KEEPA_CACHE_HEADERS.indexOf('setCount');
-        idxSetCountFromTitle = KEEPA_CACHE_HEADERS.indexOf('setCountFromTitle');
-        idxSetCountReason = KEEPA_CACHE_HEADERS.indexOf('setCountReason');
-        idxEan = KEEPA_CACHE_HEADERS.indexOf('商品コード: EAN');
-      } else {
-        idxAsin = 3; idxTitle = 2; idxPrice = 16; idxImage = 1; idxSetCount = 24; idxSetCountFromTitle = 25; idxSetCountReason = 26; idxEan = 4;
-      }
-    }
     var t = (typeof row[idxDate] === 'number') ? row[idxDate] : parseFloat(row[idxDate], 10);
     if (isNaN(t) || t < cutoff) continue;
-    var asin = String((row[idxAsin] != null) ? row[idxAsin] : '').trim();
+    var asin = String((idxAsin >= 0 && row[idxAsin] != null) ? row[idxAsin] : '').trim();
+    if (!keepaLooksLikeAsin_(asin)) continue;
     if (asinSet != null && !asinSet[asin]) continue;
     var priceVal = (row[idxPrice] !== '' && row[idxPrice] != null) ? (typeof row[idxPrice] === 'number' ? row[idxPrice] : parseFloat(String(row[idxPrice]).replace(/,/g, ''), 10)) : null;
     if (typeof priceVal === 'number' && isNaN(priceVal)) priceVal = null;
@@ -21675,6 +22069,16 @@ function getKeepaCachedResults(ss, asins, days) {
     if (typeof setCount === 'number' && isNaN(setCount)) setCount = null;
     var setCountFromTitle = (row[idxSetCountFromTitle] !== '' && row[idxSetCountFromTitle] != null) ? (typeof row[idxSetCountFromTitle] === 'number' ? row[idxSetCountFromTitle] : parseInt(row[idxSetCountFromTitle], 10)) : null;
     if (typeof setCountFromTitle === 'number' && isNaN(setCountFromTitle)) setCountFromTitle = null;
+    var brandCached = (idxBrand >= 0 && row[idxBrand] != null) ? String(row[idxBrand]).trim() : '';
+    var mfrCached = (idxMfr >= 0 && row[idxMfr] != null) ? String(row[idxMfr]).trim() : '';
+    if (keepaCacheBrandLooksCorrupt_(brandCached, mfrCached)) {
+      brandCached = '';
+      mfrCached = '';
+    }
+    function keepaCacheCell_(idx) {
+      if (idx < 0 || row[idx] == null || row[idx] === '') return '';
+      return row[idx];
+    }
     out[asin] = {
       asin: asin,
       title: (row[idxTitle] != null) ? String(row[idxTitle]) : '',
@@ -21683,7 +22087,14 @@ function getKeepaCachedResults(ss, asins, days) {
       setCount: setCount,
       setCountFromTitle: setCountFromTitle,
       setCountReason: (row[idxSetCountReason] != null && row[idxSetCountReason] !== '') ? String(row[idxSetCountReason]) : null,
-      ean: (row[idxEan] != null && row[idxEan] !== '') ? String(row[idxEan]) : null
+      ean: (row[idxEan] != null && row[idxEan] !== '') ? String(row[idxEan]) : null,
+      brand: brandCached,
+      manufacturer: mfrCached,
+      packageLCm: keepaCacheCell_(idxPkgL),
+      packageWCm: keepaCacheCell_(idxPkgW),
+      packageHCm: keepaCacheCell_(idxPkgH),
+      packageWeightG: keepaCacheCell_(idxPkgWt),
+      packageChecked: keepaCacheCell_(idxPkgChk)
     };
   }
   return out;
@@ -21700,94 +22111,820 @@ function writeKeepaCache(ss, results, rawProducts) {
   if (!results || results.length === 0) return;
   var sheet = getKeepaCacheSheet(ss);
   if (!sheet) return;
-  var numCols = typeof KEEPA_CACHE_HEADERS !== 'undefined' ? KEEPA_CACHE_HEADERS.length : 27;
+  ensureKeepaCacheSheetHeaders_(sheet);
+  var numCols = Math.max(sheet.getLastColumn(), typeof KEEPA_CACHE_HEADERS !== 'undefined' ? KEEPA_CACHE_HEADERS.length : 27);
+  var cacheHdrRow = sheet.getRange(1, 1, 1, numCols).getValues()[0] || [];
   var lastRow = sheet.getLastRow();
   var asinToRow = {};
   if (lastRow >= 2) {
-    var asinColIndex = (typeof KEEPA_CACHE_HEADERS !== 'undefined') ? KEEPA_CACHE_HEADERS.indexOf('ASIN') : 3;
-    if (asinColIndex < 0) asinColIndex = 3;
+    var asinColIndex = keepaCacheHdrIdxPrefer_(cacheHdrRow, ['ASIN']);
+    if (asinColIndex < 0) asinColIndex = 1;
     var cacheData = sheet.getRange(2, 1, lastRow, numCols).getValues();
     for (var d = 0; d < cacheData.length; d++) {
-      var asin = String((cacheData[d][asinColIndex] != null) ? cacheData[d][asinColIndex] : '').trim();
-      if (asin) asinToRow[asin] = d + 2;
+      var asinMap = String((cacheData[d][asinColIndex] != null) ? cacheData[d][asinColIndex] : '').trim();
+      if (keepaLooksLikeAsin_(asinMap)) asinToRow[asinMap] = d + 2;
     }
   }
   var nextAppendRow = lastRow + 1;
   var now = new Date().getTime();
-  var headersBuild = (typeof KEEPA_DEBUG_HEADERS_MANUAL_CSV !== 'undefined' && KEEPA_DEBUG_HEADERS_MANUAL_CSV && KEEPA_DEBUG_HEADERS_MANUAL_CSV.length) ? KEEPA_DEBUG_HEADERS_MANUAL_CSV.slice() : (typeof KEEPA_CACHE_DEBUG_PART_HEADERS !== 'undefined' ? KEEPA_CACHE_DEBUG_PART_HEADERS.slice() : []);
+  var namedHdrs = [];
+  for (var hi = 0; hi < cacheHdrRow.length; hi++) {
+    var hn = String(cacheHdrRow[hi] || '').trim();
+    if (hn) namedHdrs.push(hn);
+  }
   var asinToRaw = {};
   if (rawProducts && rawProducts.length > 0) {
     rawProducts.forEach(function(p) { if (p && p.asin) asinToRaw[p.asin] = p; });
   }
-  var asinsToWrite = [];
-  var rows = [];
+  var updated = 0;
+  var appended = 0;
+  Logger.log('[Keepa] キャッシュ書込(名前列): results=' + results.length + ', 既存ASINマップ件数=' + Object.keys(asinToRow).length);
   for (var i = 0; i < results.length; i++) {
     var r = results[i];
     if (!r || !r.asin) continue;
-    var debugRow = [];
-    if (headersBuild.length > 0) {
-      var p = asinToRaw[r.asin];
-      if (p) {
-        debugRow = buildKeepaTableRow(p, r.asin, headersBuild);
+    try {
+      var targetRow = asinToRow[r.asin];
+      var flatRow;
+      if (targetRow != null) {
+        flatRow = sheet.getRange(targetRow, 1, 1, numCols).getValues()[0] || [];
       } else {
-        for (var h = 0; h < headersBuild.length; h++) debugRow.push('');
-        if (debugRow.length >= 1) debugRow[0] = (r.imageUrl != null) ? String(r.imageUrl) : '';
-        if (debugRow.length >= 2) debugRow[1] = (r.title != null) ? String(r.title) : '';
-        if (debugRow.length >= 4) debugRow[3] = (r.ean != null) ? String(r.ean) : '';
-        if (debugRow.length >= 16) debugRow[15] = (r.price != null) ? String(r.price) : '';
+        flatRow = [];
       }
-    }
-    var setCountPart = [(r.setCount != null) ? r.setCount : '', (r.setCountFromTitle != null) ? r.setCountFromTitle : '', (r.setCountReason != null) ? String(r.setCountReason) : ''];
-    var fullRow = [now].concat(debugRow).concat(setCountPart);
-    var idxImage = (typeof KEEPA_CACHE_HEADERS !== 'undefined') ? KEEPA_CACHE_HEADERS.indexOf('画像') : 1;
-    if (idxImage >= 0 && fullRow.length > idxImage && r.imageUrl != null && String(r.imageUrl).trim().indexOf('http') === 0) {
-      fullRow[idxImage] = String(r.imageUrl).trim();
-    }
-    asinsToWrite.push(r.asin);
-    rows.push(fullRow);
-  }
-  if (rows.length > 0) {
-    var updated = 0;
-    var appended = 0;
-    Logger.log('[Keepa] キャッシュ書込: results=' + (results ? results.length : 0) + ', 書込行数=' + rows.length + ', 既存ASINマップ件数=' + Object.keys(asinToRow).length);
-    for (var i = 0; i < rows.length; i++) {
-      if (rows[i] == null || !Array.isArray(rows[i])) {
-        Logger.log('[Keepa] キャッシュ 警告: 行' + i + ' が不正 (null or 非配列)');
-        continue;
-      }
-      if (rows[i].length !== numCols) {
-        Logger.log('[Keepa] キャッシュ 警告: 行' + i + ' の列数=' + rows[i].length + ', 期待=' + numCols);
-      }
-      try {
-        var rawRow = rows[i];
-        for (var c = 0; c < rawRow.length; c++) {
-          if (Array.isArray(rawRow[c])) {
-            Logger.log('[Keepa] キャッシュ 行' + i + ' 列' + c + ' が配列: length=' + rawRow[c].length);
+      while (flatRow.length < numCols) flatRow.push('');
+      var p = asinToRaw[r.asin];
+      if (p && namedHdrs.length) {
+        var built = buildKeepaTableRow(p, r.asin, namedHdrs);
+        var builtByName = {};
+        for (var b = 0; b < namedHdrs.length; b++) {
+          var bv = built[b];
+          if (bv != null && String(bv).trim() !== '' && builtByName[namedHdrs[b]] == null) {
+            builtByName[namedHdrs[b]] = bv;
           }
         }
-        var flatRow = [];
-        for (var c = 0; c < numCols; c++) {
-          var cell = rawRow[c];
-          flatRow.push(Array.isArray(cell) ? (cell.length ? cell.join(' ') : '') : (cell != null ? cell : ''));
+        for (var c = 0; c < cacheHdrRow.length; c++) {
+          var colName = String(cacheHdrRow[c] || '').trim();
+          if (!colName) continue;
+          var nv = builtByName[colName];
+          if (nv != null && String(nv).trim() !== '') flatRow[c] = nv;
         }
-        var asin = asinsToWrite[i];
-        var targetRow = asinToRow[asin];
-        if (targetRow != null) {
-          sheet.getRange(targetRow, 1, 1, numCols).setValues([flatRow]);
-          updated++;
-        } else {
-          sheet.getRange(nextAppendRow, 1, 1, numCols).setValues([flatRow]);
-          asinToRow[asin] = nextAppendRow;
-          nextAppendRow++;
-          appended++;
-        }
-      } catch (e) {
-        Logger.log('[Keepa] キャッシュ 行' + i + ' 書込失敗: ' + (e && e.message) + ' ASIN=' + (asinsToWrite[i] || ''));
-        throw e;
       }
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['取得日時'], now);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['ASIN'], r.asin);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['title', '商品名'], r.title);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['imageUrl', '画像'], r.imageUrl);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['price', 'Buy Box: 現在価格'], r.price);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['ean', '商品コード: EAN'], r.ean);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['setCount'], r.setCount);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['setCountFromTitle'], r.setCountFromTitle);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['setCountReason'], r.setCountReason);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['ブランド'], r.brand);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['製造者'], r.manufacturer);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['梱包_L_cm'], r.packageLCm);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['梱包_W_cm'], r.packageWCm);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['梱包_H_cm'], r.packageHCm);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['梱包_重量_g'], r.packageWeightG);
+      keepaCacheSetNamedAll_(cacheHdrRow, flatRow, ['梱包_checked'], '2');
+      if (targetRow != null) {
+        sheet.getRange(targetRow, 1, 1, numCols).setValues([flatRow]);
+        updated++;
+      } else {
+        sheet.getRange(nextAppendRow, 1, 1, numCols).setValues([flatRow]);
+        asinToRow[r.asin] = nextAppendRow;
+        nextAppendRow++;
+        appended++;
+      }
+    } catch (e) {
+      Logger.log('[Keepa] キャッシュ 行' + i + ' 書込失敗: ' + (e && e.message) + ' ASIN=' + (r && r.asin ? r.asin : ''));
+      throw e;
     }
-    Logger.log('[Keepa] キャッシュ書込完了: 更新=' + updated + ', 追記=' + appended);
   }
+  Logger.log('[Keepa] キャッシュ書込完了: 更新=' + updated + ', 追記=' + appended);
+  try {
+    mirrorKeepaCacheToCompetitorStore_(ss, results);
+  } catch (eMirror) {
+    Logger.log('[Keepa] 専用ストア dual-write 失敗（Aは続行）: ' + (eMirror && eMirror.message ? eMirror.message : eMirror));
+  }
+  try {
+    keepaFullAfterKeepaCache_(rawProducts);
+  } catch (eFull) {
+    Logger.log('[KeepaFull] 失敗（Aは続行）: ' + (eFull && eFull.message ? eFull.message : eFull));
+  }
+}
+
+/**
+ * COMPETITOR_STORE_ENABLED=true のとき、今書いた results を専用 keepa_snapshot へ追加書き。
+ * 読取は getKeepaCachedResults のままマスタ優先。失敗しても呼び出し元は続行。
+ */
+function competitorStoreEnabled_() {
+  var on = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_STORE_ENABLED) || '').trim().toLowerCase();
+  return on === 'true' || on === '1' || on === 'yes';
+}
+
+/**
+ * B Step2 の楽天・Yahoo 生ヒットを専用「モールヒット」へ追記用に積む。競合確定価格は空。1件目を確定にしない。
+ */
+function competitorMallHitRaw_(it) {
+  if (it && it._raw && typeof it._raw === 'object') return it._raw;
+  return it || {};
+}
+
+/** 自店（楽天 shopId=octas／店名 オンラインショップOctas）。商品名に Octas があっても除外しない。 */
+function isOwnOctasCompetitorHit_(kind, it) {
+  var raw = competitorMallHitRaw_(it);
+  var shopCode = '';
+  var shopName = '';
+  var url = '';
+  if (kind === 'rakuten') {
+    shopCode = raw.shopCode || extractRakutenShopIdFromItemUrl_(it && it.itemUrl) || extractRakutenShopIdFromItemUrl_(raw.itemUrl);
+    shopName = raw.shopName || '';
+    url = (it && it.itemUrl) || raw.itemUrl || raw.shopUrl || '';
+  } else {
+    var seller = raw.seller || {};
+    shopCode = seller.sellerId || extractYahooStoreIdFromShoppingUrl_((it && it.url) || raw.url);
+    shopName = seller.name || '';
+    url = (it && it.url) || raw.url || seller.url || '';
+  }
+  var ownId = String(typeof RAKUTEN_SHOP_ID !== 'undefined' ? RAKUTEN_SHOP_ID : 'octas').toLowerCase();
+  if (String(shopCode || '').toLowerCase() === ownId) return true;
+  var n = String(shopName || '').replace(/\s+/g, '').toLowerCase();
+  if (n.indexOf('オンラインショップoctas') >= 0) return true;
+  if (n === 'octas') return true;
+  var u = String(url || '').toLowerCase();
+  if (u.indexOf('/' + ownId + '/') < 0) return false;
+  return u.indexOf('rakuten') >= 0 || u.indexOf('yahoo') >= 0 || u.indexOf('paypaymall') >= 0;
+}
+
+function competitorCellText_(v, maxLen) {
+  if (v == null || v === '') return '';
+  var s = String(v);
+  var n = maxLen || 2000;
+  if (s.length > n) return s.substring(0, n);
+  return s;
+}
+
+function competitorRakutenImageUrl_(raw, key) {
+  var arr = raw && raw[key];
+  if (!arr || !arr.length) return '';
+  var x = arr[0];
+  if (typeof x === 'string') return x;
+  if (x && x.imageUrl != null) return String(x.imageUrl);
+  return '';
+}
+
+function ensureCompetitorHitsHeaders_(dest) {
+  if (!dest) return COMPETITOR_HITS_HEADERS_.slice();
+  if (dest.getLastRow() === 0) {
+    dest.getRange(1, 1, 1, COMPETITOR_HITS_HEADERS_.length).setValues([COMPETITOR_HITS_HEADERS_]);
+    dest.getRange(1, 1, 1, COMPETITOR_HITS_HEADERS_.length).setFontWeight('bold');
+    return COMPETITOR_HITS_HEADERS_.slice();
+  }
+  var lastCol = Math.max(dest.getLastColumn(), 1);
+  var hdr = dest.getRange(1, 1, 1, lastCol).getValues()[0];
+  var have = {};
+  var i;
+  for (i = 0; i < hdr.length; i++) have[String(hdr[i] || '').trim()] = true;
+  var missing = [];
+  for (i = 0; i < COMPETITOR_HITS_HEADERS_.length; i++) {
+    var h = COMPETITOR_HITS_HEADERS_[i];
+    if (h && !have[h]) missing.push(h);
+  }
+  if (missing.length) {
+    dest.getRange(1, lastCol + 1, 1, missing.length).setValues([missing]);
+    dest.getRange(1, lastCol + 1, 1, missing.length).setFontWeight('bold');
+    hdr = dest.getRange(1, 1, 1, lastCol + missing.length).getValues()[0];
+  }
+  return hdr;
+}
+
+function collectCompetitorMallHitRows_(out, mallJa, jan, query, items, kind, purpose) {
+  if (!out || !items || !items.length) return;
+  var now = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ss");
+  var aim = purpose || 'リサーチ';
+  var i;
+  var skippedOwn = 0;
+  for (i = 0; i < items.length; i++) {
+    var it = items[i] || {};
+    if (isOwnOctasCompetitorHit_(kind, it)) {
+      skippedOwn++;
+      continue;
+    }
+    var rawObj = competitorMallHitRaw_(it);
+    var name = kind === 'rakuten' ? (it.itemName || rawObj.itemName || '') : (it.name || rawObj.name || '');
+    var price = kind === 'rakuten' ? (it.itemPrice != null ? it.itemPrice : rawObj.itemPrice) : (it.price != null ? it.price : rawObj.price);
+    var url = kind === 'rakuten' ? (it.itemUrl || rawObj.itemUrl || '') : (it.url || rawObj.url || '');
+    var ship = kind === 'rakuten' ? (it.postageFlag != null ? it.postageFlag : rawObj.postageFlag) : (it.shippingCode != null ? it.shippingCode : (rawObj.shipping && rawObj.shipping.code));
+    var rec = {
+      '取得日時': now,
+      '目的': aim,
+      'モール': mallJa,
+      '検索JAN': jan || '',
+      'YahooヒットJAN': '',
+      'ASIN': '',
+      '店名': '',
+      '店舗コード': '',
+      '店舗URL': '',
+      '店商品コード': '',
+      'モール商品コード': '',
+      '商品名': name,
+      '表示価格': price != null ? price : '',
+      '税抜価格': '',
+      '楽天税フラグ': '',
+      'Yahoo税込': '',
+      '楽天価格min購入可': '',
+      'セール価格': '',
+      '送料フラグ': ship != null ? ship : '',
+      '送料条件名': '',
+      '楽天ポイント％': '',
+      '楽天還元円': '',
+      '楽天ポイント開始': '',
+      '楽天ポイント終了': '',
+      'Yahooポイント数': '',
+      'Yahooポイント倍率': '',
+      '在庫': '',
+      'レビュー件数': '',
+      '画像有無': '',
+      '画像URL': '',
+      '画像URL小': '',
+      '画像ID': '',
+      '商品URL': url,
+      '説明文': '',
+      'ブランド名': '',
+      'ヒット順位': i + 1,
+      'クエリ': query || '',
+      'マップ版': '2026-08-15c',
+      '生JSON': '',
+      '競合確定価格': ''
+    };
+    if (kind === 'rakuten') {
+      rec['店名'] = rawObj.shopName || '';
+      rec['店舗コード'] = rawObj.shopCode || '';
+      rec['店舗URL'] = rawObj.shopUrl || '';
+      rec['モール商品コード'] = rawObj.itemCode || '';
+      rec['店商品コード'] = [rawObj.shopCode, rawObj.itemCode].filter(function (x) { return x; }).join('_');
+      rec['楽天ポイント％'] = rawObj.pointRate != null ? rawObj.pointRate : (it.pointRate != null ? it.pointRate : '');
+      var rate = Number(rec['楽天ポイント％']);
+      var pnum = Number(price);
+      if (!isNaN(rate) && !isNaN(pnum) && rec['楽天ポイント％'] !== '') {
+        rec['楽天還元円'] = Math.round((pnum * rate) / 100);
+      }
+      rec['楽天ポイント開始'] = rawObj.pointRateStartTime || '';
+      rec['楽天ポイント終了'] = rawObj.pointRateEndTime || '';
+      rec['楽天税フラグ'] = rawObj.taxFlag != null ? rawObj.taxFlag : '';
+      rec['楽天価格min購入可'] = rawObj.itemPriceMin3 != null ? rawObj.itemPriceMin3 : '';
+      rec['在庫'] = rawObj.availability != null ? rawObj.availability : '';
+      rec['レビュー件数'] = rawObj.reviewCount != null ? rawObj.reviewCount : '';
+      rec['画像有無'] = rawObj.imageFlag != null ? rawObj.imageFlag : '';
+      rec['画像URL'] = competitorRakutenImageUrl_(rawObj, 'mediumImageUrls');
+      rec['画像URL小'] = competitorRakutenImageUrl_(rawObj, 'smallImageUrls');
+      rec['説明文'] = competitorCellText_(rawObj.itemCaption, 2000);
+    } else {
+      var seller = rawObj.seller || {};
+      var pt = rawObj.point || {};
+      var img = rawObj.image || {};
+      var review = rawObj.review || {};
+      var brand = rawObj.brand || {};
+      var shipObj = rawObj.shipping || {};
+      var label = rawObj.priceLabel || {};
+      rec['YahooヒットJAN'] = rawObj.janCode || '';
+      rec['店名'] = seller.name || '';
+      rec['店舗コード'] = seller.sellerId || '';
+      rec['店舗URL'] = seller.url || '';
+      rec['モール商品コード'] = rawObj.code || '';
+      rec['店商品コード'] = [seller.sellerId, rawObj.code].filter(function (x) { return x; }).join('_');
+      rec['Yahooポイント数'] = pt.lyLimitedBonusAmount != null ? pt.lyLimitedBonusAmount : '';
+      rec['Yahooポイント倍率'] = pt.lyLimitedBonusTimes != null ? pt.lyLimitedBonusTimes : '';
+      rec['税抜価格'] = rawObj.taxExcludePrice != null ? rawObj.taxExcludePrice : '';
+      rec['Yahoo税込'] = label.taxable != null ? label.taxable : '';
+      rec['セール価格'] = label.discountedPrice != null ? label.discountedPrice : '';
+      rec['送料条件名'] = shipObj.name || '';
+      rec['在庫'] = rawObj.inStock != null ? rawObj.inStock : '';
+      rec['レビュー件数'] = review.count != null ? review.count : '';
+      rec['画像URL'] = img.medium || it.imageUrl || '';
+      rec['画像URL小'] = img.small || '';
+      rec['画像ID'] = rawObj.imageId != null ? rawObj.imageId : (img.id != null ? img.id : '');
+      rec['説明文'] = competitorCellText_(rawObj.description, 2000);
+      rec['ブランド名'] = brand.name || '';
+    }
+    var raw = '';
+    try {
+      raw = JSON.stringify(rawObj);
+    } catch (eRaw) {
+      raw = '';
+    }
+    if (raw && raw.length > 40000) raw = raw.substring(0, 40000);
+    rec['生JSON'] = raw;
+    out.push(rec);
+  }
+  if (skippedOwn) {
+    Logger.log('[競合ストア] 自店Octas除外 mall=' + mallJa + ' n=' + skippedOwn + ' JAN=' + (jan || ''));
+  }
+}
+
+function competitorHitDedupeKey_(rec) {
+  rec = rec || {};
+  var code = String(rec['店商品コード'] || '').trim();
+  if (!code) code = String(rec['商品URL'] || '').trim();
+  return [String(rec['目的'] || '').trim(), String(rec['モール'] || '').trim(), String(rec['検索JAN'] || '').trim(), code].join('\t');
+}
+
+function competitorHitFingerprint_(rec) {
+  rec = rec || {};
+  function v(k) { return String(rec[k] == null ? '' : rec[k]).trim(); }
+  return [v('表示価格'), v('送料フラグ'), v('楽天ポイント％'), v('Yahooポイント数'), v('商品名')].join('\t');
+}
+
+function competitorHitsLatestFpMap_(dest, hdr) {
+  var map = {};
+  if (!dest || dest.getLastRow() < 2) return map;
+  var last = dest.getLastRow();
+  var vals = dest.getRange(2, 1, last - 1, hdr.length).getValues();
+  var col = {};
+  var i;
+  for (i = 0; i < hdr.length; i++) col[String(hdr[i] || '').trim()] = i;
+  function cell(row, name) {
+    var ix = col[name];
+    if (ix == null || ix >= row.length) return '';
+    return row[ix] == null ? '' : String(row[ix]).trim();
+  }
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var rec = {
+      '目的': cell(vals[r], '目的'),
+      'モール': cell(vals[r], 'モール'),
+      '検索JAN': cell(vals[r], '検索JAN'),
+      '店商品コード': cell(vals[r], '店商品コード'),
+      '商品URL': cell(vals[r], '商品URL'),
+      '表示価格': cell(vals[r], '表示価格'),
+      '送料フラグ': cell(vals[r], '送料フラグ'),
+      '楽天ポイント％': cell(vals[r], '楽天ポイント％'),
+      'Yahooポイント数': cell(vals[r], 'Yahooポイント数'),
+      '商品名': cell(vals[r], '商品名')
+    };
+    var k = competitorHitDedupeKey_(rec);
+    if (!String(k).replace(/\t/g, '')) continue;
+    map[k] = competitorHitFingerprint_(rec);
+  }
+  return map;
+}
+
+function flushCompetitorMallHits_(rows) {
+  var empty = { appended: 0, skipped: 0 };
+  if (!competitorStoreEnabled_()) return empty;
+  if (!rows || !rows.length) return empty;
+  var props = PropertiesService.getScriptProperties();
+  var id = String(props.getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) {
+    Logger.log('[競合ストア] COMPETITOR_SS_ID 未設定のためモールヒットスキップ');
+    return empty;
+  }
+  var destSs = SpreadsheetApp.openById(id);
+  var dest = destSs.getSheetByName(COMPETITOR_HITS_SHEET_);
+  if (!dest) dest = destSs.insertSheet(COMPETITOR_HITS_SHEET_);
+  var hdr = ensureCompetitorHitsHeaders_(dest);
+  var fpMap = competitorHitsLatestFpMap_(dest, hdr);
+  var matrix = [];
+  var skippedFp = 0;
+  var ri;
+  for (ri = 0; ri < rows.length; ri++) {
+    var rec = rows[ri] || {};
+    rec['競合確定価格'] = '';
+    var k = competitorHitDedupeKey_(rec);
+    var fp = competitorHitFingerprint_(rec);
+    if (k.replace(/\t/g, '') && fpMap[k] === fp) {
+      skippedFp++;
+      continue;
+    }
+    if (k.replace(/\t/g, '')) fpMap[k] = fp;
+    var line = [];
+    var hi;
+    for (hi = 0; hi < hdr.length; hi++) {
+      var h = String(hdr[hi] || '').trim();
+      line.push(h ? (rec[h] != null ? rec[h] : '') : '');
+    }
+    matrix.push(line);
+  }
+  if (matrix.length) {
+    dest.getRange(dest.getLastRow() + 1, 1, matrix.length, hdr.length).setValues(matrix);
+  }
+  var aim = String((rows[0] && rows[0]['目的']) || '').trim() || 'リサーチ';
+  var msg = '[競合ストア] モールヒット追記件数=' + matrix.length + ' 変化なしスキップ=' + skippedFp + ' 目的=' + aim + ' ss=' + id;
+  Logger.log(msg);
+  console.log(msg);
+  return { appended: matrix.length, skipped: skippedFp };
+}
+
+function competitorMasterApplyEnabled_() {
+  return getBoolScriptProperty_(PROP_COMPETITOR_MASTER_APPLY_ENABLED, true);
+}
+
+/** B 2.1（12-⑭）。未設定=ON。false で旧 Step2 横断シート直書きのみ。 */
+var B_COMPETITOR_STORE_APPLY_ENABLED_PROP = 'B_COMPETITOR_STORE_APPLY_ENABLED';
+
+function competitorStoreBApplyEnabled_() {
+  return getBoolScriptProperty_(B_COMPETITOR_STORE_APPLY_ENABLED_PROP, true) && competitorMasterApplyEnabled_();
+}
+
+/** 専用ストアへ Step2 が追記でき、2.1 でマスタへ載せるとき横断シート直書きをしない。 */
+function competitorStoreReplaceCrossMallApply_() {
+  if (!B_INTEGRATED_STEPS_ACTIVE_) return false;
+  if (!competitorStoreBApplyEnabled_()) return false;
+  if (!competitorStoreEnabled_()) return false;
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  return !!id;
+}
+
+function menuApplyCompetitorStoreHitsForBIntegratedStep_() {
+  if (!competitorStoreBApplyEnabled_()) {
+    Logger.log('[B.統合実行][2.1] skipped apply off');
+    return;
+  }
+  var stats = applyCompetitorStoreHitsToMaster_({ quiet: true });
+  Logger.log('[B.統合実行][2.1] written=' + (stats.written || 0) +
+    ' skippedNoSet=' + (stats.skippedNoSet || 0) +
+    ' skippedNoHit=' + (stats.skippedNoHit || 0) +
+    ' skipReason=' + (stats.skipReason || ''));
+}
+
+function competitorHitTitleExcluded_(name) {
+  var s = String(name || '');
+  return /ふるさと納税|返礼品|よりどり|種類が選べ|選べるセット|中古品|\b中古\b/.test(s);
+}
+
+function competitorHitShipPaid_(rec) {
+  var mall = String((rec && rec['モール']) || '');
+  var f = String((rec && rec['送料フラグ']) != null ? rec['送料フラグ'] : '').trim();
+  if (f.indexOf('無料') !== -1 || f === '0') return false;
+  if (mall.indexOf('楽天') === 0) return f === '1' || f === 'true' || f === 'TRUE';
+  if (f === '1' || f === '2') return false;
+  if (f === '3') return true;
+  return f !== '' && f !== '0';
+}
+
+function competitorHitEffectivePrice_(rec) {
+  var price = Number(String((rec && rec['表示価格']) || '').replace(/,/g, ''));
+  if (!isFinite(price) || price <= 0) return null;
+  var mall = String((rec && rec['モール']) || '');
+  if (mall.indexOf('楽天') === 0) {
+    var yen = Number(String(rec['楽天還元円'] || '').replace(/,/g, ''));
+    if (!isFinite(yen)) {
+      var rate = Number(String(rec['楽天ポイント％'] || '').replace(/,/g, ''));
+      yen = isFinite(rate) ? Math.round((price * rate) / 100) : 0;
+    }
+    return price - yen;
+  }
+  var pts = Number(String((rec && rec['Yahooポイント数']) || '').replace(/,/g, ''));
+  if (!isFinite(pts)) pts = 0;
+  return price - pts;
+}
+
+function competitorHitsLatestPerShop_(recs) {
+  var map = {};
+  var i;
+  for (i = 0; i < recs.length; i++) {
+    var rec = recs[i] || {};
+    var code = String(rec['店商品コード'] || '').trim() || String(rec['商品URL'] || '').trim();
+    var k = String(rec['モール'] || '').trim() + '\t' + String(rec['検索JAN'] || '').trim() + '\t' + code;
+    var prev = map[k];
+    var ts = String(rec['取得日時'] || '');
+    if (!prev || ts >= String(prev['取得日時'] || '')) map[k] = rec;
+  }
+  var out = [];
+  var keys = Object.keys(map);
+  for (i = 0; i < keys.length; i++) out.push(map[keys[i]]);
+  return out;
+}
+
+/**
+ * 同一モール内で、他セットの単価中央値の COMPETITOR_UNIT_PRICE_OUTLIER_RATIO 倍以上なら捨てる。
+ * ヒット順位は見ない。採用は送料無料優先のうえ実質最安（clusterCompetitorStoreHitsBySet_）。
+ */
+function filterOutlierSetUnitPrices_(bySet, jan, mallJa) {
+  var keys = Object.keys(bySet || {});
+  if (keys.length < 2) return bySet || {};
+  var ratio = COMPETITOR_UNIT_PRICE_OUTLIER_RATIO;
+  var units = {};
+  var i;
+  for (i = 0; i < keys.length; i++) {
+    var n = parseInt(keys[i], 10);
+    var rec = bySet[keys[i]];
+    if (!rec || !(n >= 1) || !(rec.priceIncl > 0)) continue;
+    units[keys[i]] = rec.priceIncl / n;
+  }
+  var keep = {};
+  var uk = Object.keys(units);
+  for (i = 0; i < uk.length; i++) {
+    var k = uk[i];
+    var others = [];
+    var j;
+    for (j = 0; j < uk.length; j++) {
+      if (uk[j] !== k) others.push(units[uk[j]]);
+    }
+    others.sort(function (a, b) { return a - b; });
+    var med = others[Math.floor((others.length - 1) / 2)];
+    if (med > 0 && units[k] >= med * ratio) {
+      Logger.log('[競合ストア紐付け] 単価外れ除外 JAN=' + jan + ' モール=' + mallJa + ' セット=' + k +
+        ' 単価=' + Math.round(units[k]) + ' 他中央=' + Math.round(med) + ' 倍率=' + ratio);
+      continue;
+    }
+    keep[k] = bySet[k];
+  }
+  return keep;
+}
+
+function clusterCompetitorStoreHitsBySet_(recs) {
+  var byJan = {};
+  var latest = competitorHitsLatestPerShop_(recs || []);
+  var i;
+  for (i = 0; i < latest.length; i++) {
+    var rec = latest[i];
+    var jan = String(rec['検索JAN'] || '').trim();
+    var name = String(rec['商品名'] || '');
+    if (jan.length < 8 || competitorHitTitleExcluded_(name)) continue;
+    var parsed = parseSetCountFromItemNameWithSource(name);
+    if (!parsed || parsed.setCount == null || parsed.fromP) continue;
+    var price = competitorHitEffectivePrice_(rec);
+    if (price == null) continue;
+    var paid = competitorHitShipPaid_(rec) ? 1 : 0;
+    var mall = String(rec['モール'] || '');
+    var bucket = '';
+    if (mall.indexOf('楽天') === 0) bucket = 'rakutenBySet';
+    else if (mall.indexOf('Yahoo') !== -1) bucket = 'yahooBySet';
+    else continue;
+    if (!byJan[jan]) byJan[jan] = { rakutenBySet: {}, yahooBySet: {} };
+    var key = String(parsed.setCount);
+    var cand = { priceIncl: Math.round(price), url: String(rec['商品URL'] || ''), assumedShipping: paid };
+    var cur = byJan[jan][bucket][key];
+    if (!cur || paid < cur.assumedShipping || (paid === cur.assumedShipping && cand.priceIncl < cur.priceIncl)) {
+      byJan[jan][bucket][key] = cand;
+    }
+  }
+  var jans = Object.keys(byJan);
+  for (i = 0; i < jans.length; i++) {
+    var jn = jans[i];
+    byJan[jn].rakutenBySet = filterOutlierSetUnitPrices_(byJan[jn].rakutenBySet, jn, '楽天');
+    byJan[jn].yahooBySet = filterOutlierSetUnitPrices_(byJan[jn].yahooBySet, jn, 'Yahoo!');
+  }
+  return byJan;
+}
+
+function readCompetitorMallHitRecords_() {
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) return [];
+  var dest = SpreadsheetApp.openById(id).getSheetByName(COMPETITOR_HITS_SHEET_);
+  if (!dest || dest.getLastRow() < 2) return [];
+  var values = dest.getDataRange().getValues();
+  var hdr = values[0];
+  var idx = {};
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    var name = String(hdr[h] || '').trim();
+    if (name) idx[name] = h;
+  }
+  var out = [];
+  var r;
+  for (r = 1; r < values.length; r++) {
+    var rec = {};
+    var keys = Object.keys(idx);
+    var k;
+    for (k = 0; k < keys.length; k++) rec[keys[k]] = values[r][idx[keys[k]]];
+    out.push(rec);
+  }
+  return out;
+}
+
+/**
+ * 専用モールヒットを JAN＋A.セット商品数 でマスタ競合列へ載せる。1件目禁止。fromP（4P等）は袋数にしない。
+ * A.セット商品数・評価列・販売価格は書かない。該当セットが無い行は空上書きしない。
+ */
+function menuApplyCompetitorStoreHitsToMaster() {
+  applyCompetitorStoreHitsToMaster_({ quiet: false });
+}
+
+/**
+ * @param {{quiet?:boolean}} opts
+ * @return {{written:number, skippedNoSet:number, skippedNoHit:number, skipReason:string}}
+ */
+function applyCompetitorStoreHitsToMaster_(opts) {
+  opts = opts || {};
+  var quiet = !!opts.quiet;
+  var stats = { written: 0, skippedNoSet: 0, skippedNoHit: 0, skipReason: '' };
+  var ui = quiet ? null : bTryUi_();
+  if (!competitorMasterApplyEnabled_()) {
+    stats.skipReason = 'COMPETITOR_MASTER_APPLY_ENABLED=false';
+    if (ui) ui.alert('COMPETITOR_MASTER_APPLY_ENABLED が false のため中止しました。');
+    else Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    return stats;
+  }
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) {
+    stats.skipReason = 'COMPETITOR_SS_ID empty';
+    if (ui) ui.alert('COMPETITOR_SS_ID が未設定です。');
+    else Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    return stats;
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var bScope = getBRunScope_(ss);
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) {
+    stats.skipReason = 'master missing';
+    if (quiet) Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    else bAlertSafe_('▼商品マスタ(人間作業用) シートが見つかりません。');
+    return stats;
+  }
+  var recs = readCompetitorMallHitRecords_();
+  if (!recs.length) {
+    stats.skipReason = 'mall hits empty';
+    if (quiet) Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    else bAlertSafe_('専用モールヒットにデータがありません。先に 12-⑫ または B Step2 で追記してください。');
+    return stats;
+  }
+  var byJan = clusterCompetitorStoreHitsBySet_(recs);
+  var masterValues = masterSheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  var hr;
+  for (hr = 0; hr < Math.min(masterValues.length, 20); hr++) {
+    if (masterValues[hr].indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
+  }
+  if (headerRowIdx === -1) {
+    stats.skipReason = 'header missing';
+    if (quiet) Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    else bAlertSafe_('マスタのヘッダー行（ASINコード）が見つかりません。');
+    return stats;
+  }
+  var masterColMap = getColumnIndexMap(masterValues[headerRowIdx]);
+  var colJan = masterColMap['JANコード'];
+  var colSetQty = masterColMap[COL_MASTER_TOTAL_QTY];
+  var colRakuten = masterColMap[COL_COMPETITIVE_PRICE_RAKUTEN];
+  var colUrlRakuten = masterColMap[COL_COMPETITOR_URL_RAKUTEN];
+  var colReviewRakuten = masterColMap[COL_REVIEW_STATUS_RAKUTEN];
+  var colMemoRakuten = masterColMap[COL_REVIEW_MEMO_RAKUTEN];
+  var colYahoo = masterColMap[COL_COMPETITIVE_PRICE_YAHOO];
+  var colUrlYahoo = masterColMap[COL_COMPETITOR_URL_YAHOO];
+  var colReviewYahoo = masterColMap[COL_REVIEW_STATUS_YAHOO];
+  var colMemoYahoo = masterColMap[COL_REVIEW_MEMO_YAHOO];
+  var colAmazon = masterColMap[COL_COMPETITIVE_PRICE_AMAZON];
+  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
+  if (colJan === undefined || colSetQty === undefined || colCheckbox === undefined) {
+    stats.skipReason = 'jan/set/ck missing';
+    if (quiet) Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    else bAlertSafe_('マスタに JANコード / ' + COL_MASTER_TOTAL_QTY + ' / 出品CK が必要です。');
+    return stats;
+  }
+  if (colRakuten === undefined || colUrlRakuten === undefined || colYahoo === undefined || colUrlYahoo === undefined) {
+    stats.skipReason = 'competitor cols missing';
+    if (quiet) Logger.log('[競合ストア紐付け] ' + stats.skipReason);
+    else bAlertSafe_('マスタに 競合価格楽天・競合URL楽天・競合価格Yahoo!・競合URLYahoo! が必要です。');
+    return stats;
+  }
+  var reviewRatio = (typeof YAHOO_SET_PRICE_REVIEW_RATIO !== 'undefined') ? YAHOO_SET_PRICE_REVIEW_RATIO : 0.3;
+  var mr;
+  for (mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+    if (!bRunAllowMasterRow_(mr, masterValues[mr][colCheckbox], bScope)) continue;
+    var rowJan = String(masterValues[mr][colJan] || '').trim();
+    if (!byJan[rowJan]) {
+      stats.skippedNoHit++;
+      continue;
+    }
+    var setQtyVal = masterValues[mr][colSetQty];
+    var setQty = (setQtyVal !== '' && setQtyVal != null) ? (typeof setQtyVal === 'number' ? setQtyVal : parseInt(String(setQtyVal).replace(/[^0-9]/g, ''), 10)) : null;
+    if (isNaN(setQty) || setQty < 1) {
+      stats.skippedNoSet++;
+      continue;
+    }
+    var setKey = String(setQty);
+    var rowNum = mr + 1;
+    var amazonVal = colAmazon !== undefined ? masterValues[mr][colAmazon] : '';
+    var amazonNum = (amazonVal !== '' && amazonVal != null) ? (typeof amazonVal === 'number' ? amazonVal : parseInt(String(amazonVal).replace(/[^0-9]/g, ''), 10)) : 0;
+    if (isNaN(amazonNum)) amazonNum = 0;
+    var rData = byJan[rowJan].rakutenBySet[setKey];
+    var yData = byJan[rowJan].yahooBySet[setKey];
+    if (!rData && !yData) {
+      Logger.log('[競合ストア紐付け] 行' + rowNum + ' JAN=' + rowJan + ' セット数=' + setQty + ' 該当なし（空上書きしない）');
+      stats.skippedNoSet++;
+      continue;
+    }
+    if (rData) {
+      var memoR = rData.assumedShipping > 0 ? '送料別ヒットのため送料円は未加算' : '';
+      var needR = false;
+      if (amazonNum > 0 && (rData.priceIncl / setQty) < amazonNum * reviewRatio) {
+        needR = true;
+        memoR = (memoR ? memoR + ' ' : '') + setQty + '→' + rData.priceIncl + '円: 1個あたりがAmazon競合価格比で異常に安い';
+      }
+      masterSheet.getRange(rowNum, colRakuten + 1).setValue(String(rData.priceIncl));
+      masterSheet.getRange(rowNum, colUrlRakuten + 1).setValue(rData.url || '');
+      if (colReviewRakuten !== undefined) masterSheet.getRange(rowNum, colReviewRakuten + 1).setValue(needR ? '要確認' : '');
+      if (colMemoRakuten !== undefined) masterSheet.getRange(rowNum, colMemoRakuten + 1).setValue(memoR);
+    }
+    if (yData) {
+      var memoY = yData.assumedShipping > 0 ? '送料別ヒットのため送料円は未加算' : '';
+      var needY = false;
+      if (amazonNum > 0 && (yData.priceIncl / setQty) < amazonNum * reviewRatio) {
+        needY = true;
+        memoY = (memoY ? memoY + ' ' : '') + setQty + '→' + yData.priceIncl + '円: 1個あたりがAmazon競合価格比で異常に安い';
+      }
+      masterSheet.getRange(rowNum, colYahoo + 1).setValue(String(yData.priceIncl));
+      masterSheet.getRange(rowNum, colUrlYahoo + 1).setValue(yData.url || '');
+      if (colReviewYahoo !== undefined) masterSheet.getRange(rowNum, colReviewYahoo + 1).setValue(needY ? '要確認' : '');
+      if (colMemoYahoo !== undefined) masterSheet.getRange(rowNum, colMemoYahoo + 1).setValue(memoY);
+    }
+    stats.written++;
+    Logger.log('[競合ストア紐付け] 行' + rowNum + ' JAN=' + rowJan + ' セット=' + setQty +
+      ' 楽天=' + (rData ? rData.priceIncl : '-') + ' Yahoo=' + (yData ? yData.priceIncl : '-'));
+  }
+  var msg = '[競合ストア紐付け] 反映行=' + stats.written + ' 該当なし=' + stats.skippedNoSet +
+    ' JANヒットなし行=' + stats.skippedNoHit + ' ss=' + id;
+  Logger.log(msg);
+  console.log(msg);
+  if (ui) ui.alert('専用ヒットをマスタへ ' + stats.written + ' 行反映（セット一致のみ。該当なしは空上書きしません）。');
+  else SpreadsheetApp.getActive().toast('専用ヒット紐付け ' + stats.written + ' 行', '競合ストア', 6);
+  return stats;
+}
+
+function mirrorKeepaCacheToCompetitorStore_(ss, results) {
+  if (!competitorStoreEnabled_()) return;
+  var props = PropertiesService.getScriptProperties();
+  var id = String(props.getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) {
+    Logger.log('[Keepa] COMPETITOR_SS_ID 未設定のため dual-write スキップ');
+    return;
+  }
+  var destSs;
+  try {
+    destSs = SpreadsheetApp.openById(id);
+  } catch (eOpen) {
+    Logger.log('[Keepa] 専用スプシを開けない: ' + (eOpen && eOpen.message));
+    return;
+  }
+  var dest = destSs.getSheetByName(COMPETITOR_KEEPA_SNAPSHOT_SHEET_);
+  if (!dest) dest = destSs.insertSheet(COMPETITOR_KEEPA_SNAPSHOT_SHEET_);
+  var src = getKeepaCacheSheet(ss);
+  if (!src || src.getLastRow() < 2) return;
+  var numCols = Math.max(src.getLastColumn(), dest.getLastColumn(), 1);
+  var srcHdr = src.getRange(1, 1, 1, numCols).getValues()[0];
+  if (dest.getLastRow() === 0) {
+    dest.getRange(1, 1, 1, srcHdr.length).setValues([srcHdr]);
+    dest.getRange(1, 1, 1, srcHdr.length).setFontWeight('bold');
+  }
+  var destHdr = dest.getRange(1, 1, 1, Math.max(dest.getLastColumn(), srcHdr.length)).getValues()[0];
+  var keepaAlias = { setCount: 'セット数', setCountFromTitle: 'タイトル由来セット数', setCountReason: 'セット数理由', '梱包_checked': '梱包確認済' };
+  var asinCol = 0;
+  var hi;
+  for (hi = 0; hi < destHdr.length; hi++) {
+    if (String(destHdr[hi] || '').trim() === 'ASIN') { asinCol = hi; break; }
+  }
+  var destLast = dest.getLastRow();
+  var destAsinToRow = {};
+  if (destLast >= 2) {
+    var dAsins = dest.getRange(2, asinCol + 1, destLast - 1, 1).getValues();
+    var di;
+    for (di = 0; di < dAsins.length; di++) {
+      var a = String(dAsins[di][0] || '').trim();
+      if (a) destAsinToRow[a] = di + 2;
+    }
+  }
+  var srcHdrRow = src.getRange(1, 1, 1, src.getLastColumn()).getValues()[0];
+  var srcAsinIdx = 0;
+  for (hi = 0; hi < srcHdrRow.length; hi++) {
+    if (String(srcHdrRow[hi] || '').trim() === 'ASIN') { srcAsinIdx = hi; break; }
+  }
+  var srcData = src.getRange(2, 1, src.getLastRow() - 1, src.getLastColumn()).getValues();
+  var srcByAsin = {};
+  var si;
+  for (si = 0; si < srcData.length; si++) {
+    var sa = String(srcData[si][srcAsinIdx] || '').trim();
+    if (sa) srcByAsin[sa] = srcData[si];
+  }
+  var n = 0;
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    if (!r || !r.asin) continue;
+    var rowVals = srcByAsin[String(r.asin).trim()];
+    if (!rowVals) continue;
+    var padded = [];
+    var dj;
+    for (dj = 0; dj < destHdr.length; dj++) {
+      var dh = String(destHdr[dj] || '').trim();
+      var found = '';
+      var sj;
+      for (sj = 0; sj < srcHdrRow.length; sj++) {
+        var sh = String(srcHdrRow[sj] || '').trim();
+        var mapped = keepaAlias[sh] || sh;
+        if (mapped === dh || sh === dh) {
+          found = rowVals[sj];
+          break;
+        }
+      }
+      padded.push(found);
+    }
+    var trow = destAsinToRow[String(r.asin).trim()];
+    if (trow) {
+      dest.getRange(trow, 1, 1, destHdr.length).setValues([padded]);
+    } else {
+      dest.appendRow(padded);
+    }
+    n++;
+  }
+  Logger.log('[Keepa] 専用 keepa_snapshot dual-write 件数=' + n + ' ss=' + id);
 }
 
 /**
@@ -22259,24 +23396,50 @@ function runKeepaFetchAsinPasteSheetImpl(limit, options) {
     var rowOffset = startRow;
     var asins = [];
     for (var ai = 0; ai < take; ai++) asins.push(asinRows[rowOffset + ai].asin);
+    var w4HydrateN = 0;
+    var w4ApiN = 0;
     var cachedMap = {};
-    if (cacheEnabled) { asins.forEach(function(a) { if (preloadedCache[a]) cachedMap[a] = preloadedCache[a]; }); }
+    if (cacheEnabled) {
+      var cacheBrandN = 0;
+      var cachePkgN = 0;
+      asins.forEach(function(a) {
+        if (!preloadedCache[a]) return;
+        cachedMap[a] = preloadedCache[a];
+        if (preloadedCache[a].brand || preloadedCache[a].manufacturer) cacheBrandN++;
+        if (preloadedCache[a].packageLCm || preloadedCache[a].packageWCm ||
+            preloadedCache[a].packageHCm || preloadedCache[a].packageWeightG) cachePkgN++;
+      });
+      Logger.log('[Keepa] cacheHit n=' + Object.keys(cachedMap).length +
+        ' withBrandOrMfr=' + cacheBrandN + ' withPkg=' + cachePkgN + ' block=' + (b + 1));
+    }
+    if (typeof keepaFullMaybeHydrateCachedMap_ === 'function') {
+      w4HydrateN = keepaFullMaybeHydrateCachedMap_(asins, cachedMap) || 0;
+    }
     var refetchWhenImageEmpty = PropertiesService.getScriptProperties().getProperty('KEEPA_CACHE_REFETCH_WHEN_IMAGE_EMPTY') !== 'false';
+    var refetchWhenPkgEmpty = PropertiesService.getScriptProperties().getProperty('KEEPA_CACHE_REFETCH_WHEN_PKG_EMPTY') !== 'false';
     var asinsToFetch = asins.filter(function(a) {
       if (!cacheEnabled) return true;
       var ent = cachedMap[a];
       if (!ent) return true;
       if (refetchWhenImageEmpty && keepaCacheEntryNeedsImageRefetch_(ent)) return true;
+      if (refetchWhenPkgEmpty && keepaCacheEntryNeedsPkgRefetch_(ent)) return true;
       return false;
     });
-    if (cacheEnabled && refetchWhenImageEmpty && asinsToFetch.length > 0) {
+    w4ApiN = asinsToFetch.length;
+    if (cacheEnabled && asinsToFetch.length > 0) {
       var refetchForImage = 0;
+      var refetchForPkg = 0;
       for (var _ix = 0; _ix < asinsToFetch.length; _ix++) {
         var _asinF = asinsToFetch[_ix];
-        if (cachedMap[_asinF] && keepaCacheEntryNeedsImageRefetch_(cachedMap[_asinF])) refetchForImage++;
+        if (!cachedMap[_asinF]) continue;
+        if (refetchWhenImageEmpty && keepaCacheEntryNeedsImageRefetch_(cachedMap[_asinF])) refetchForImage++;
+        if (refetchWhenPkgEmpty && keepaCacheEntryNeedsPkgRefetch_(cachedMap[_asinF])) refetchForPkg++;
       }
       if (refetchForImage > 0) {
         Logger.log('[Keepa] 画像URL欠落キャッシュをAPI再取得に含む: ' + refetchForImage + '件（ブロック' + (b + 1) + '、今回API対象計' + asinsToFetch.length + '件）');
+      }
+      if (refetchForPkg > 0) {
+        Logger.log('[Keepa] 梱包欠落キャッシュをAPI再取得に含む: ' + refetchForPkg + '件（ブロック' + (b + 1) + '、今回API対象計' + asinsToFetch.length + '件）');
       }
     }
     var fetchResult = null;
@@ -22486,6 +23649,8 @@ function runKeepaFetchAsinPasteSheetImpl(limit, options) {
       }
     }
     Logger.log('[Keepa] ブロック' + (b + 1) + ' 書き込み=' + blockWritten + '件');
+    Logger.log('[KeepaFullW4] block=' + (b + 1) + ' take=' + take + ' hydrate=' + w4HydrateN + ' api=' + w4ApiN +
+      (fetchResult ? (' tokensLeft=' + fetchResult.tokensLeft + ' consumed=' + fetchResult.tokensConsumed) : ' tokens=skip'));
     processedThisRun += take;
     var capForTrigger = (limit > 0) ? limit : KEEPA_MAX_ASIN_PER_RUN;
     if (processedThisRun >= capForTrigger) {
@@ -22507,6 +23672,12 @@ function runKeepaFetchAsinPasteSheetImpl(limit, options) {
         setKeepaFetchTrigger(limit);
         var delayMin = Math.ceil(capForTrigger * KEEPA_TOKENS_PER_ASIN / 5);
         ss.toast('今回' + processedThisRun + '件処理しました。約' + delayMin + '分後に続きを自動実行します。', 'Keepa取得', 5);
+        SpreadsheetApp.flush();
+        try {
+          if (typeof keepaPasteP5RankAfterA_ === 'function') keepaPasteP5RankAfterA_(ss);
+        } catch (eP5t) {
+          Logger.log('[AmazonPasteP5] 失敗（Aは続行）: ' + (eP5t && eP5t.message ? eP5t.message : eP5t));
+        }
         return;
       }
     }
@@ -22514,7 +23685,13 @@ function runKeepaFetchAsinPasteSheetImpl(limit, options) {
   PropertiesService.getScriptProperties().deleteProperty('KEEPA_FETCH_STATE');
   PropertiesService.getScriptProperties().deleteProperty(KEEPA_FETCH_RESUME_NOTE_PROP);
   Logger.log('[Keepa] 合計書き込み=' + totalWritten + '件');
+  Logger.log('[KeepaFullW4] A done written=' + totalWritten);
   SpreadsheetApp.flush();
+  try {
+    if (typeof keepaPasteP5RankAfterA_ === 'function') keepaPasteP5RankAfterA_(ss);
+  } catch (eP5) {
+    Logger.log('[AmazonPasteP5] 失敗（Aは続行）: ' + (eP5 && eP5.message ? eP5.message : eP5));
+  }
   var evalTop5 = [];
   if (totalWritten > 0 && asinColsFound.length > 0) {
     var firstBlockEvalCol = asinColsFound[0] + 2;
@@ -22534,7 +23711,7 @@ function runKeepaFetchAsinPasteSheetImpl(limit, options) {
     setReasonCount: totalSetReasonWritten,
     note: 'セット数_AI根拠は1ブロック目ならH列。このシートをコピーしてAIに貼ると差分分析できます。'
   });
-  ss.toast(totalWritten + ' 件をシートに書き込みました。（評価の降順で並び替え済み）', 'Keepa取得完了', 5);
+  ss.toast(totalWritten + ' 件をシートに書き込みました。（P5: 候補上・非候補下。OFFは AMAZON_PASTE_P5_RANK_AFTER_A_ENABLED=false）', 'Keepa取得完了', 8);
 }
 
 /** ブロック内での「セット数」列のオフセット（0-based）。ASIN_PASTE_BLOCK_HEADERS の並びでセット数は6列目＝インデックス5。 */
@@ -23506,10 +24683,8 @@ function menuProposeSalesPrices() {
       var amzCell = masterSheet.getRange(row.rowIdx + 1, colPriceAmazon + 1);
 
       if (amzResult.price !== null) {
-        var hadAmzPrior = masterColorCellHadValue_(amzCell.getValue());
         amzCell.setValue(amzResult.price);
-        if (amzResult.warning === 'yellow') masterColorPaintHuman_(amzCell);
-        else masterColorPaintProgramOrOverwrite_(amzCell, hadAmzPrior);
+        Logger.log('[価格提案] skip_color_paint row=' + (row.rowIdx + 1) + ' amz=' + amzResult.price);
         if (colAmazonFee !== undefined) {
           var rateForFee = getAmazonCommissionRateForPrice(rateMap, row.categoryVal, amzResult.price);
           if (rateForFee !== null) {
@@ -23518,7 +24693,7 @@ function menuProposeSalesPrices() {
           }
         }
       } else {
-        masterColorPaintAlert_(amzCell);
+        Logger.log('[価格提案] skip_color_paint_alert row=' + (row.rowIdx + 1));
         skipped++;
         continue;
       }
@@ -24837,15 +26012,43 @@ function isFbaP1bWriteEnabled_() {
  * サイズ＆自己発/FBA は変更しない。AI寸法と3辺和差>15%は書かない。
  */
 function menuFbaTierCatalogWriteP1bForCheckedParents() {
-  var ui = SpreadsheetApp.getUi();
+  writeFbaTierP1bCore_({ quiet: false, logTag: '[FBA_P1b]' });
+}
+
+/**
+ * B統合 Step6.55（6.5 直後）。UI confirm なし。N/競合ASIN 空はスキップ。
+ */
+function menuFbaP1bForBIntegratedStep_() {
   if (!isFbaP1bWriteEnabled_()) {
-    ui.alert('FBA P1b本線書込はオフです。\nScript Properties で ' + PROP_B_FBA_P1B_WRITE_ENABLED + '=true（またはキー削除）');
+    Logger.log('[B.統合実行][6.55] skipped prop=' + PROP_B_FBA_P1B_WRITE_ENABLED + ' off');
+    return;
+  }
+  writeFbaTierP1bCore_({ quiet: true, logTag: '[B.統合実行][6.55]' });
+}
+
+function writeFbaTierP1bCore_(opts) {
+  opts = opts || {};
+  var quiet = !!opts.quiet;
+  var logTag = opts.logTag ? String(opts.logTag) : '[FBA_P1b]';
+  function notify_(msg) {
+    if (quiet) {
+      Logger.log(logTag + ' ' + String(msg).replace(/\n/g, ' | '));
+      return;
+    }
+    try {
+      SpreadsheetApp.getUi().alert(msg);
+    } catch (eN) {
+      Logger.log(logTag + ' ' + msg);
+    }
+  }
+  if (!isFbaP1bWriteEnabled_()) {
+    notify_('FBA P1b本線書込はオフです。\nScript Properties で ' + PROP_B_FBA_P1B_WRITE_ENABLED + '=true（またはキー削除）');
     return;
   }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
   if (!masterSheet) {
-    ui.alert('マスタシートがありません');
+    notify_('マスタシートがありません');
     return;
   }
   var values = masterSheet.getDataRange().getValues();
@@ -24854,13 +26057,13 @@ function menuFbaTierCatalogWriteP1bForCheckedParents() {
     if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
   }
   if (headerRowIdx < 0) {
-    ui.alert('ヘッダー行が見つかりません');
+    notify_('ヘッダー行が見つかりません');
     return;
   }
 
   var ensured = ensureFbaTierMasterColumns_(masterSheet, headerRowIdx);
   if (!ensured) {
-    ui.alert('「' + COL_MASTER_SIZE_SELF_FBA_ + '」列が無いため FBAティア列を作れません');
+    notify_('「' + COL_MASTER_SIZE_SELF_FBA_ + '」列が無いため FBAティア列を作れません');
     return;
   }
   // 列挿入後に再読込
@@ -24879,7 +26082,7 @@ function menuFbaTierCatalogWriteP1bForCheckedParents() {
   var colCostIn = colMap[COL_COST_TAX_IN];
   var colCostEx = colMap['卸値(税抜)'];
   if (colCk === undefined || colChild === undefined || colTier === undefined || colFee === undefined) {
-    ui.alert('出品CK / 子SKU / FBAティア / FBA手数料_円 が必要です');
+    notify_('出品CK / 子SKU / FBAティア / FBA手数料_円 が必要です');
     return;
   }
 
@@ -24887,17 +26090,22 @@ function menuFbaTierCatalogWriteP1bForCheckedParents() {
     getNumberScriptProperty_(PROP_B_FBA_P1A_MAX_PARENTS, 20));
   if (!(maxN > 0)) maxN = 20;
 
+  var bScopeFba = quiet ? getBRunScope_(ss) : { active: false };
   var parents = [];
   for (var r = headerRowIdx + 1; r < values.length; r++) {
     var row = values[r];
-    var ck = row[colCk] === true || String(row[colCk]).toUpperCase() === 'TRUE';
-    if (!ck) continue;
+    if (quiet) {
+      if (!bRunAllowMasterRow_(r, row[colCk], bScopeFba)) continue;
+    } else {
+      var ck = row[colCk] === true || String(row[colCk]).toUpperCase() === 'TRUE';
+      if (!ck) continue;
+    }
     if (String(row[colChild] || '').trim() !== '') continue;
     var asin = '';
     var asinSrc = '';
     if (colAsin !== undefined) {
       asin = String(row[colAsin] || '').trim().toUpperCase();
-      if (/^[A-Z0-9]{10}$/.test(asin)) asinSrc = 'ASINコード';
+      if (/^[A-Z0-9]{10}$/.test(asin)) asinSrc = 'N列(競合ASIN)';
     }
     if (!asinSrc && colCompAsin !== undefined) {
       asin = String(row[colCompAsin] || '').trim().toUpperCase().replace(/^.*(B0[A-Z0-9]{8}).*$/i, '$1').toUpperCase();
@@ -24920,25 +26128,29 @@ function menuFbaTierCatalogWriteP1bForCheckedParents() {
     if (parents.length >= maxN) break;
   }
   if (!parents.length) {
-    ui.alert('レ点付き親行がありません（最大' + maxN + '件）');
+    notify_('レ点付き親行がありません（最大' + maxN + '件）');
     return;
   }
 
-  var confirm = ui.alert(
-    'FBA P1b 本線書込',
-    '対象親 ' + parents.length + ' 件\n' +
-      '空の「' + COL_MASTER_FBA_TIER_ + '」「' + COL_MASTER_FBA_FEE_YEN_ + '」のみ書きます。\n' +
-      '「' + COL_MASTER_SIZE_SELF_FBA_ + '」は変更しません。\n' +
-      'Catalog↔AI 3辺和差>15% または Catalog梱包寸法なしはスキップします。\n続行しますか？',
-    ui.ButtonSet.YES_NO
-  );
-  if (confirm !== ui.Button.YES) return;
+  if (!quiet) {
+    var confirm = SpreadsheetApp.getUi().alert(
+      'FBA P1b 本線書込',
+      '対象親 ' + parents.length + ' 件\n' +
+        '空の「' + COL_MASTER_FBA_TIER_ + '」「' + COL_MASTER_FBA_FEE_YEN_ + '」のみ書きます。\n' +
+        '「' + COL_MASTER_SIZE_SELF_FBA_ + '」は変更しません。\n' +
+        'Catalog↔AI 3辺和差>15% または Catalog梱包寸法なしはスキップします。\n続行しますか？',
+      SpreadsheetApp.getUi().ButtonSet.YES_NO
+    );
+    if (confirm !== SpreadsheetApp.getUi().Button.YES) return;
+  } else {
+    Logger.log(logTag + ' quiet start parents=' + parents.length);
+  }
 
   var auth;
   try {
     auth = amazonSpapiPutAcquireAccess_();
   } catch (eAuth) {
-    ui.alert('SP-API認証失敗: ' + (eAuth && eAuth.message));
+    notify_('SP-API認証失敗: ' + (eAuth && eAuth.message));
     return;
   }
 
@@ -25029,7 +26241,7 @@ function menuFbaTierCatalogWriteP1bForCheckedParents() {
     '\nスキップ ティア不適合=' + skipTierBad +
     '\n（' + COL_MASTER_SIZE_SELF_FBA_ + ' は未変更）';
   Logger.log('[FBA_P1b] DONE ' + msg.replace(/\n/g, ' | '));
-  ui.alert(msg);
+  notify_(msg);
 }
 
 /**
@@ -25464,6 +26676,35 @@ function pickFirstFittingMaterialBySizeAsc3d_(materials, itemCm, setNum, shippin
 function pickCheapestFittingMaterial3d_(materials, itemCm, setNum, shippingTable) {
   var picked = pickFirstFittingMaterialBySizeAsc3d_(materials, itemCm, setNum, shippingTable);
   return picked ? picked.mat : null;
+}
+
+/**
+ * 2行目送料式が解けるサイズ名か。表に無い／数字のみの非標準号数（例: 170）は書かない。
+ */
+function logisticsSizeNameAllowedForRow2Formula_(size, shippingTable) {
+  var sz = String(size || '').trim();
+  if (!sz) return false;
+  var found = false;
+  if (shippingTable && shippingTable.length) {
+    for (var i = 0; i < shippingTable.length; i++) {
+      if (String(shippingTable[i].size || '').trim() === sz) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) {
+    Logger.log('[想定物流費AI試算] size_not_in_table size=' + sz);
+    return false;
+  }
+  if (/^\d+$/.test(sz)) {
+    var n = Number(sz);
+    if (n !== 50 && n !== 60 && n !== 80 && n !== 100 && n !== 120) {
+      Logger.log('[想定物流費AI試算] size_numeric_nonstandard size=' + sz);
+      return false;
+    }
+  }
+  return true;
 }
 
 function resolveShippingForMaterial3d_(mat, shippingTable) {
@@ -27310,19 +28551,9 @@ function runCpoProposePricesWithRound_(round, opts) {
       var compPriceNum = (ch.competitivePrice !== undefined && ch.competitivePrice !== null && String(ch.competitivePrice).trim() !== '') ? parseNum(ch.competitivePrice) : NaN;
       var isLosingToCompetitor = !isNaN(compPriceNum) && compPriceNum > 0 && priceToWrite > compPriceNum;
       var cell = masterSheet.getRange(ch.rowIdx + 1, colPriceAmazon + 1);
-      // 価格列は常に数値を書き、条件未達は色＋別列で伝える（条件付き書式は変更しない）
-      var hadPriorPrice = masterColorCellHadValue_(cell.getValue());
       cell.setValue(priceToWrite);
-      if (isBelowMinProfit) {
-        masterColorPaintAlert_(cell);
-        try { cell.setFontSize(14); } catch (eFs1) {}
-      } else if (isLosingToCompetitor) {
-        masterColorPaintHuman_(cell);
-        try { cell.setFontWeight('normal').setFontSize(14); } catch (eFs2) {}
-      } else {
-        masterColorPaintProgramOrOverwrite_(cell, hadPriorPrice);
-        try { cell.setFontWeight('normal').setFontSize(10); } catch (eFs3) {}
-      }
+      Logger.log('[CPO] skip_color_paint row=' + (ch.rowIdx + 1) + ' price=' + priceToWrite +
+        ' belowMin=' + isBelowMinProfit + ' loseComp=' + isLosingToCompetitor);
       updated++;
     }
     for (var ci = 0; ci < group.children.length; ci++) {
@@ -27786,13 +29017,27 @@ function menuUpdateMakerDictFromMasterMonthly() {
 /**
  * レ点付き親行の保存方法セルから改行を除去（読点に置換）。
  */
+function menuSanitizeStorageForBIntegratedStep_() {
+  sanitizeStorageNewlinesCore_({ quiet: true });
+}
+
 function menuSanitizeStorageNewlinesForCheckedParents() {
+  sanitizeStorageNewlinesCore_({ quiet: false });
+}
+
+/**
+ * 親行の保存方法セルから改行を除去（読点）。quiet=B統合（当B集合）。
+ */
+function sanitizeStorageNewlinesCore_(opts) {
+  opts = opts || {};
+  var quiet = !!opts.quiet;
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) return;
+  if (!ss) return { fixed: 0 };
   var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
   if (!masterSheet) {
-    SpreadsheetApp.getUi().alert('マスタシートがありません。');
-    return;
+    if (!quiet) SpreadsheetApp.getUi().alert('マスタシートがありません。');
+    Logger.log('[保存方法][改行除去] master missing');
+    return { fixed: 0 };
   }
   var values = masterSheet.getDataRange().getValues();
   var headerRowIdx = -1;
@@ -27803,8 +29048,8 @@ function menuSanitizeStorageNewlinesForCheckedParents() {
     }
   }
   if (headerRowIdx < 0) {
-    SpreadsheetApp.getUi().alert('ヘッダー（ASINコード）が見つかりません。');
-    return;
+    if (!quiet) SpreadsheetApp.getUi().alert('ヘッダー（ASINコード）が見つかりません。');
+    return { fixed: 0 };
   }
   var map = getColumnIndexMap(values[headerRowIdx]);
   var colChild = map['子SKU'];
@@ -27814,14 +29059,18 @@ function menuSanitizeStorageNewlinesForCheckedParents() {
     if (map[name] !== undefined && storageCols.indexOf(map[name]) < 0) storageCols.push(map[name]);
   });
   if (storageCols.length === 0) {
-    SpreadsheetApp.getUi().alert('保存方法の列が見つかりません。');
-    return;
+    if (!quiet) SpreadsheetApp.getUi().alert('保存方法の列が見つかりません。');
+    Logger.log('[保存方法][改行除去] column missing');
+    return { fixed: 0 };
   }
+  var bScopeS = quiet ? getBRunScope_(ss) : { active: false };
   var fixed = 0;
   for (var r = headerRowIdx + 1; r < values.length; r++) {
     var row = values[r] || [];
     if (colChild !== undefined && String(row[colChild] != null ? row[colChild] : '').trim() !== '') continue;
-    if (colCk !== undefined) {
+    if (quiet) {
+      if (!bRunAllowMasterRow_(r, colCk !== undefined ? row[colCk] : true, bScopeS)) continue;
+    } else if (colCk !== undefined) {
       var ck = row[colCk];
       if (!(ck === true || String(ck).toUpperCase() === 'TRUE')) continue;
     }
@@ -27832,13 +29081,17 @@ function menuSanitizeStorageNewlinesForCheckedParents() {
       var cleaned = sanitizeCellNewlinesToComma_(raw);
       masterSheet.getRange(r + 1, idx + 1).setValue(cleaned);
       fixed++;
-      Logger.log('[保存方法][改行除去] row=' + (r + 1) + ' col=' + (idx + 1));
+      Logger.log('[保存方法][改行除去] row=' + (r + 1) + ' col=' + (idx + 1) + ' quiet=' + quiet);
     }
   }
-  SpreadsheetApp.getActive().toast('保存方法の改行除去: ' + fixed + ' セル', '完了', 6);
-  try {
-    SpreadsheetApp.getUi().alert('保存方法の改行除去', fixed + ' セルを読点連結に置換しました（レ点・親行）。');
-  } catch (e2) {}
+  Logger.log('[B.統合実行][6.05] storageNewlineFixed=' + fixed);
+  if (!quiet) {
+    SpreadsheetApp.getActive().toast('保存方法の改行除去: ' + fixed + ' セル', '完了', 6);
+    try {
+      SpreadsheetApp.getUi().alert('保存方法の改行除去', fixed + ' セルを読点連結に置換しました（レ点・親行）。');
+    } catch (e2) {}
+  }
+  return { fixed: fixed };
 }
 
 function lookupMakerDict_(dict, aiMakerName) {
@@ -29034,6 +30287,22 @@ function copyLogisticsRow2FormulaOrSetValue_(masterSheet, colIdx0Based, targetRo
 }
 
 /**
+ * 2行目に数式があればコピー。無ければ触らない（空 setValue で式を潰さない）。
+ */
+function copyLogisticsRow2FormulaOrLeaveEmpty_(masterSheet, colIdx0Based, targetRow1Based) {
+  if (colIdx0Based === undefined || colIdx0Based === null) return 'skip';
+  var col = colIdx0Based + 1;
+  var src = masterSheet.getRange(LOGISTICS_TEMPLATE_ROW_1BASED, col);
+  var dst = masterSheet.getRange(targetRow1Based, col);
+  var f = src.getFormula();
+  if (f && String(f).trim().charAt(0) === '=') {
+    src.copyTo(dst, SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
+    return 'formula';
+  }
+  return 'skip';
+}
+
+/**
  * 想定物流費AI試算の本体。レ点が付いたJANの子行について、競合ベースで許容最大送料を逆算し、
  * 設定マスタの送料表・資材表からサイズ・資材・送料・梱包箱コストを決定してマスタに書き込む。送料逆転防止・利益確保不可対応。
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
@@ -29070,6 +30339,7 @@ function runEstimateLogisticsCost(ss) {
   var colCompYahoo = masterColMap[COL_COMPETITIVE_PRICE_YAHOO];
   var colSizeFba = masterColMap['サイズ＆自己発/FBA'];
   var colBoxSpec = masterColMap['梱包箱指定'];
+  var colBoxDims = masterColMap['梱包箱寸法'];
   var colBoxCost = masterColMap['梱包箱コスト'];
   var colShipping = masterColMap[COL_SHIPPING_FIXED] !== undefined ? masterColMap[COL_SHIPPING_FIXED] : masterColMap[COL_SHIPPING];
   var colUnprofitable = masterColMap[COL_ESTIMATE_LOGISTICS_UNPROFITABLE];
@@ -29267,6 +30537,14 @@ function runEstimateLogisticsCost(ss) {
       Logger.log('[想定物流費AI試算][set] JAN=' + jan + ' set=' + ch.setNum + ' salePrice=' + salePrice + ' cost=' + ch.cost + ' fee+promoRate=' + (feeRateNum + promoRateNum) + ' maxLogistics=' + maxLogistics
         + ' minRankAllowed=' + minRankAllowed + ' physMinRank=' + physMinRank);
 
+      if (mat3dPreferred && ship3dPreferred &&
+          !logisticsSizeNameAllowedForRow2Formula_(ship3dPreferred.size, shippingTable)) {
+        Logger.log('[想定物流費AI試算][3D] JAN=' + jan + ' set=' + ch.setNum +
+          ' reject_size_name size=' + ship3dPreferred.size + ' mat=' + mat3dPreferred.name);
+        mat3dPreferred = null;
+        ship3dPreferred = null;
+      }
+
       // ④: サイズ昇順 first-fit。送料=自己発送表／箱代=資材D。合計は利益判定のみ（箱は変えない）
       if (mat3dPreferred && ship3dPreferred) {
         var total3dSize = (ship3dPreferred.price || 0) + (mat3dPreferred.price || 0);
@@ -29314,97 +30592,19 @@ function runEstimateLogisticsCost(ss) {
         continue;
       }
 
-      if (salePrice <= 0) {
-        Logger.log('[想定物流費AI試算][set] JAN=' + jan + ' set=' + ch.setNum + ' salePrice<=0 かつ寸法なしのため利益確保不可 (競合なし)');
-        var fb0 = pickCheapestShippingAtLeastRank_(shippingTable, materialTable, minRankAllowed);
-        results.push({
-          rowIdx: ch.rowIdx,
-          setNum: ch.setNum,
-          unprofitable: true,
-          reason: '競合なし(天井0)・寸法なし',
-          size: fb0 ? fb0.size : null,
-          materialName: fb0 ? fb0.materialName : null,
-          materialPrice: fb0 ? fb0.materialPrice : 0,
-          shipping: fb0 ? fb0.shipping : 0
-        });
-        totalUnprofitable++;
-        continue;
-      }
-
-      var useScore = getBoolScriptProperty_(PROP_B_LOGISTICS_SCORE_TIE_BREAK, true);
-      var chosen = null;
-      var bestDiff = null;
-      var chosenRank = -1;
-      var candidates = [];
-      for (var si = 0; si < shippingTable.length; si++) {
-        var ship = shippingTable[si];
-        if (ship.rankIndex < minRankAllowed) continue;
-        var mat = materialTable.getMaterialForSize(ship.size);
-        var matPrice = mat ? mat.price : 0;
-        var total = ship.price + matPrice;
-        if (total <= maxLogistics) {
-          candidates.push({ ship: ship, mat: mat, matPrice: matPrice, total: total });
-        }
-      }
-      if (candidates.length === 1) {
-        var c1 = candidates[0];
-        chosen = { size: c1.ship.size, materialName: c1.mat ? c1.mat.name : c1.ship.size, materialPrice: c1.matPrice, shipping: c1.ship.price, rankIndex: c1.ship.rankIndex };
-        chosenRank = c1.ship.rankIndex;
-      } else if (candidates.length > 1 && useScore && pickClosestDiff) {
-        var bestScore = -1e15;
-        var bestCand = null;
-        for (var cj = 0; cj < candidates.length; cj++) {
-          var cd = candidates[cj];
-          var sc = scoreLogisticsCandidate_(salePrice, ch.cost, cd.total, boxCostNumR, feeRateNum, promoRateNum);
-          logPricingV1_('logistics', 'candidate_score', { jan: jan, set: ch.setNum, total: cd.total, score: sc });
-          if (sc > bestScore) {
-            bestScore = sc;
-            bestCand = cd;
-          }
-        }
-        if (bestCand) {
-          chosen = { size: bestCand.ship.size, materialName: bestCand.mat ? bestCand.mat.name : bestCand.ship.size, materialPrice: bestCand.matPrice, shipping: bestCand.ship.price, rankIndex: bestCand.ship.rankIndex };
-          chosenRank = bestCand.ship.rankIndex;
-        }
-      } else if (candidates.length > 1) {
-        for (var si2 = 0; si2 < candidates.length; si2++) {
-          var ship2 = candidates[si2].ship;
-          var mat2 = candidates[si2].mat;
-          var matPrice2 = candidates[si2].matPrice;
-          var total2 = candidates[si2].total;
-          if (!pickClosestDiff) {
-            chosen = { size: ship2.size, materialName: mat2 ? mat2.name : ship2.size, materialPrice: matPrice2, shipping: ship2.price, rankIndex: ship2.rankIndex };
-            chosenRank = ship2.rankIndex;
-            break;
-          }
-          var diff = maxLogistics - total2;
-          if (bestDiff === null || diff < bestDiff) {
-            bestDiff = diff;
-            chosen = { size: ship2.size, materialName: mat2 ? mat2.name : ship2.size, materialPrice: matPrice2, shipping: ship2.price, rankIndex: ship2.rankIndex };
-            chosenRank = ship2.rankIndex;
-          }
-        }
-      }
-      if (chosen) {
-        var chosenTotal = (chosen.shipping || 0) + (chosen.materialPrice || 0);
-        Logger.log('[想定物流費AI試算][set] JAN=' + jan + ' set=' + ch.setNum + ' chosen size=' + chosen.size
-          + ' material=' + chosen.materialName + ' shipping=' + chosen.shipping + ' matPrice=' + chosen.materialPrice
-          + ' total=' + chosenTotal + ' rank=' + chosenRank + ' diff=' + (bestDiff !== null ? bestDiff : 'n/a') + ' mode=' + (pickClosestDiff ? 'closestDiff' : 'firstFit'));
-        results.push({ rowIdx: ch.rowIdx, setNum: ch.setNum, unprofitable: false, reason: '', size: chosen.size, materialName: chosen.materialName, materialPrice: chosen.materialPrice, shipping: chosen.shipping });
-      } else {
-        var fb = pickCheapestShippingAtLeastRank_(shippingTable, materialTable, minRankAllowed);
-        results.push({
-          rowIdx: ch.rowIdx,
-          setNum: ch.setNum,
-          unprofitable: true,
-          reason: '最安物流でも利益不足',
-          size: fb ? fb.size : null,
-          materialName: fb ? fb.materialName : null,
-          materialPrice: fb ? fb.materialPrice : 0,
-          shipping: fb ? fb.shipping : 0
-        });
-        totalUnprofitable++;
-      }
+      Logger.log('[想定物流費AI試算][set] JAN=' + jan + ' set=' + ch.setNum +
+        ' leave_empty reason=寸法なし (no Nekopos fallback)');
+      results.push({
+        rowIdx: ch.rowIdx,
+        setNum: ch.setNum,
+        unprofitable: true,
+        reason: '寸法なし',
+        size: null,
+        materialName: null,
+        materialPrice: 0,
+        shipping: 0
+      });
+      totalUnprofitable++;
     }
 
     for (var i = 1; i < results.length; i++) {
@@ -29437,15 +30637,19 @@ function runEstimateLogisticsCost(ss) {
         if (res.materialName != null) masterSheet.getRange(r, colBoxSpec + 1).setValue(res.materialName);
         var boxW = copyLogisticsRow2FormulaOrSetValue_(masterSheet, colBoxCost, r, res.materialPrice || 0);
         var shipW = copyLogisticsRow2FormulaOrSetValue_(masterSheet, colShipping, r, res.shipping || 0);
-        if (boxW === 'formula' || shipW === 'formula') {
-          logPricingV1_('logistics', 'row2_formula_copy', { row: r, jan: jan, set: res.setNum, box: boxW, ship: shipW });
+        var dimW = copyLogisticsRow2FormulaOrLeaveEmpty_(masterSheet, colBoxDims, r);
+        if (boxW === 'formula' || shipW === 'formula' || dimW === 'formula') {
+          logPricingV1_('logistics', 'row2_formula_copy', { row: r, jan: jan, set: res.setNum, box: boxW, ship: shipW, dim: dimW });
         }
       } else {
-        // 寸法あり・選定不可: 旧ネコポス埋めを残さない
+        // 寸法なし・選定不可: CP/CS は空。CT/CU/CV は2行目式を残す（空値で潰さない）
         masterSheet.getRange(r, colSizeFba + 1).setValue('');
         masterSheet.getRange(r, colBoxSpec + 1).setValue('');
-        if (colBoxCost !== undefined) masterSheet.getRange(r, colBoxCost + 1).setValue('');
-        if (colShipping !== undefined) masterSheet.getRange(r, colShipping + 1).setValue('');
+        var dimE = copyLogisticsRow2FormulaOrLeaveEmpty_(masterSheet, colBoxDims, r);
+        var boxE = copyLogisticsRow2FormulaOrLeaveEmpty_(masterSheet, colBoxCost, r);
+        var shipE = copyLogisticsRow2FormulaOrLeaveEmpty_(masterSheet, colShipping, r);
+        Logger.log('[想定物流費AI試算] leave_empty formula_keep row=' + r +
+          ' dim=' + dimE + ' box=' + boxE + ' ship=' + shipE + ' set=' + res.setNum);
       }
 
       if (res.unprofitable) {
@@ -29682,6 +30886,273 @@ function menuPurgeKeepaCacheOlderThanDays() {
     'Keepa取得_キャッシュ: ' + deleted + ' 行を削除しました（' + cacheDays + '日超過）。',
     'キャッシュ削除',
     5
+  );
+}
+
+/**
+ * 専用競合ストアのモールヒット／Keepaスナップショットだけ 90日超を削除。
+ * 出品マスタの Keepa取得_キャッシュ と ▼ログ は触らない。月次トリガーは設置しない。
+ */
+function menuPurgeCompetitorStoreOlderThanDays() {
+  var ui = bTryUi_();
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) {
+    if (ui) ui.alert('COMPETITOR_SS_ID が未設定です。');
+    return;
+  }
+  var listingId = '';
+  try {
+    listingId = String(SpreadsheetApp.getActiveSpreadsheet().getId() || '');
+  } catch (eId) {}
+  if (listingId && id === listingId) {
+    if (ui) ui.alert('専用IDが出品マスタと同じです。削除を中止しました。');
+    Logger.log('[競合ストア] purge refuse listing master id');
+    return;
+  }
+  var days = parseInt(PropertiesService.getScriptProperties().getProperty('COMPETITOR_PURGE_DAYS'), 10);
+  if (isNaN(days) || days < 1) days = 90;
+  if (ui) {
+    var ans = ui.alert(
+      '専用ストア削除',
+      'モールヒットと Keepaスナップショットの ' + days + ' 日超だけ削除します。出品マスタの Keepa取得_キャッシュ は消しません。実行しますか？',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (ans !== ui.Button.OK) return;
+  }
+  var destSs = SpreadsheetApp.openById(id);
+  var n1 = purgeCompetitorSheetOlderThanDays_(destSs, COMPETITOR_HITS_SHEET_, days);
+  var n2 = purgeCompetitorSheetOlderThanDays_(destSs, COMPETITOR_KEEPA_SNAPSHOT_SHEET_, days);
+  Logger.log('[競合ストア] purge days=' + days + ' hits=' + n1 + ' keepa=' + n2 + ' ss=' + id);
+  try {
+    SpreadsheetApp.getActive().toast('専用ストア削除 ヒット=' + n1 + ' Keepa=' + n2 + '（' + days + '日超）', '競合ストア', 8);
+  } catch (t) {}
+}
+
+function purgeCompetitorSheetOlderThanDays_(ss, title, days) {
+  var sh = ss.getSheetByName(title);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var vals = sh.getDataRange().getValues();
+  var hdr = vals[0];
+  var di = -1;
+  var i;
+  for (i = 0; i < hdr.length; i++) {
+    if (String(hdr[i] || '').trim() === '取得日時') { di = i; break; }
+  }
+  if (di < 0) return 0;
+  var cut = Date.now() - days * 86400000;
+  var keep = [hdr];
+  var dropped = 0;
+  var r;
+  for (r = 1; r < vals.length; r++) {
+    var row = vals[r];
+    var ms = competitorAcquiredMs_(row[di]);
+    if (ms != null && ms < cut) {
+      dropped++;
+      continue;
+    }
+    keep.push(row);
+  }
+  if (dropped === 0) return 0;
+  sh.clearContents();
+  sh.getRange(1, 1, keep.length, hdr.length).setValues(keep);
+  return dropped;
+}
+
+function competitorAcquiredMs_(raw) {
+  if (raw == null || raw === '') return null;
+  if (Object.prototype.toString.call(raw) === '[object Date]' && !isNaN(raw.getTime())) return raw.getTime();
+  if (typeof raw === 'number' && isFinite(raw)) {
+    if (raw > 1e11) return raw;
+    if (raw > 1e9) return raw * 1000;
+    return null;
+  }
+  var s = String(raw).trim();
+  var n = Number(s);
+  if (isFinite(n) && n > 1e9) return n > 1e11 ? n : n * 1000;
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return d.getTime();
+  return null;
+}
+
+/**
+ * 定時対象の JAN をログするだけ。在庫はマスタ読取（API未接続）。再検索・マスタ書込・トリガー設置なし。
+ * 子SKUありかつ在庫数>0。専用モールヒットの目的=定時が2日以内なら除外。
+ */
+function menuLogCompetitorScheduledCandidates() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) {
+    Logger.log('[競合ストア] 定時候補 マスタなし');
+    return;
+  }
+  var values = masterSheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  var hr;
+  for (hr = 0; hr < Math.min(values.length, 25); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) { headerRowIdx = hr; break; }
+  }
+  if (headerRowIdx < 0) return;
+  var cmap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = cmap['JANコード'];
+  var colChild = cmap['子SKU'];
+  var colStock = cmap['在庫数'];
+  if (colJan === undefined || colChild === undefined || colStock === undefined) {
+    Logger.log('[競合ストア] 定時候補 列不足 JAN/子SKU/在庫数');
+    return;
+  }
+  var stockJans = {};
+  var r;
+  for (r = headerRowIdx + 1; r < values.length; r++) {
+    var child = String(values[r][colChild] || '').trim();
+    if (!child) continue;
+    var jan = String(values[r][colJan] || '').trim();
+    if (jan.length < 8) continue;
+    var stock = Number(String(values[r][colStock] || '').replace(/,/g, ''));
+    if (isFinite(stock) && stock > 0) stockJans[jan] = true;
+  }
+  var recent = {};
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (id) {
+    try {
+      var dest = SpreadsheetApp.openById(id).getSheetByName(COMPETITOR_HITS_SHEET_);
+      if (dest && dest.getLastRow() >= 2) {
+        var hv = dest.getDataRange().getValues();
+        var h0 = hv[0];
+        var iJan = -1, iPur = -1, iAt = -1, hi;
+        for (hi = 0; hi < h0.length; hi++) {
+          var hn = String(h0[hi] || '').trim();
+          if (hn === '検索JAN') iJan = hi;
+          if (hn === '目的') iPur = hi;
+          if (hn === '取得日時') iAt = hi;
+        }
+        var cut = Date.now() - 2 * 86400000;
+        var hi2;
+        for (hi2 = 1; hi2 < hv.length; hi2++) {
+          if (iPur >= 0 && String(hv[hi2][iPur] || '') !== '定時') continue;
+          var j2 = iJan >= 0 ? String(hv[hi2][iJan] || '').trim() : '';
+          var ms = iAt >= 0 ? competitorAcquiredMs_(hv[hi2][iAt]) : null;
+          if (j2 && ms != null && ms >= cut) recent[j2] = true;
+        }
+      }
+    } catch (eRead) {
+      Logger.log('[競合ストア] 定時候補 専用読取失敗: ' + (eRead && eRead.message));
+    }
+  }
+  var due = [];
+  var k;
+  for (k in stockJans) {
+    if (!stockJans.hasOwnProperty(k)) continue;
+    if (recent[k]) continue;
+    due.push(k);
+  }
+  due.sort();
+  Logger.log('[競合ストア] 定時候補 子在庫>0=' + Object.keys(stockJans).length + ' 隔日対象=' + due.length + ' 書込なし APIなし');
+  Logger.log('[競合ストア] 定時候補 JAN先頭=' + due.slice(0, 20).join(','));
+  try {
+    SpreadsheetApp.getActive().toast('定時候補 ' + due.length + ' JAN（ログのみ・再検索なし）', '競合ストア', 8);
+  } catch (t) {}
+}
+
+/**
+ * 専用競合ストアを Drive にコピーし、名前が「競合ストア退避_」の古いコピーだけゴミ箱へ。
+ * 正本 COMPETITOR_SS_ID と出品マスタは消さない。トリガー非設置。
+ */
+function menuBackupCompetitorStoreKeepLatest() {
+  var ui = bTryUi_();
+  var liveId = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!liveId) {
+    if (ui) ui.alert('COMPETITOR_SS_ID が未設定です。');
+    return;
+  }
+  var listingId = '';
+  try { listingId = String(SpreadsheetApp.getActiveSpreadsheet().getId() || ''); } catch (e0) {}
+  if (listingId && liveId === listingId) {
+    if (ui) ui.alert('専用IDが出品マスタと同じです。退避を中止しました。');
+    Logger.log('[競合ストア] backup refuse listing master id');
+    return;
+  }
+  if (ui) {
+    var ans = ui.alert(
+      '競合ストア退避',
+      '専用ブックをコピーし、古い「競合ストア退避_」だけゴミ箱へ移します。正本と出品マスタは消しません。実行しますか？',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (ans !== ui.Button.OK) return;
+  }
+  var prefix = '競合ストア退避_';
+  var src = DriveApp.getFileById(liveId);
+  var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var copy = src.makeCopy(prefix + stamp);
+  var newId = copy.getId();
+  var it = DriveApp.searchFiles("title contains '" + prefix + "' and trashed = false");
+  var trashed = 0;
+  while (it.hasNext()) {
+    var f = it.next();
+    var fid = f.getId();
+    if (fid === liveId || fid === newId) continue;
+    if (listingId && fid === listingId) continue;
+    if (String(f.getName() || '').indexOf(prefix) !== 0) continue;
+    f.setTrashed(true);
+    trashed++;
+  }
+  Logger.log('[競合ストア] Drive退避 copy=' + newId + ' trashed_old=' + trashed + ' live=' + liveId);
+  try {
+    SpreadsheetApp.getActive().toast('退避コピー作成。古い退避=' + trashed + ' 本をゴミ箱へ', '競合ストア', 8);
+  } catch (t2) {}
+}
+
+/**
+ * 定時再検索は JAN 1件だけ。マスタ非書込。1件目を競合確定にしない。トリガー非設置。
+ * COMPETITOR_STORE_ENABLED かつ COMPETITOR_SS_ID が必要。
+ */
+function menuFetchCompetitorScheduledOneJan() {
+  var ui = bTryUi_();
+  if (!competitorStoreEnabled_()) {
+    if (ui) ui.alert('COMPETITOR_STORE_ENABLED が true のときだけ専用へ追記します。');
+    return;
+  }
+  var id = String(PropertiesService.getScriptProperties().getProperty(PROP_COMPETITOR_SS_ID) || '').trim();
+  if (!id) {
+    if (ui) ui.alert('COMPETITOR_SS_ID が未設定です。');
+    return;
+  }
+  if (!ui) {
+    Logger.log('[競合ストア] 定時再検索はUIからJAN指定が必要');
+    return;
+  }
+  var resp = ui.prompt(
+    '定時モール再検索（1 JAN）',
+    'JANを1つ入力。楽天・Yahooを検索して専用モールヒットへ追記します。出品マスタには書きません。競合確定価格は空です。',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  var jan = String(resp.getResponseText() || '').replace(/[^0-9]/g, '');
+  if (jan.length < 8) {
+    ui.alert('JANが不正です。');
+    return;
+  }
+  var props = PropertiesService.getScriptProperties();
+  var appId = (props.getProperty('RAKUTEN_APP_ID') || '').trim();
+  var accessKey = (props.getProperty('RAKUTEN_ACCESS_KEY') || '').trim();
+  var yahooId = (props.getProperty('YAHOO_SHOPPING_CLIENT_ID') || '').trim();
+  if (!appId || !accessKey || !yahooId) {
+    ui.alert('RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY / YAHOO_SHOPPING_CLIENT_ID が必要です。');
+    return;
+  }
+  var rows = [];
+  var rakutenRes = fetchRakutenIchibaItems(appId, accessKey, jan);
+  collectCompetitorMallHitRows_(rows, '楽天', jan, jan, rakutenRes && rakutenRes.items ? rakutenRes.items : [], 'rakuten', '定時');
+  Utilities.sleep(300);
+  var yahooRes = fetchYahooShoppingItemsByJan(yahooId, jan, 50);
+  collectCompetitorMallHitRows_(rows, 'Yahoo!', jan, jan, yahooRes && yahooRes.hits ? yahooRes.hits : [], 'yahoo', '定時');
+  var i;
+  for (i = 0; i < rows.length; i++) rows[i]['競合確定価格'] = '';
+  var flushed = flushCompetitorMallHits_(rows) || { appended: 0, skipped: 0 };
+  Logger.log('[競合ストア] 定時再検索 JAN=' + jan + ' 収集=' + rows.length + ' 追記=' + flushed.appended + ' 変化なしスキップ=' + flushed.skipped + ' マスタ非書');
+  console.log('[競合ストア] 定時再検索 JAN=' + jan + ' 収集=' + rows.length + ' 追記=' + flushed.appended + ' 変化なしスキップ=' + flushed.skipped + ' マスタ非書');
+  ui.alert(
+    '収集 ' + rows.length + ' 件。専用モールヒットへ追記 ' + flushed.appended +
+      ' 行、変化なしスキップ ' + flushed.skipped + ' 行（目的=定時）。マスタは未変更です。'
   );
 }
 
@@ -31696,6 +33167,16 @@ function createFullPrompt(name, jan, asin, rCand, yCatCand, yBrandCand, searchRe
        '    // （システムがその名前を使って再検索するため、ヒットしやすい一般的な名称を含めることが重要です）\n' +
        '\n' +
        '    "brand_suggestions": [{"id": "...", "name": "..."}]\n');
+  var skipPack = isBStep5SkipPackAi_();
+  var packBlock = skipPack
+    ? ('  "package": { "width": "", "depth": "", "height": "", "weight": "" },\n' +
+       '  // ▼ルール: package は必ず空。梱包寸法・重量・配送サイズはシステムが Keepa／FBA で決める。AIは出さない。\n' +
+       '  "data_source": "",\n' +
+       '  // ▼ルール: data_source は空。\n')
+    : ('  "package": { "width": 0, "depth": 0, "height": 0, "weight": 0 },\n' +
+       '  // ▼ルール: 調査結果にサイズ・重量があれば採用。なければメール便/宅急便コンパクト/大型の推論。\n' +
+       '  "data_source": "情報の取得元(画像/JAN検索/推測/Web検索)",\n' +
+       '  // ▼ルール: Google検索なら「Web検索」、画像のみなら「画像解析」。\n');
   return `
 あなたは、楽天市場、Yahoo!ショッピング、Amazonの各プラットフォームのアルゴリズムとユーザー行動を熟知した、ECマーケティング界のトップコンサルタントです。
 
@@ -31865,14 +33346,7 @@ ${searchResult}
   // ▼ルール: 上記の [Web検索による調査結果] に価格情報がある場合は、その数値を採用し「(Web調査済み)」と記載すること。
   // 情報がない場合のみ、ブランド分析や競合比較からの推測を行うこと。
 
-  "package": { "width": 0, "depth": 0, "height": 0, "weight": 0 },
-  // ★変更点4: ここだけ変えます。調査結果を使うように指示。
-  // ▼ルール: 上記の [Web検索による調査結果] にサイズ・重量情報がある場合は、その数値をそのまま採用すること。
-  // 情報がない場合のみ、メール便/宅急便コンパクト/大型の推論フローを適用すること。
-
-  "data_source": "情報の取得元(画像/JAN検索/推測/Web検索)",
-  // ▼ルール: Google検索を使用した場合は「Web検索」、画像のみの場合は「画像解析」と明記すること。
-
+${packBlock}
   // 以下は属性抽出用
   "variation_suggestions": [
     {"axis1": "カラー", "axis2": "サイズ", "value": "赤 S"}
@@ -31904,6 +33378,9 @@ ${yahooCatBrandBlock}  },
 
 // 調査専用プロンプト生成関数 (復活)
 function createSearchPrompt(name, jan, maker) {
+  var packLine = isBStep5SkipPackAi_()
+    ? '2. （梱包サイズは調査不要。システムが Keepa／FBA で決める）\n'
+    : '2. 梱包サイズ（幅 x 奥行 x 高さ cm）と梱包重量（g）\n   ※梱包サイズ不明な場合は「商品本体サイズ」と「内容量」\n';
   return `
 以下の商品のスペック情報をWeb検索して調査し、結果を簡潔なテキストで教えてください。
 
@@ -31913,9 +33390,7 @@ JAN: ${jan}
 
 【調査項目】
 1. 現在の市場価格（Amazon, 楽天, 公式サイト等の販売価格）
-2. 梱包サイズ（幅 x 奥行 x 高さ cm）と梱包重量（g）
-   ※梱包サイズ不明な場合は「商品本体サイズ」と「内容量」
-3. 原材料名（食品の場合。パッケージ裏面の記載内容）
+${packLine}3. 原材料名（食品の場合。パッケージ裏面の記載内容）
 4. 賞味期限・保存方法
 5. 正確な商品カテゴリ（例：ソフトドリンク、調味料など）
 
@@ -32146,15 +33621,17 @@ function writeSplitted(sheet, r, g, o, startCol, inputUrl, inputName, inputMaker
   for(let i=0; i<5; i++){ set3((g.bullets?.[i] || ''), (o.bullets?.[i] || ''), 'gemini'); }
   set3(g.market_price_research, o.market_price_research);
   
-  const pG = g.package || {}; const pO = o.package || {};
+  const pG = isBStep5SkipPackAi_() ? {} : (g.package || {});
+  const pO = isBStep5SkipPackAi_() ? {} : (o.package || {});
   set3(pG.width, pO.width); set3(pG.depth, pO.depth); set3(pG.height, pO.height);
-  const sumG = (parseFloat(pG.width)||0) + (parseFloat(pG.depth)||0) + (parseFloat(pG.height)||0);
-  const sumO = (parseFloat(pO.width)||0) + (parseFloat(pO.depth)||0) + (parseFloat(pO.height)||0);
+  const sumG = isBStep5SkipPackAi_() ? 0 : ((parseFloat(pG.width)||0) + (parseFloat(pG.depth)||0) + (parseFloat(pG.height)||0));
+  const sumO = isBStep5SkipPackAi_() ? 0 : ((parseFloat(pO.width)||0) + (parseFloat(pO.depth)||0) + (parseFloat(pO.height)||0));
   set3(sumG || '', sumO || ''); set3(pG.weight, pO.weight);
-  const cG = calcShippingTariff(sumG, pG.weight); const cO = calcShippingTariff(sumO, pO.weight);
+  const cG = isBStep5SkipPackAi_() ? '' : calcShippingTariff(sumG, pG.weight);
+  const cO = isBStep5SkipPackAi_() ? '' : calcShippingTariff(sumO, pO.weight);
   set3(cG, cO);
   
-  set3(g.data_source, o.data_source);
+  set3(isBStep5SkipPackAi_() ? '' : g.data_source, isBStep5SkipPackAi_() ? '' : o.data_source);
   
   const fmtVar = (suggestions, key) => {
     if (!suggestions || !Array.isArray(suggestions)) return '';

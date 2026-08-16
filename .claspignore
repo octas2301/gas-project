@@ -3,6 +3,7 @@
 export-tax-list/**
 広告運用GAS/**
 inventory-app/**
+purchase_research/**
 
 # ローカル専用ツール（GAS へ送らない。xlsm/CSVもここに置かない）
 tools/**

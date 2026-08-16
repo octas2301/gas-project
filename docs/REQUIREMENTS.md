@@ -16,7 +16,7 @@
 | 商品リサーチ | 販売候補の選定・競合・相場調査 | KW調査・価格相場・売れ筋傾向の要約 | 高 |
 | 見積依頼・見積取得 | 依頼送付・回答の取りまとめ | 依頼文のひな形・見積比較表の自動作成 | 中 |
 
-**前提・メモ**: 参考資料（メーカー・問屋仕入れ）を前提に、取得した見積を比較・選定するフローを定型化する。リサーチ項目（出品時 vs 仕入れ時）・取得方法の選択肢・見積もりの整理は [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) を参照。
+**前提・メモ**: 参考資料（メーカー・問屋仕入れ）を前提に、取得した見積を比較・選定するフローを定型化する。**領域1の範囲・優先・外注調査URL・見積は下書きまで**は [DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md) を正とする。項目の旧整理は [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md)。
 
 ---
 

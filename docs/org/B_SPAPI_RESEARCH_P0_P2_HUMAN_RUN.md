@@ -15,7 +15,7 @@
 
 ## U1＝Keepa取得_ログ拡張（⑤・実装済）
 
-1. `clasp push` → Keepa取得（APIが走ると新列が埋まりやすい）
+1. `clasp push` → Keepa取得（梱包がキャッシュに無いASINは再取得。API後も空なら `梱包_checked=1` で次回スキップ。既存ログ行は変わらない）
 2. `Keepa取得_ログ` に partNumber／ブランド／製造者／梱包_*  
 3. OFF: `B_KEEPA_LOG_EXT_ENABLED=false`
 

@@ -1,0 +1,104 @@
+﻿api,scope,field,name_ja,agent_pick,priority,effect_setcount,effect_price,effect_human,flow_tags,note,in_logical_crosswalk,keepa_full_column
+Keepa product,product,imagesCSV / image,画像,◎使えそう,P0,中,低,中,A_Keepa,トークンからURL組み立て,Y,Y
+Keepa product,product,title,商品名,◎使えそう,P0,中,低,中,A_Keepa,,Y,Y
+Keepa product,product,features,商品ハイライト,○補助,P1,無,低,中,A_Keepa,配列。空のことが多い,N,N
+Keepa product,product,stats.avg90[3],売れ筋ランキング: 90 日平均,K Keepa専用,P1,無,低,中,"A_Keepa,FBA",stats指定が必要,N,Y
+Keepa product,product,stats.avg365[3],売れ筋ランキング: 365 日平均,○補助,P1,無,低,中,A_Keepa,stats=365,N,N
+Keepa product,product,avg90 と現在の比,売れ筋ランキング: 90日間の下落 %,△後続,P2,無,低,中,A_Keepa,CSVの既算値。APIは自分で割る,N,N
+Keepa product,product,csv[3] 履歴,売れ筋ランキング: 過去30日間の減少,×今回使わない,P3,無,低,中,A_Keepa,履歴から差分。statsだけだと無し csv[]は倉庫非保存。,N,N
+Keepa product,product,csv[3] 履歴,売れ筋ランキング: 過去90日間の減少,×今回使わない,P3,無,低,中,A_Keepa,csv[]は倉庫非保存。,N,N
+Keepa product,product,csv[3] 履歴,売れ筋ランキング: 過去180日間の減少,×今回使わない,P3,無,低,中,A_Keepa,csv[]は倉庫非保存。,N,N
+Keepa product,product,csv[3] 履歴,売れ筋ランキング: 過去365日間の減少,×今回使わない,P3,無,低,中,A_Keepa,csv[]は倉庫非保存。,N,N
+Keepa product,product,monthlySold,月間売上トレンド: 先月の購入,◎使えそう,P0,中,低,中,A_Keepa,無いASINもある,Y,Y
+Keepa product,product,csv[16] 直近 /10 または rating,レビュー: 評価,◎使えそう,P0,中,低,中,A_Keepa,43→4.3,N,Y
+Keepa product,product,csv[17] / reviewCount,レビュー: 評価件数,◎使えそう,P0,中,低,中,A_Keepa,,N,Y
+Keepa product,product,stats.avg30[18],Buy Box: 30 日平均,◎使えそう,P0,中,高,中,A_Keepa,BUY_BOX_SHIPPING,N,Y
+Keepa product,product,stats.avg90[18],Buy Box: 90 日平均,◎使えそう,P0,中,高,中,A_Keepa,,N,Y
+Keepa product,product,stats平均の比,Buy Box: 90日間の下落 %,△後続,P2,無,高,中,A_Keepa,,N,N
+Keepa product,product,offers[].sellerName (isBuyBox),Buy Box: Buy Box セラー,◎使えそう,P0,中,高,中,A_Keepa,offers=20 が必要。名前はCSV専用に近い,N,Y
+Keepa product,product,offers[].isFBA (isBuyBox),Buy Box: FBAです,◎使えそう,P0,中,高,中,A_Keepa,,N,Y
+Keepa product,product,stats.current[0] / csv[0],Amazon: 現在価格,◎使えそう,P0,中,高,中,A_Keepa,空＝本体なし,N,Y
+Keepa product,product,stats.avg90[0],Amazon: 90 日平均,◎使えそう,P0,中,低,中,A_Keepa,,N,Y
+Keepa product,product,stats.avg365[0],Amazon: 365 日平均,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,平均の比,Amazon: 90日間の下落 %,△後続,P2,無,低,中,A_Keepa,,N,N
+Keepa product,product,amazonオファー stock,Amazon: 在庫,△後続,P2,無,低,中,A_Keepa,2品番CSVも空。APIも薄い,N,N
+Keepa product,product,stats.outOfStockPercentage90[0],Amazon: 90日間在庫切れ,○補助,P1,無,低,中,A_Keepa,100 と 100% の表記差,N,N
+Keepa product,product,csv[0] の -1 連続,Amazon: 在庫切れカウント 30 日間,×今回使わない,P3,無,低,中,A_Keepa,既算値はCSV寄り csv[]は倉庫非保存。,N,N
+Keepa product,product,csv[0] 履歴,Amazon: 在庫切れカウント 90 日間,×今回使わない,P3,無,低,中,A_Keepa,門の「6ヶ月ほぼ不在」は履歴で可 csv[]は倉庫非保存。,N,N
+Keepa product,product,stats.avg90[1],新品: 90 日平均,◎使えそう,P0,中,低,中,A_Keepa,円の整数,N,Y
+Keepa product,product,stats.avg365[1],新品: 365 日平均,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,平均の比,新品: 90日間の下落 %,△後続,P2,無,低,中,A_Keepa,,N,N
+Keepa product,product,stats.avg90[10],新しい、第三者FBA: 90 日平均,○補助,P1,無,低,中,A_Keepa,NEW_FBA,N,N
+Keepa product,product,stats.avg365[10],新しい、第三者FBA: 365 日平均,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,平均の比,新しい、第三者FBA: 90日間の下落 %,△後続,P2,無,低,中,A_Keepa,,N,N
+Keepa product,product,offers isFBA 最安の sellerName,最安の FBA セラー,○補助,P1,無,低,中,A_Keepa,名前はoffers,N,N
+Keepa product,product,stats.avg90[7],新品 第三者 FBM: 90 日平均,○補助,P1,無,低,中,A_Keepa,NEW_FBM_SHIPPING 送料込,N,N
+Keepa product,product,stats.avg365[7],新品 第三者 FBM: 365 日平均,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,平均の比,新品 第三者 FBM: 90日間の下落 %,△後続,P2,無,低,中,A_Keepa,,N,N
+Keepa product,product,offers isFBA=false 最安,最安の FBM セラー,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,stats.avg90[4],参考価格: 90 日平均,◎使えそう,P0,中,高,中,A_Keepa,,N,Y
+Keepa product,product,stats.avg365[4],参考価格: 365 日平均,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,平均の比,参考価格: 90日間の下落 %,△後続,P2,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats.current[11],出品者数,◎使えそう,P0,無,低,中,A_Keepa,COUNT_NEW。クイックショップ一致。0/-1は空。offersユニークは使わない,N,Y
+Keepa product,product,stats.avg365[11],新品アイテム数: 365 日平均,○補助,P1,高,低,中,A_Keepa,,N,N
+Keepa product,product,平均の比,新品アイテム数: 90日間の下落 %,△後続,P2,高,低,中,A_Keepa,,N,N
+Keepa product,product,https://www.amazon.co.jp/dp/{asin},URL: Amazon,◎使えそう,P0,中,低,中,A_Keepa,,N,Y
+Keepa product,product,https://keepa.com/#!product/5-{asin},URL: Keepa,◎使えそう,P0,中,低,中,A_Keepa,,N,Y
+Keepa product,product,categoryTree[0],カテゴリ: ルート,△後続,P2,無,低,中,A_Keepa,,N,Y
+Keepa product,product,categoryTree 末尾,カテゴリ: サブ,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,categoryTree 結合,カテゴリ: ツリー,△後続,P2,無,低,中,A_Keepa,,N,Y
+Keepa product,product,asin,ASIN,K Keepa専用,P0,無,低,中,"A_Keepa,FBA",,Y,Y
+Keepa product,product,ean / eanList,商品コード: EAN,◎使えそう,P0,中,低,中,A_Keepa,前回フラット化漏れ。フィールドはある,Y,Y
+Keepa product,product,manufacturer,製造者,◎使えそう,P0,中,低,中,A_Keepa,,Y,Y
+Keepa product,product,brand,ブランド,△後続,P2,無,低,中,A_Keepa,,Y,Y
+Keepa product,product,unitCount 等,単位の詳細: 単位の価値,○補助,P1,無,低,中,A_Keepa,ASINによる,N,N
+Keepa product,product,numberOfItems,アイテム数,○補助,P1,高,低,中,A_Keepa,,Y,Y
+Keepa product,product,releaseDate,発売日,△後続,P2,無,低,中,A_Keepa,Keepa分,N,Y
+Keepa product,product,packageLength /10,パッケージ: 長さ (cm),K Keepa専用,P0,無,低,中,"A_Keepa,FBA",APIはmm,Y,Y
+Keepa product,product,packageWidth /10,パッケージ: 幅 (cm),K Keepa専用,P0,無,低,中,"A_Keepa,FBA",,Y,Y
+Keepa product,product,packageHeight /10,パッケージ: 高さ (cm),K Keepa専用,P0,無,低,中,"A_Keepa,FBA",,Y,Y
+Keepa product,product,packageWeight,パッケージ: 重さ (g),K Keepa専用,P0,無,低,中,"A_Keepa,FBA",,Y,Y
+Keepa product,product,packageQuantity,パッケージ: 数量,K Keepa専用,P0,無,低,中,"A_Keepa,FBA",,N,Y
+Keepa product,product,itemLength /10,商品: 長さ (cm),○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,itemWidth /10,商品: 幅 (cm),○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,itemHeight /10,商品: 高さ (cm),○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,itemWeight,商品: 重さ (g),○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,product,sns / csv SNS系,Buy Box: 定期おトク便,△後続,P2,無,高,中,A_Keepa,コード.jsもAPI要確認,N,N
+Keepa product,product,coupon,ワンタイムクーポン: 定期おトク便 %,△後続,P2,無,低,中,A_Keepa,クーポンオブジェクト。常時あるわけではない,N,N
+Keepa product,product,businessDiscount,ビジネス割引: パーセンテージ,△後続,P2,無,低,中,A_Keepa,無いことが多い,N,N
+Keepa product,product,stats.buyBoxUsed/amazon 系 or csv,Buy Box: % Amazon 30 日,○補助,P1,無,高,中,A_Keepa,statsに比率あり,N,N
+Keepa product,product,stats,Buy Box: % Amazon 90 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: % Amazon 180 日,○補助,P1,無,高,中,A_Keepa,stats期間を長く,N,N
+Keepa product,product,stats,Buy Box: % Amazon 365 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: % トップセラー 30 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: % トップセラー 90 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: % トップセラー 180 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: % トップセラー 365 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 勝者数 30 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 勝者数 90 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 勝者数 180 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 勝者数 365 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 標準偏差 30 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 標準偏差 90 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 標準偏差 365 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 変動性 30 日,○補助,P1,無,高,中,A_Keepa,flipability,N,N
+Keepa product,product,stats,Buy Box: 変動性 90 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats,Buy Box: 変動性 365 日,○補助,P1,無,高,中,A_Keepa,,N,N
+Keepa product,product,stats.current[1],新品: 現在価格,◎使えそう,P0,中,高,中,A_Keepa,最安の正。BBは使わない,N,Y
+Keepa product,product,stats.current[3],売れ筋ランキング: 現在,◎使えそう,P0,無,低,中,A_Keepa,門のいまの順位。90日平均とは別列,N,Y
+Keepa product,api_only,availabilityAmazon,Amazon直販,○補助,P1,無,低,中,A_Keepa,0=いる -1=いない。列はいる/いない。offers不要,N,Y
+Keepa product,warehouse,stats.outOfStockPercentage180[0],Amazon: 180日在庫切れ%,○補助,P1,無,低,中,A_Keepa,本体6ヶ月。csv[]不要。GETなしflatten,N,Y
+Keepa product,api_only,csv[*] 全履歴,csv[*] 全履歴,×今回使わない,P3,無,低,中,A_Keepa,6ヶ月本体不在はここから。エクスポートの「カウント」より生データ csv[]は倉庫非保存。,N,N
+Keepa product,api_only,offers[],offers[],○補助,P1,無,低,中,A_Keepa,いまの出品者・BuyBox・FBA。offers=20 でトークン増,N,N
+Keepa product,api_only,parentAsin / variations / variationCSV,parentAsin / variations / variationCSV,○補助,P1,無,低,中,A_Keepa,バリエーション。エクスポートに無い,Y,Y
+Keepa product,api_only,salesRankReference / salesRanks,salesRankReference / salesRanks,○補助,P1,無,低,中,A_Keepa,カテゴリ別順位,N,N
+Keepa product,api_only,fbaFees,fbaFees,K Keepa専用,P1,無,低,中,"A_Keepa,FBA",FBA手数料目安,Y,Y
+Keepa product,api_only,listedSince / lastUpdate / trackingSince,listedSince / lastUpdate / trackingSince,○補助,P1,無,低,中,A_Keepa,追跡開始・更新,N,N
+Keepa product,api_only,eanList / upcList,eanList / upcList,○補助,P1,無,低,中,A_Keepa,JAN複数,N,N
+Keepa product,api_only,partNumber,partNumber,○補助,P1,無,低,中,A_Keepa,品番。出品②で使用,N,N
+Keepa product,api_only,parentTitle 等,parentTitle 等,○補助,P1,無,低,中,A_Keepa,親ASIN情報,N,N
+Keepa product,warehouse,fetchedAt,取得日時,◎使えそう,P0,無,低,中,A_Keepa,Keepaフルメタ,N,Y
+Keepa product,warehouse,stats.current[18],Buy Box: 現在価格,◎使えそう,P0,無,高,中,A_Keepa,④のAmazon価格。csv非使用,N,Y
+Keepa product,warehouse,stats.avg30[0],Amazon: 30 日平均,○補助,P1,無,低,中,A_Keepa,,N,N
+Keepa product,warehouse,priceFingerprint,価格指紋,◎使えそう,P0,無,高,中,A_Keepa,変わったときだけ追記判定,N,Y
+Keepa product,warehouse,rawJson,生JSON,◎使えそう,P0,無,低,中,A_Keepa,csv[]を落とした product,N,Y

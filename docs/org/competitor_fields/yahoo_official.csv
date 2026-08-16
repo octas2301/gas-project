@@ -1,0 +1,72 @@
+﻿api,scope,field,name_ja,agent_pick,priority,effect_setcount,effect_price,effect_human,flow_tags,note,in_logical_crosswalk
+Yahoo itemSearch v3,検索全体,totalResultsAvailable,ヒット総数,○補助,P1,低,低,低,"A_Keepa,B_Step2",0件→queryフォールバック,Y
+Yahoo itemSearch v3,検索全体,totalResultsReturned,返却件数,○補助,P1,低,低,低,A_Keepa,,N
+Yahoo itemSearch v3,検索全体,firstResultsPosition,先頭位置,×今回使わない,P3,無,無,無,,,N
+Yahoo itemSearch v3,検索全体,request/query,リクエストquery,○補助,P1,低,低,低,A_Keepa,キャッシュの検索条件,N
+Yahoo itemSearch v3,商品,hits/index,順位,○補助,P1,低,低,低,"A_Keepa,B_Step2",1件目禁止の印,Y
+Yahoo itemSearch v3,商品,hits/name,商品名,◎使えそう,P0,高,中,高,"A_Keepa,B_Step2,CPO,除外フィルタ",袋数の主ソース,Y
+Yahoo itemSearch v3,商品,hits/description,商品説明,○補助,P1,中,低,中,A_Keepa,,Y
+Yahoo itemSearch v3,商品,hits/headLine,キャッチ,○補助,P1,中,低,中,A_Keepa,公式はheadLine（headではない）,Y
+Yahoo itemSearch v3,商品,hits/inStock,在庫,○補助,P1,中,低,低,"A_Keepa,B_Step2,除外フィルタ",,Y
+Yahoo itemSearch v3,商品,hits/url,商品URL,○補助,P1,低,低,高,"A_Keepa,B_Step2,CPO",,Y
+Yahoo itemSearch v3,商品,hits/code,商品コード,○補助,P1,低,低,低,"A_Keepa,B_Step2",seller_managed_item_id,Y
+Yahoo itemSearch v3,商品,hits/condition,新品/中古,○補助,P1,中,低,低,"A_Keepa,B_Step2,除外フィルタ",used除外,Y
+Yahoo itemSearch v3,商品,hits/taxExcludePrice,税抜価格,○補助,P1,低,中,低,CPO,ポイント計算が税抜基準の時期あり,Y
+Yahoo itemSearch v3,商品,hits/taxExcludePremiumPrice,税抜プレミアム,△後続,P2,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/premiumPrice,プレミアム価格,△後続,P2,低,中,低,"B_Step2,CPO",通常priceと乖離除外,Y
+Yahoo itemSearch v3,商品,hits/premiumDiscountType,プレミアム割引種別,×今回使わない,P3,無,無,無,,,Y
+Yahoo itemSearch v3,商品,hits/premiumDiscountRate,プレミアム割引率,△後続,P2,低,低,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/imageId,画像ID,○補助,P1,低,低,低,A_Keepa,,Y
+Yahoo itemSearch v3,商品,hits/image/small,画像76px,○補助,P1,中,低,中,A_Keepa,,Y
+Yahoo itemSearch v3,商品,hits/image/medium,画像146px,◎使えそう,P0,高,低,高,"A_Keepa,B_Step2",袋数Vision,Y
+Yahoo itemSearch v3,商品,hits/exImage/*,指定サイズ画像,△後続,P2,中,低,中,A_Keepa,image_size=300/600で鮮明,N
+Yahoo itemSearch v3,商品,hits/review/rate,レビュー点,△後続,P2,低,低,低,除外フィルタ,,Y
+Yahoo itemSearch v3,商品,hits/review/count,レビュー件数,○補助,P1,中,低,中,"A_Keepa,B_Step2,B_Step76",売れ筋近似,Y
+Yahoo itemSearch v3,商品,hits/review/url,レビューURL,×今回使わない,P3,無,無,無,,2026-08追加予定,Y
+Yahoo itemSearch v3,商品,hits/affiliateRate,アフィリ料率,×今回使わない,P3,無,無,無,,,Y
+Yahoo itemSearch v3,商品,hits/price,価格,◎使えそう,P0,高,高,高,"A_Keepa,B_Step2,CPO",,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/taxable,税込か,○補助,P1,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/premiumPrice,ラベルPrem,△後続,P2,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/taxExcludePremiumPrice,ラベルPrem税抜,△後続,P2,低,低,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/defaultPrice,通常価格,△後続,P2,低,中,低,除外フィルタ,外れ値,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/taxExcludeDefaultPrice,通常税抜,△後続,P2,低,低,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/discountedPrice,セール価格,○補助,P1,低,中,低,CPO,期間限定の信頼度,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/taxExcludeDiscountedPrice,セール税抜,△後続,P2,低,低,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/fixedPrice,定価,△後続,P2,低,低,低,除外フィルタ,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/periodStart,セール開始,△後続,P2,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/priceLabel/periodEnd,セール終了,△後続,P2,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/point/amount,Tポイント数,×今回使わない,P3,無,無,無,,2022-04以降0固定,Y
+Yahoo itemSearch v3,商品,hits/point/times,Tポイント倍率,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/bonusAmount,旧PayPayポイント,×今回使わない,P3,無,無,無,,2025-02以降0固定,Y
+Yahoo itemSearch v3,商品,hits/point/bonusTimes,旧PayPay倍率,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/lyLimitedBonusAmount,期間限定PayPay数,◎使えそう,P0,中,高,中,"A_Keepa,B_Step2,CPO",現行の実質ポイント,Y
+Yahoo itemSearch v3,商品,hits/point/lyLimitedBonusTimes,期間限定PayPay倍率,◎使えそう,P0,中,高,中,"A_Keepa,B_Step2,CPO",,Y
+Yahoo itemSearch v3,商品,hits/point/premiumAmount,Prem Tポイント,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/premiumTimes,Prem T倍率,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/premiumBonusAmount,旧Prem PayPay,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/premiumBonusTimes,旧Prem倍率,×今回使わない,P3,無,無,無,,0固定,Y
+Yahoo itemSearch v3,商品,hits/point/lyLimitedPremiumBonusAmount,Prem期間限定数,△後続,P2,低,中,低,CPO,一般客の実質には使わない,Y
+Yahoo itemSearch v3,商品,hits/point/lyLimitedPremiumBonusTimes,Prem期間限定倍率,△後続,P2,低,中,低,CPO,,Y
+Yahoo itemSearch v3,商品,hits/shipping/name,送料条件名,○補助,P1,低,中,低,"A_Keepa,B_Step2",,Y
+Yahoo itemSearch v3,商品,hits/shipping/code,送料コード,◎使えそう,P0,中,高,中,"A_Keepa,B_Step2,CPO,除外フィルタ",1無設定 2無料 3条件付無料。円は無い,Y
+Yahoo itemSearch v3,商品,hits/genreCategory/id,ジャンルID,△後続,P2,低,低,低,B_Step76,SCと不一致あり,Y
+Yahoo itemSearch v3,商品,hits/genreCategory/name,ジャンル名,△後続,P2,低,低,低,B_Step76,,Y
+Yahoo itemSearch v3,商品,hits/genreCategory/depth,ジャンル階層,△後続,P2,低,低,低,B_Step76,,Y
+Yahoo itemSearch v3,商品,hits/parentGenreCategories[],親ジャンル配列,△後続,P2,低,低,低,B_Step76,パス連結,Y
+Yahoo itemSearch v3,商品,hits/brand/id,ブランドID,△後続,P2,低,低,低,B_Step76,出品コードと別,Y
+Yahoo itemSearch v3,商品,hits/brand/name,ブランド名,○補助,P1,低,低,低,"A_Keepa,B_Step76",文字列一致,Y
+Yahoo itemSearch v3,商品,hits/parentBrands[],親ブランド,△後続,P2,低,低,低,B_Step76,,Y
+Yahoo itemSearch v3,商品,hits/janCode,JAN,◎使えそう,P0,高,中,高,"A_Keepa,B_Step2",Keepa EANとJOIN,Y
+Yahoo itemSearch v3,商品,hits/payment,支払コード,×今回使わない,P3,無,無,無,,,Y
+Yahoo itemSearch v3,商品,hits/releaseDate,発売日,△後続,P2,低,低,低,A_Keepa,,Y
+Yahoo itemSearch v3,店舗,hits/seller/sellerId,ストアID,○補助,P1,低,低,低,除外フィルタ,,Y
+Yahoo itemSearch v3,店舗,hits/seller/name,ストア名,◎使えそう,P0,中,低,中,"A_Keepa,B_Step2,除外フィルタ",,Y
+Yahoo itemSearch v3,店舗,hits/seller/url,ストアURL,○補助,P1,低,低,低,除外フィルタ,ロハコ注意,Y
+Yahoo itemSearch v3,店舗,hits/seller/isBestSeller,ベストストア,△後続,P2,低,低,低,B_Step2,重みの補助,Y
+Yahoo itemSearch v3,店舗,hits/seller/payment,店支払（終了）,×今回使わない,P3,無,無,無,,提供終了,Y
+Yahoo itemSearch v3,店舗,hits/seller/review/rate,店レビュー点,△後続,P2,低,低,低,除外フィルタ,,Y
+Yahoo itemSearch v3,店舗,hits/seller/review/count,店レビュー件数,△後続,P2,低,低,低,B_Step2,,Y
+Yahoo itemSearch v3,店舗,hits/seller/imageId,店画像ID,×今回使わない,P3,無,無,無,,,Y
+Yahoo itemSearch v3,配送,hits/delivery/area,都道府県,×今回使わない,P3,無,無,無,,delivery_*3点指定時,Y
+Yahoo itemSearch v3,配送,hits/delivery/deadLine,締め時間,×今回使わない,P3,無,無,無,,,Y
+Yahoo itemSearch v3,配送,hits/delivery/day,配送日数,×今回使わない,P3,無,無,無,,きょう/あす,Y

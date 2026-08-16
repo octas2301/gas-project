@@ -33,6 +33,25 @@ clasp tail-logs --watch
 
 `PAST gen-lang-client-0933127937` のあとに行が出なければ、Cloud Logging 側にエントリが無い状態（正常な空）。
 
+---
+
+## clasp run（Execution API）
+
+GCP の Apps Script API（`script.googleapis.com`）は **2026-08-15 有効化済**（project `gen-lang-client-0933127937`）。
+
+**人間が1回**: Google アカウントで Apps Script API を許可しないと `PERMISSION_DENIED` のまま。
+
+1. https://script.google.com/home/usersettings  
+2. **Google Apps Script API** をオン  
+3. 同じ Google アカウント（clasp login）であること
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project
+clasp run amazonPasteP3ApplyImpl_ -p "[false]"
+```
+
+メニュー関数（`getUi`）は clasp から呼ばない。P3 dry は上記。12-⑳書込は Property OFF のまま。
+
 ### 注意（メニュー8など）
 
 - GAS エディタの「実行数」ログは主に **`Logger.log`**。
