@@ -174,8 +174,12 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
 | T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
 | T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
-| T-p1k | A3P240 page0 miss56 Keepa20 rest36 | **フェーズ1合格** |
-| T-p2k | 同 miss36 Keepa20 rest16 | **フェーズ2合格** |
+| T-p1r16 | A3P240 page0 残miss16 Keepa16 rest0 | **フェーズ1合格** |
+| T-p2from | フロム通過13をリスト追記 append13 既存92 式33非書 | **フェーズ2合格** |
+| T-p3join | JOIN list148 miss0 cells0 | **フェーズ3合格** |
+| T-p4curry | 永谷園カレー Catalog1頁 want18 Keepa18 pass11/drop7 ①+18 ヒット425 | **フェーズ4合格。公式第2語はこれで洗い切り** |
+| T-p1k | A3P240 page0 miss56 Keepa20 rest36 | **合格** |
+| T-p2k | 同 miss36 Keepa20 rest16 | **合格** |
 | T-p3sou | 永谷園そうざい Catalog1頁 タイトル1 Keepa1 pass0/drop1 ①+1 ヒット425 | **フェーズ3合格** |
 | T-p4list | 通過92既にリスト。JOIN list135 miss0 cells0 式33非書 | **フェーズ4合格** |
 | T-p5from | フロム四十五 Catalog1頁 want20 Keepa4 skip16 pass13/drop7 ①+20 ヒット425 | **フェーズ5合格** |
