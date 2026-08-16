@@ -1,0 +1,19 @@
+---
+description: 仕入れ検討① GAS の clasp は人間が PowerShell で行う
+alwaysApply: true
+---
+
+# 仕入れ検討① clasp（人間・PowerShell）
+
+①用 GAS は `purchase_research/`（scriptId `1oRfQzsECsGbuft8S7ksuxfKwAgq-AgFdSse41lE2lJVP-rPb4qx4yNRr`）。出品直下の clasp と混ぜない。
+
+**Agent は `clasp push` / `clasp pull` を実行しない。** 人間が Windows PowerShell で行う。
+
+push / pull / logs / status を指示するときは、**必ず先にこの cd を書く**:
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project\purchase_research
+clasp push
+```
+
+禁止: 親フォルダ `C:\Users\takuy\Desktop\gas-project` での ①用 push。出品の `コード.js` に①を足さない。

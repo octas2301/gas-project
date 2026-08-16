@@ -1,0 +1,96 @@
+﻿side,column,api,api_path,export_filled_2asin,note
+export,画像,yes,imagesCSV / image,2/2,トークンからURL組み立て
+export,商品名,yes,title,2/2,
+export,商品ハイライト,yes,features,0/2,配列。空のことが多い
+export,売れ筋ランキング: 90 日平均,yes,stats.avg90[3],2/2,stats指定が必要
+export,売れ筋ランキング: 365 日平均,yes,stats.avg365[3],2/2,stats=365
+export,売れ筋ランキング: 90日間の下落 %,derive,avg90 と現在の比,2/2,CSVの既算値。APIは自分で割る
+export,売れ筋ランキング: 過去30日間の減少,derive,csv[3] 履歴,2/2,履歴から差分。statsだけだと無し
+export,売れ筋ランキング: 過去90日間の減少,derive,csv[3] 履歴,2/2,
+export,売れ筋ランキング: 過去180日間の減少,derive,csv[3] 履歴,2/2,
+export,売れ筋ランキング: 過去365日間の減少,derive,csv[3] 履歴,2/2,
+export,月間売上トレンド: 先月の購入,yes,monthlySold,1/2,無いASINもある
+export,レビュー: 評価,yes,csv[16] 直近 /10 または rating,2/2,43→4.3
+export,レビュー: 評価件数,yes,csv[17] / reviewCount,2/2,
+export,Buy Box: 30 日平均,yes,stats.avg30[18],2/2,BUY_BOX_SHIPPING
+export,Buy Box: 90 日平均,yes,stats.avg90[18],2/2,
+export,Buy Box: 90日間の下落 %,derive,stats平均の比,2/2,
+export,Buy Box: Buy Box セラー,offers,offers[].sellerName (isBuyBox),2/2,offers=20 が必要。名前はCSV専用に近い
+export,Buy Box: FBAです,offers,offers[].isFBA (isBuyBox),2/2,
+export,Amazon: 現在価格,yes,stats.current[0] / csv[0],0/2,空＝本体なし
+export,Amazon: 90 日平均,yes,stats.avg90[0],0/2,
+export,Amazon: 365 日平均,yes,stats.avg365[0],0/2,
+export,Amazon: 90日間の下落 %,derive,平均の比,0/2,
+export,Amazon: 在庫,hard,amazonオファー stock,0/2,2品番CSVも空。APIも薄い
+export,Amazon: 90日間在庫切れ,yes,stats.outOfStockPercentage90[0],2/2,100 と 100% の表記差
+export,Amazon: 在庫切れカウント 30 日間,derive,csv[0] の -1 連続,2/2,既算値はCSV寄り
+export,Amazon: 在庫切れカウント 90 日間,derive,csv[0] 履歴,2/2,門の「6ヶ月ほぼ不在」は履歴で可
+export,新品: 90 日平均,yes,stats.avg90[1],2/2,円の整数
+export,新品: 365 日平均,yes,stats.avg365[1],2/2,
+export,新品: 90日間の下落 %,derive,平均の比,2/2,
+export,新しい、第三者FBA: 90 日平均,yes,stats.avg90[10],2/2,NEW_FBA
+export,新しい、第三者FBA: 365 日平均,yes,stats.avg365[10],2/2,
+export,新しい、第三者FBA: 90日間の下落 %,derive,平均の比,1/2,
+export,最安の FBA セラー,offers,offers isFBA 最安の sellerName,1/2,名前はoffers
+export,新品 第三者 FBM: 90 日平均,yes,stats.avg90[7],1/2,NEW_FBM_SHIPPING 送料込
+export,新品 第三者 FBM: 365 日平均,yes,stats.avg365[7],1/2,
+export,新品 第三者 FBM: 90日間の下落 %,derive,平均の比,1/2,
+export,最安の FBM セラー,offers,offers isFBA=false 最安,1/2,
+export,参考価格: 90 日平均,yes,stats.avg90[4],2/2,
+export,参考価格: 365 日平均,yes,stats.avg365[4],2/2,
+export,参考価格: 90日間の下落 %,derive,平均の比,2/2,
+export,新品アイテム数: 90 日平均,yes,stats.avg90[11],2/2,COUNT_NEW
+export,新品アイテム数: 365 日平均,yes,stats.avg365[11],2/2,
+export,新品アイテム数: 90日間の下落 %,derive,平均の比,2/2,
+export,URL: Amazon,build,https://www.amazon.co.jp/dp/{asin},2/2,
+export,URL: Keepa,build,https://keepa.com/#!product/5-{asin},2/2,
+export,カテゴリ: ルート,yes,categoryTree[0],2/2,
+export,カテゴリ: サブ,yes,categoryTree 末尾,2/2,
+export,カテゴリ: ツリー,yes,categoryTree 結合,2/2,
+export,ASIN,yes,asin,2/2,
+export,商品コード: EAN,yes,ean / eanList,2/2,前回フラット化漏れ。フィールドはある
+export,製造者,yes,manufacturer,2/2,
+export,ブランド,yes,brand,2/2,
+export,単位の詳細: 単位の価値,yes,unitCount 等,2/2,ASINによる
+export,アイテム数,yes,numberOfItems,1/2,
+export,発売日,yes,releaseDate,0/2,Keepa分
+export,パッケージ: 長さ (cm),yes,packageLength /10,2/2,APIはmm
+export,パッケージ: 幅 (cm),yes,packageWidth /10,2/2,
+export,パッケージ: 高さ (cm),yes,packageHeight /10,2/2,
+export,パッケージ: 重さ (g),yes,packageWeight,2/2,
+export,パッケージ: 数量,yes,packageQuantity,1/2,
+export,商品: 長さ (cm),yes,itemLength /10,1/2,
+export,商品: 幅 (cm),yes,itemWidth /10,1/2,
+export,商品: 高さ (cm),yes,itemHeight /10,1/2,
+export,商品: 重さ (g),yes,itemWeight,2/2,
+export,Buy Box: 定期おトク便,hard,sns / csv SNS系,2/2,コード.jsもAPI要確認
+export,ワンタイムクーポン: 定期おトク便 %,hard,coupon,1/2,クーポンオブジェクト。常時あるわけではない
+export,ビジネス割引: パーセンテージ,hard,businessDiscount,0/2,無いことが多い
+export,Buy Box: % Amazon 30 日,yes,stats.buyBoxUsed/amazon 系 or csv,2/2,statsに比率あり
+export,Buy Box: % Amazon 90 日,yes,stats,2/2,
+export,Buy Box: % Amazon 180 日,yes,stats,2/2,stats期間を長く
+export,Buy Box: % Amazon 365 日,yes,stats,2/2,
+export,Buy Box: % トップセラー 30 日,yes,stats,2/2,
+export,Buy Box: % トップセラー 90 日,yes,stats,2/2,
+export,Buy Box: % トップセラー 180 日,yes,stats,2/2,
+export,Buy Box: % トップセラー 365 日,yes,stats,2/2,
+export,Buy Box: 勝者数 30 日,yes,stats,2/2,
+export,Buy Box: 勝者数 90 日,yes,stats,2/2,
+export,Buy Box: 勝者数 180 日,yes,stats,2/2,
+export,Buy Box: 勝者数 365 日,yes,stats,2/2,
+export,Buy Box: 標準偏差 30 日,yes,stats,0/2,
+export,Buy Box: 標準偏差 90 日,yes,stats,2/2,
+export,Buy Box: 標準偏差 365 日,yes,stats,2/2,
+export,Buy Box: 変動性 30 日,yes,stats,2/2,flipability
+export,Buy Box: 変動性 90 日,yes,stats,2/2,
+export,Buy Box: 変動性 365 日,yes,stats,2/2,
+api_only,availabilityAmazon,yes,availabilityAmazon,,本体が今いるか。-1=なし。門の本体いま
+api_only,csv[*] 全履歴,yes,csv[*] 全履歴,,6ヶ月本体不在はここから。エクスポートの「カウント」より生データ
+api_only,offers[],yes,offers[],,いまの出品者・BuyBox・FBA。offers=20 でトークン増
+api_only,parentAsin / variations / variationCSV,yes,parentAsin / variations / variationCSV,,バリエーション。エクスポートに無い
+api_only,salesRankReference / salesRanks,yes,salesRankReference / salesRanks,,カテゴリ別順位
+api_only,fbaFees,yes,fbaFees,,FBA手数料目安
+api_only,listedSince / lastUpdate / trackingSince,yes,listedSince / lastUpdate / trackingSince,,追跡開始・更新
+api_only,eanList / upcList,yes,eanList / upcList,,JAN複数
+api_only,partNumber,yes,partNumber,,品番。出品②で使用
+api_only,parentTitle 等,yes,parentTitle 等,,親ASIN情報

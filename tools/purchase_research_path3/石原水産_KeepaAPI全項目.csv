@@ -1,0 +1,250 @@
+﻿asin,path
+B08W56WVHD,product.asin = str:10
+B08W56WVHD,product.author = null
+B08W56WVHD,product.availabilityAmazon = num
+B08W56WVHD,product.binding = null
+B08W56WVHD,product.brand = str:4
+B08W56WVHD,product.brandStoreName = str:11
+B08W56WVHD,product.brandStoreUrl = str:56
+B08W56WVHD,product.brandStoreUrlName = str:6
+B08W56WVHD,product.buyBoxEligibleOfferCounts = list:8
+B08W56WVHD,product.buyBoxSellerIdHistory = list:4518
+B08W56WVHD,product.categories = list:1
+B08W56WVHD,"product.categoryTree[] n=3 keys=catId,name"
+B08W56WVHD,product.color = null
+B08W56WVHD,product.coupon = null
+B08W56WVHD,csv[0](AMAZON) n=2
+B08W56WVHD,csv[1](NEW) n=168
+B08W56WVHD,csv[2](USED) n=2
+B08W56WVHD,csv[3](SALES) n=17302
+B08W56WVHD,csv[4](LISTPRICE) n=34
+B08W56WVHD,csv[5](COLLECTIBLE) null
+B08W56WVHD,csv[6](REFURBISHED) null
+B08W56WVHD,csv[7](NEW_FBM_SHIPPING) n=336
+B08W56WVHD,csv[8](LIGHTNING_DEAL) null
+B08W56WVHD,csv[9](WAREHOUSE) null
+B08W56WVHD,csv[10](NEW_FBA) n=174
+B08W56WVHD,csv[11](COUNT_NEW) n=278
+B08W56WVHD,csv[12](COUNT_USED) null
+B08W56WVHD,csv[13](COUNT_REFURBISHED) n=2
+B08W56WVHD,csv[14](COUNT_COLLECTIBLE) null
+B08W56WVHD,csv[15](EXTRA_INFO_UPDATES) n=2758
+B08W56WVHD,csv[16](RATING) n=110
+B08W56WVHD,csv[17](COUNT_REVIEWS) n=522
+B08W56WVHD,csv[18](BUY_BOX_SHIPPING) n=3168
+B08W56WVHD,csv[19](USED_NEW_SHIPPING) null
+B08W56WVHD,csv[20](USED_VERY_GOOD_SHIPPING) null
+B08W56WVHD,csv[21](USED_GOOD_SHIPPING) null
+B08W56WVHD,csv[22](USED_ACCEPTABLE_SHIPPING) null
+B08W56WVHD,csv[23](COLLECTIBLE_NEW_SHIPPING) null
+B08W56WVHD,csv[24](COLLECTIBLE_VERY_GOOD_SHIPPING) null
+B08W56WVHD,csv[25](COLLECTIBLE_GOOD_SHIPPING) null
+B08W56WVHD,csv[26](COLLECTIBLE_ACCEPTABLE_SHIPPING) null
+B08W56WVHD,csv[27](REFURBISHED_SHIPPING) null
+B08W56WVHD,csv[28](EBAY_NEW_SHIPPING) null
+B08W56WVHD,csv[29](EBAY_USED_SHIPPING) null
+B08W56WVHD,csv[30](TRADE_IN) null
+B08W56WVHD,csv[31](RENTAL) null
+B08W56WVHD,csv[32](PRIME_EXCL) null
+B08W56WVHD,csv[33](NEW_FBA) null
+B08W56WVHD,csv[34](34) n=8
+B08W56WVHD,csv[35](35) n=18
+B08W56WVHD,product.description = str:190
+B08W56WVHD,product.domainId = num
+B08W56WVHD,product.eanList = list:1
+B08W56WVHD,product.ebayListingIds = null
+B08W56WVHD,product.edition = null
+B08W56WVHD,product.fbaFees.lastUpdate = num
+B08W56WVHD,product.fbaFees.pickAndPackFee = num
+B08W56WVHD,product.features = list:3
+B08W56WVHD,product.format = null
+B08W56WVHD,product.frequentlyBoughtTogether = list:2
+B08W56WVHD,product.g = num
+B08W56WVHD,product.hasReviews = True
+B08W56WVHD,"product.images[] n=4 keys=l,lH,lW,m,mH,mW"
+B08W56WVHD,product.isAdultProduct = False
+B08W56WVHD,product.isEligibleForSuperSaverShipping = True
+B08W56WVHD,product.isEligibleForTradeIn = False
+B08W56WVHD,product.isHeatSensitive = False
+B08W56WVHD,product.isRedirectASIN = False
+B08W56WVHD,product.isSNS = False
+B08W56WVHD,product.itemHeight = num
+B08W56WVHD,product.itemLength = num
+B08W56WVHD,product.itemWeight = num
+B08W56WVHD,product.itemWidth = num
+B08W56WVHD,product.languages = null
+B08W56WVHD,product.lastEbayUpdate = num
+B08W56WVHD,product.lastPriceChange = num
+B08W56WVHD,product.lastRatingUpdate = num
+B08W56WVHD,product.lastSoldUpdate = num
+B08W56WVHD,product.lastUpdate = num
+B08W56WVHD,product.launchpad = False
+B08W56WVHD,product.listedSince = num
+B08W56WVHD,product.liveOffersOrder = list:5
+B08W56WVHD,product.manufacturer = str:8
+B08W56WVHD,product.model = null
+B08W56WVHD,product.monthlySoldHistory = list:4
+B08W56WVHD,product.numberOfItems = num
+B08W56WVHD,product.numberOfPages = num
+B08W56WVHD,offers n=35
+B08W56WVHD,offers[].condition
+B08W56WVHD,offers[].couponHistory
+B08W56WVHD,offers[].isAmazon
+B08W56WVHD,offers[].isFBA
+B08W56WVHD,offers[].isMAP
+B08W56WVHD,offers[].isPreorder
+B08W56WVHD,offers[].isPrime
+B08W56WVHD,offers[].isPrimeExcl
+B08W56WVHD,offers[].isShippable
+B08W56WVHD,offers[].isWarehouseDeal
+B08W56WVHD,offers[].lastSeen
+B08W56WVHD,offers[].lastStockUpdate
+B08W56WVHD,offers[].minOrderQty
+B08W56WVHD,offers[].offerCSV
+B08W56WVHD,offers[].offerId
+B08W56WVHD,offers[].sellerId
+B08W56WVHD,offers[].shipsFromChina
+B08W56WVHD,product.offersSuccessful = True
+B08W56WVHD,product.packageHeight = num
+B08W56WVHD,product.packageLength = num
+B08W56WVHD,product.packageQuantity = num
+B08W56WVHD,product.packageWeight = num
+B08W56WVHD,product.packageWidth = num
+B08W56WVHD,product.parentAsin = str:10
+B08W56WVHD,product.parentAsinHistory = list:8
+B08W56WVHD,product.parentTitle = str:9
+B08W56WVHD,product.partNumber = str:8
+B08W56WVHD,product.pattern = str:2
+B08W56WVHD,product.productGroup = null
+B08W56WVHD,product.productType = num
+B08W56WVHD,product.promotions = null
+B08W56WVHD,product.publicationDate = num
+B08W56WVHD,product.referralFeePercent = num
+B08W56WVHD,product.referralFeePercentage = num
+B08W56WVHD,product.releaseDate = num
+B08W56WVHD,product.rootCategory = num
+B08W56WVHD,product.salesRankDisplayGroup = str:26
+B08W56WVHD,product.salesRankReference = num
+B08W56WVHD,product.salesRankReferenceHistory = list:10
+B08W56WVHD,product.salesRanks.57239051 = list:10646
+B08W56WVHD,product.salesRanks.71175051 = list:8160
+B08W56WVHD,product.salesRanks.71204051 = list:6192
+B08W56WVHD,product.size = null
+B08W56WVHD,product.stats.atIntervalStart = list:36
+B08W56WVHD,product.stats.avg = list:36
+B08W56WVHD,product.stats.avg180 = list:36
+B08W56WVHD,product.stats.avg30 = list:36
+B08W56WVHD,product.stats.avg365 = list:36
+B08W56WVHD,product.stats.avg90 = list:36
+B08W56WVHD,product.stats.buyBoxAvailabilityMessage = str:8
+B08W56WVHD,product.stats.buyBoxCondition = num
+B08W56WVHD,product.stats.buyBoxIsAmazon = False
+B08W56WVHD,product.stats.buyBoxIsBackorder = False
+B08W56WVHD,product.stats.buyBoxIsFBA = False
+B08W56WVHD,product.stats.buyBoxIsFreeShippingEligible = True
+B08W56WVHD,product.stats.buyBoxIsMAP = False
+B08W56WVHD,product.stats.buyBoxIsPreorder = False
+B08W56WVHD,product.stats.buyBoxIsPrimeEligible = False
+B08W56WVHD,product.stats.buyBoxIsPrimeExclusive = null
+B08W56WVHD,product.stats.buyBoxIsShippable = True
+B08W56WVHD,product.stats.buyBoxIsUnqualified = False
+B08W56WVHD,product.stats.buyBoxIsUsed = False
+B08W56WVHD,product.stats.buyBoxIsWarehouseDeal = False
+B08W56WVHD,product.stats.buyBoxPrice = num
+B08W56WVHD,product.stats.buyBoxSellerId = str:14
+B08W56WVHD,product.stats.buyBoxShipping = num
+B08W56WVHD,product.stats.buyBoxShippingCountry = str:2
+B08W56WVHD,product.stats.buyBoxShippingTime = list:2
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.isFBA = False
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A3L1BD8LA6USKU.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.isFBA = True
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A17PAXHS1CKUOJ.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.isFBA = True
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A2DWHGIA503TF5.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.isFBA = False
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A1MHXYNDO79WG9.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.isFBA = True
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A7B5SCCZP336V.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.isFBA = True
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A18COIYGTMT3AC.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.isFBA = False
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A1LZPXH76BPWKX.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.isFBA = False
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.A30BAMC0226T2D.percentageWon = num
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.avgNewOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.avgPrice = num
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.avgUsedOfferCount = num
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.isFBA = False
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.lastSeen = num
+B08W56WVHD,product.stats.buyBoxStats.AX2T8O6LZ7033.percentageWon = num
+B08W56WVHD,product.stats.current = list:36
+B08W56WVHD,product.stats.deltaPercent90_monthlySold = num
+B08W56WVHD,product.stats.isLowest = list:36
+B08W56WVHD,product.stats.isLowest90 = list:36
+B08W56WVHD,product.stats.lastBuyBoxUpdate = num
+B08W56WVHD,product.stats.lastOffersUpdate = num
+B08W56WVHD,product.stats.lightningDealInfo = null
+B08W56WVHD,product.stats.max = list:36
+B08W56WVHD,product.stats.maxInInterval = list:36
+B08W56WVHD,product.stats.min = list:36
+B08W56WVHD,product.stats.minInInterval = list:36
+B08W56WVHD,product.stats.offerCountFBA = num
+B08W56WVHD,product.stats.offerCountFBM = num
+B08W56WVHD,product.stats.outOfStockCountAmazon30 = num
+B08W56WVHD,product.stats.outOfStockCountAmazon90 = num
+B08W56WVHD,product.stats.outOfStockPercentage180 = list:36
+B08W56WVHD,product.stats.outOfStockPercentage30 = list:36
+B08W56WVHD,product.stats.outOfStockPercentage365 = list:36
+B08W56WVHD,product.stats.outOfStockPercentage90 = list:36
+B08W56WVHD,product.stats.outOfStockPercentageInInterval = list:36
+B08W56WVHD,product.stats.retrievedOfferCount = num
+B08W56WVHD,product.stats.salesRankDrops180 = num
+B08W56WVHD,product.stats.salesRankDrops30 = num
+B08W56WVHD,product.stats.salesRankDrops365 = num
+B08W56WVHD,product.stats.salesRankDrops90 = num
+B08W56WVHD,product.stats.sellerIdsLowestFBA = null
+B08W56WVHD,product.stats.sellerIdsLowestFBM = list:1
+B08W56WVHD,product.stats.totalOfferCount = num
+B08W56WVHD,product.stats.tradeInPrice = num
+B08W56WVHD,product.title = str:33
+B08W56WVHD,product.trackingSince = num
+B08W56WVHD,product.type = str:7
+B08W56WVHD,product.unitCount.unitType = str:1
+B08W56WVHD,product.unitCount.unitValue = num
+B08W56WVHD,product.upcList = null
+B08W56WVHD,product.urlSlug = str:17
+B08W56WVHD,"product.variations[] n=2 keys=asin,attributes,image"
+B08W56WVHD,product.websiteDisplayGroup = str:26
+B08W56WVHD,product.websiteDisplayGroupName = str:7

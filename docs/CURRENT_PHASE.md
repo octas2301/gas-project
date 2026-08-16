@@ -1,33 +1,150 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-08-14（**B統合ハード死対策**が全体フォーカス／**リサーチ・見積もり**は別セッション文書）
+**最終更新**: 2026-08-16（実行時間は B Step＋Step5 API のみ。全関数計測はしない）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
 
-## 0re. リサーチ・見積もり セッション引継ぎ（2026-08-14）
+---
 
-**場所**: B統合の Step1〜4（セット構成・横断・CPO V2・物流・再③）。**全体フォーカス（§0 ハード死）とは別スレッド。**  
-**正本（次 Agent はこれを読む）**: [SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md)
+## 0b5. A/B短縮 改修連番（2026-08-16）
 
-### 次にやること（リサーチ・見積もり担当）
-1. 上記セッション文書の「実装済み vs 次タスク」を読む（3Dフィット・V2 を再実装しない）
-2. 第1候補: CPO V2 の異常 `setCount` 除外（実装前に承認）
-3. 楽天 CSV 聖域・V2 への利益レール復活・ネコポス最安回帰はしない
+| # | 内容 | 状態 |
+|---|------|------|
+| R0 | 行高さ Step8 廃止 | 済 |
+| R1 | A.準備 SEOスペース | コード済。人間: 3 dry→4 書込（B前） |
+| R2 | A Gemini画像照合OFF | Property済 `KEEPA_SKIP_REF_IMAGE_AND_MATCH=true` |
+| R3 | Step5 OpenAI は Gemini失敗時のみ | 済。未設定=ON。切戻し `B_STEP5_SKIP_OPENAI_IF_GEMINI_OK=false` |
+| R4 | Step5 ジャンルAI停止 | 既存スキップ維持。`B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED` を false にしない |
+| R5 | Step5 AI梱包・配送・根拠停止 | 済。未設定=ON。切戻し `B_STEP5_SKIP_PACK_AI=false`。正は Keepa／6.55 |
+| R6 | KW／説明 vs 7 vs 7.6 | 現状維持 |
+| R7 | B 2.1＝12-⑭ | 済 |
+| R8 | A.準備と 12-⑮⑯ | 改修しない |
+| R9 | キュー3→4 | **しない**（R3/R5の実測後に別承認） |
+| R10 | 楽天CSV／Yahoo.js／B順 | 触らない |
+| R11 | 処理時間 | 済。シート `▼実行時間`。配線は B Step と Step5 の geminiSearch／geminiVision／openaiVision のみ。共通 `logOpTiming_`。切戻し `OP_TIMING_ENABLED=false`。**全関数 `console.time` 禁止**（再指示時は `.cursor/rules/op-timing-scope.mdc` で止める） |
+
+---
+
+## 0comp. 競合フィールド正本（2026-08-15）
+
+出品A/B・領域1リサーチ・定時の競合チェック／価格対抗で **同じ項目辞書**を使う。  
+正本: [org/COMPETITOR_FIELDS.md](org/COMPETITOR_FIELDS.md)（CSV は `docs/org/competitor_fields/`）。組み立て時は §1 のフロー正本も開く。1件目＝競合価格は禁止。  
+**専用ストア**: H1合格。**12-⑭** を B Step2.1 に組み込み（テスト）。`COMPETITOR_STORE_ENABLED=true` かつ `COMPETITOR_SS_ID` 必須。切戻し `B_COMPETITOR_STORE_APPLY_ENABLED=false`（旧横断シート直書き）。要 clasp。15〜23はA／人手／dryのまま。
+
+---
+
+---
+
+## 0amz. Amazon 競合貼付（2026-08-15・**保留**）
+
+**A.準備**: Catalog空欄（1–2）＋商品名SEOスペース（3 dry／4 書込。AI情報取得data「商品名」のみ）。並べ替えはA末尾P5。要 clasp。シートを開き直す。
+
+**残課題（着手しない）**: キャッシュ時 Keepaフル「目的=出品」／CAP／定時トリガー／空ASIN Catalog。`KEEPA_FULL_WRITE_ENABLED` は **false**。
+
+**後続・検証（未着手）**: AのGemini画像照合を外してよいか。仮説=Catalog(SP-API)→Keepa商品名で精度足りる。コスト削減。切替は `KEEPA_SKIP_REF_IMAGE_AND_MATCH=true`（今は付けない）。見るもの=◎の過不足・P5評点・袋数。商品名掃除 `KEEPA_CLEAN_TITLE_BY_AI` は別。  
+**済**: 12-⑭楽天Yahoo、P3 Amazon◎、P0–P5、W4読、P5 A末尾並べ替え。
+
+**コードはフェーズ順・別承認。** 正本: [org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md](org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)
+
+- 領域1メーカー洗いではない。その商品の Catalog 階段（A′→B′→D′→E′。C′は診断）
+- **Z併存**: `Keepaスナップショット` は薄い運用のまま。倉庫は `Keepaフル`＋生JSON
+- **W4（予定）**: ①が書いた `Keepaフル` を90日内読む。洗い Catalog を貼付に流用しない。[TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)
+- 準備メニュー 12-⑮⑯ Catalog。**P2は12-⑰⑱**。**P3は12-⑲⑳**
+- ④マスタは 12-⑭と同じ。Amazon 確定は人間◎のみ。今値 GET は後回し
+- `KEEPA_PASTE_NEW_ASIN_CAP` 未設定=20／ブロック。token実測後に上限。トリガー未設置
+
+**P3**: 12-⑳ 合格（`pasteP3-6dacd0c2` `written=20`）。人間は `AMAZON_PASTE_P3_WRITE_ENABLED` を **false に戻す**。
+
+**Keepaフル（出品）**: W4 READ合格。P4 Python 1ASIN GET（非書）consumed=1 left=299。Aは offers=20 で2トークン想定。CAP=20据え置き未配線。WRITE OFF。
+
+**WRITE計画 dry 合格（非書）**: 貼付60、フル200（目的リサーチ200・出品0）。貼付のうちフル既存39／未載21。現行フックは A の Keepa **raw があるときだけ**追記。キャッシュのみの A（api=0）は Property ON でも出品0行。ON は別承認。
+
+**WRITE 実機（案A）合格 2026-08-15 22:09**: A20件 `[KeepaFullW4] take=20 hydrate=0 api=0 tokens=skip`。`[KeepaFull]` なし（raw無し）。`Keepaフル` 220行すべて目的=リサーチ、**出品0**。Property を **false に戻す**。
+
+**P5 実機合格 2026-08-15**: `pasteP5-028e317c` DONE ok=true。P2 `pasteP2-554ce90d` write=true。シート tagged 全ASIN・stack_ok。A api=0。WRITE は false のまま。
+
+**貼付P0–P5完了。** 案Bしない。次の出品コードはキャッシュ時フル出品（別承認）または定時12-⑩（読取。トリガー禁止）。①の次L1はリサーチ agent。
+
+**P1計画 dry 合格（Catalog GETなし）**: t18 ok。貼付10ブロックはすべて `skip_no_empty`（空ASINの埋め対象0）。12-⑮はクォータ不要。実Catalogは空欄が出てから。
+
+**P2 12-⑱合格**: ログ `pasteP2-c5fe6e20` `write=true` DONE（21:12 JST）。直前⑰ `pasteP2-dc58ccaa` と同数。シートは全ASINに`[機械]`、上段候補。
+
+---
+
+## 0re. 領域1 リサーチ・見積もり（2026-08-16 完成形フロー）
+
+**全体フォーカス（§0 出品B）とは別スレッド。** ①の実装担当は **リサーチ見積もり agent**。出品チャットは①のコードを書かない。  
+**完成形・状況報告**: [org/B_PURCHASE_RESEARCH_FLOW.md](org/B_PURCHASE_RESEARCH_FLOW.md)（A–J / A′。聞かれたら §3。契約は §5。3者タイミングは §6）  
+**構図**: [DOMAIN1 §1](DOMAIN1_RESEARCH_PURCHASING.md)　**予定の正（ツリー）**: [org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)　**数字**: [org/B_PURCHASE_RESEARCH_NOW.md](org/B_PURCHASE_RESEARCH_NOW.md)
+
+```text
+領域1
+├─ A 問屋                         外
+├─ B 商品リサーチ
+│  ├─ ① 仕入れ検討 ★リサーチ見積もり agent
+│  │  ├─ 進め方
+│  │  │    Keepaの正=競合DB Keepaフル  ロック（90日。出品と共用）
+│  │  │    ①候補=門の作業面（転記）   ロック（倉庫ではない）
+│  │  ├─ 実行基盤
+│  │  │    調査複製スプシ              済（①候補 181行。競合タブを増やさない）
+│  │  │    専用 GAS purchase_research/ 済（出品 clasp 禁止。Catalog は未搭載）
+│  │  ├─ 門検収 C1–C8                 済
+│  │  ├─ 倉庫本線
+│  │  │    W1 Keepaフルへ①書き       スライス5合格
+│  │  │    W2 ①候補ASINバックフィル  済（181/181。skip5＋GET176）
+│  │  │    W3 門はフル優先→①候補転記 済（メニュー20:20）
+│  │  │    W4 貼付90日後読み          出品PJ（dry: paste60 skip39 need21）
+│  │  ├─ 前段①–⑧
+│  │  │    ① セラー貯め→ストア正     済（タブ「セラー」モリタ1行。フルから貯めない）
+│  │  │    ② ピック                   済（食品root・モリタ。S4構成比）
+│  │  │    ③ 巡回                     済（第1版1セラー。query total=30）
+│  │  │    ④ /query GET               済（モリタ30）
+│  │  │    ⑤⑥⑦ 分類・食品・メーカー  済・仮想（モリタ30）
+│  │  │    ⑧ 週次メーカー決定         済（今週=永谷園。Catalog GETなし）
+│  │  ├─ 品番リスト転記
+│  │  │    O1–O3 出品者数 COUNT_NEW  済（QS一致。空61＝今オファーなし）
+│  │  │    F0 直販・新品現在・現行順位 済（GETなし。いる34/いない186）
+│  │  │    F1 Keepa列 flatten       済（cat217/梱包157/FBA164。BB価格はJSON空）
+│  │  │    F2／T1–T2                 済
+│  │  │    課題 K1–K8               止／流用／不要（NOW表）
+│  │  └─ 見積書ルート                 後
+│  └─ ② 出品用                       外（貼付 Catalog 階段と混ぜない）
+└─ C 見積                             外
+```
+
+**他PJ**: [TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)。Catalog 生は `モールヒット` 禁止。**Keepaフルへ①が書く（W1）**。90日内は貼付が読む（W4）。出品 clasp 非差し替え。
+
+### 次にやること
+1. 完成形は [FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)（契約 §5。3者は §6＝E/F/G/J 実装前）。A′ と E 以降のコードは後。K1–K8は止。週次トリガー（G5）は後
+2. W4 本線は出品（`KEEPA_FULL_READ_ENABLED`）
+3. 楽天CSVは触らない
+
+原本（不可侵）: https://docs.google.com/spreadsheets/d/1Uk-DEfoSTVqb5N8XsfSqciaZcIjzbbPpGvg4hQYgDl4/edit?gid=1060574934#gid=1060574934  
+自動化用複製: https://docs.google.com/spreadsheets/d/1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE/edit?gid=685859874#gid=685859874  
+マニュアル: https://docs.google.com/presentation/d/1QbC8v_kwLS3W9sBMejecWAvukgL7_cY3KfbuLtorJ4I/edit?slide=id.g370bbd44c29_1_348#slide=id.g370bbd44c29_1_348
+
+---
+
+## 0rh. 行高さ（2026-08-16・**廃止**）
+
+WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要なため、CLIP＋固定高さは捨てた。B Step8・`setCheckedParentRowHeights_` 削除。人間の手調整は次Bで上書きされない（Stepが無い）。
 
 ---
 
 ## 0. セッション引き継ぎ（2026-08-14）
 
-**場所**: **B統合ハード死対策** — `B済`キュー自動パック（最大3・シリーズ温存）・Step1後切断・当B集合・番犬非設置。  
-**コミット**: `コード.js` は `fb70ce4`（B済キュー含む蓄積差分。hunk分割不可）。  
+**場所**: **B完走フォロー** — [org/B_RUN_20260814_FOLLOWUP.md](org/B_RUN_20260814_FOLLOWUP.md)（コード改修済。⑥Nはコード非改修）。ハード死対策は継続。  
 **正本**: [org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md](org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_HARD_DEATH_SCOPE_HUMAN_RUN.md)
 
 ### 次にやること（人間）
-1. Script Properties: **`B_WATCHDOG_ENABLED=false`**
-2. 残っている `runBWatchdogFromTrigger` トリガーを削除
-3. `clasp push`
-4. AIにストック可。Bを1回起動。1列目`B済`が付く。完了後に次パックが連鎖  
+1. `clasp push`
+2. **メニューA（Keepa取得）→ B**（⑥Nの再テスト。同じなら原因再調査）
+3. B完走後: 親行が子の約3倍で DF が行を伸ばしていないか、CV選定不可行に式が残るか、LJ改行、楽天Yahooヒット、FBA 6.55（N列＝競合ASIN）
+4. Script Properties: **`B_WATCHDOG_ENABLED=false`** は維持
+
+**ハード死対策（継続）**  
+**場所**: B統合ハード死対策 — `B済`キュー自動パック（最大3・シリーズ温存）・Step1後切断・当B集合・番犬非設置。  
 
 ### Property
 | Key | 推奨 |

@@ -1,0 +1,38 @@
+group,logical_column_ja,same_column,rakuten_ichiba,yahoo_itemsearch_v3,keepa_product,grain,why,a_keepa_usage
+JOIN,JAN/EAN,YES_JOIN,なし（keywordにJANを入れるだけ。ヒット行にJANフィールドは無い）,hits[].janCode,ean / eanList,Keepa=ASIN1行 / 楽天Yahoo=検索ヒット複数,楽天はレスポンスにJANが無い。YahooとKeepaは同一キーにできる。楽天は検索クエリのJANで紐づける,A前検索のキー。Keepa EANとYahoo janCodeが一致すれば同一SKU候補
+JOIN,ASIN,NO,なし,なし,asin,Keepaのみ,Amazon専用ID。楽天Yahooと列共用不可,Keepa行の主キー。楽天YahooはJAN経由でブロックに付ける
+JOIN,親ASIN/バリエーション,NO,なし,なし（検索ヒットは出品単位。parentItemは稀）,parentAsin / variations / variationCSV,Keepaのみ,セット数誤りの主因（親に複数サイズ）。モール横断では使えない,ブロック内の複数ASINを親子で束ねる材料。楽天Yahooの袋数投票の対象粒度はJAN
+ID,モール商品コード,NO,itemCode（店舗_商品）,hits[].code / seller.sellerId,なし,モール別,店内SKU。列名は共用せず「楽天itemCode」「Yahoo code」と分ける,キャッシュの安定ID（再検索せずURL/画像を引く）
+TEXT,商品名,PARTIAL_TEXT,itemName,hits[].name,title,全ソース1件1名,意味は同じ「出品タイトル」だが文言がモールで違う。1セルにマージせず source付きで並列,セット数正規表現の主入力。Keepaタイトルは袋数が弱いことが多い
+TEXT,キャッチ/説明短文,PARTIAL_TEXT,catchcopy / itemCaption（長い）,description / head,features[] / description,説明の長さが違う,同じ「説明」列に混ぜるとノイズ。セット数パースの補助に分ける,「50g×4」がタイトルに無く説明にある場合の補助。Keepa featuresは空が多い
+TEXT,メーカー,PARTIAL,shopNameではない（店名）,なし（店はseller）,manufacturer,Keepaが製品メーカー,楽天のshopNameは販売店。Keepa manufacturerとYahoo brandは近いが同一ではない,Keepa評点のメーカー一致。楽天店名で石原を落とすな
+TEXT,ブランド,PARTIAL,なし（ジャンル/タグ程度）,brand.id / brand.name,brand,ID体系が違う,名前の文字列一致は可。IDはYahooとKeepaで別世界,A評価・カテゴリ補助。Yahoo brand.idは出品SCと不一致あり
+PRICE,表示価格,PARTIAL_PRICE,itemPrice,hits[].price,stats.current[0] Amazon本体 / [18] BuyBox / [1] 新品,定義が違う,いずれも「今の売価」だが税・送料込みかが違う。1列に合計できない。比較用に source+price を残す,単価=price/推定袋数 の分子。Keepaは送料込BuyBoxを優先
+PRICE,プレミアム/会員価格,NO,なし,premiumPrice / priceLabel,なし,Yahooのみ,楽天ポイント倍と混同しない,実質比較の補助。通常priceと乖離が大きい店を除外
+PRICE,参考価格/定価,PARTIAL,なし,priceLabel.defaultPrice 等,csv[4] / stats 参考価格,KeepaはAmazon定価履歴,「定価」概念は近いがモール横断の最安には使わない,外れ値検出（表示が定価の10倍など）
+PRICE,ポイント還元,PARTIAL_POINT,pointRate（％）および期間,point.amount / point.times,なし（AmazonポイントはKeepaで薄い）,単位が％対ポイント数,実質=price-還元は両方作れるが式が違う。同一列に生値を入れない。派生列 effective_price ならYES,楽天は既存どおり。Yahooは未使用→Aの単価推定に入れる価値大
+PRICE,送料フラグ,PARTIAL_SHIP,postageFlag（0込1別）。送料円はほぼ無い,shipping.code（2=無料が多い）/ shipping.name,FBMはcsv送料込。FBAは送料別概念が違う,フラグの意味がモールで違う,円の送料は3者ともほぼ無い。同一「送料円」列は作れない。派生 is_postage_included はPARTIAL,code/flagで無料なら単価比較に入れる。別送料は最安から除外or要確認
+PRICE,実質価格（派生）,YES_DERIVED,itemPrice - pointRate換算 - 仮定送料,price - point - (code==2?0:不明),BuyBox送料込 or Amazon+送料履歴,計算式はソース別、結果の円は比較可,「お客が払う概算」として1論理列にできる。ただし送料別は欠損,Keepa袋数の価格推定の分母揃え。3モール単価の中央値をアンカーにする
+URL,商品URL,PARTIAL_URL,itemUrl,url,https://www.amazon.co.jp/dp/{asin},URL形式が違う,列は「URL」で並べられるが中身はモール別。クリック用に並列,人間の◎確認。機械は開かない
+IMG,画像URL,PARTIAL_IMG,mediumImageUrls[] / smallImageUrls[],image.medium / small,images / imagesCSV→Amazon CDN,見た目比較は可、ハッシュは不可,同一ファイルではない。Vision/一致スコアの入力として並列,Keepa画像と楽天Yahoo画像の袋数Vision。Aの手間削減の本命の一つ
+SHOP,販売店,NO,shopName / shopCode / shopUrl,seller.name / sellerId / seller.url,offers[].sellerName（BuyBox時）,店のID体系が違う,「店名」文字列は並べられるが同一店判定は不可,ふるさと納税ショップ・爆買店の除外。KeepaセラーはFBA判定
+AVAIL,在庫有無,PARTIAL,availability（取扱フラグ寄り）,inStock,availabilityAmazon / csv在庫切れ％,定義が違う,「今買えるか」の近似。数値在庫はKeepaも薄い,欠品ヒットを袋数投票から外す
+COND,新品/中古,PARTIAL,ほぼ新品市場（中古は別）,condition,offers / csv中古,Keepaは中古グラフあり,Yahoo中古をセット推定から除外。楽天は通常新品,中古ASINを◎にしない補助
+REV,レビュー件数,PARTIAL,reviewCount,review.count,reviewCount / csv[17],件数の母集団が違う,並べて「人気の近似」には使える。同一列で合計してはいけない,JAN検索の並びが悪いとき、件数上位を袋数投票の重みに
+REV,レビュー点,PARTIAL,reviewAverage（5点）,review.rate,rating（Keepaは×10のことがある）,スケール要換算,4.3と43を混ぜない。換算後ならPARTIAL比較可,品質フィルタ（極端に低い店を除外）
+CAT,カテゴリID,NO,genreId（楽天ジャンル）,genreCategory.id（検索用ジャンル）,categoryTree / catId,3つのID空間,絶対に1列にマージしない。名前パスだけ人間向けに並列可,Aではセット数に使わない。後続メニュー8の種にはなるがYahooはSC不一致
+CAT,カテゴリ名パス,PARTIAL_NAME,Ichiba単体ではIDのみ。Nav APIで名前,genreCategory.name + parentGenreCategories,categoryTree結合,名前は日本語で近い,「食品>節類」等の文字列類似は可。ID共用不可,内容量誤認の文脈（菓子の個数 vs 袋）
+BRAND_ID,ブランドID,NO,なし,brand.id,なし（Keepa brandは名前）,Yahoo専用,出品のYahooブランドコード38074問題。Keepaと結合不可,Aセット数には使わない
+DATE,発売日,PARTIAL,なし,releaseDate,releaseDate（Keepa分）,日付形式差,新商品ぶり40gのような判定の補助,新しいASINのランキング欠損を説明
+PKG,梱包寸法重量,NO,なし,なし,packageLength/Width/Height/Weight（mm/g）,Keepaのみ,FBA・送料計算の本命。楽天Yahoo検索では取れない,Aの梱包列。セット数推定には原則使わない（4袋でも箱サイズは1）
+PKG,内容個数API,PARTIAL,なし,なし,numberOfItems / packageQuantity / unitCount,Keepaのみでしかも袋数と一致しないことが多い,Amazonカタログの「アイテム数」は内容量（4P）になりやすい。楽天Yahooタイトルの「4袋セット」と衝突する,これがAのセット数ミスの主因の一つ。楽天Yahoo袋数と不一致ならKeepaアイテム数を捨てる
+RANK,売れ筋,NO,なし（検索順のみ）,なし（review.countで近似。sold順なし）,sales rank 90/365 / monthlySold,Keepaのみ,モール横断の同一列にしない,Aの評価・仕入判断。セット数には直接使わない
+FEE,FBA手数料,NO,なし,なし,fbaFees,Keepaのみ,後続FBA P1b,セット数推定には使わない
+SEARCH,検索メタ,NO,count / page / hits,totalResultsAvailable,なし,検索単位,キャッシュヘッダに保存。商品列ではない,0件→queryフォールバック判定
+FLAG,アダルト,NO,なし,isAdult,なし,Yahoo,除外フィルタ,セット投票から外す
+FLAG,ふるさと納税,NO,itemName/shopに含まれることが多い（専用フラグなし）,タイトル依存,なし,テキスト派生,ベイクオフで1件目汚染の主因。フラグ列を派生でYES,袋数・価格推定から必ず除外
+FLAG,選択式バリエーション,NO,タイトル「3種類から選択」,同左,KeepaはASINが1SKU,テキスト派生,価格500円の選択商品は袋数不明,投票から除外。単価推定に使うな
+API,ポイント期間,NO,pointRateStartTime/EndTime,なし,なし,楽天,キャンペーン中のみ高還元,実質価格の信頼性フラグ
+API,あす楽,NO,asurakuFlag 等,delivery.deadLine 粗い,なし,物流約束,セット数に使わない
+API,ISBN,NO,なし,isbn,なし,書籍,食品では無視
+NOTE,コードが今捨てている,YES_IF_SAVED,genreId / shopName / catchcopy / review* / itemCaption / 画像全件,janCode / point / seller / review / genre / brand / description / inStock,キャッシュは一部のみ。履歴csvやoffersは別途,保存すれば後続再検索不要,A前にraw JSON保存が前提。薄いパースのままでは本CSVのYESが死ぬ

@@ -1,0 +1,6 @@
+﻿metric,count,note
+Keepa_A,143,KeepaExport 石原水産リサーチ用
+Catalog_B_title,143,キーワード後 タイトル含有
+both,143,
+B_minus_A,0,CatalogにあってKeepaに無い
+A_minus_B,0,KeepaにあってCatalogタイトル含有に無い

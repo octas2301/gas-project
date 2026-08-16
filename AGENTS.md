@@ -11,7 +11,7 @@
 ## 0. まず読む（インプット順）
 
 1. **`docs/CURRENT_PHASE.md`** … いまの開発フォーカス・スコープ外を把握する。
-2. **`docs/AGENT_HANDOVER.md` §2** … 全エージェント必読の資料一覧（FLOW_AND_PRIORITY / REQUIREMENTS / MASTER_LINKAGE_TASKS / PROJECT_OVERVIEW ほか）。
+2. **`docs/AGENT_HANDOVER.md` §2** … 全エージェント必読の資料一覧（FLOW_AND_PRIORITY / REQUIREMENTS / MASTER_LINKAGE_TASKS / PROJECT_OVERVIEW ほか）。リサーチの完成形・進捗表示は [docs/org/B_PURCHASE_RESEARCH_FLOW.md](docs/org/B_PURCHASE_RESEARCH_FLOW.md)。
 3. **`HANDOVER.md`** … 楽天・Yahoo 出品の実装詳細（シート名・列名・API仕様・コード行番号）。
 
 作業で確定した仕様・前提は、**必ず該当 docs に反映**する（`docs/AGENT_HANDOVER.md` §4 の双方向インプット必須ルール）。

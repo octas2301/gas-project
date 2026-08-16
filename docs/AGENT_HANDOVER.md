@@ -40,8 +40,11 @@
 | 4 | [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) | 目的・対象モール・6領域・前提・参考資料・成果物一覧 |
 | 5 | [RUNBOOK_DAY_WEEK_MONTH.md](RUNBOOK_DAY_WEEK_MONTH.md) | 日次・週次・隔週・月次の定型タスク（Runbook） |
 | 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の列メモ（参考）。**Lv4正本**は [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) |
-| 7 | [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | リサーチ・見積もりの整理（出品時 vs 仕入れ時の項目・取得方法の選択肢・見積もり） |
+| 7 | [DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md) **§1 細分化図**／[RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | **領域1正本**（①はリサーチ見積もり agent。出品チャットは①のGASを書かない）／出品時 vs 仕入れ時 |
+| 7.02 | [org/B_PURCHASE_RESEARCH_FLOW.md](org/B_PURCHASE_RESEARCH_FLOW.md) | **リサーチ完成形 A–J / A′**。状況を聞かれたら §3。旧 DOMAIN1 の A/B/C と混ぜない |
+| 7.05 | [org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md) | **①の進捗つき構造（ツリー）**。C済・W1次・W4は出品。他PJは同ファイルの契約表 |
 | 7.1 | [SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md) | **リサーチ・見積もり担当のセッション入口**。実装済み／次タスク／Property／再実装禁止。詳細は §8.8.22〜 |
+| 7.2 | [org/COMPETITOR_FIELDS.md](org/COMPETITOR_FIELDS.md) | **競合フィールド正本**（楽天・Yahoo・KeepaのJOIN可否・◎印）。出品A/Bだけでなくリサーチ・定時価格対抗でもここを先に読む。CSVは `org/competitor_fields/` |
 | 8 | [ROADMAP.md](ROADMAP.md) | フェーズ案・依存関係・既存 gas-project の位置づけ |
 | 9 | [PRICING_V1_REQUIREMENTS.md](PRICING_V1_REQUIREMENTS.md) | **価格・送料・再③ v1**、Script Properties による切戻し、ログ（`価格送料ロジックログ` 任意） |
 | 10 | [AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md) | **商品情報まわりの Gemini / OpenAI の役割**、11-③ と B Step7 の差、429 時の挙動の正 |
@@ -57,7 +60,7 @@
 | 対象 | 内容 |
 |------|------|
 | `参考資料：出品自動化スプシデータ` | マスタシート等をCSVで保存。Amazon・楽天・Yahoo! に必要な項目を揃えた現状の列を確認する。必要に応じて「必要sheet）.csv」「必要sheetCSV形式違い）.csv」等を参照する。 |
-| **参考資料：商品リサーチ** | 現状のリサーチファイル（Amazon調査 by octas のCSV）、**バイヤーガイド2500720.pdf**、**ゆーへい問屋スクール記事購入.pdf** を格納。リサーチの外注運用・取得項目の前提。開発要件はゆーへい問屋スクール記事をベースに組み立てる。詳細は [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) §6・§7。 |
+| **参考資料：商品リサーチ** | 過去スナップショット（Octas CSV、バイヤーガイドPDF等）。**運用の正**は [DOMAIN1](DOMAIN1_RESEARCH_PURCHASING.md) の調査ファイル／マニュアル URL。詳細の旧整理は [RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) §6・§7。 |
 | 参考資料：メーカー・問屋仕入れ | 仕入れ・見積の前提として参照。 |
 
 ---
@@ -101,7 +104,95 @@
 
 ## 6. 更新履歴
 
-- 2026-08-14: **リサーチ・見積もり セッション引継ぎ**: CPO V2／画像ガード／F/P／3D物流の「実装済みと次タスク」を1本化。[SESSION](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md)／[CURRENT_PHASE §0re](CURRENT_PHASE.md)。次は異常 setCount 除外。楽天CSV・利益レール復活・ネコポス最安回帰は禁止。
+- 2026-08-16: **フェーズ1–5** A3P240 page1=63。Keepa20/43残。お吸いもの pass1。リスト+1。
+- 2026-08-16: **Keepa→セラー台帳は追記直後・BuyBoxのみ**（§5.4）。A3L1洗わない。A3P240 total=163。
+- 2026-08-16: **指定店A3L1BD8LA6USKU** 構成比。query 2834で停止。ふりかけ洗い pass1。`pr_20260816_p1f`。
+- 2026-08-16: **フェーズ1–4** 永谷園お茶づけ12 Keepa。次店はBuyBox尽き停止。リスト+4 JOIN。`pr_20260816_p1`。
+- 2026-08-16: **リサーチ受け渡し契約** A/D/E ロック・巨大店は total>1000 で人メール。[FLOW](org/B_PURCHASE_RESEARCH_FLOW.md) §5–§6。3者は E/F/G/J 実装前。
+- 2026-08-16: **リサーチ完成形フロー** A–J / A′ を正本化。[FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)。状況報告は §3。ルール `purchase-research-status.mdc`。
+- 2026-08-16: **L1–L6一括** 旧構成%削除。品番miss42をフルへ。リストJOIN。次セラーAN1VRQENFRJN5構成比。query page0のみ。永谷園みそ汁スライス20。`pr_20260816_l1`〜`l6`。
+- 2026-08-16: **S4c合格** セラーに Amazon カテゴリ28列（洋書〜不明）。構成％を展開。モリタは食品46.9／ペット35.9／文具15.6／おもちゃ1.6、他0。GETなし。`pr_20260816_s4ccol`。
+- 2026-08-16: **S4b合格** セラー構成を Amazon カテゴリ名列＋％（食品46.9／ペット35.9／文具15.6／おもちゃ1.6）。メイン「食品・飲料・お酒 46.9%」。`pr_20260816_s4bcol`。
+- 2026-08-16: **S4合格** モリタ `/seller` storefront=0。構成比4ノード・食品46.9%・複数カテゴリ（食品専業ではない）。asinListなし。consumed=1。`pr_20260816_s4col`。
+- 2026-08-16: **S3合格** モリタ `/query` GET page0 total=30。①候補に30。productなし。台帳巡回日・件数。`pr_20260816_s3qcol`。次は見積後／週次トリガー後。
+- 2026-08-16: **T2合格** 複製品番リスト JOIN82の画像URLをメインHYPERLINK。式32非書。未JOIN43はGETせず。`pr_20260816_t2col`。次の GET はセラー③ `/query`（承認後）。
+- 2026-08-16: **後続検証** AのGemini画像照合OFF可か（Catalog→Keepa名）。`KEEPA_SKIP_REF_IMAGE_AND_MATCH`。今は付けない。
+- 2026-08-16: **K8メモ** Buy Box現在/30/90・レビュー評価/件数・BuyBox_FBAは今のKeepaフルJSONでは空。取得方法・代替は NOW。実装なし。
+- 2026-08-16: **F2c** Keepaフル「サブ画像」を「画像」(E)の右隣(F)へ。`pr_20260816_f2cmove`。
+- 2026-08-16: **F2b合格** Keepaフル「画像」=メインHYPERLINK 220。「サブ画像」=2枚目以降を `|` 区切り 183。旧「画像一覧」はヘッダ改名。GETなし。`pr_20260816_f2bcol`。
+- 2026-08-15: **F2合格** Keepaフル 画像220／画像一覧（複数183）。GETなし。BB価格・レビューはJSONに無い。
+- 2026-08-15: **F1合格** Keepaフルにカテゴリ・梱包cm・FBA手数料(Keepa)・BB sellerId。BB価格・レビューは生JSON空。GETなし。`pr_20260815_f1col`。
+- 2026-08-15: **T1合格** 複製「仕入検討品番リスト」に門通過82追記。式32列はコピーのみ。原本非書。①ログ `pr_20260815_t1col`。
+- 2026-08-15: **L1合格** 出品設定マスタ first-fit。Keepaフル 出品FBAティア等157。①ログ `pr_20260815_l1col`。コード.js非改。次は品番リスト転記（後）。
+- 2026-08-15: **F0合格** Keepaフル列 Amazon直販／新品現在／順位現在／oos180。GETなし。①ログ `pr_20260815_f0col`。次はL1。
+- 2026-08-15: **課題K1–K7** メーカー・FBA人数は無理にやらない。BB不要。標2b／自己発送は出品流用。おまけ等不要。次はF0 flatten。
+- 2026-08-15: **品番リスト×Keepaメモ** 直販=availabilityAmazon。メーカーoffersはtoken増までしない。L1 first-fit後。COUNT_NEW正。
+- 2026-08-15: **A.準備（ASIN抽出）** トップ。Catalog空欄＝12-⑮⑯。要 clasp。
+- 2026-08-15: **競合フェーズ保留**。マスタ競合本線は達した。WRITE/CAP/Catalog空欄は残課題。次は行高さ。
+- 2026-08-15: **P5実機合格** `pasteP5-028e317c` A末尾P2。シート stack_ok。
+- 2026-08-15: **P5** A末尾P2。未設定=ON。要 clasp。OFF=`AMAZON_PASTE_P5_RANK_AFTER_A_ENABLED=false`。
+- 2026-08-15: **WRITE案A合格** A20 `api=0 tokens=skip`。Keepaフル出品0。Property OFFへ。
+- 2026-08-15: **P2 12-⑱合格** `pasteP2-c5fe6e20` write=true。⑰と同 cand/reject。
+- 2026-08-15: **P1計画 dry** 貼付10ブロック empty=0。Catalog GETなし。t18 ok。
+- 2026-08-15: **P5計画 dry** t19＋貼付読取。◎件数不変。A未結線。貼付非書。
+- 2026-08-15: **WRITE計画 dry** 貼付60 vs フル200。出品0。未載21は A GET 時のみ追記可。キャッシュAは0行。Property OFF。
+- 2026-08-15: **P4 Python実測** `B08W56WVHD` consumed=1 left=299。貼付60は全キャッシュ。CAP20据え置き。スプシ非書。
+- 2026-08-15: **P4 tokenログ** `tokensLeft`/`tokensConsumed`。CAPは実測まで20のまま未配線。要 clasp。WRITE OFF。
+- 2026-08-15: **W4要約をAブロック末に再ログ**。Gemini照合で先頭ログが消える対策。要 clasp 後 A20件。WRITE OFF。
+- 2026-08-15: **W4 hydrate は門stats必須** T28。日付だけ新鮮でも生JSON空は GET。要 clasp 後 12-㉓。
+- 2026-08-15: **W3 GASフル優先** を `purchase_research/PurchaseResearch.js` に載せた。clasp未。W4 dry paste60 skip39 need21。
+- 2026-08-15: **W3転記合格** Keepaフル再門 match=181。stats空27は落ち。GAS clasp未（`PurchaseResearch.js` stats空）。次は clasp／W4出品。
+- 2026-08-15: **A hydrate Keepaフル** T27。`KEEPA_FULL_READ_ENABLED` 未設定=OFF。マスタキャッシュ優先。要 clasp。12-㉓ self-test に hydrate/fetch。
+- 2026-08-15: **W2合格** `pr_20260815_w2` Keepaフル181行（skip5＋GET176 verify 176/176）。次はW3。
+- 2026-08-15: **W4計画 dry** T25／12-㉓。貼付ASIN vs Keepaフル。GETしない。A配線は `KEEPA_FULL_READ_ENABLED` OFF。
+- 2026-08-15: **W1d合格** runId `pr_20260815_w1d`。Keepaフル5行（五木通過）。verify 5/5。次はW2残り。モールヒット非書。
+- 2026-08-15: **Keepaフルは列名で並べる**。現行シートは目的が末尾。T24。要 clasp 後 12-㉑。Property OFF。
+- 2026-08-15: **W1仮想合格** T21/T22（指紋・csv[]落とし・目的=リサーチ・90日GET判定）。本番 `Keepaフル` 未書。[TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)。
+- 2026-08-15: **Keepaフル A後フック**。`KEEPA_FULL_WRITE_ENABLED` 未設定=OFF。12-㉑ dry self-test。目的=出品。T23。要 clasp。W4読はW1後。
+- 2026-08-15: **P3 12-⑳合格**（`pasteP3-6dacd0c2` written=20）。ミックス非載。Property を OFF へ。次は Keepaフル upsert 仮想（T21）。W4/P4/P5は別承認。
+- 2026-08-15: **①タスク構造化メモをツリー正に修正**（NOW同文）。PHASE §0re／DOMAIN1 §1.1 に全文共有。次はW1。W4は出品。[TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)。
+- 2026-08-15: **①タスク構造化メモ**を他PJ共有。[TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)。PHASE §0re／FIELDS／STORE／PASTE。次はW1。W4は出品。
+- 2026-08-15: **競合コンセプト再ロック**。Keepaの正＝`Keepaフル`（①が書く・90日）。`①候補`は門の転記。次はW1。[V1 §1.1](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)／[STORE §3](org/COMPETITOR_STORE_REQUIREMENTS.md)／[NOW](org/B_PURCHASE_RESEARCH_NOW.md)。
+- 2026-08-15: **領域1①進捗共有**。図の正は [NOW](org/B_PURCHASE_RESEARCH_NOW.md)。DOMAIN1 §1.1／CURRENT_PHASE §0re に同スナップショット。①候補176・Catalog門16通過。セラー台帳は競合PJの次。貼付と洗い混ぜない。
+- 2026-08-15: **P3 2種以上はマスタ非載**。`B0DWMJQTXT` をかつお15袋にしない。◎は消さない。要 clasp 後 12-⑲。
+- 2026-08-15: **P3 openById**。メニューは Active。clasp はマスタ ID。要 clasp。Execution API 権限は別。
+- 2026-08-15: **袋数パース全角数字**（`【３種類】`）。GAS/Python 半角化。T17/T20。要 clasp 後 12-⑲再実行。[ACCURACY](org/COMPETITOR_SETCOUNT_ACCURACY.md)。
+- 2026-08-15: **12-⑲⑳ P3 GAS**。貼付◎→マスタAmazon列。dryは可。書込は `AMAZON_PASTE_P3_WRITE_ENABLED` 未設定=OFF。要 clasp。[PASTE](org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)。
+- 2026-08-15: **袋数 N種×各M／P2機械◎でも非候補**。人が直す前の精度。Keepaセルよりタイトル。T17–T20・P3 dry済。マスタ未書。要 clasp。[ACCURACY](org/COMPETITOR_SETCOUNT_ACCURACY.md)。
+- 2026-08-15: **Amazon貼付 P2コード**（12-⑰/⑱）。仮想T19済。A非改変。clasp未。
+- 2026-08-16: **処理時間** シート `▼実行時間`。B Step と Step5 API のみ。共通 `logOpTiming_`。切戻し `OP_TIMING_ENABLED=false`。全関数計測は禁止（再指示は [op-timing-scope.mdc](../.cursor/rules/op-timing-scope.mdc) で止める）。要 clasp。
+- 2026-08-16: **Step5** Gemini成功時 OpenAI Visionスキップ（`B_STEP5_SKIP_OPENAI_IF_GEMINI_OK` 未設定=ON）。AI梱包停止（`B_STEP5_SKIP_PACK_AI` 未設定=ON）。ジャンルAIは既存スキップ維持。連番 [PHASE 0b5](CURRENT_PHASE.md)。要 clasp。
+- 2026-08-16: **行高さStep8廃止**（WRAP＋改行で伸びるため）。CLIP/高さロジック削除。要 clasp。[PHASE](CURRENT_PHASE.md)。
+- 2026-08-16: **A.準備 3/4 商品名SEOスペース**。AI情報取得data「商品名」のみ。（）・等の前後に半角。dry→書込。要 clasp。
+- 2026-08-16: **B Step2.1＝12-⑭**。ストア有効時は横断シート直書きをスキップ。切戻し `B_COMPETITOR_STORE_APPLY_ENABLED=false`。15〜23はBに入れない。要 clasp。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **領域1細分化図**（①–⑧／メーカー洗い／別ルート／出品チャットとの担当分け）。他PJは [DOMAIN1 §1](DOMAIN1_RESEARCH_PURCHASING.md) を共有正とする。
+- 2026-08-15: **モールヒット変化なし非書込**。指紋＝価格・送料フラグ・楽天％／Yahoo点数・商品名。要 clasp push。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **12-⑬人間検収** listings qty=0 HTTP200 マスタ非書。段階3ここまで。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **Amazon在庫1SKU読取**（12-⑬）。Listings→FBA。マスタ非書。全JAN/トリガーなし。T13。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **在庫API本番は停止**（GET未実装・接続先未ロック）。マージは T12 フィクスチャのみ。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **セット数パース A+C**。計N袋優先／各N袋はセットにしない。12-⑭は他セット単価中央値の2倍以上を捨てる。1件目ではなく最安。課題 [ACCURACY](org/COMPETITOR_SETCOUNT_ACCURACY.md)。要 clasp push。
+- 2026-08-15: **12-⑭ 専用モールヒット→マスタセット紐付け**。レ点行のみ。1件目禁止。OFF=`COMPETITOR_MASTER_APPLY_ENABLED=false`。要 clasp push。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **12-⑫ 定時再検索 JAN1件**。ENABLED時のみ。マスタ非書。T11。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **Drive退避12-⑪**（最新1本・確認あり）。正本非削除。T10。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **定時候補ログ＋ローカル退避1本**。再検索・在庫API・Drive未。T0–T9。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **競合ストア90日削除（手動）**。12-⑨／`purge.py`。出品 Keepa キャッシュ非対象。自動トリガーなし。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **競合専用ストア段階2**。Step2 生ヒット→`モールヒット`（ENABLED 時）。確定価格は空。マスタ Keepa 温存。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **競合専用ストア段階1**。マスタ Keepa キャッシュ温存。仮想テスト `tools/competitor_store`。dual-write は `COMPETITOR_STORE_ENABLED`。[STORE](org/COMPETITOR_STORE_REQUIREMENTS.md)。
+- 2026-08-15: **競合フィールド正本**。楽天/Yahoo公式項目＋論理列CSV。場面→フロー正本の参照ルール。都度改修は CSV＋改修履歴。[COMPETITOR_FIELDS](org/COMPETITOR_FIELDS.md)。
+- 2026-08-15: **Amazon競合貼付・要件のみ**（未実装）。◎は人間。候補列。キャッシュ再利用＋ブロック20。領域1成果の後読みでトークン節約。[メモ](org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)。
+- 2026-08-14: **Keepaログ空の原因**: キャッシュ読取が setCount 空を旧形式と誤判定しブランド／製造者／梱包を捨てていた。ヘッダー名で読む。要 clasp push。
+- 2026-08-14: **Keepa梱包欠落は再取得**: キャッシュに寸法無しならAPI。`梱包_checked` で空返しの再取得ループを防ぐ。`KEEPA_CACHE_REFETCH_WHEN_PKG_EMPTY` 未設定=ON。要 clasp push。
+- 2026-08-14: **Keepaキャッシュ梱包列**: `梱包_L/W/H_cm`・`梱包_重量_g` をキャッシュ保存し、ヒット時ログ追記へコピー。既存ログ非改変。要 clasp push。
+- 2026-08-14: **Bフォロー続き**: 親行CLIP後勝ち63px／3.1選定不可はCT〜CV式維持／B Step6.05保存方法改行／Yahoo `query=JAN`／楽天商品名フォールバック＋袋パース。FBAはN列＝競合ASIN。要 clasp push。[メモ](org/B_RUN_20260814_FOLLOWUP.md)。
+- 2026-08-15: **① GAS を `purchase_research/` に clone**。scriptId `1oRfQzsE…`。出品 clasp 非変更。中身は外注マクロ。[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)。
+- 2026-08-15: **①ドライラン**: GET `/query` 合格。門CSV・五木分類は仮想合格。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)。
+- 2026-08-14: **B完走フォロー改修**: 寸法なし空欄／CPO非塗色／Step5当Bのみclear／Step6.55 FBA P1b／KW左→右1本seen／親行CLIP+60px。⑥NはA→B再テスト待ち。[メモ](org/B_RUN_20260814_FOLLOWUP.md)。要 clasp push。
+- 2026-08-14: **ペヤング型は後続**: 商品名≠メーカー名の対策は第1版外。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)／[V1 §6](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)。
+- 2026-08-14: **領域1①専用スプシ複製**: ID `1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE`。原本は別。clasp差し替え禁止。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)。
+- 2026-08-14: **領域1①経路3先行**: 品質CPを第1版本体より先。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)／PoC `tools/purchase_research_path3/`。clasp差し替え禁止。
+- 2026-08-14: **領域1①詳細稿**: Keepaは件数キャップなし・回復上限300トークン。列・門順・検証。[B_PURCHASE_RESEARCH_V1](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)。
+- 2026-08-14: **領域1立て直し**: ①仕入れ検討が第1、C見積は下書きまで第2、A後回し、②はキャッチアップ。調査スプシ＋マニュアルURLを正。[DOMAIN1](DOMAIN1_RESEARCH_PURCHASING.md)。
+- 2026-08-14: **リサーチ・見積もり セッション引継ぎ（②出品用）**: CPO V2／画像ガード／F/P／3D物流。[SESSION](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md)。領域1本線は DOMAIN1。
 - 2026-08-14: **B Step1 上挿入・実装（ローカル）**: 既存AK/IB値固定・テンプレ1–2新式・`B_STEP1_TOP_INSERT_ENABLED`（未設定=旧末尾）。人間: clasp push → Property true → HUMAN_RUN。[要件](org/B_STEP1_TOP_INSERT_REQUIREMENTS.md)／[HUMAN_RUN](org/B_STEP1_TOP_INSERT_HUMAN_RUN.md)。復元: `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`。
 - 2026-08-14: **B Step1 上挿入・要件ロック**: 三点多数決＋1A/2A/3A。[多数決](org/B_STEP1_TOP_INSERT_THREE_REVIEW_MAJORITY.md)。
 - 2026-08-13: **B Step1 上挿入メモ**（初版）: ヘッダー直後・末尾追記廃止。式方針は 08-14 で値固定＋テンプレ新式に更新。
@@ -561,17 +652,19 @@
 - 現在の境界（2026-03 更新、`B_INTEGRATED_STEP_FUNCTIONS` と一致）:  
   - Step **1**: `menuSetCompositionProposal`  
   - Step **2**: `menuResearchBatchCrossMallAndPropose`  
+  - Step **2.1**（統合）: `menuApplyCompetitorStoreHitsForBIntegratedStep_`（12-⑭。JAN＋袋数。1件目禁止。ストア有効時は Step2 の横断シート直書きをスキップ。`B_COMPETITOR_STORE_APPLY_ENABLED` 未設定=ON）  
   - Step **3**: `menuCPOProposePricesRound1`（Amazon CPO V2・②.5前。F/Pガード既定オフ。送料スナップショット保存）  
   - Step **3.1**: `runEstimateLogisticsCostStep`（想定物流費AI試算）  
   - Step **3.2**: `menuRakutenYahooCpoProposePricesV2ForBIntegrated_`（楽天Yahoo CPO V2）  
   - Step **4**: `menuRunRound3PriceAdjustIntegrated_`（再③・全モール）  
   - Step **5**: `generateListingDataComparison`  
   - Step **6**: `syncAiDataToMaster`  
+  - Step **6.05**（統合）: `menuSanitizeStorageForBIntegratedStep_`（保存方法改行→読点。15-⑭相当）  
   - Step **6.5**（統合）: `menuFillAsinNForBIntegratedStep_`（◎×ブランド＝メーカー → N列ASIN空のみ。`B_ASIN_N_AUTO_FILL_ENABLED` 未設定=ON）  
+  - Step **6.55**（統合）: `menuFbaP1bForBIntegratedStep_`（Catalog・空のみ。N列＝競合ASIN）  
   - Step **6.6**（統合）: `menuFetchMakerModelForBIntegratedStep_`（メーカー品番下書き・空のみ。U5。`B_MAKER_MODEL_FETCH_ENABLED` 未設定=ON）  
   - Step **7**（統合）: `menuProductNameAndDropdownForBIntegratedStep_`（チェックポイント維持・未完了時 `TIME_SLICE` で統合トリガー再開）  
   - Step **7.6**（統合）: `menuAmazonAiAdopt76ForBIntegratedStep_`（メニュー8 KW・trim・ジャンル・**Yahoo売れ筋のみ＋38074**。`B_INTEGRATED_MENU8_ENABLED` 未設定=ON）  
-  - Step **8**（統合）: `menuSetParentRowHeightForBIntegratedStep_`（レ点親行の行高さ **60px**。`B_PARENT_ROW_HEIGHT_ENABLED` 未設定=ON）  
   - Step **7**（Z メニュー単体）: `menuProductNameAndDropdownForCheckedParentRows`（続き／最初からダイアログ）  
   - Step **7.5**（Z 単体）: `menuAmazonAiGenerateAndAdoptForCheckedParents`（Yahoo **価格参照**。`AMAZON_AI_AUTO_ADOPT_ENABLED`）  
   - Step **7.6**（Z 単体）: `menuAmazonAiGenerateAndAdopt76ForCheckedParents`（Yahoo **売れ筋のみ**。同トグル）  
@@ -587,18 +680,20 @@
 
 **【Step別 一次確認ログ（運用固定）】**  
 - Step1: `[セット構成提案]`（必要に応じて `[カテゴリ自動入力]` / `[抜けセット数行]`）  
-- Step2: `[モール横断セット数]`（必要に応じて `[楽天セット別]` / `[Yahoo!セット別]`）  
-- Step3.1: 物流費AI試算のStep専用プレフィックス（実装時に統一）  
+- Step2: `[モール横断セット数]`（必要に応じて `[楽天セット別]` / `[Yahoo!セット別]`）
+- Step2.1: `[B.統合実行][2.1]` / `[競合ストア紐付け]`
+- Step3.1: 物流費AI試算のStep専用プレフィックス（実装時に統一）
 - Step3.2: 楽天Yahoo CPO V2 のStep専用プレフィックス（実装時に統一）  
 - Step4（再③）: 全モール価格調整のStep専用プレフィックス  
 - Step3（Amazon CPO）: `[CPO]` + `round=` / V2 ログ（`パース結果のセット数` / `反映できませんでした` / F/Pガードログを確認）  
 - Step5: AI出品取得のStep専用プレフィックス（実装時に統一）  
 - Step6: 同期処理のStep専用プレフィックス（実装時に統一）  
+- Step6.05: `[保存方法][改行除去]` / `menuSanitizeStorageForBIntegratedStep_`
 - Step6.5: `[N列ASIN自動]` / `menuFillAsinNForBIntegratedStep_`
 - Step6.6: `[B.統合実行][6.6]` / `menuFetchMakerModelForBIntegratedStep_`  
 - Step7: `[Step7]`（必要に応じて `[キーワードプルダウン]`）
 - Step7.6: `[メニュー8]` / `menuAmazonAiAdopt76ForBIntegratedStep_` / `yahooCatMode=popular_only`
-- Step8: `[親行高さ]` / `menuSetParentRowHeightForBIntegratedStep_`
+- Step7.6: `[メニュー8]` / `menuAmazonAiAdopt76ForBIntegratedStep_`
 
 **【差分復元（前に戻す）運用】**  
 - MDのみでの復元運用は禁止。必ず Git の差分を正とする。  

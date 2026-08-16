@@ -1,0 +1,171 @@
+﻿asin,csv_column,csv_value,api_value,verdict
+B0FQB34W4B,画像,https://m.media-amazon.com/images/I/81gWMhXQvQL.jpg;https://m.media-amazon.com/images/I/71k3UwrRz4L.jpg;https://m.media-amazon.com/images/I/71glgfzWAPL.jpg;https://m.media-amazon.com/images/I/71HjbCQ8,,不一致
+B0FQB34W4B,商品名,カルシウムもとれる万能だし 無添加 粉末 出汁 国産 カツオ節 いわし節 昆布 椎茸 アゴ 管理栄養士監修 100g パック 食塩不使用 国内製造 かけるだけ,カルシウムもとれる万能だし 無添加 粉末 出汁 国産 カツオ節 いわし節 昆布 椎茸 アゴ 管理栄養士監修 100g パック 食塩不使用 国内製造 かけるだけ,一致
+B0FQB34W4B,商品ハイライト,,,両方空
+B0FQB34W4B,売れ筋ランキング: 90 日平均,12286,12294,ほぼ一致（取得時刻差）
+B0FQB34W4B,売れ筋ランキング: 365 日平均,11112,11118,ほぼ一致（取得時刻差）
+B0FQB34W4B,売れ筋ランキング: 90日間の下落 %,-9 %,-23 %,不一致
+B0FQB34W4B,売れ筋ランキング: 過去30日間の減少,14,14,一致
+B0FQB34W4B,売れ筋ランキング: 過去90日間の減少,50,50,一致
+B0FQB34W4B,売れ筋ランキング: 過去180日間の減少,191,191,一致
+B0FQB34W4B,売れ筋ランキング: 過去365日間の減少,292,291,不一致
+B0FQB34W4B,月間売上トレンド: 先月の購入,50,50,一致
+B0FQB34W4B,レビュー: 評価,4.3,4.3,一致
+B0FQB34W4B,レビュー: 評価件数,67,67,一致
+B0FQB34W4B,Buy Box: 30 日平均,1890,1890,一致
+B0FQB34W4B,Buy Box: 90 日平均,1875,1875,一致
+B0FQB34W4B,Buy Box: 90日間の下落 %,-1 %,-1 %,一致
+B0FQB34W4B,Buy Box: Buy Box セラー,「食堂あさごはん」nikkori商店 (100%) / A234Y39JA7DLGJ,99% / A234Y39JA7DLGJ,一致（セラーID）
+B0FQB34W4B,Buy Box: FBAです,yes,yes,一致
+B0FQB34W4B,Amazon: 現在価格,,,両方空
+B0FQB34W4B,Amazon: 90 日平均,,,両方空
+B0FQB34W4B,Amazon: 365 日平均,,,両方空
+B0FQB34W4B,Amazon: 90日間の下落 %,,,両方空
+B0FQB34W4B,Amazon: 在庫,,,両方空
+B0FQB34W4B,Amazon: 90日間在庫切れ,100 %,100 %,一致
+B0FQB34W4B,Amazon: 在庫切れカウント 30 日間,1,1,一致
+B0FQB34W4B,Amazon: 在庫切れカウント 90 日間,1,1,一致
+B0FQB34W4B,新品: 90 日平均,1875,1875,一致
+B0FQB34W4B,新品: 365 日平均,1871,1871,一致
+B0FQB34W4B,新品: 90日間の下落 %,-1 %,-1 %,一致
+B0FQB34W4B,新しい、第三者FBA: 90 日平均,1875,1875,一致
+B0FQB34W4B,新しい、第三者FBA: 365 日平均,1870,1870,一致
+B0FQB34W4B,新しい、第三者FBA: 90日間の下落 %,-1 %,-1 %,一致
+B0FQB34W4B,最安の FBA セラー,「食堂あさごはん」nikkori商店 (100%) / A234Y39JA7DLGJ,A234Y39JA7DLGJ,一致（セラーID）
+B0FQB34W4B,新品 第三者 FBM: 90 日平均,,,両方空
+B0FQB34W4B,新品 第三者 FBM: 365 日平均,,,両方空
+B0FQB34W4B,新品 第三者 FBM: 90日間の下落 %,,,両方空
+B0FQB34W4B,最安の FBM セラー,,,両方空
+B0FQB34W4B,参考価格: 90 日平均,1890,1890,一致
+B0FQB34W4B,参考価格: 365 日平均,1890,1890,一致
+B0FQB34W4B,参考価格: 90日間の下落 %,0 %,0 %,一致
+B0FQB34W4B,新品アイテム数: 90 日平均,1,1,一致
+B0FQB34W4B,新品アイテム数: 365 日平均,1,0,ほぼ一致（丸め）
+B0FQB34W4B,新品アイテム数: 90日間の下落 %,0 %,0 %,一致
+B0FQB34W4B,URL: Amazon,https://www.amazon.co.jp/dp/B0FQB34W4B?psc=1,https://www.amazon.co.jp/dp/B0FQB34W4B?psc=1,一致
+B0FQB34W4B,URL: Keepa,https://keepa.com/#!product/5-B0FQB34W4B,https://keepa.com/#!product/5-B0FQB34W4B,一致
+B0FQB34W4B,カテゴリ: ルート,食品・飲料・お酒,食品・飲料・お酒,一致
+B0FQB34W4B,カテゴリ: サブ,和風だし,和風だし,一致
+B0FQB34W4B,カテゴリ: ツリー,食品・飲料・お酒 › 調味料・食用油・ドレッシング › 和風だし,食品・飲料・お酒 › 調味料・食用油・ドレッシング › 和風だし,一致
+B0FQB34W4B,ASIN,B0FQB34W4B,B0FQB34W4B,一致
+B0FQB34W4B,商品コード: EAN,4595557267021,4595557267021,一致
+B0FQB34W4B,製造者,食堂あさごはん,食堂あさごはん,一致
+B0FQB34W4B,ブランド,食堂あさごはん,食堂あさごはん,一致
+B0FQB34W4B,単位の詳細: 単位の価値,100,100,一致
+B0FQB34W4B,アイテム数,1,1,一致
+B0FQB34W4B,発売日,,7757460,CSV空・APIあり
+B0FQB34W4B,パッケージ: 長さ (cm),22.8,22.8,一致
+B0FQB34W4B,パッケージ: 幅 (cm),16,16,一致
+B0FQB34W4B,パッケージ: 高さ (cm),1.5,1.5,一致
+B0FQB34W4B,パッケージ: 重さ (g),120,120,一致
+B0FQB34W4B,パッケージ: 数量,,,両方空
+B0FQB34W4B,商品: 長さ (cm),23,23,一致
+B0FQB34W4B,商品: 幅 (cm),14,14,一致
+B0FQB34W4B,商品: 高さ (cm),1.4,1.4,一致
+B0FQB34W4B,商品: 重さ (g),100,100,一致
+B0FQB34W4B,Buy Box: 定期おトク便,yes,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,ワンタイムクーポン: 定期おトク便 %,5 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,ビジネス割引: パーセンテージ,,,両方空
+B0FQB34W4B,Buy Box: % Amazon 30 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % Amazon 90 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % Amazon 180 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % Amazon 365 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % トップセラー 30 日,100 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % トップセラー 90 日,100 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % トップセラー 180 日,100 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: % トップセラー 365 日,99 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 勝者数 30 日,1,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 勝者数 90 日,1,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 勝者数 180 日,1,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 勝者数 365 日,1,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 標準偏差 30 日,,,両方空
+B0FQB34W4B,Buy Box: 標準偏差 90 日,53,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 標準偏差 365 日,54,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 変動性 30 日,8,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 変動性 90 日,16,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B0FQB34W4B,Buy Box: 変動性 365 日,22,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,画像,https://m.media-amazon.com/images/I/61+66jADYPL.jpg;https://m.media-amazon.com/images/I/51MLotb+-gL.jpg;https://m.media-amazon.com/images/I/51NbK7RFNqL.jpg;https://m.media-amazon.com/images/I/51bl+DbE,,不一致
+B08W56WVHD,商品名,網元大将 石原水産 食べるおだし かつお50ｇ (1袋) ゆうパケ,網元大将 石原水産 食べるおだし かつお50ｇ (1袋) ゆうパケ,一致
+B08W56WVHD,商品ハイライト,,,両方空
+B08W56WVHD,売れ筋ランキング: 90 日平均,20857,20850,ほぼ一致（取得時刻差）
+B08W56WVHD,売れ筋ランキング: 365 日平均,18474,18472,ほぼ一致（取得時刻差）
+B08W56WVHD,売れ筋ランキング: 90日間の下落 %,46 %,-3 %,不一致
+B08W56WVHD,売れ筋ランキング: 過去30日間の減少,9,9,一致
+B08W56WVHD,売れ筋ランキング: 過去90日間の減少,37,37,一致
+B08W56WVHD,売れ筋ランキング: 過去180日間の減少,70,70,一致
+B08W56WVHD,売れ筋ランキング: 過去365日間の減少,144,144,一致
+B08W56WVHD,月間売上トレンド: 先月の購入,,,両方空
+B08W56WVHD,レビュー: 評価,4.3,4.3,一致
+B08W56WVHD,レビュー: 評価件数,243,243,一致
+B08W56WVHD,Buy Box: 30 日平均,630,630,一致
+B08W56WVHD,Buy Box: 90 日平均,618,618,一致
+B08W56WVHD,Buy Box: 90日間の下落 %,-2 %,-2 %,一致
+B08W56WVHD,Buy Box: Buy Box セラー,World NEXT （無休・即日発送） (92%) / A3L1BD8LA6USKU,26% / A3L1BD8LA6USKU,一致（セラーID）
+B08W56WVHD,Buy Box: FBAです,no,no,一致
+B08W56WVHD,Amazon: 現在価格,,,両方空
+B08W56WVHD,Amazon: 90 日平均,,,両方空
+B08W56WVHD,Amazon: 365 日平均,,,両方空
+B08W56WVHD,Amazon: 90日間の下落 %,,,両方空
+B08W56WVHD,Amazon: 在庫,,,両方空
+B08W56WVHD,Amazon: 90日間在庫切れ,100 %,100 %,一致
+B08W56WVHD,Amazon: 在庫切れカウント 30 日間,1,1,一致
+B08W56WVHD,Amazon: 在庫切れカウント 90 日間,1,1,一致
+B08W56WVHD,新品: 90 日平均,618,618,一致
+B08W56WVHD,新品: 365 日平均,601,601,一致
+B08W56WVHD,新品: 90日間の下落 %,-2 %,-2 %,一致
+B08W56WVHD,新しい、第三者FBA: 90 日平均,513,513,一致
+B08W56WVHD,新しい、第三者FBA: 365 日平均,606,606,一致
+B08W56WVHD,新しい、第三者FBA: 90日間の下落 %,,,両方空
+B08W56WVHD,最安の FBA セラー,,,両方空
+B08W56WVHD,新品 第三者 FBM: 90 日平均,618,618,一致
+B08W56WVHD,新品 第三者 FBM: 365 日平均,617,616,ほぼ一致（丸め）
+B08W56WVHD,新品 第三者 FBM: 90日間の下落 %,-2 %,-2 %,一致
+B08W56WVHD,最安の FBM セラー,World NEXT （無休・即日発送） (92%) / A3L1BD8LA6USKU,A3L1BD8LA6USKU,一致（セラーID）
+B08W56WVHD,参考価格: 90 日平均,0,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,参考価格: 365 日平均,0,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,参考価格: 90日間の下落 %,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,新品アイテム数: 90 日平均,5,5,一致
+B08W56WVHD,新品アイテム数: 365 日平均,7,6,ほぼ一致（丸め）
+B08W56WVHD,新品アイテム数: 90日間の下落 %,0 %,0 %,一致
+B08W56WVHD,URL: Amazon,https://www.amazon.co.jp/dp/B08W56WVHD?psc=1,https://www.amazon.co.jp/dp/B08W56WVHD?psc=1,一致
+B08W56WVHD,URL: Keepa,https://keepa.com/#!product/5-B08W56WVHD,https://keepa.com/#!product/5-B08W56WVHD,一致
+B08W56WVHD,カテゴリ: ルート,食品・飲料・お酒,食品・飲料・お酒,一致
+B08W56WVHD,カテゴリ: サブ,和風だし,和風だし,一致
+B08W56WVHD,カテゴリ: ツリー,食品・飲料・お酒 › 調味料・食用油・ドレッシング › 和風だし,食品・飲料・お酒 › 調味料・食用油・ドレッシング › 和風だし,一致
+B08W56WVHD,ASIN,B08W56WVHD,B08W56WVHD,一致
+B08W56WVHD,商品コード: EAN,4906283045119,4906283045119,一致
+B08W56WVHD,製造者,大平水産株式会社,大平水産株式会社,一致
+B08W56WVHD,ブランド,石原水産,石原水産,一致
+B08W56WVHD,単位の詳細: 単位の価値,1,1,一致
+B08W56WVHD,アイテム数,,,両方空
+B08W56WVHD,発売日,,5315169,CSV空・APIあり
+B08W56WVHD,パッケージ: 長さ (cm),21.8,21.8,一致
+B08W56WVHD,パッケージ: 幅 (cm),15.1,15.1,一致
+B08W56WVHD,パッケージ: 高さ (cm),2.5,2.5,一致
+B08W56WVHD,パッケージ: 重さ (g),60,60,一致
+B08W56WVHD,パッケージ: 数量,1,1,一致
+B08W56WVHD,商品: 長さ (cm),,,両方空
+B08W56WVHD,商品: 幅 (cm),,,両方空
+B08W56WVHD,商品: 高さ (cm),,,両方空
+B08W56WVHD,商品: 重さ (g),50,50,一致
+B08W56WVHD,Buy Box: 定期おトク便,no,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,ワンタイムクーポン: 定期おトク便 %,,,両方空
+B08W56WVHD,ビジネス割引: パーセンテージ,,,両方空
+B08W56WVHD,Buy Box: % Amazon 30 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % Amazon 90 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % Amazon 180 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % Amazon 365 日,0 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % トップセラー 30 日,100 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % トップセラー 90 日,90 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % トップセラー 180 日,46 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: % トップセラー 365 日,26 %,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 勝者数 30 日,1,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 勝者数 90 日,4,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 勝者数 180 日,5,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 勝者数 365 日,9,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 標準偏差 30 日,,,両方空
+B08W56WVHD,Buy Box: 標準偏差 90 日,35,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 標準偏差 365 日,57,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 変動性 30 日,8,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 変動性 90 日,8,,CSVあり・API空（期間統計は未マップまたは画面専用）
+B08W56WVHD,Buy Box: 変動性 365 日,24,,CSVあり・API空（期間統計は未マップまたは画面専用）

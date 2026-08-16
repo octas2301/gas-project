@@ -1,0 +1,49 @@
+﻿asin,csv_column,csv_value,api_field,api_value,match
+B0FQB34W4B,商品名,カルシウムもとれる万能だし 無添加 粉末 出汁 国産 カツオ節 いわし節 昆布 椎茸 アゴ 管理栄養士監修 100g パック 食塩不使用 国内製造 かけるだけ,title,カルシウムもとれる万能だし 無添加 粉末 出汁 国産 カツオ節 いわし節 昆布 椎茸 アゴ 管理栄養士監修 100g パック 食塩不使用 国内製造 かけるだけ,Y
+B0FQB34W4B,ブランド,食堂あさごはん,brand,食堂あさごはん,Y
+B0FQB34W4B,製造者,食堂あさごはん,manufacturer,食堂あさごはん,Y
+B0FQB34W4B,商品コード: EAN,4595557267021,ean,,N
+B0FQB34W4B,売れ筋ランキング: 90 日平均,12286,salesRank_avg90,12293,N
+B0FQB34W4B,売れ筋ランキング: 365 日平均,11112,salesRank_avg365,11118,N
+B0FQB34W4B,Amazon: 現在価格,,amazon_current,,both_empty
+B0FQB34W4B,Amazon: 90 日平均,,amazon_avg90,,both_empty
+B0FQB34W4B,Amazon: 365 日平均,,amazon_avg365,,both_empty
+B0FQB34W4B,Amazon: 90日間在庫切れ,100 %,amazon_oos90,100,N
+B0FQB34W4B,新品: 90 日平均,"1,875",new_avg90,18.75,N
+B0FQB34W4B,新品: 365 日平均,"1,871",new_avg365,18.71,N
+B0FQB34W4B,Buy Box: 90 日平均,"1,875",buybox_avg90,18.75,N
+B0FQB34W4B,Buy Box: 30 日平均,"1,890",buybox_avg30,18.9,N
+B0FQB34W4B,新品アイテム数: 90 日平均,1,countNew_avg90,1,Y
+B0FQB34W4B,レビュー: 評価,4.3,rating,43,N
+B0FQB34W4B,レビュー: 評価件数,67,reviewCount,67,Y
+B0FQB34W4B,パッケージ: 長さ (cm),22.8,packageLength_mm,228,N
+B0FQB34W4B,パッケージ: 幅 (cm),16,packageWidth_mm,160,N
+B0FQB34W4B,パッケージ: 高さ (cm),1.5,packageHeight_mm,15,N
+B0FQB34W4B,パッケージ: 重さ (g),120,packageWeight_g,120,Y
+B0FQB34W4B,月間売上トレンド: 先月の購入,50,monthlySold,50,Y
+B0FQB34W4B,(api)availabilityAmazon,,availabilityAmazon,-1,api_only
+B0FQB34W4B,(api)imageUrl,https://m.media-amazon.com/images/I/81gWMhXQvQL.jpg,imageUrl,,see
+B08W56WVHD,商品名,網元大将 石原水産 食べるおだし かつお50ｇ (1袋) ゆうパケ,title,網元大将 石原水産 食べるおだし かつお50ｇ (1袋) ゆうパケ,Y
+B08W56WVHD,ブランド,石原水産,brand,石原水産,Y
+B08W56WVHD,製造者,大平水産株式会社,manufacturer,大平水産株式会社,Y
+B08W56WVHD,商品コード: EAN,4906283045119,ean,,N
+B08W56WVHD,売れ筋ランキング: 90 日平均,20857,salesRank_avg90,20851,N
+B08W56WVHD,売れ筋ランキング: 365 日平均,18474,salesRank_avg365,18472,N
+B08W56WVHD,Amazon: 現在価格,,amazon_current,,both_empty
+B08W56WVHD,Amazon: 90 日平均,,amazon_avg90,,both_empty
+B08W56WVHD,Amazon: 365 日平均,,amazon_avg365,,both_empty
+B08W56WVHD,Amazon: 90日間在庫切れ,100 %,amazon_oos90,100,N
+B08W56WVHD,新品: 90 日平均,618,new_avg90,6.18,N
+B08W56WVHD,新品: 365 日平均,601,new_avg365,6.01,N
+B08W56WVHD,Buy Box: 90 日平均,618,buybox_avg90,6.18,N
+B08W56WVHD,Buy Box: 30 日平均,630,buybox_avg30,6.3,N
+B08W56WVHD,新品アイテム数: 90 日平均,5,countNew_avg90,5,Y
+B08W56WVHD,レビュー: 評価,4.3,rating,43,N
+B08W56WVHD,レビュー: 評価件数,243,reviewCount,243,Y
+B08W56WVHD,パッケージ: 長さ (cm),21.8,packageLength_mm,218,N
+B08W56WVHD,パッケージ: 幅 (cm),15.1,packageWidth_mm,151,N
+B08W56WVHD,パッケージ: 高さ (cm),2.5,packageHeight_mm,25,N
+B08W56WVHD,パッケージ: 重さ (g),60,packageWeight_g,60,Y
+B08W56WVHD,月間売上トレンド: 先月の購入,,monthlySold,,both_empty
+B08W56WVHD,(api)availabilityAmazon,,availabilityAmazon,-1,api_only
+B08W56WVHD,(api)imageUrl,https://m.media-amazon.com/images/I/61+66jADYPL.jpg,imageUrl,,see

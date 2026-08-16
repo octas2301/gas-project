@@ -1,0 +1,86 @@
+﻿csv_column,verdict_asins,all_same,note
+画像,B0FQB34W4B:不一致 | B08W56WVHD:不一致,Y,不一致
+商品名,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+商品ハイライト,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+売れ筋ランキング: 90 日平均,B0FQB34W4B:ほぼ一致（取得時刻差） | B08W56WVHD:ほぼ一致（取得時刻差）,Y,ほぼ一致（取得時刻差）
+売れ筋ランキング: 365 日平均,B0FQB34W4B:ほぼ一致（取得時刻差） | B08W56WVHD:ほぼ一致（取得時刻差）,Y,ほぼ一致（取得時刻差）
+売れ筋ランキング: 90日間の下落 %,B0FQB34W4B:不一致 | B08W56WVHD:不一致,Y,不一致
+売れ筋ランキング: 過去30日間の減少,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+売れ筋ランキング: 過去90日間の減少,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+売れ筋ランキング: 過去180日間の減少,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+売れ筋ランキング: 過去365日間の減少,B0FQB34W4B:不一致 | B08W56WVHD:一致,N,ASINで判定が分かれた
+月間売上トレンド: 先月の購入,B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+レビュー: 評価,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+レビュー: 評価件数,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Buy Box: 30 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Buy Box: 90 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Buy Box: 90日間の下落 %,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Buy Box: Buy Box セラー,B0FQB34W4B:一致（セラーID） | B08W56WVHD:一致（セラーID）,Y,一致（セラーID）
+Buy Box: FBAです,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Amazon: 現在価格,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Amazon: 90 日平均,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Amazon: 365 日平均,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Amazon: 90日間の下落 %,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Amazon: 在庫,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Amazon: 90日間在庫切れ,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Amazon: 在庫切れカウント 30 日間,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Amazon: 在庫切れカウント 90 日間,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新品: 90 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新品: 365 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新品: 90日間の下落 %,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新しい、第三者FBA: 90 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新しい、第三者FBA: 365 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新しい、第三者FBA: 90日間の下落 %,B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+最安の FBA セラー,B0FQB34W4B:一致（セラーID） | B08W56WVHD:両方空,N,ASINで判定が分かれた
+新品 第三者 FBM: 90 日平均,B0FQB34W4B:両方空 | B08W56WVHD:一致,N,ASINで判定が分かれた
+新品 第三者 FBM: 365 日平均,B0FQB34W4B:両方空 | B08W56WVHD:ほぼ一致（丸め）,N,ASINで判定が分かれた
+新品 第三者 FBM: 90日間の下落 %,B0FQB34W4B:両方空 | B08W56WVHD:一致,N,ASINで判定が分かれた
+最安の FBM セラー,B0FQB34W4B:両方空 | B08W56WVHD:一致（セラーID）,N,ASINで判定が分かれた
+参考価格: 90 日平均,B0FQB34W4B:一致 | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,N,ASINで判定が分かれた
+参考価格: 365 日平均,B0FQB34W4B:一致 | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,N,ASINで判定が分かれた
+参考価格: 90日間の下落 %,B0FQB34W4B:一致 | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,N,ASINで判定が分かれた
+新品アイテム数: 90 日平均,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+新品アイテム数: 365 日平均,B0FQB34W4B:ほぼ一致（丸め） | B08W56WVHD:ほぼ一致（丸め）,Y,ほぼ一致（丸め）
+新品アイテム数: 90日間の下落 %,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+URL: Amazon,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+URL: Keepa,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+カテゴリ: ルート,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+カテゴリ: サブ,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+カテゴリ: ツリー,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+ASIN,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+商品コード: EAN,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+製造者,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+ブランド,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+単位の詳細: 単位の価値,B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+アイテム数,B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+発売日,B0FQB34W4B:CSV空・APIあり | B08W56WVHD:CSV空・APIあり,Y,CSV空・APIあり
+パッケージ: 長さ (cm),B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+パッケージ: 幅 (cm),B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+パッケージ: 高さ (cm),B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+パッケージ: 重さ (g),B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+パッケージ: 数量,B0FQB34W4B:両方空 | B08W56WVHD:一致,N,ASINで判定が分かれた
+商品: 長さ (cm),B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+商品: 幅 (cm),B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+商品: 高さ (cm),B0FQB34W4B:一致 | B08W56WVHD:両方空,N,ASINで判定が分かれた
+商品: 重さ (g),B0FQB34W4B:一致 | B08W56WVHD:一致,Y,一致
+Buy Box: 定期おトク便,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+ワンタイムクーポン: 定期おトク便 %,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:両方空,N,ASINで判定が分かれた
+ビジネス割引: パーセンテージ,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Buy Box: % Amazon 30 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % Amazon 90 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % Amazon 180 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % Amazon 365 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % トップセラー 30 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % トップセラー 90 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % トップセラー 180 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: % トップセラー 365 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 勝者数 30 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 勝者数 90 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 勝者数 180 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 勝者数 365 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 標準偏差 30 日,B0FQB34W4B:両方空 | B08W56WVHD:両方空,Y,両方空
+Buy Box: 標準偏差 90 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 標準偏差 365 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 変動性 30 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 変動性 90 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）
+Buy Box: 変動性 365 日,B0FQB34W4B:CSVあり・API空（期間統計は未マップまたは画面専用） | B08W56WVHD:CSVあり・API空（期間統計は未マップまたは画面専用）,Y,CSVあり・API空（期間統計は未マップまたは画面専用）

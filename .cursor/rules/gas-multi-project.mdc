@@ -47,7 +47,13 @@ clasp push
 # export-tax-listプロジェクト
 cd "C:\Users\takuy\Desktop\gas-project\export-tax-list"
 clasp push
+
+# 仕入れ検討①（人間が PowerShell で実行。Agent は push しない）
+cd C:\Users\takuy\Desktop\gas-project\purchase_research
+clasp push
 ```
+
+①の push/pull/logs をチャットで指示するときは、**必ず上記 cd を先に書く。** 親フォルダでは ① を push しない。
 
 ## 新規プロジェクト追加手順
 

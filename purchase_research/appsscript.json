@@ -1,0 +1,55 @@
+{
+  "timeZone": "Asia/Tokyo",
+  "dependencies": {
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "sheets": {
+    "macros": [{
+      "menuName": "貼り付けデータデリート",
+      "functionName": "myFunction"
+    }, {
+      "menuName": "在庫トレースデータリセット",
+      "functionName": "myFunction1"
+    }, {
+      "menuName": "セラーデータ貼り付け",
+      "functionName": "myFunction2"
+    }, {
+      "menuName": "トレース計算の値貼り付け",
+      "functionName": "myFunction3"
+    }, {
+      "menuName": "在庫トレース日付まで値貼り付け",
+      "functionName": "myFunction4"
+    }, {
+      "menuName": "テスト",
+      "functionName": "myFunction5"
+    }, {
+      "menuName": "前のデータを削除",
+      "functionName": "myFunction8"
+    }, {
+      "menuName": "無題のマクロ",
+      "functionName": "myFunction9"
+    }, {
+      "menuName": "無題のマクロ 1",
+      "functionName": "myFunction10"
+    }, {
+      "menuName": "データリセット",
+      "functionName": "myFunction11"
+    }, {
+      "menuName": "データ集約シートへ貼り付け",
+      "functionName": "myFunction12"
+    }, {
+      "menuName": "Keepaデータ削除",
+      "functionName": "myFunction13"
+    }, {
+      "menuName": "Keepaデータ削除、戻る",
+      "functionName": "myFunction14"
+    }, {
+      "menuName": "仕入れリストｄクリア",
+      "functionName": "myFunction15"
+    }, {
+      "menuName": "Keepa・PV数量リセット",
+      "functionName": "myFunction16"
+    }]
+  }
+}

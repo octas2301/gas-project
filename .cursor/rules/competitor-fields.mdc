@@ -1,0 +1,15 @@
+---
+description: 競合価格・楽天Yahoo Keepa項目・定時チェック・リサーチでフィールドやJOINを扱うとき
+alwaysApply: true
+---
+
+# 競合フィールドの参照
+
+競合価格・袋数・実質価格・モール検索・定時の価格対抗・仕入れリサーチを扱うときは、**先に** [docs/org/COMPETITOR_FIELDS.md](docs/org/COMPETITOR_FIELDS.md) を読む。
+
+- フィールドの意味・◎印・JOIN可否の正本は `docs/org/competitor_fields/*.csv`
+- **処理順・書込列・聖域**は同ドキュメント §1 のフロー正本（Keepa前倒し／CPO／DOMAIN1／Amazon貼付 等）。フィールド表だけで実装しない
+- 検索1件目を競合価格にしない。カテゴリIDをモール間でマージしない。Keepa `numberOfItems` を袋数の正にしない
+- **楽天ポイントは％（pointRate）。ポイント数ではない。** Yahoo は `lyLimitedBonusAmount`（数）。同一「ポイント」列の生値を足し算しない
+- モールヒットは◎＋○を列化（中古・キャッチは生JSON）。△のカテゴリIDは列にしない
+- 項目の追加・廃止は CSV（または `_gen_crosswalk_xlsx.py`）を直し、COMPETITOR_FIELDS.md の改修履歴に1行

@@ -1,5 +1,9 @@
 # セッション引継ぎ：リサーチ・見積もり系（2026-08-14）
 
+> **2026-08-15**: 領域1①のタスク範囲・開発予定は [org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)（次は W1。貼付は W4）。本書は **②出品用**。
+
+> **2026-08-14 追記**: 領域1の本線は **①仕入れ検討**（[DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md)）。本書は **②出品用**（B統合 Step1〜4）のキャッチアップ用。CPO 異常 setCount 等は他PJ。
+
 **対象 Agent**: リサーチ（出品用）・セット構成・モール横断・物流試算・CPO／価格 の開発を続ける人  
 **元チャット**: [リサーチ見積もり引継ぎ](e232e570-3355-4089-b116-4478e668f43f)  
 **日付**: 2026-08-14  

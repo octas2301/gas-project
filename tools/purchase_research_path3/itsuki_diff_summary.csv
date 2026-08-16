@@ -1,0 +1,6 @@
+﻿metric,count,note
+Keepa_A,495,itsuki_keepa.csv ASIN列
+Catalog_B,500,itsuki_brand_all.csv 500打ち切り
+both,495,共通
+B_minus_A,5,CatalogにあってKeepaに無い（経路3救い）
+A_minus_B,0,KeepaにあってCatalog500に無い

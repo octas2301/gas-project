@@ -2,8 +2,63 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
-| 日付 | 対象 | 目的 | 戻し方 |
-|------|------|------|--------|
+| 2026-08-16 | フェーズ1–5 page1=63 Keepa20 お吸いもの | ①候補末尾13／リスト末尾1／Keepa20 | Git revert |
+| 2026-08-16 | リサーチ完成形フロー A–J / A′ を正本化 | FLOW.md 削除／DOMAIN1・V1 のポインタ戻し | docs Git revert |
+| 2026-08-16 | L1–L6 一括（構成%削除・miss Keepa・JOIN・次セラー・みそ汁20） | 各塊の戻しは NOW | Git revert |
+
+| 2026-08-16 | 処理時間 ▼実行時間（B Step＋Step5 APIのみ）。全関数ばら撒き禁止 | `OP_TIMING_ENABLED=false`。ルール `op-timing-scope.mdc`。要 clasp |
+| 2026-08-16 | Step5 OpenAIはGemini失敗時のみ。AI梱包停止 | `B_STEP5_SKIP_OPENAI_IF_GEMINI_OK=false`／`B_STEP5_SKIP_PACK_AI=false`。要 clasp |
+| 2026-08-16 | 行高さ B Step8 廃止（CLIP/setRowHeight削除） | Git revert。要 clasp |
+| 2026-08-16 | A.準備 商品名SEOスペース（AIシートのみ） | メニュー3/4削除／Git revert。要 clasp |
+| 2026-08-16 | B Step2.1＝12-⑭。ストアON時は横断シート直書きスキップ | `B_COMPETITOR_STORE_APPLY_ENABLED=false`／Git revert。要 clasp |
+| 2026-08-16 | S4b セラー メイン＋構成％列（カテゴリ名） | 列削除 | Git revert |
+| 2026-08-16 | S4 セラー構成比 storefront=0 | 4列クリア | Git revert |
+| 2026-08-16 | S3 モリタ /query page0。台帳件数30 | 巡回日・件数を戻す | Git revert |
+| 2026-08-16 | T2 品番リスト JOIN82 画像HYPERLINK | 当該セルをURLに戻す | Git revert |
+| 2026-08-16 | A画像Gemini OFF検証は後続。今は実装なし | Property付けない | docs revert |
+| 2026-08-16 | K8 BB/レビュー/BuyBox_FBA は今JSON空。代替はメモのみ | 実装なし | docs revert |
+| 2026-08-16 | F2b 画像HYPERLINK／サブ画像\|（画像一覧リネーム） | 列クリア or ヘッダ戻し | Git revert |
+| 2026-08-15 | F2 画像・画像一覧（生JSON images[]） | 列クリア | Git revert |
+| 2026-08-15 | F1 Keepaフル カテゴリ・梱包・FBA手数料等を生JSON展開 | 当該列クリア | Git revert |
+| 2026-08-15 | T1 品番リスト通過82追記（複製・式非上書き） | 末尾82行削除 | Git revert |
+| 2026-08-15 | L1 出品FBA／自己発送 first-fit をKeepaフルへ | 5列削除 | Git revert |
+| 2026-08-15 | F0 flatten 直販・新品現在・現行順位・oos180 | 列削除 | Git revert |
+| 2026-08-15 | 品番リスト課題K1–K7。flattenはGETなし。L1は出品流用 | 実装なし | docs revert |
+| 2026-08-15 | A.準備メニュー（Catalog空欄。12-⑮⑯同一） | メニューから項目削除 | Git revert。要 clasp |
+| 2026-08-15 | P5 A末尾でP2並べ替え | `AMAZON_PASTE_P5_RANK_AFTER_A_ENABLED=false` | Git revert。要 clasp |
+| 2026-08-15 | 出品者数＝COUNT_NEW。Keepaフル列化159。61空 | 列削除 | Git revert |
+| 2026-08-15 | P1計画 dry（空ASIN0・Catalog GETなし） | 貼付非書 | スクリプト削除／docs revert |
+| 2026-08-15 | P5計画 dry（P2並べ替え読取、A未結線） | 貼付非書。◎維持 | スクリプト削除／docs revert |
+| 2026-08-15 | WRITE計画 dry（貼付 vs Keepaフル、非書） | Property OFF。raw-only フック | スクリプト削除／docs revert |
+| 2026-08-15 | 競合DB「セラー」モリタ1行。フルから貯めない | タブ削除／行削除 | Git revert |
+| 2026-08-15 | W4 hydrateは門stats空ならGET（T28） | 日付だけ新鮮な空JSONを載せない | Git revert。要 clasp |
+| 2026-08-15 | ①タスク構造化メモをツリー正（NOW同文）に修正し他PJ共有 | 洗いと貼付を混ぜない。W4は出品 | docs Git revert |
+| 2026-08-15 | ①タスク構造化メモを他PJ共有 | 洗いと貼付を混ぜない。W4は出品 | docs Git revert |
+| 2026-08-15 | Keepa倉庫=Keepaフル。①候補は転記。W1が次 | Catalogはモールヒットに書かない | docs Git revert |
+| 2026-08-15 | 領域1①進捗を NOW／DOMAIN1 §1.1／PHASE §0re に共有 | 他PJが洗いと貼付を混ぜない | docs Git revert |
+| 2026-08-15 | P3 2種以上はマスタ非載 | ◎でもミックスを単品JANに載せない | Git revert。要 clasp |
+| 2026-08-15 | 袋数 N種×各M／P2機械◎でも非候補／P3タイトル優先 | 人が直す前の機械精度。Keepaセルよりタイトル。A非改変 | Git revert。要 clasp（コード.js＋AmazonCompetitorPaste.js） |
+| 2026-08-15 | P2 12-⑰⑱／paste_rank.py | 貼付非候補化。A非改変。評価◎維持 | Git revert。要 clasp。先に⑰ |
+| 2026-08-15 | `purchase_research/` clone | ① GAS を Cursor で見えるようにした。出品 clasp 非変更 | フォルダ削除／出品 clasp は触らない |
+| 2026-08-15 | `parseSetCountFromItemNameWithSource`／12-⑭外れ単価／ACCURACY.md | 計N袋優先。各N袋誤クラスタ防止。単価2倍は12-⑭で除外。課題を文書化 | Git revert。要 clasp push |
+| 2026-08-15 | `コード.js` 12-⑭／`apply_to_master.py` | 専用ヒットを JAN＋セット数でマスタ競合列へ | Prop `COMPETITOR_MASTER_APPLY_ENABLED=false`／Git revert。要 clasp push |
+| 2026-08-15 | `コード.js` flush 指紋スキップ | 変化なしモールヒット非書込 | Git revert。要 clasp push |
+| 2026-08-15 | FIELDS／STORE／NOW | 楽天ポイント＝％。ヒット列は意図的に絞る。領域1実装設計草案 | docs Git revert |
+| 2026-08-15 | `docs/org/COMPETITOR_STORE_DEV_MAP.md` | 開発構造の一時メモ。完了後削除 | ファイル削除 |
+| 2026-08-15 | `docs/org/COMPETITOR_STORE_REQUIREMENTS.md`／`tools/competitor_store/`／`コード.js` dual-write | 競合専用スプシ段階1。マスタKeepaは残す。ENABLED未設定=OFF | Property OFF／Git revert。要 clasp push（GAS分） |
+| 2026-08-15 | `docs/org/COMPETITOR_FIELDS.md`／`competitor_fields/*.csv`／`.cursor/rules/competitor-fields.mdc` | 競合項目の正本化とPJ横断の参照ルール。コードなし | docs Git revert |
+| 2026-08-15 | `docs/org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md` ほか | Amazon貼付自動化の制約（◎人間／候補列／キャッシュ＋領域1再利用）。コードなし | docs Git revert |
+| 2026-08-14 | `コード.js` Keepaキャッシュ読取 | setCount空で旧形式誤判定しブランド等がログから消えるのを修正。ヘッダー名読取＋空上書き禁止 | Git revert。要 clasp push |
+| 2026-08-14 | `コード.js` Keepa | 梱包欠落キャッシュはAPI再取得。`梱包_checked` で空返し再取得防止 | Git revert／`KEEPA_CACHE_REFETCH_WHEN_PKG_EMPTY=false`。要 clasp push |
+| 2026-08-14 | `コード.js` Keepaキャッシュ | 梱包4列をキャッシュ保存＋ログ追記コピー。既存ログ非改変 | Git revert。要 clasp push |
+| 2026-08-14 | `コード.js`／FOLLOWUP／PHASE | 親行CLIP後勝ち63px／選定不可はCT〜CV式維持／B 6.05改行／Yahoo query=JAN／楽天名フォールバック＋袋パース | Git revert。要 clasp push。OFF: `B_PARENT_ROW_HEIGHT_ENABLED` |
+| 2026-08-15 | NOW ④の正 | `/query` 形をロック。sellerIds 可変 | docs Git revert |
+| 2026-08-14 | `コード.js` `getKeepaCachedResults` | キャッシュのブランド／製造者をログ追記へコピー。既存ログ非改変 | Git revert。要 clasp push |
+| 2026-08-14 | Keepa API 2品番 | CSVエクスポートと product API 比較。tokensLeft=278。キー非コミット | スクリプト削除／docs revert |
+| 2026-08-14 | `docs/org/B_PURCHASE_RESEARCH_NOW.md`／`tools/purchase_research_path3/` | 領域1①を**経路3先行**に差し替え。差分PoC＋SP-APIキーワード読取骨格。GAS第1版なし | docs/tools Git revert |
+| 2026-08-14 | `コード.js`／`B_RUN_20260814_FOLLOWUP`／PRICING_V1 | **B完走フォロー**: 寸法なし空欄・CPO非塗色・Step5当B clear・BにFBA P1b(6.55)・KW seen1本・親行CLIP60。⑥Nはコード非改修 | Git revert。要 clasp push。OFF: `B_FBA_P1B_WRITE_ENABLED`／`B_PARENT_ROW_HEIGHT_ENABLED` |
+| 2026-08-14 | `docs/org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md` | 領域1①詳細稿。Keepa件数キャップ削除・上限300トークン | docs Git revert |
+| 2026-08-14 | `docs/DOMAIN1_RESEARCH_PURCHASING.md` ほか | 領域1正本（①第1・C下書き・調査URL） | docs Git revert |
 | 2026-08-14 | `points_logic`／`points_send` | restore の `--today` をカレンダー%に渡す | Git revert |
 | 2026-08-14 | `コード.js` | **AI列名引き**: ASIN貼り付け式・参考画像・卸値。`原価税込`別名 | Git revert。要 clasp push |
 | 2026-08-14 | DEALS HUMAN_RUN／PHASE | **taper 1段目 prod**: b=`185913020679`／s=`185917020679` DONE。運用マニュアル化を後続タスクにメモ | docs Git revert |
