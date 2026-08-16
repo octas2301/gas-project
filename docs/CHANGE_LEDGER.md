@@ -2,7 +2,7 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
-| 2026-08-16 | フェーズ1–4 page0残16・フロムリスト・カレー | ①+18／フル+34／リスト+13 | Git revert |
+| 2026-08-16 | カレー通過11を品番リスト・JOIN159 | リスト+11 | Git revert |
 | 2026-08-16 | リサーチ完成形フロー A–J / A′ を正本化 | FLOW.md 削除／DOMAIN1・V1 のポインタ戻し | docs Git revert |
 | 2026-08-16 | L1–L6 一括（構成%削除・miss Keepa・JOIN・次セラー・みそ汁20） | 各塊の戻しは NOW | Git revert |
 

@@ -174,7 +174,8 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
 | T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
 | T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
-| T-p1r16 | A3P240 page0 残miss16 Keepa16 rest0 | **フェーズ1合格** |
+| T-p12-curry-list | カレー通過11をリスト追記 append11 既存105 式33非書 | **フェーズ1合格** |
+| T-p12-join | JOIN list159 miss0 cells0 | **フェーズ2合格** |
 | T-p2from | フロム通過13をリスト追記 append13 既存92 式33非書 | **フェーズ2合格** |
 | T-p3join | JOIN list148 miss0 cells0 | **フェーズ3合格** |
 | T-p4curry | 永谷園カレー Catalog1頁 want18 Keepa18 pass11/drop7 ①+18 ヒット425 | **フェーズ4合格。公式第2語はこれで洗い切り** |

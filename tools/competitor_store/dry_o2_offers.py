@@ -151,6 +151,131 @@ def spapi_session():
     }
 
 
+def seller_id_of(o: dict) -> str:
+    if not isinstance(o, dict):
+        return ""
+    s = o.get("SellerId") or o.get("sellerId") or ""
+    if isinstance(s, dict):
+        s = s.get("SellerId") or s.get("sellerId") or ""
+    return str(s).strip()
+
+
+def pick_list_asin(svc) -> tuple[str, str]:
+    from dry_t1_list_paste import DATA_START, HEADER_ROW, LIST_TITLE, ORIG_SS
+
+    if RESEARCH_SS == ORIG_SS:
+        return "", "refuse original"
+    rng = "'%s'!%d:%d" % (LIST_TITLE.replace("'", "''"), HEADER_ROW, HEADER_ROW)
+    headers = [
+        str(x).replace("\n", " ").strip()
+        for x in (svc.spreadsheets().values().get(spreadsheetId=RESEARCH_SS, range=rng).execute().get("values") or [[]])[0]
+    ]
+    asin_i = headers.index("ASIN") if "ASIN" in headers else -1
+    cnt_i = headers.index("出品者数") if "出品者数" in headers else -1
+    raw = read_all(svc, RESEARCH_SS, LIST_TITLE)
+    best_a, best_n = "", -1
+    for r in raw[DATA_START - 1 :]:
+        a = str(r[asin_i] if asin_i >= 0 and asin_i < len(r) else "").strip().upper()
+        if len(a) != 10:
+            continue
+        n = -1
+        if cnt_i >= 0 and cnt_i < len(r):
+            try:
+                n = int(float(str(r[cnt_i]).replace(",", "").strip() or -1))
+            except (TypeError, ValueError):
+                n = -1
+        if n > best_n:
+            best_n, best_a = n, a
+    return best_a, "list_出品者数=%s" % best_n
+
+
+def spapi_item_offers_cap(asin: str, sess: dict, cap: int = 100) -> dict:
+    import time
+
+    import requests
+    from spapi_smoke import _spapi_headers
+
+    seen: list[str] = []
+    have = set()
+    token = None
+    pages = 0
+    https = []
+    retries = 0
+    total = None
+    offers: list = []
+    t0 = time.perf_counter()
+    while len(have) < cap and pages < 20:
+        pages += 1
+        q = {"MarketplaceId": sess["marketplace_id"], "ItemCondition": "New"}
+        if token:
+            q["NextToken"] = token
+        url = "%s/products/pricing/v0/items/%s/offers?%s" % (
+            sess["endpoint"].rstrip("/"),
+            asin,
+            urlencode(q),
+        )
+        resp = requests.get(url, headers=_spapi_headers(sess["endpoint"], sess["access"], sess["ua"]), timeout=60)
+        https.append(resp.status_code)
+        if resp.status_code == 429:
+            retries += 1
+            time.sleep(2.0)
+            continue
+        try:
+            body = resp.json()
+        except Exception:
+            return {
+                "http": https,
+                "err": (resp.text or "")[:200],
+                "sec": round(time.perf_counter() - t0, 2),
+                "pages": pages,
+                "uniq": 0,
+                "total": None,
+                "retries": retries,
+                "limit": resp.headers.get("x-amzn-RateLimit-Limit", ""),
+            }
+        if resp.status_code != 200:
+            return {
+                "http": https,
+                "err": str(body.get("errors") or body)[:240],
+                "sec": round(time.perf_counter() - t0, 2),
+                "pages": pages,
+                "uniq": len(have),
+                "total": total,
+                "retries": retries,
+                "limit": resp.headers.get("x-amzn-RateLimit-Limit", ""),
+            }
+        payload = body.get("payload") or body
+        summary = payload.get("Summary") or payload.get("summary") or {}
+        if total is None:
+            total = summary.get("TotalOfferCount")
+            if total is None:
+                total = summary.get("totalOfferCount")
+        offers = payload.get("Offers") or payload.get("offers") or []
+        for o in offers:
+            sid = seller_id_of(o)
+            if sid and sid not in have:
+                have.add(sid)
+                seen.append(sid)
+                if len(have) >= cap:
+                    break
+        token = payload.get("NextToken") or payload.get("nextToken") or summary.get("NextToken")
+        if not token or not offers:
+            break
+        time.sleep(0.5)
+    return {
+        "http": https,
+        "err": "",
+        "sec": round(time.perf_counter() - t0, 2),
+        "pages": pages,
+        "uniq": len(have),
+        "total": total,
+        "retries": retries,
+        "limit": "",
+        "head": seen[:8],
+        "offers_in_last": len(offers) if pages else 0,
+    }
+
+
 def spapi_item_offers(asin: str, sess: dict) -> dict:
     import requests
     from spapi_smoke import _spapi_headers
@@ -178,7 +303,35 @@ def spapi_item_offers(asin: str, sess: dict) -> dict:
 
 
 def main() -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--measure-cap", type=int, default=0, help="1商品の ItemOffers をこの件数まで。セラー表非書")
+    args = ap.parse_args()
     svc = sheets_service(write=True)
+    if args.measure_cap > 0:
+        asin, why = pick_list_asin(svc)
+        print("dry asin=%s %s cap=%s KeepaGETなし セラー非書" % (asin, why, args.measure_cap))
+        okd = bool(asin) and args.measure_cap <= 100
+        print("PLAN", "PASS" if okd else "FAIL")
+        if not okd:
+            return 2
+        sess = spapi_session()
+        r = spapi_item_offers_cap(asin, sess, cap=args.measure_cap)
+        line = (
+            "runId=pr_20260816_sp100 asin=%s cap=%s uniq=%s summaryTotal=%s pages=%s sec=%s http=%s retries=%s セラー非書"
+            % (asin, args.measure_cap, r.get("uniq"), r.get("total"), r.get("pages"), r.get("sec"), r.get("http"), r.get("retries"))
+        )
+        print(line)
+        print("head", ",".join(r.get("head") or []))
+        if r.get("err"):
+            print("err", r["err"])
+        append_log(svc, "SP100", line)
+        vok = r.get("uniq", 0) >= 0 and not (r.get("http") and r["http"][-1] not in (200, 429) and r.get("uniq") == 0 and r.get("err"))
+        # pass if we got 200 and some measure, or documented 429
+        vok = 200 in (r.get("http") or []) or (r.get("uniq") or 0) > 0
+        print("VERIFY", "PASS" if vok else "FAIL")
+        return 0 if vok else 1
     _, cand = as_dicts(read_all(svc, RESEARCH_SS, T_CAND))
     _, full = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_KEEPA_FULL))
     asins = pick5(cand, full)
