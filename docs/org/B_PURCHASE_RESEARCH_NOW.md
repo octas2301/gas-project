@@ -1,7 +1,7 @@
 # 仕入れ検討① — いまここ
 
 **日付**: 2026-08-16  
-**完成形フロー・状況報告の正**: [B_PURCHASE_RESEARCH_FLOW.md](B_PURCHASE_RESEARCH_FLOW.md) §3（A–J / A′）。契約・A/D/E は §5。3者は §6  
+**完成形フロー・状況報告の正**: [B_PURCHASE_RESEARCH_FLOW.md](B_PURCHASE_RESEARCH_FLOW.md) §3（A–J / A′）。契約・A/D/E は §5。3者は §6。自動化思想は §7  
 **正**: [DOMAIN1_RESEARCH_PURCHASING.md](../DOMAIN1_RESEARCH_PURCHASING.md) §3.5・**§3.6**・§6  
 **第1版要件**: [B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md](B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)  
 **タスク範囲・開発予定の正**: [B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)（ツリー本体はそこ。本ファイルは同文＋数字。ツリーの A/B/C は旧領域ラベル）  
@@ -174,7 +174,13 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | T-p15-1-2 | page1残23 Keepa20+3。rest0 | **合格** |
 | T-p15-3 | 天然生活 Catalog1頁 want19 Keepa19 pass4/drop15 ①+19 | **合格**（通過に本あり） |
 | T-p15-4 | 永谷園ちらし want11 pass0/drop11 ①+11 | **合格** |
-| T-p15-5 | リスト+4 JOIN miss0 式非書 | **合格** |
+| T-p1k | A3P240 page0 miss56 Keepa20 rest36 | **フェーズ1合格** |
+| T-p2k | 同 miss36 Keepa20 rest16 | **フェーズ2合格** |
+| T-p3sou | 永谷園そうざい Catalog1頁 タイトル1 Keepa1 pass0/drop1 ①+1 ヒット425 | **フェーズ3合格** |
+| T-p4list | 通過92既にリスト。JOIN list135 miss0 cells0 式33非書 | **フェーズ4合格** |
+| T-p5from | フロム四十五 Catalog1頁 want20 Keepa4 skip16 pass13/drop7 ①+20 ヒット425 | **フェーズ5合格** |
+| T-p16-chahan | 永谷園チャーハン want20 pass0/drop20 | **合格** |
+| T-p16-book | リスト 販売形態=見送り（本）1行 | **合格** |
 | T-p4-osu | 永谷園お吸いもの Catalog1頁 タイトル13 Keepa13 pass1/drop12 ①+13 リスト+1 | **フェーズ4・5合格** |
 | T-p2-skip | A3L1 メモ「洗わない」。出品一覧GETなし | **確定** |
 | T-p1f | 永谷園ふりかけ Catalog1頁 タイトル17 Keepa17 pass1/drop16 ①+17 ヒット不変 リスト+1 | **合格** |
@@ -196,7 +202,7 @@ Keepaフル列はある。本線は `history=0`・`stats=90`・offersなし・`c
 | 項目 | 状態 |
 |------|------|
 | 詳細要件 | 組み直し済（セラー起点・Catalog発見・Keepa属性・門はスプシ閾値） |
-| 実行基盤 | **ロック**。① GAS=`purchase_research/`。Catalog 洗いは Python のまま |
+| 実行基盤 | **ロック**。① GAS=`purchase_research/`。いま Catalog／倉庫書きは Python（FLOW §7。GAS 移植が完成形）。トリガー新設しない |
 | `/query` の正 | **ロック**（④はこの形。`sellerIds` は可変。下記） |
 | 属性 PoC | Keepa product API＝人のDLと値一致。門は `stats=90` |
 | 発見 PoC | タイトル含有が正。石原公式5語で Catalog のみ32→門16通過 |

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""L2: 品番リストにあって Keepaフルに無い ASIN を stats=90 で倉庫へ。最大20/回。品番リスト非書。"""
+"""L2: Keepaフルに無い ASIN を stats=90 で倉庫へ。最大20/回。品番リスト非書。
+既定は品番リストの miss。--query-seller ならその店の /query 1ページの miss。"""
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ from apply_keepa_full import (
     sheets_service,
     utc_now,
 )
+from dry_s3_query import query_url, selection_for
 from dry_t1_list_paste import DATA_START, HEADER_ROW, LIST_TITLE, ORIG_SS
 from keepa_csv_vs_api import keepa_key
 from keepa_full import keepa_get_needed, latest_row_for_asin, product_to_full_row
@@ -47,31 +49,61 @@ def list_asins(svc) -> list[str]:
     return out
 
 
+def query_page_asins(seller: str, page: int) -> tuple[list[str], int]:
+    import gzip
+    from urllib.request import Request, urlopen
+
+    key = keepa_key()
+    sel = selection_for(seller, page)
+    req = Request(query_url(sel, key), method="GET")
+    with urlopen(req, timeout=60) as resp:
+        raw = resp.read()
+    if raw[:2] == b"\x1f\x8b":
+        raw = gzip.decompress(raw)
+    body = json.loads(raw.decode("utf-8"))
+    asins = [str(x).upper() for x in (body.get("asinList") or []) if str(x).strip()]
+    total = int(body.get("totalResults") or 0)
+    return asins, total
+
+
 def main() -> int:
     import argparse
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--live", action="store_true")
+    ap.add_argument("--query-seller", default="")
+    ap.add_argument("--page", type=int, default=0)
+    ap.add_argument("--once", action="store_true", help="Keepa は先頭20件だけ。残りは次フェーズ")
+    ap.add_argument("--run-id", default="pr_20260816_l2")
     args = ap.parse_args()
     svc = sheets_service(write=True)
     if RESEARCH_SS == ORIG_SS:
         print("refuse original")
         return 2
-    asins = list_asins(svc)
+    if args.query_seller:
+        asins, total = query_page_asins(args.query_seller, args.page)
+        print("query total=%s n=%s seller=%s page=%s" % (total, len(asins), args.query_seller, args.page))
+        if total > 1000:
+            print("STOP huge")
+            return 3
+    else:
+        asins = list_asins(svc)
     fh, full = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_KEEPA_FULL))
     have = {str(r.get("ASIN") or "").strip().upper() for r in full}
     miss = [a for a in asins if a not in have]
     need = [a for a in miss if keepa_get_needed(latest_row_for_asin(full, a))]
     chunk = need[:CAP]
-    ok = RESEARCH_SS != ORIG_SS and "ASIN" and len(need) >= 0
-    # dry pass: orig guard, cap respected, no offers
     ok = RESEARCH_SS != ORIG_SS and len(chunk) <= CAP
-    line = "runId=pr_20260816_l2dry list=%d miss=%d need=%d chunk=%d GETなし %s" % (
+    rid = args.run_id + ("dry" if not args.apply else "col")
+    line = "runId=%s src=%s list=%d miss=%d need=%d chunk=%d %s %s" % (
+        rid,
+        ("query:%s p%s" % (args.query_seller, args.page)) if args.query_seller else "list",
         len(asins),
         len(miss),
         len(need),
         len(chunk),
+        "productGETなし" if not args.apply else "once" if args.once else "loop",
         "PASS" if ok else "FAIL",
     )
     print(line)
@@ -82,7 +114,7 @@ def main() -> int:
     if not ok:
         return 1
     if not chunk:
-        append_log(svc, "L2", "runId=pr_20260816_l2col append=0 miss=0")
+        append_log(svc, "L2", "runId=%scol append=0 miss=0" % args.run_id)
         print("nothing")
         return 0
     if not args.live:
@@ -92,7 +124,7 @@ def main() -> int:
     if not key:
         return 2
     fetched = utc_now()
-    remaining = list(need)
+    remaining = list(chunk if args.once else need)
     appended = 0
     consumed_sum = 0
     left = ""
@@ -127,20 +159,20 @@ def main() -> int:
         if left_n < TOKEN_RESERVE:
             print("stop_token", left)
             break
-        if not remaining:
+        if args.once or not remaining:
             break
     _, after = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_KEEPA_FULL))
     have2 = {str(r.get("ASIN") or "").strip().upper() for r in after}
-    hit = sum(1 for a in chunk if a in have2)
-    vok = hit == len(chunk) or appended >= 1
-    # if first chunk all written
-    vok = all(a in have2 for a in need[: min(CAP, len(need))]) if need else True
-    line2 = "runId=pr_20260816_l2col append=%d consumed=%s left=%s first_chunk=%d/%d 品番非書 %s" % (
+    vok = all(a in have2 for a in chunk) if chunk else True
+    rest = sum(1 for a in need if a not in have2)
+    line2 = "runId=%scol append=%d consumed=%s left=%s chunk=%d/%d rest_need=%d 品番非書 %s" % (
+        args.run_id,
         appended,
         consumed_sum,
         left,
         sum(1 for a in chunk if a in have2),
         len(chunk),
+        rest,
         "PASS" if vok else "FAIL",
     )
     append_log(svc, "L2", line2)

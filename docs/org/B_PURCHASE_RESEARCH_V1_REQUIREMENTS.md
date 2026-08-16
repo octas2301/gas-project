@@ -249,15 +249,15 @@ PoC 置き場: `tools/purchase_research_path3/`（検証用。本番書きは専
 
 **調査複製専用 GAS**（出品 `コード.js`／`.clasp.json` の scriptId と分離。複製に出品 clasp を差し替えない）。
 
-発見④は Keepa 出品者検索相当の `/query`（`sellerIds`）。`offers[]` と storefront 全ASINは使わない。Catalog はメーカー洗いのみ。週次⑧・閾値・門の書き・トークン待ち再開はすべてこの GAS。
+発見④は Keepa 出品者検索相当の `/query`（`sellerIds`）。`offers[]` と storefront 全ASINは使わない。Catalog はメーカー洗いのみ。週次⑧・閾値・門の書き・トークン待ち再開は **完成形ではこの GAS**（いまの起動は人。トリガー新設は承認後）。
 
 `/query` の正は NOW の JSON 形。`sellerIds` は可変。`rootCategory` 57239051 は食品。モリタの ID は試行例。
 
-Python は検証用 PoC のみ。本番の定期実行は GAS に寄せる（ハイブリッドは固定形にしない）。
+**思想の正は FLOW §7。** いまの Python は複製スプシへの本線書き（ドライラン専用ではない）。完成形は① GAS 移植。GAS は手元 Python を呼べない。ローカル JSON・xlsx を本線必須にしない。ハイブリッドを固定形にしない。
 
-件数キャップなし。回復上限300。②の 1ASIN=2トークン換算は流用しない。
+件数はスライス（Keepa 20 等）。回復上限300。②の 1ASIN=2トークン換算は流用しない。
 
-判断の記録（プロコン表）は上記ロック前のもの。固定形は調査複製専用 GAS。Python は PoC のみ。
+判断の記録（プロコン表）は上記ロック前のもの。
 
 ---
 

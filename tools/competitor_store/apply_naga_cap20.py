@@ -32,7 +32,7 @@ def slice_asins(catalog: Path, needles: list[str]) -> list[str]:
     out = []
     seen = set()
     for r in items:
-        title = str(r.get("title") or "")
+        title = str(r.get("title") or "") + " " + str(r.get("brand") or "")
         a = str(r.get("asin") or "").strip().upper()
         if not a or a in seen:
             continue
