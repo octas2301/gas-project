@@ -2,6 +2,264 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
+| 2026-09-07 | `PurchaseResearch.js`（`prEffJudgeAfterArm_`／`prEffCkptBudgetRuleEnabled_`／`prEffCkptNormalAfterMin_`）／HUMAN_RUN §10.2・FULL §10 | **ckpt の効率合否を予算基準に**: `*_ckpt` は「残り予算+2分」で貼るのが正（`prCheckpointWashFullTrigger_`。同一実行と重ならない安全ネットなので短縮しない。満タン2分上限も ckpt 除外）。判定側だけ固定15分の古い前提で、正常な afterMin 15〜22分を WARN `ckpt_long_net`／FAIL `ckpt_full_bucket_long_wait` にしていた（**実害の空き時間はゼロ＝誤検知でログが埋まるだけ**。実測7件すべて PASS へ）。予算+2+3（既定25分）以下は `ckpt_safety_net` PASS、超過**かつ満タン**だけ `ckpt_long_despite_tokens` WARN。ckpt 以外の予約・overlap の判定は不変。要 clasp（①） | Prop `PR_EFF_CKPT_BUDGET_RULE=false`（旧 固定15分）。Git revert。要 clasp |
+| 2026-09-07 | `PurchaseResearch.js`（`prListExistingAsinRows_`／`prListDiffUseFormulaEnabled_`）／FLOW §5.2 | **品番リストの毎回書き直しを停止**: 差分判定で数式セルを数式として比べる。`getValues` は `=HYPERLINK(...)` を「メイン」で返すため、画像URLがある行が**常に差分あり**になり、洗いスライスごとに削除→行5再挿入していた（実測 `refresh=4 skip_same=1` を80秒おき。**人が手入力した列が毎回消えていた**）。要 clasp（①） | Prop `PR_LIST_DIFF_USE_FORMULA=false`。Git revert。要 clasp |
+| 2026-09-07 | `PurchaseResearch.js`（`prKeepaWashGateProducts_`／`prKeepaProductStats90Fetch_`／`prKeepaHasOffersInfo_`／`prFullNeedsD1Enrich_`／`prEnrichKeepaForPassAsins_`／`prWashFullKeepaSlice_`）／FULL §5.1・5.2 | **Keepa GET を2段ゲートに**: 門は `stats` だけで判定できる（出品者数は `stats.current[11]`。offers は門に使っていない）ので、1段目は offers なし＝1トークン/件。通過（実測3%）だけ offers=20 で取り直す。**目的=1件あたり約5→約1.2トークン**。落ちも薄い行で Keepaフルに残す（GETなし再門の資産）。通過で2段目が429なら Keepa済にせず次スライスへ。D1補強に「通過なのに BuyBox 2列とも空」を追加（実測 通過782件中5件・20件/回上限）。要 clasp（①） | Prop `PR_KEEPA_TWO_STAGE_GATE=false`（従来の一発 offers=20）／`PR_D1_ENRICH_BLANK_BB=false`。Git revert。要 clasp |
+| 2026-09-07 | `PurchaseResearch.js`（`prCleanupKeepaFullBlankRows_`／`prKeepaFullAsinRowIndex_`）／FULL §7bis 8・9 | **Keepaフルの1行ずつ読みを撤去**: 空行掃除は ASIN 列1回読み→候補行だけ全列。索引づくりも ASIN 列だけ。**目的=Keepa取得のあるスライス22〜29分→数分**（実データ8,386行に対し毎回8,385回の個別読み取り。1ASINでも22.9分）。要 clasp（①） | Prop `PR_KEEPA_FULL_BLANK_SCAN_BATCH=false`。Git revert。要 clasp |
+| 2026-09-07 | `PurchaseResearch.js`（`prWashQueueSnapshot_`／`prWashQueueAppendAsins_`／`prWashQueueDedupeAsins_`／`prWashQueuePendingKeepa_`／`prWashQueueMarkKeepaDoneByAsins_`／`prScheduleWashFullTrigger_`）／FULL §7bis | **洗い本体の全走査撤去＋満タン2分上限の分離**: 1社の処理中はキューを1回だけ読む（列挙の追記は継ぎ足し）。Keepa済は連続行まとめ書き。満タン時の待ち2分上限を `PR_WASH_ARM_FULL_CAP` として効率ループから独立（ckpt は対象外）。**目的=1スライス22〜29分→数分・空白待ちの解消**。要 clasp（①） | Prop `PR_WASH_QUEUE_SNAPSHOT=false`／`PR_WASH_ARM_FULL_CAP=false`。Git revert。要 clasp |
+| 2026-09-07 | `PurchaseResearch.js`（`prCyclePoolCounts_`／`prWashQueueUniqCount_`／`prMakerCatalogEstimate_`／`prFinalizeEnumOnlySize_`／`prRunMakerWashFullBody_`）／FULL §7bis | **選定の全走査撤去**: キュー件数は「メーカー→件数」表を1回作って共有。選定プールは1実行1回。**目的=選定24分→数分**（pick 12.8分＋pick後11.4分で予算20分を食い潰し Keepa 到達0だった）。要 clasp（①） | Prop `PR_WASH_QUEUE_COUNT_MAP=false`／`PR_CYCLE_POOL_REUSE=false`。Git revert。要 clasp |
+| 2026-09-06 | `competitor_jitta/JittaResolve.js`／`PurchaseResearch.js`／`maker_alias.py`／B_COMPETITOR_JITTA | **法人格ゆれ Phase A**: 同一キーへ実態ミラー・マスタ heal・二重AI防止。行削除なし。要 clasp（競合＋①） | Git revert。要 clasp |
+| 2026-09-07 | `appsscript.json` | **`script.scriptapp` 復元**（D一括の `newTrigger` 権限。作業ツリーから欠落→clasp push でGAS側も欠落）。要 clasp＋**再承認** | スコープ削除で戻る。要 clasp |
+| 2026-09-07 | `コード.js`／CDE要件 | **C／D／E／Bメニュー復元**（truncate後Git復元で旧IAに戻った分）。bak先頭＋B5完結関数。要 clasp・シート再読込 | bak差戻し／Git revert。要 clasp |
+| 2026-09-06 | `コード.js`／マトリクス表示 | **Driveプレビューを thumbnail `sz=w1000`**（`rakutenDrivePreviewImageFormula_`）。実ファイル解像度・Dアップは不変。要 clasp | ヘルパーを `uc?export=view` に戻す／Git revert。要 clasp |
+| 2026-09-06 | `コード.js`／SUB_PACK_ASC要件 | **サブ昇順詰め**: N昇順→同Nはファイル名昇順で列1〜10。番号なしは余り枠／候補。`RAKUTEN_MATRIX_SUB_PACK_ASC_ENABLED`。要 clasp | Prop false。Git revert。要 clasp |
+| 2026-09-05 | `コード.js`／WORK_MERGE_SCOPE要件 | **C①02+一時合算**＋**②レ点外JANスキップ**（先頭行青枠投入廃止）。Prop `RAKUTEN_MATRIX_MERGE_WORK_FOLDER`／`RAKUTEN_MATRIX_SCOPE_FILTER_ENABLED`。要 clasp | Prop false。Git revert。要 clasp |
+| 2026-09-05 | `コード.js`／SKIP_EXISTING要件 | **C取得上限100**＋**マスタ既存URL枠はアップ省略**（`RAKUTEN_UPLOAD_SKIP_EXISTING_MASTER_URL`）。要 clasp | Prop false。PROCESS_LIMIT戻し。Git revert。要 clasp |
+| 2026-09-05 | `コード.js`／MATRIX_LAYOUT要件／LEDGER | **楽天マトリクス L1〜L3**: メイン2〜10他セット昇順・サブ全子共有・親=最少セット。JANサブ→親。要 clasp。戻し `RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED=false` | Prop false。Git revert。要 clasp |
+| 2026-09-05 | `コード.js`／CDE要件／CURRENT／ALIGN／HANDOVER | **C／D／E分割**: C=楽天マッチング。D=楽天Yahooのみ。E=Amazon画像＋出品。D補助廃止→Z。要 clasp | Git revert。要 clasp |
+| 2026-09-05 | `コード.js`／B6要件／ALIGN §1.2／SET_MAIN HUMAN／CURRENT／HANDOVER | **B-⑥ Amazon MAIN**: メニュー本線。CからAmazon量産削除・補助化。要 clasp | Git revert。要 clasp |
+| 2026-09-04 | `コード.js`／ALIGN §1.1／B3確認／CURRENT／HANDOVER | **B→B-③ 案1**: メニュー増なし。起動確認＋`B_INTEGRATED_INCLUDE_B3_IMAGES`。全パック後に約1分で非対話B-③（Amazon自動）。要 clasp | Prop false。Git revert。要 clasp |
+| 2026-09-04 | `コード.js`／`b5_parent_shared.py`／ALIGN | **正本・個品・文字色の完全連携**: B-④で正本初期選択＋個品ラベル。親SKU共有＋Drive `_b5_parent_shared.json`。要 clasp | Git revert。要 clasp |
+| 2026-09-04 | ALIGN §1／§3／§1.1／B3確認／SET_MAIN | **文字色＝親共有**（MAIN／サブ順不同）。**B一括＋B-③＝オプション**（未設定OFF・実装後段） | docs のみ。実装は別タスク |
+| 2026-09-04 | `c_set_main_rakuten_prompt`／`b5_main_base_review_loop`／ALIGN／SET_MAIN HUMAN_RUN | **弱い統合・親絞り**: 02後C指示＝今の親だけ（`--parent-sku`）。任意実行ボタン。`byChildSku`集計修正。全親は scope=all | Git revert |
+| 2026-09-05 | `competitor_jitta/`／`PurchaseResearch.js`／CYCLE／HUMAN_RUN | **競合DB実態AI第一段**: トリガー可・① `PR_JITTA_OWNER=comp` で二重防止。切戻し OWNER=hb／競合トリガー停止。要 clasp（競合フォルダ＋①） | Prop／トリガー。Git revert |
+| 2026-09-04 | `PurchaseResearch.js`／`cycle_heartbeat`／CYCLE§4.5bis／HUMAN_RUN | **実態AI分離**: 心拍 `jitta_resolve`（cap8）・A-light末尾デフォルトOFF・未調査≥30で自動レ点抑制。仮想 T-CHB-24〜27（27/27）。切戻し `PR_JITTA_HB_LANE_ENABLED=false`。要 clasp | Git revert。Prop false。要 clasp |
+| 2026-09-03 | `PurchaseResearch.js`／watchdog dry／HUMAN_RUN | **店レーン譲り**: 洗い→心拍で inflight clear＋3分安全網＋shop busy。alight 完了で busy 解除＋1分。切戻し `PR_SHOP_LANE_CLEAR_INFLIGHT=false`。仮想 T-CTW-23/24。要 clasp | Git revert。Prop false。要 clasp |
+| 2026-09-03 | `PurchaseResearch.js`／watchdog dry／HUMAN_RUN | **P-eff-1/2 効率ループ整流**: 実行中 ckpt 廃止・満タン `afterMin≤2`（`eff_loop_cap`）・WAIT_TOKEN 前 inflight clear・overlap age≥8 即 takeover／短再試行2分。切戻し `PR_WASH_EFF_LOOP_ENABLED=false`。要 clasp | Git revert。Prop false。要 clasp |
+| 2026-09-03 | `PurchaseResearch.js`／`eff_judge_report.py`／HUMAN_RUN | **効率合否ログ**: ①ログ `効率合否`（slice/arm/overlap/stale・cause・fixHint）。切戻し `PR_EFF_JUDGE_ENABLED=false`。要 clasp | Git revert。要 clasp |
+| 2026-09-02 | `PurchaseResearch.js`／`maker_alias.py`／`cycle_c3_select.py`／`d2_filter.py` | **実態ラベル分離**: 新規行は `未調査`（AI前）。`要確認` は AI後の人判定待ち。`prCollectJittaResolveTargets_` は信頼度空のみ。移行メニュー 99→16。要 clasp | Git revert。要 clasp |
+| 2026-09-01 | `PurchaseResearch.js`／`cycle_trigger_watchdog.py`／fixtures T-CTW-13〜18 | **洗い ckpt 自己衝突対策**: ckpt/overlap で `wait_shortened` 無効・overlap 必ず再予約（stale 寄せ）・inflight 中は `trigger_missed` 抑制。切戻し `PR_WASH_CKPT_NO_SHORTEN=false`／`PR_WASH_OVERLAP_STALE_AWARE=false`。仮想18/18。要 clasp＋実機1回 | Git revert。要 clasp |
+| 2026-09-01 | `b5_main_base_review_loop`／`b5_virt_abc` measure_grid20 | **100マスガイド**: 文字/装飾マスを薄赤、金丸予約4マス黄。16/24/25 目安 | Git revert |
+| 2026-09-01 | `b5_virt_abc`／`b5_main_base_compose`／templates | **20マス厳守**: キャッチサイズ縮小・目標16・retry上限25 | Git revert |
+| 2026-09-01 | `sub_image_food_canon_gate`／`sub_image_food_canon_launch`／`コード.js` beginB5AfterTruthBind | **MAIN用見本ゲート2ボタン**（変更なしで閉じる／選び直したらここで保存）。`--context main`。要 clasp | Git revert |
+| 2026-09-01 | `b5_main_base_names`／compose `--only-theme`／ALIGN | **salesTalk途切れ修正**（硬切り禁止・だけで後半優先） | Git revert |
+| 2026-09-01 | `コード.js`／ALIGN §7.14 | **B-④指示に見本ゲート必須**（finishB5AfterTruthBind）。要 clasp | Git revert。要 clasp（出品） |
+| 2026-09-01 | `food_unit_canon`／`b5_main_base_compose`／`b5_virt_abc`／ALIGN §7.14 | **P-align-3**: MAIN が theme_new_run 人間確定 CANON を参照 | Git revert |
+| 2026-09-01 | ALIGN §7.14／§1／§5／MAIN要件／CURRENT_PHASE | **個品見本 MAIN↔サブ共有**要件ロック。構図は別。P-align-3 実装未 | docs のみ。実装は別タスク |
+| 2026-09-01 | `b5_main_base_names`／`b5_virt_abc`／compose／ALIGN §7.6ter | **MAIN catch大＋sales小**: 階層プロンプト。20マス厳守 | Git revert |
+| 2026-08-31 | `b5_virt_abc`／`b5_main_base_compose`／ALIGN §7.6ter | **MAIN Phase1**: scene/catch分離・catchImage短文化・STYLE_TYPO色競合解消 | Git revert |
+| 2026-08-31 | `b5_virt_abc`／`b5_main_base_compose`／ALIGN §7.6bis | **MAIN textColor**: `_prompt_p3_free` に accent_text_block 配線 | Git revert |
+| 2026-08-31 | `コード.js`／`b5_set_base_map`／compose／dry_sub／ALIGN §7.6bis | **textColor 親ごと**: Drive/マップ自動＋`--text-color-for`。ハードコード1廃止 | Git revert。要 clasp（出品） |
+| 2026-08-31 | `PurchaseResearch.js`／CYCLE§6.4quat／HUMAN_RUN | **D2 overflow**: onlyBlank・cap1000・停止メール（復帰手順）・overflow gate・メニュー28・D2後自動C4 | Git revert。要 clasp |
+| 2026-08-31 | `mix_review`／`_find_truth`／gate `_truth_for` | **「未選定または失敗」誤表示修正**（人間選定を正しく表示）。正本解決のまぐろ既定を廃止・JANヒント優先 | Git revert |
+| 2026-08-31 | `コード.js`／ALIGN §7.13 | **生成不要を正本紐付けへ**: ON時テーマ案Geminiスキップ→指示直行。要 clasp | Git revert。要 clasp（出品） |
+| 2026-08-30 | `コード.js`／`b5_skip_generate_finish`／gate／dry_sub／compose／ALIGN §7.13 | **画像の生成不要**: B-⑤ CK→skip指示・既存 export＋レビュー完走。要 clasp | Git revert。要 clasp（出品） |
+| 2026-08-30 | `food_unit_canon`／`food_canon_gate`／`dry_sub`／ALIGN §7.12.6 | **IDENTITY／SIZZLE UI**＋副のみエラー＋テーマ mode 参照 | Git revert |
+| 2026-08-30 | `コード.js`／ALIGN §7.12.3／RAKUTEN_COURSE HUMAN_RUN | **B-⑤指示先頭＝見本ゲート必須**（確定前に dry_sub/compose 禁止） | Git revert。要 clasp（出品） |
+| 2026-08-30 | ALIGN §7.12／`food_canon_manual_ingest`／`food_unit_canon`／gate | **§7.12**: コピペ＋ゼロ案内＋同構図デデュプ（aHash／ランク多様） | Git revert |
+| 2026-08-30 | `food_unit_canon`／`sub_image_food_canon_gate*`／ALIGN §7.11 | **見本ゲート**: 候補5〜6・主1＋副0〜2→生成→同画面レビュー | Git revert |
+| 2026-08-30 | `food_unit_canon`／`sub_image_mix_*`／`dry_sub_overview_copy_test`／`compose_poc`／ALIGN §7.10–7.11 | **混在段階B**: 独自再生成＋FOOD_UNIT_CANON機械統一 | Git revert |
+| 2026-08-31 | `PurchaseResearch.js`／HUMAN_RUN | **A-1**: 店日次カウンタリセット（auto_ck／alight done／rounds／lastNew）。週間大特大枠は残す | Git revert。要 clasp |
+| 2026-08-31 | `PurchaseResearch.js` | **自動レ点**: 調査済み（巡回日／alight+shop_full）を除外。誤レ点は A-light で CK 外し | Git revert。要 clasp |
+| 2026-08-31 | `PurchaseResearch.js`／`cycle_heartbeat`／CYCLE§4.4 | **根因修正**: 自動レ点を店ラウンド尽きた判定より先に。順=auto_ck→alight。lastNew未設定=-1即終了を修正。T-CHB-23 | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | `PurchaseResearch.js`／CYCLE§4.4 | **full_trigger**: 店ラウンド中は `prWashContinueDeferInfo_` で大続きを選定除外（`defer_shop_before_large`）。target=大→shop_first を禁止 | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | `PurchaseResearch.js`／`cycle_heartbeat`／CYCLE§4.4 | **実装**: 大を選ばず `prCycleShopBeforeLargeAction_`。大特大完走後は `shop_after_large`（C0→auto_ck→alight）。仮想 T-CHB-14/22 | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | CYCLE§4.4・§6.3bis・§7／HUMAN_RUN | **小中=0時は店ラウンド≤10尽くすまで大・特大を選定しない**（pick→defer禁止）。大特大完走後は門通過→セラー→調査 | docs revert |
+| 2026-08-30 | `PurchaseResearch.js`／CYCLE§7.5／HUMAN_RUN | **A-1後のCatalog遅延対策**: abort世代・孤児ロック破棄・心拍 other_busy は1分再試行。旧Keepaは打ち切り | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | `PurchaseResearch.js`／CYCLE§7.1・§7.5／HUMAN_RUN | **A-1=実行中一時停止＋先頭再選定**: `a1_park`・キュー残し・続き選定スキップ・C4 recover は D1未のみ。番犬 hard_reset は park しない | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | `sub_image_mix_*`／`sub_image_review_launch`／ALIGN §7.10 | **混在レビュー段階A**: 独自＋競合1画面・採用export。compose最新は日時優先 | Git revert |
+| 2026-08-30 | `sub_image_lp_themes`／`sub_image_ai_compose_poc`／`theme_compose_rules`／`コード.js`／ALIGN §7.9 | **競合本線**: チェック∩写真・1テーマ1枚・想像OFF。袋はパーツ外。スケール／T03／T13／needPackage／核語色 | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `review_feedback_templates`／`コード.js`／`dry_sub_overview_copy_test`／ALIGN §7.6bis | **サイズ定型＋強調色**: textColorマップ固定・微差可。テンプレ2本追加 | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `コード.js`／`photo_realism_rules`／`dry_sub_overview_copy_test`／ALIGN §7 | **P-align-2d テーマ別新規本線**: 概要＋訴求＋needPackage。人物詳細・物背景実写。袋は必要時のみ。切戻し `B5_THEME_NEW_PATH=false` | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `PurchaseResearch.js`／①プロファイル実機 | **食品・飲料・お酒**=調査ON+`57239051`。別名「食品」行削除。seed判定をルート名に合わせる | Git revert。要 clasp |
+| 2026-08-30 | `PurchaseResearch.js`／schema／CYCLE§4.1bis | **店規模実装**: ①プロファイル調査カテゴリー＋ルートID。カテゴリ別query見積。A-light OR歩き。セラー内訳列。構成比は規模に使わない | Git revert。要 clasp |
+| 2026-08-30 | CYCLE§4.1bis／V1／NOW／FLOW／HUMAN_RUN | **店規模分担**: 調査カテゴリー＝①プロファイル。SKU見積＝カテゴリ別query。構成比は優先のみ。501=単独≥501。在庫サンプル中止。内訳はレ点2以上 | docs revert。実装は別タスク |
+| 2026-08-30 | PurchaseResearch.js／CYCLE§7.5／HUMAN_RUN | **A-1店レーン優先**: sm=0で大/特大Keepa続きを保留し自動レ点→A-lightへ。full_trigger shop_first。進捗leftは残す | Git revert。要 clasp＋A-1 |
+| 2026-08-30 | `コード.js`／`dry_sub_theme_gate`／ALIGN | **P-align-2b 本線**: 材料門＋Gemini 2文。1・2必須＋ほか最大8＝10。切戻し `B5_PROPOSE_GEMINI_ENABLED=false` | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `コード.js`／`sub_image_lp_themes`／`sub_image_ai_compose_poc`／ALIGN | **P-align-2b A4**: B-⑤テーマ概要チェック→`--theme-ids-for`。切戻しは指示からフラグを外す（自動スロット） | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `PurchaseResearch.js`／CYCLE§4／HUMAN_RUN／`dry_cycle_alight_hit` | **店A-light 1店フル**: 小中大はqueryページ＋productスライス続き。特大≥501は浅いhold。日次レ点8・店目標5・上限10・新メーカー0で追加round≤10。心拍 `alight_continue`／`shop_before_large` | Git revert。要 clasp＋止めてから A-1 |
+| 2026-08-30 | `sub_image_review_loop`／`sub_image_ai_compose_poc`／`sub_image_review_launch`／ALIGN | **P-align-2a サブUI寄せ**: lightbox・`__rN`・採用再export・目視フォルダ・枚数優先 | Git revert |
+| 2026-08-30 | `コード.js`／`compose_set_main`／`b5_set_base_map`／review_loop／ALIGN要件 | **表示B-④＝MAIN／B-⑤＝サブ**。マップ`textColor`→C親ごと。既存3親追記 | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `b5_main_base_review_*.py`／map／`compose_set_main`／`コード.js`／B5要件 | **B-⑤ P3b 実装**: 複数土台＋レ点子マップ＋既存再利用＋拡大＋再生成世代 | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | B5要件／HUMAN_RUN／CURRENT_PHASE | **B-⑤ P3b 要件ロック**（実装前） | docs revert |
+| 2026-08-29 | `b5_main_base_review_*.py`／`コード.js`／B5要件 | **B-⑤ P3 ブラウザ本線**: 写真レビュー・レ点再生成・ラジオ→02。GAS採用UI外し | Git revert。要 clasp（出品ルート） |
+| 2026-08-29 | `コード.js`／B5要件 | **B-⑤ P3（旧）**: スプシ採用ボタン＋Drive makeCopy（UI外し・API残置可） | Git revert。要 clasp（出品ルート） |
+| 2026-08-29 | `b5_main_base_names.py`／export／compose／`コード.js` | **B-⑤ 比較名=商品名省略＋theme＋キャッチ**。02へコピー CLI。既存ランリネーム | Git revert。要 clasp（出品ルート） |
+| 2026-08-29 | `b5_main_base_compose.py`／`コード.js`／B5要件 | **B-⑤ P2**: compose `--role rakuten_main_base`。チェック案JSON→OpenAI＋Pillow金丸/Octas。02未書込。実画像は明示指示時のみ | Git revert。要 clasp（出品ルート） |
+| 2026-08-30 | `PurchaseResearch.js`／CYCLE§6.3bis・§7／HUMAN_RUN | **大先・週間枠を続きにも適用・大特大完走後も店レーン**。`defer_xl_large_remain`／`defer_xl_week_cap`。枠・大残りは進捗維持 | Git revert。要 clasp＋止めてから A-1 |
+| 2026-08-29 | `PurchaseResearch.js`／CYCLE§6.3〜§7／HUMAN_RUN | **C4→心拍一本化**・**Catalog見積先行**（Keepa新規ゲート・上限メール）・選定から**保留除外**。旧次社 `PR_CYCLE_C4_ARM_MAKER` は成功連鎖でセットしない | Git revert。要 clasp＋A-1 |
+| 2026-08-29 | `コード.js`／B5要件 | **B-⑤ M1**: ダイアログで材料→最大4案（門＋Gemini整文）→複数チェック→指示。切戻し `B5_PROPOSE_GEMINI_ENABLED=false` | Git revert。要 clasp（出品ルート） |
+| 2026-08-29 | `コード.js`／`b5_main_base_propose.py`／B5要件 | **B-⑤ P1**: メニュー＋正本紐付け＋Cursor指示。Property `B5_RAKUTEN_MAIN_BASE_ENABLED=false` で非表示。切戻し同キー false | Git revert。要 clasp（出品ルート） |
+| 2026-08-29 | `PurchaseResearch.js`／CYCLE§6.4ter／HUMAN_RUN | **週次転記チェック**: ①候補`転記チェック`・日曜トリガー・漏れ時D1・社内メール。切戻し `PR_CYCLE_LIST_CHECK_ENABLED=false` | Git revert。要 clasp＋A-1（トリガー武装） |
+| 2026-08-29 | `PurchaseResearch.js`／FULL／HUMAN_RUN | **洗い再開待ち=次cap分**（`prKeepaWashResumeWaitMin_`）。負 tokLeft=0。特大の常時61分を解消 | Git revert。要 clasp |
+| 2026-08-29 | `PurchaseResearch.js`／CYCLE§6.4bis／HUMAN_RUN | **途中D1**: Keepaスライス(`wrote>0`・未完)ごとに門通過→品番リスト。C4 D1_DONEなし。切戻し `PR_CYCLE_MID_D1_ENABLED=false` | Git revert。要 clasp＋A-1 |
+| 2026-08-29 | `b5_virt_abc.py`／B5要件 | キャッチ6〜18字・途中終了禁止。袋名→トーク名は後でメモ | Git revert |
+| 2026-08-29 | `b5_virt_abc.py`／B5要件 | **abc16**: キャッチ【】優先・語途中禁止。Octas聖域。上部左寄り。再生成 | Git revert |
+| 2026-08-29 | `b5_virt_abc.py`／HUMAN_RUN | **abc15**: 材料提案→最大4案×OpenAI画像。Gemini画像拒否。`--legacy-sets`で旧固定 | Git revert |
+| 2026-08-29 | B5要件／HUMAN_RUN | **案F旧文掃除**: 字数事前ゲート／食感マクロ／全案修正を削除。Gemini画像生成しない | docs revert |
+| 2026-08-29 | B5要件／HUMAN_RUN | **売れる順=1商品ずつ**: カテゴリ差し替え表なし。点数は試行 | docs revert |
+| 2026-08-29 | B5要件／HUMAN_RUN | **案F本線**: 複数チェック→画像複数→1枚採用。根拠薄い案は出さない。T4成果・売れる順。旧案A字数事前修正廃止 | docs revert |
+| 2026-08-29 | `b5_virt_abc.py`／B5要件 | **v13**: T3×3＋T4×2。③Pillow Octas右下1.3マス。`compare/*_all_P3b.jpg` | ファイル削除／docs revert |
+| 2026-08-29 | `b5_virt_abc.py`／B5要件 | **画像本線=OpenAI**（仮想v12人間ロック）。`--engines` 既定を openai。Gemini画像は比較用 | 既定を gemini,openai に戻す／docs revert |
+| 2026-08-29 | `b5_virt_abc.py`／B5要件 | **v12**: ③b/cに主婦向け IMAGE_STYLE_TYPO（99.おしゃれ文字装飾見本）。T3新規30は既存・退避除外 | ファイル削除／docs revert |
+| 2026-08-29 | `PurchaseResearch.js`／CYCLE§6.3bis〜§6.6／`cycle_heartbeat` | **案B店挟み**・**大特大週間N=2**・**title0→ブランド追加**・empty_research／偽完了。仮想 T-CHB-20/21。Keepa cap既定30 | Git revert。要 clasp＋A-1 |
+| 2026-08-29 | `PurchaseResearch.js` `prCandGatePassCountForMaker_` | **偽完了走査の欠落関数修正**: 存在しない `prCandRowsForListAppend_` → D1同型の `prLoadCandPassByAsin_` | Git revert。要 clasp＋A-1 |
+| 2026-08-28 | `PurchaseResearch.js`／CYCLE§7.5／仮想10件 | **フェーズ3**: `PR_WASH_TITLE0_SKIP_SET` 永久skip・選定除外・C4 needs=候補ありのみ・偽完了(`done_no_candidates`/`c4_no_candidates rewash`) | Git revert。要 clasp＋A-1 |
+| 2026-08-28 | `PurchaseResearch.js`／CYCLE§7.5／HUMAN_RUN | **title0_skip**（3回→保留＋心拍）・**C4 needs/D1 recover**（完走済み複数の D1 未を A-1 で回収） | Git revert。要 clasp＋A-1 |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v11**: ③b/cスマホ主役サイズ（金丸半分）＋おしゃれ・可読性。Gemini/OpenAI再比較 | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v10**: ③に写真実写＋キャッチ必須1本。Gemini/OpenAI再比較 | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v9**: Gemini/OpenAI同じ指示比較。右上空け→Pillow金丸。OpenAI=gpt-image-2 | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v8**: ③b/c スプシ材料・IMAGE_GOLDをAI配置（後載せなし）・文字20%超は再作成 | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v7**: ③b/c 虚偽禁止・金丸固定・白背景不可・文字20%・材料内売り | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／B5要件 | **v6**: ③a添付構図固定。③b/cは短い売れる指示のみ | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／layout_rules／B5要件 | **v5**: ②見出しは帯ルマで黒/白。③人間ベストの対吹き出し＋三本線。P1流用 | ファイル削除／docs revert |
+| 2026-08-28 | `b5_virt_abc.py`／layout_rules／B5要件 | **v4**: ①シズル+袋左下傾き+Octas。②③空金丸。③止まる仕掛け | ファイル削除／docs revert |
+| 2026-08-27 | `b5_virt_ai_headline.py`／`layout_rules.json`／B5要件 | **v6**: 見本番地をAIへ。下段白。下線半透明重ね。UDモトヤマルベリ | Git revert |
+| 2026-08-27 | `b5_virt_ai_headline.py`／`work_paths.py`／B5要件 | **v5**: 98筆下線参照。20マスに下線含む。金丸解決が下線PNGを拾わない | Git revert |
+| 2026-08-27 | `b5_virt_ai_headline.py`／`layout_rules.json`／B5要件 | **見出しAI v4**: 金丸をAI参照渡し。100マス上2行。字数12-18/4-8。アンダーライン可 | ファイル削除／docs revert |
+| 2026-08-27 | `b5_virt_ai_headline.py`／`layout_rules.json`／B5要件 | **見出しAI v2**: 金丸消し+98後貼り。文字≤20%。色=C `textColors`。02未書込 | ファイル削除／docs revert |
+| 2026-08-27 | `b5_virt_ai_headline.py` | **見出しAI仮想** Gemini 4枚。02未書込。Pillowなし | ファイル削除 |
+| 2026-08-26 | B5要件 | **案Aロック**。テーマ対最大4→人1枚。Pillowアピール。選定UI。§3.4–3.7 | docs revert |
+| 2026-08-26 | B5要件 §3.4 | **画像もテーマ連動複数提案**（メモ→案Aでロック） | docs revert |
+| 2026-08-26 | B5要件 | **Gemini4案＋テーマ**。材料＝キャッチ／箇条書き／AI情報取得data。人修正 | docs revert |
+| 2026-08-26 | B5要件 | **ハイブリッド承認**。文言材料＝正本＋商品名ベース。AI発明なし | docs revert |
+| 2026-08-26 | B5要件 §3.3 | **人フロー**: 文言事前＋画像は review（ハイブリッド） | docs revert |
+| 2026-08-26 | `layout_rules.json`／B5要件 | **アピール2段**: name/talk。上段≤18・下段≤10。`appealHeadline1200` | Git revert |
+| 2026-08-26 | `layout_rules.json`／B5要件 | **見本金丸はみ出し**: cx=1102, cy=103, d=343。数字番地は非変更 | Git revert |
+| 2026-08-26 | `b5_virt_katsuo.py`／B5 HUMAN_RUN | **B-⑤仮想V1–V3**（たべるおだしかつお・空金丸→数字載せ） | ファイル削除 |
+| 2026-08-26 | `D_MENU_B5_RAKUTEN_MAIN_BASE_*` | **B-⑤ P0**: 楽天MAIN基礎（右上金丸・数字は後続）。見本 `04.楽天見本` | docs revert |
+| 2026-08-26 | `PurchaseResearch.js`／CYCLE§7／HUMAN_RUN | **後回し原因ログ**: sanitize/pool/defer_xl を①ログへ。不明残でも大特大後回し | Git revert。要 clasp |
+| 2026-08-26 | `PurchaseResearch.js`／CYCLE§7／HUMAN_RUN | **enumOnly後**: 規模帯記録・Keepa中解除・心拍再arm。小中残存時は大特大キュー続きを後回し | Git revert。要 clasp |
+| 2026-08-26 | `PurchaseResearch.js`／CYCLE§6.4／HUMAN_RUN | **C4 pick=0→心拍arm**。メニュー「心拍を今すぐ再開」追加 | Git revert。要 clasp |
+| 2026-08-26 | `cycle_heartbeat`／fixtures／`PurchaseResearch.js`／CYCLE§7／HUMAN_RUN | **心拍完成形**: 仮想19/19。トリガー→列挙/A-light/自動CK/C0/大。切戻し `PR_CYCLE_HEARTBEAT_ENABLED=false` | Git revert。要 clasp＋gmail再承認 |
+| 2026-08-25 | `tools/common_ss_view/registry.json`／COMMON_SS_VIEW／`common-ss-view.mdc` | **見積発注_三協乾物** 登録（メニュー見積・発注）。戻し: Git revert |
+| 2026-08-25 | `PurchaseResearch.js` | **洗い強制終了耐性**: 予算20分・スライスごとckpt再予約・①ログ洗いスライス・lock待ち=残り秒 | Git revert。要 clasp |
+| 2026-08-25 | `PurchaseResearch.js` | **洗いトリガー診断ログ**（expectedAt／fire／cleared／trigger_missed／診断メニュー） | Git revert。要 clasp |
+| 2026-08-25 | `PurchaseResearch.js` | **取得日時JST**＋**洗いトリガー停滞対策**（未完再武装・lock_busy再予約・rescue） | Git revert。要 clasp |
+| 2026-08-26 | `export_sub_images_for_rakuten_matrix.py` | **目視export上書き禁止**（同名は `__composeDir` 別名） | Git revert |
+| 2026-08-26 | `sub_image_review_launch.py`／master_sets／B-④案内 | **レ点親→最新compose→ポート連番で複数タブ** | ファイル削除／Git revert |
+| 2026-08-26 | B-④／review_loop／`コード.js` | 完了文言: 次の親reviewへ・手export不要。GAS案内も同文言 | Git revert。要 clasp（GAS） |
+| 2026-08-26 | B-④／review_loop | 文言: JAN＋商品名・全選択（コピー）・修正なしで終了等 | Git revert。要 clasp（GAS側） |
+| 2026-08-25 | `コード.js`／B3 docs | **B-③プレビュー正方形**: 行高＝列幅100px。autoResizeはプレビュー除外 | Git revert。要 clasp |
+| 2026-08-25 | `コード.js`／B3 docs | **B-③**: 親のみ・1親ずつ・途中保存＋トリガー再開（`B3_IMAGE_TIME_SLICE_ENABLED`） | Prop=false／Git revert。要 clasp |
+| 2026-08-25 | `PurchaseResearch.js` | **S**: 要確認文言（異種セット等）＋赤白／黄セル | Git revert。要 clasp |
+| 2026-08-25 | `PurchaseResearch.js` | **S 単品名**: 合格プロンプト（最少名・異種mix・同一JAN寄せ） | Git revert。要 clasp |
+| 2026-08-24 | `PurchaseResearch.js` | **S 単品商品名AI充填**（見積候補・既存非上書き・簡易存在）。`PR_SINGLE_NAME_AI_ENABLED` | Git revert。要 clasp |
+| 2026-08-24 | `dry_single_name_from_list.py` | **実リスト20件＋AI** 単品名仮想（見積候補・非書・存在は簡易） | ファイル削除 |
+| 2026-08-24 | `single_name_classify.py`／fixtures | **単品名パターン仮想 20/20 PASS**（A–F・コーパス限定） | ファイル削除 |
+| 2026-08-24 | `docs/org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md` | **単品名・JAN 要件定義**（存在=Catalog・F不一致・コーパスはAI迷い限定） | docs revert |
+| 2026-08-24 | `docs/org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md` | **単品名・JAN**: 存在＝Catalog正本・公式不採用・JAN複数パターン再整理 | docs revert |
+| 2026-08-24 | `docs/org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md` | **単品名・JAN充填** 要件メモ案（AI先→JAN照合。E前） | docs revert |
+| 2026-08-24 | `PurchaseResearch.js`／`d2_filter.py` | **D2**: 大型・特大ティア／重量上限g（①プロファイル・欠測は見送りにしない） | Git revert。要 clasp |
+| 2026-08-28 | `PurchaseResearch.js`／liveness／HUMAN_RUN | **予定超過リセット**（Keepa最大回復+5分）・A-1単独復旧・token待ち短縮・完走→C4別実行維持 | Git revert。要 clasp |
+| 2026-08-28 | `PurchaseResearch.js`／HUMAN_RUN | **洗いトリガー予約前 Keepa `/token` ログ**（liveLeft vs calcLeft）。待ち妥当性の切り分け | Git revert。要 clasp |
+| 2026-08-27 | `PurchaseResearch.js`／HUMAN_RUN | **メニュー整理**: ルート「自動リサーチ」A全自動/B個別/C見積枠/99。A-1即心拍・A-2全診断 | Git revert。要 clasp |
+| 2026-08-27 | `cycle_heartbeat_liveness.py`／`PurchaseResearch.js` | **心拍全体の沈黙**: 生存番犬15分・D失敗→心拍・no_maker再武装。仮想15/15 | Git revert。要 clasp |
+| 2026-08-27 | `cycle_trigger_watchdog.py`／`PurchaseResearch.js` | **洗いトリガー沈黙**: inflight・phaseログ・二重発火skip・outer catch再武装。仮想12/12 | Git revert。要 clasp |
+| 2026-08-24 | `docs/org/B_PURCHASE_RESEARCH_*` | **C5** CYCLE docs 整備（C3+T 本線・実機合格・HUMAN_RUN §10） | docs revert |
+| 2026-08-22 | `コード.js`／STAGE | **JANカテゴリ**: 口コミ1位優先。レビュー差&lt;max(10,rc2×0.25)なら多数決。要 clasp | Git revert |
+| 2026-08-22 | `コード.js`／STAGE | **Yahoo検索sort分離**: JAN=`-review_count`（口コミ）、文言=`-score`（おすすめ）。要 clasp | Git revert |
+| 2026-08-23 | `PurchaseResearch.js` | **C3+T**（C3+完走トリガー1メニュー）・`prArmWashFullTriggerForContinue_` | Git revert。要 clasp |
+| 2026-08-23 | `cycle_c4_chain.py`／`PurchaseResearch.js` | **C4完走連鎖**（完走→D1→D2→次社 P3 arm）。`PR_CYCLE_C4_ENABLED` | Git revert。要 clasp |
+| 2026-08-23 | `cycle_c3_select.py`／`PurchaseResearch.js` | **C3自動選定**・実態プルダウン・マスタ4社クリアメニュー | Git revert。要 clasp |
+| 2026-08-23 | `maker_jitta_resolve.py`／`schema.py` | **Amazonルート＋Browse棚の2列**・業種フォールバック（不明）・dry 6PASS | Git revert |
+| 2026-08-23 | `docs/org/B_MAKER_JITTA_CLASSIFICATION.md`／`schema.py` | **実態仕分け正本**（平易版・マスタ/サマリミラー列・AI判定・永谷園/味の素/あさくま事例） | docs revert |
+| 2026-08-22 | `PurchaseResearch.js`／FLOW／HUMAN_RUN | **C1+C2 GAS**: A-light（query+product cap・門/①候補/Keepaフルなし）→ セラーヒット全店再計算。`PR_ALIGHT_*` Property | `PR_ALIGHT_ENABLED=false`／Git revert。要 clasp |
+| 2026-08-22 | `tools/competitor_store/dry_cycle_seller_accum.py` | **C0 fixture 4件**（基本/cap/429/除外）。GAS 前の正本 dry | ファイル削除 |
+| 2026-08-22 | `PurchaseResearch.js`／FLOW §5.4／HUMAN_RUN | **C0 セラー貯め GAS**: 門通過→BB列+SP-API新品→`セラー`新規100/回。調査CK OFF。429/時間切れ再開 Property | Prop切戻し／Git revert。要 clasp |
+| 2026-09-01 | `sub_image_food_canon_gate.py` | **見本ゲート**: 人間確定済みを再オープン時にレ点復元＋緑枠／前回バナー／手動画像を候補へ再同期 | Git revert |
+| 2026-09-01 | `コード.js` | **B-④ ①′**: 見本画面表示と同時に `buildB5ProposalsForBindings` 裏実行（品番順・見本と同時進行） | Git revert。要 clasp |
+| 2026-09-01 | `コード.js`／`b5_food_canon_status.py`／ALIGN §7.12.3・§7.15 | **B-④ ①′ 個品見本ゲート**: ダイアログ差し込み・Drive 状態 JSON・未確定ブロック。§7.15 ミックス5品番ドラフト | Git revert。要 clasp |
+| 2026-08-22 | `tools/competitor_store/dry_cycle_alight_hit.py` | C1+C2 仮想 fixture 7件（A-light+ヒット再計算） | ファイル削除 |
+| 2026-08-22 | `docs/org/B_PURCHASE_RESEARCH_CYCLE_DEV_MEMO.md` | C0–C5 仮想テスト方針 | docs revert |
+| 2026-08-22 | `docs/org/B_PURCHASE_RESEARCH_CYCLE_*`／FLOW | **3レーン運用サイクル**要件＋3者多数決（条件付きYES）。A-light・セラーヒット再計算・完走連鎖・⑧週待ち廃止 | docs revert。実装 C0–C5 は別承認 |
+| 2026-08-22 | `PurchaseResearch.js` | **C0 `prAppendSellerAccumRows_` setValues 修正**（37行/826行不一致。getRange 第3引数=行数） | Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／V1／HUMAN_RUN | **門**: ①プロファイルに順位下限（初期1・欠測落ち）＋価格上限（初期10万・カテゴリ別可）。列自動確保 | Git revert。要 clasp |
+| 2026-08-22 | `コード.js`／STAGE | **Yahoo/Ichibaクエリ順**: JAN常に先頭（ミックスも）。FBはヒット率順（メーカー名→名→KW→N種）。要 clasp | Git revert |
+| 2026-08-22 | `yahoo_category_virt/hit_rate_*` | **Yahooクエリヒット率調査**: パターン表P01–P12＋API bakeoff（読取のみ）。sample=行20/47/110相当 | ツール削除で戻す。clasp不要 |
+| 2026-08-22 | `PurchaseResearch.js`／HUMAN_RUN／schema | **Keepaフル索引B1**: 書込時ASIN列だけ見て`Keepaフル索引`自動再構築。D1は必要ASINだけ読込。Prop `PR_KEEPA_FULL_INDEX_ENABLED`。99に再構築メニュー | Prop=false／Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／HUMAN_RUN | **Keepa単価**: プロファイル`product_offers20`既定6（旧2）。再開待ちは実測consumed/件数優先。残tokで次スライス継続（sliceWait≥5即終了廃止） | Prop上書き／Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js` | **店ゲート Keepa消費を①ログへ**: tokensConsumed列＋detailに qTok/pTok/consumed（offers=20の店調査が洗いと別枠で見える） | Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js` | **洗いトリガー予約修正**: arm時はProp先ON→トークン見積で予約。①ログに`トリガー予約`/`trigger_armed afterMin=`。A→D未武装時も再予約 | Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／schema／FULL | **実態ck**: 実態=要確認のみ Amazon検索URL（列名`実態ck`・末尾追加。M列実態は不変）。メニュー99「実態ck付与」 | Git revert。要 clasp |
+| 2026-08-22 | FLOW §7.1 | **全店自動の最終形=案B**: 日次自動選定＋調査CK自動オン＋消化無人。日次件数上限で抑止。実装はモリタ後 | docs revert |
+| 2026-08-22 | `コード.js`／STAGE | **Yahoo検索**: 打ち切り廃止・最大6qマージ・上位20・sort=-score（おすすめ順）。ログ BRANCH2_MERGE | Git revert。要 clasp |
+| 2026-08-22 | `コード.js`／`yahoo_category_virt`／STAGE | **Yahooカテゴリ改修**: 点数制・ゆるいシリーズ第1FB・表記ゆれ・Driveガード。仮想9PASS（BASELINE比） | Git revert。要 clasp |
+| 2026-08-22 | `コード.js`／`tools/yahoo_category_virt`／STAGE | **Yahooカテゴリ**: 同シリーズ層（+1）＋同商品（+2）。メーカー門。仮想6PASS | Git revert。要 clasp |
+| 2026-08-22 | `コード.js`／`tools/yahoo_category_virt`／STAGE | **Yahooカテゴリ**: 同商品フィルタ→投票→票内重み。食品3a廃止。仮想4PASS（旧ロジックは41392等にFAIL） | Git revert。要 clasp |
+| 2026-08-22 | `コード.js`／マスタGB-GD数式／STAGE | **診断ログ**: SKU監査／ミックスCOMPARE+Gemini／Yahoo BRANCH1-5+食品path優先／DUP_URL。GB「・」偽重複を数式修正 | Git revert＋数式戻し。要 clasp |
+| 2026-08-22 | `docs/org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md` | **B再実行**: 消去列チェックリスト＋再B合否（G1–G7・ログ早見） | docs revert |
+| 2026-08-23 | `CURRENT_PHASE` §0ab／`B_RERUN_CLEAR_AND_JUDGE` §4.3 | **G7保留**: ミックス楽天7207・同一URL複数親＝楽天に正セット無し時の汎用ヒット。非クリティカル・コード改修は問題拡大時まで | docsのみ |
+| 2026-08-22 | `コード.js`／CURRENT／YAHOO_STAGE | **A→B検収FIX**: Yahoo選定ログ＋SHP数字query回避／一人分先頭数値／Step1色＝子SKU判定／ミックスWRITEログ | Git revert。要 clasp（出品） |
+| 2026-08-22 | `PurchaseResearch.js` | **実態シード**（maker_alias同期）＋サマリ空欄へ実態付与。未登録=要確認。A→Dは製造/ブランド優先・Generic除外 | Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／FLOW／HUMAN_RUN | **本線メニュー**: 1.店1件通し／0.試験A→D(メーカー最大1)／5.D1→D2。旧は99サブ。全店自動はFLOW§7.1メモのみ | Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／FULL／HUMAN_RUN | **洗いGET offers=20**＋**D1案A**（フル行あればenrichしない）。単価既定2。薄い行は指紋同でもoffers上書き | Prop `KEEPA_PRODUCT_TOKEN_COST`／Git revert。要 clasp |
+| 2026-08-22 | `PurchaseResearch.js`／FLOW／HUMAN_RUN | **洗い完走で調査CK解除**（トリガー完走含む）。**D1→D2 統合メニュー**（単独D1/D2は残置） | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL／HUMAN_RUN | **洗いキュー期限切れ削除**: Keepa済＋列挙日時>既定90日。メニュー＋完走時。Prop `PR_WASH_QUEUE_RETENTION_DAYS`（0=オフ） | Prop=0／Git revert。要 clasp |
+| 2026-08-21 | `コード.js`／COMBO／SETCOUNT | **ミックスセット数**: A列＝何セットか（各N→N）。計N袋不使用。Vision＋参考画像ゲート・上限20。単品パース分離 | Git revert／Limit Property。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／プロファイル／FULL | 洗い完走ロック・トリガー予約のみ・Keepa upsert・門出品者数1–20・D1 offers補強 | トリガー停止／Prop。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js` | `PR_MAKER_WASH_FULL_PROP_` 欠落でトリガー ReferenceError → 定数追加 | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL／HUMAN_RUN | 洗い完走トリガー待ち: 残り×単価（上限300）÷rate＋1。旧30分キャップ撤廃 | Prop / Git revert。要 clasp |
+| 2026-08-21 | `purchase_research/appsscript.json` | P3用に `script.scriptapp` スコープ追加（`getProjectTriggers` 権限エラー対策） | スコープ行を削除して clasp push。要**再承認** |
+| 2026-08-21 | `PurchaseResearch.js`／FULL | **P3 洗い完走トリガー**（開始／停止／完走解除）。Keepa 429→RATE_LIMIT 温和停止 | Prop `PR_WASH_FULL_TRIGGER_ENABLED=false`＋トリガー停止メニュー。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL | **洗い完走ループ**メニュー。1実行内スライス反復（トリガーなし・25分上限） | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL | **続きがKeepaに進むよう修正**: needEnum見直し・分割済の再推定禁止・キュー充分時は分割を済扱い | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL | **洗いキュー**: ASIN重複削除＋Keepa未済ユニーク＋同ASIN一括済。行増はユニーク増加（重複ではない） | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／FULL | **分割語 nextToken 再開**。続きはサマリ→分割語→キューの順で対象選定 | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js` | **P1bバグ**: `prWriteSplitWords_` の getRange 第3を終端行扱い→「15行 vs 16行」で FAILED。numRows に修正 | Git revert。要 clasp |
+| 2026-08-21 | `PurchaseResearch.js`／dry_p1b／FULL | **洗い完走 P1b**: 分割B（タイトル→Gemini→OpenAI）・`①洗い分割語`・完走消込。尾西ドライ PASS | `PR_MAKER_WASH_FULL_ENABLED=false`。要 clasp＋①に GEMINI_API_KEY |
+| 2026-08-21 | `コード.js` | **画像袋数 JSON修復**: フェンス除去・途中切れフィールド救出・MIME json・maxTokens512 | Git revert。要 clasp |
+| 2026-08-21 | `コード.js` | **画像袋数ログ**: 不採用時も conf/set/texts/reason/img を Logger 出力 | Git revert。要 clasp |
+| 2026-08-21 | `コード.js`／COMBO／SETCOUNT | **画像袋数改**: 抜き出しJSON・単位一般・highのみ採用。単品12-⑭もタイトル不能＋実行上限5 | Git revert／Property=false。要 clasp |
+| 2026-08-21 | `コード.js`／COMBO | **ミックス袋数 Vision**: タイトル不能時のみ画像AI（親上限5・Yahoo優先）。`MIX_COMPETITOR_SET_COUNT_FROM_IMAGE` 未設定=ON | Git revert／Property=false。要 clasp |
+| 2026-08-21 | `コード.js`／COMBO | **ミックス競合修正**: 除外後0件は次クエリ。N種/アソート標題のみ採用。子の楽天Yahooを空にしてから書込（単品N袋誤載せ・足し算残骸対策） | Git revert。要 clasp |
+| 2026-08-21 | docs FULL／V1／FLOW | **洗い分割B**: タイトル→カテゴリ推定。Gemini主・OpenAI失敗時のみ。分割語シート＋消込 | docs revert |
+| 2026-08-20 | `PurchaseResearch.js`／dry_p1／FULL | **洗い完走 P1+P2コード**。P1ドライ: 石原PASS／尾西 need_q2 でP2ドライ未着手 | `PR_MAKER_WASH_FULL_ENABLED=false`。要 clasp |
+| 2026-08-20 | docs（FULL／FLOW／V1） | **メーカー洗い完走（案A+C）** 要件ロック。`①洗いキュー`・第2語分割・完走時のみ最終調査日。実装は別承認 | docs revert |
+| 2026-08-20 | `コード.js`／COMBO／STORE | **ミックス楽天Yahoo**: N種モール検索→袋数一致の価格＋URL。0件は空（足し算なし）。R12足し算はAmazonのみ。選択・よりどり除外強化 | Git revert。要 clasp |
+| 2026-08-20 | Keepaフル／ヒット／snapshot／①／Paste／Python | **先頭挿入**（最新=上）。セラー末尾のまま。メーカーサマリ新規のみ先頭。`dry_maker_sum --apply` 全消しは非本線 | Git revert。要 clasp（出品＋①） |
+| 2026-08-20 | docs／`コード.js`／`PurchaseResearch.js` | **Keepa**: 応答優先。実測 refillRate=5 をフォールバック。洗い cap20。待ち=ceil(消費/rate) | docs／Property／Git revert。要 clasp |
+| 2026-08-20 | docs／`コード.js`／`PurchaseResearch.js` | **Keepa Starter=20/分表記**（後に実測5へ訂正） | docs／Property／Git revert。要 clasp（出品＋①） |
+| 2026-08-20 | docs／`コード.js` コメント | **Keepa トークン表現**: 日次枠ではない。毎分 `refillRate`・未使用60分失効（旧5/分表記はStarter20へ更新） | docs／Git revert |
+| 2026-08-20 | `コード.js` | **競合 JAN≤5**: 1ページ目生ヒット5件以下ならメーカー+商品名をマージ（13-②/Yahooセット別/B Step2）。14-②は除外 | Git revert。要 clasp |
+| 2026-08-20 | `コード.js` | **Yahoo 競合**: 楽天同順フォールバック（jan_code→query=JAN→メーカー+商品名→商品名）。14-②/セット別/B Step2/定時。Amazon◎は不変更 | Git revert。要 clasp |
+| 2026-08-20 | `コード.js`／`bakeoff_rakuten_yahoo.py` | **楽天 Ichiba**: API版 `20220601`→`20260701`（旧版は Configuration not found）。Property `RAKUTEN_ICHIBA_ITEM_SEARCH_API_VERSION` で上書き可 | Property=`20220601`／Git revert。要 clasp |
+| 2026-08-20 | `コード.js` | **楽天ジャンル（メニュー8）**: 1ロジック×多段フォールバック（セット親はN種＋JAN最後／単品はJAN優先）。投票フィルタ汎用化。Yahoo 7.6 共用 | Git revert。要 clasp |
+| 2026-08-20 | `purchase_research/PurchaseResearch.js` | **未調査メーカー自動**: レ点不要・90日/空を1件選定→洗い→D1（`auto_maker_catalog`） | `PR_AUTO_MAKER_ENABLED=false`。要 clasp |
+| 2026-08-20 | `purchase_research/PurchaseResearch.js` | **D1 Q/P列**: 出品 ASIN貼り付けのセット数量 regex を移植＋alt（種×袋・5食）。P=販売形態ラベル | Git revert。要 clasp |
+| 2026-08-20 | `purchase_research/PurchaseResearch.js` | **D1 行2式**: skipMap 列の式が prListWriteRecs_ で空消しされていたバグ修正 | Git revert。要 clasp |
+| 2026-08-20 | `purchase_research/PurchaseResearch.js` | **D1 品番リスト**: 画像URL=Keepaサブ画像からHYPERLINK、税率=0.08、挿入時に2行目の式コピー | Git revert。要 clasp |
+| 2026-08-20 | `purchase_research/PurchaseResearch.js` | **D1 FBA列**: L1 first-fit（設定マスタ）＋Keepa FBA手数料フォールバック。空出品FBA手数料バグ修正 | Git revert。要 clasp |
+| 2026-08-19 | `purchase_research/PurchaseResearch.js` | ブランド型メーカー洗い: 入口語の `page0=` 除去・Catalog entry 正規化・`PR_BRAND_NEEDLES_` 明示 needle | Git revert。要 clasp |
+| 2026-08-19 | `tools/competitor_store/maker_alias.py` | 入口語ヒットを `brand/親 page0=…` 形式に（GAS split 整合） | Git revert |
+| 2026-08-19 | `tools/common_ss_view/` | 共通スプシ参照の registry + dump。競合ツールの ID は registry 経由 | Git revert `tools/common_ss_view/` |
+| 2026-08-19 | `コード.js`／COMBO／B_SPAPI | **ミックス親 FBA**: Catalog梱包空ならセット構成3辺で P1b 書込 | `B_FBA_P1B_COMBO_PACK_FALLBACK_ENABLED=false`／Git revert。要 clasp |
+| 2026-08-19 | `コード.js`／COMBO／B_SPAPI | **ミックス親 FBAティア**: 1袋子ASINでCatalog。親競合ASIN非書。CQ自己発は子のまま | `B_FBA_COMBO_CHILD_ASIN_ENABLED=false`／Git revert。要 clasp |
+| 2026-08-19 | メニュー成功は toast（alert は失敗のみ）。OK 待ちで別SS未反映を解消 | Git revert。要 clasp |
+| 2026-08-19 | セラー再調査は機械欄上書き・同一IDは1行。切戻し `PR_SELLER_REWALK_OVERWRITE=false` | Git revert。要 clasp |
+| 2026-08-19 | 同一sellerIdのA①空行へ店名行の構成比をコピー（採取元は残す） | Git revert。要 clasp |
+| 2026-08-19 | レ点なしアラートに読込行・TRUE件数。同じsellerIdは店名あり行から補完 | Git revert。要 clasp |
+| 2026-08-19 | 店GETはレ点の店のみ。onOpenはメニューだけ。CK枠の毎回再挿入をやめる | Git revert。要 clasp |
+| 2026-08-18 | ① GAS メニューは25分で leftover（課金30分）。onOpen は30秒 | Git revert。要 clasp |
+| 2026-08-18 | 店名欠けるIDは /seller storefront=0 で取り台帳へ | `PR_SELLER_NAME_GET_ENABLED=false`。要 clasp |
+| 2026-08-18 | ①候補に店名列（sellerIdは参考・`|` 連結） | Git revert。要 clasp |
+| 2026-08-18 | ①候補 1ASIN1行・sellerId は `|` 連結 | Git revert。要 clasp |
+| 2026-08-18 | 調査CK にチェック枠＋レ点行を青字 | 条件付き書式削除／validation解除 |
+| 2026-08-18 | ① GAS レ点の店／メーカー（調査CK・1000超は次へ・再巡回仮6か月） | `PR_CK_SELLER_ENABLED=false`／`PR_CK_MAKER_ENABLED=false`。要 clasp |
+| 2026-08-18 | D1 新規を行5挿入（既存下へ） | Git revert。要 clasp |
+| 2026-08-18 | E 実装保留メモ FLOW §5.3.1 | docs revert |
+| 2026-08-18 | ① GAS D2 機械絞込 `prMenuListFilterD2` | `PR_LIST_FILTER_ENABLED=false`／列クリア。要 clasp |
+| 2026-08-18 | ① GAS D1 品番リスト追記（実機PASS） | `PR_LIST_APPEND_ENABLED=false`／追記行削除。要 clasp |
+| 2026-08-17 | ① GAS Keepaフル追記（GET分） | `PR_KEEPA_FULL_WRITE_ENABLED=false`／末尾行削除。要 clasp |
+| 2026-08-17 | ① GAS メーカー洗い cap5（Catalog→門） | `PR_MAKER_WASH_ENABLED=false`／Git。要 clasp |
+| 2026-08-17 | 接続スイート T2–T4（AGF/リフココ/BBQ） | ①候補末尾5（T2）／実行ログ | Git／行削除 |
+| 2026-08-17 | 接続T1 尾西食品 cap5 | ①候補末尾5／フル+4 | Git／行削除 |
+
+| 2026-08-16 | メーカーサマリ2層（A/B） | タブ削除／clear | Git revert |
+
+| 2026-08-18 | R12 ミックス寸法: 長辺・短辺は最大、最短のみ数量倍 | Git revert。要 clasp |
+| 2026-08-18 | R12 ミックスKeepa◎袋はAmazonその値段／物流は親1袋3辺 | Git revert。要 clasp |
+| 2026-08-18 | R12 ミックスは12-⑭非書／1袋欠けは別モール1袋借用 | Git revert。要 clasp |
+| 2026-08-18 | R12 競合子行セット1／Bキュー分離／構成ゲート | Git revert。要 clasp |
+| 2026-08-18 | R12 大きさは単品親の競合Keepa。同シリーズは1袋のみ流用 | Git revert。要 clasp |
+| 2026-08-17 | R12 構成照合は商品名（セット税込＝和・照合キーにしない） | Git revert。要 clasp |
+| 2026-08-16 | R12 組み合わせ（色・Keepa＝AI行・構成記入・足し算） | Git revert。要 clasp |
+| 2026-08-16 | Peacefulショップ 一連・リスト+8 | 8行目クリア／リスト末尾8 | セル・行戻し |
+| 2026-08-16 | 門に使う順位段階を文字列プルダウン | 数字1に戻す／検証解除 | Git＋シート。要 clasp |
+| 2026-08-16 | ストアASIN数は応答がある店だけ | docs戻し | Git revert |
+| 2026-08-16 | Camel Trading 台帳列＋リスト+8 | 7行目クリア／リスト末尾8 | セル・行戻し |
+| 2026-08-16 | 台帳→構成比 Camel Trading 既存行 | 店名・食品比率等クリア | セル戻し |
+| 2026-08-16 | リフココ Keepa+20・リスト+14。いしとき query1 | リスト末尾14／台帳 | 行削除 |
 | 2026-08-16 | 輪1周 A18COIYGTMT3AC Keepa20・リスト+11 | リスト末尾11行／台帳巡回日 | 行削除／巡回日クリア |
 | 2026-08-16 | A① 2秒再開+7・まとめ+34・429 | セラー末尾41行付近 | Git revert |
 | 2026-08-16 | リサーチ完成形フロー A–J / A′ を正本化 | FLOW.md 削除／DOMAIN1・V1 のポインタ戻し | docs Git revert |

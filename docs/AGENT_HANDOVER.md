@@ -42,9 +42,12 @@
 | 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の列メモ（参考）。**Lv4正本**は [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) |
 | 7 | [DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md) **§1 細分化図**／[RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | **領域1正本**（①はリサーチ見積もり agent。出品チャットは①のGASを書かない）／出品時 vs 仕入れ時 |
 | 7.02 | [org/B_PURCHASE_RESEARCH_FLOW.md](org/B_PURCHASE_RESEARCH_FLOW.md) | **リサーチ完成形 A–J / A′**。状況を聞かれたら §3。旧 DOMAIN1 の A/B/C と混ぜない |
+| 7.03 | [org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md) | **3レーン日常サイクル**（A-light・セラー貯め・1社完走連鎖）。3者条件付きYES |
+| 7.04 | [org/B_MAKER_WASH_FULL_REQUIREMENTS.md](org/B_MAKER_WASH_FULL_REQUIREMENTS.md) | **メーカー洗い完走**。キュー列挙→Keepa完走。>500は分割B（タイトル推定）。P1b済・P2ドライ未 |
 | 7.05 | [org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md) | **①の進捗つき構造（ツリー）**。C済・W1次・W4は出品。他PJは同ファイルの契約表 |
 | 7.1 | [SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md) | **リサーチ・見積もり担当のセッション入口**。実装済み／次タスク／Property／再実装禁止。詳細は §8.8.22〜 |
 | 7.2 | [org/COMPETITOR_FIELDS.md](org/COMPETITOR_FIELDS.md) | **競合フィールド正本**（楽天・Yahoo・KeepaのJOIN可否・◎印）。出品A/Bだけでなくリサーチ・定時価格対抗でもここを先に読む。CSVは `org/competitor_fields/` |
+| 7.3 | [org/COMMON_SS_VIEW_REQUIREMENTS.md](org/COMMON_SS_VIEW_REQUIREMENTS.md) | **共通スプシ参照**。ログ・実行結果の確認は最小ファイル＋関係タブ。回答先頭に見た場所。ルール `common-ss-view.mdc` |
 | 8 | [ROADMAP.md](ROADMAP.md) | フェーズ案・依存関係・既存 gas-project の位置づけ |
 | 9 | [PRICING_V1_REQUIREMENTS.md](PRICING_V1_REQUIREMENTS.md) | **価格・送料・再③ v1**、Script Properties による切戻し、ログ（`価格送料ロジックログ` 任意） |
 | 10 | [AI_ROUTING_GEMINI_OPENAI.md](AI_ROUTING_GEMINI_OPENAI.md) | **商品情報まわりの Gemini / OpenAI の役割**、11-③ と B Step7 の差、429 時の挙動の正 |
@@ -104,10 +107,162 @@
 
 ## 6. 更新履歴
 
+- 2026-09-07: **ckpt の効率合否を予算基準に**（誤検知の解消）。`*_ckpt` は「残り予算+2分」で貼るのが正で、**同一実行と重ならないための安全ネットなので短縮しない**（満タン2分上限も ckpt を除外している）。にもかかわらず判定側だけ固定15分の古い前提で、正常な afterMin 15〜22分を WARN `ckpt_long_net`／FAIL `ckpt_full_bucket_long_wait` として出していた。**実害の空き時間はゼロで、ログが誤検知で埋まるだけ**だった（実測7件すべて PASS `ckpt_safety_net` へ）。今後は予算+2+3（既定25分）を超え**かつトークン満タン**のときだけ `ckpt_long_despite_tokens` WARN＝待ち計算式の異常として拾う。切戻し `PR_EFF_CKPT_BUDGET_RULE=false`。要 clasp（①）
+- 2026-09-07: **品番リストが毎回消えて書き直される不具合を修正**（差分判定で数式セルを数式として比べる）。`getValues` は `=HYPERLINK(...)` を表示結果「メイン」で返すため、**画像URLがある行は必ず差分ありと判定**され、洗いスライスごとに行削除→行5再挿入が繰り返されていた（実測 `refresh=4 skip_same=1` を80秒おき。画像URL空の1行だけが `skip_same` だったのが決め手）。**人が手入力した列が毎回消えていた**。切戻し `PR_LIST_DIFF_USE_FORMULA=false`。要 clasp（①）
+- 2026-09-07: **A-1 洗いの Keepa GET を2段ゲートに**（1段目 offers なし＝1トークン/件で門を判定 → 通過だけ offers=20）。**門は `stats` だけで判定でき offers を使っていない**（出品者数＝`stats.current[11]`）のが根拠で、実測の通過率3%から **1件あたり約5→約1.2トークン**。落ちは薄い行として `Keepaフル` に残す（GETなしの再門資産）。あわせて D1 補強に「通過なのに BuyBox 2列とも空」を追加（実測 通過782件中5件・20件/回上限）。仕様は [FULL §5.1・5.2](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。要 clasp（①）
+- 2026-09-07: **A-1 洗い `Keepaフル` の1行ずつ読みを撤去**（空行掃除は ASIN 列1回読み→候補行だけ全列。索引づくりも ASIN 列だけ）。**スライスが件数に比例せず常に22〜29分だった真因**（実データ8,386行に対し `prAppendKeepaFull_` 冒頭で毎回8,385回の個別読み取り。1ASINでも22.9分、Keepa取得0件のスライスだけ2.2分だったのが切り分けの決め手）。要 clasp（①）
+- 2026-09-07: **A-1 洗い 本体の全走査撤去**（1社の処理中はキューを1回だけ読む＝列挙の追記はスナップショットに継ぎ足し、Keepa済は連続行まとめ書き）＋**満タン時の待ち2分上限を `PR_WASH_ARM_FULL_CAP` として効率ループから分離**（ckpt は対象外）。選定を直した後の実測で1スライス22〜29分＝低スループットとトリガー連鎖の原因だった。要 clasp（①）
+- 2026-09-07: **A-1 洗い 選定の全走査撤去**（キュー件数は社ごと全読みをやめ「メーカー→件数」表を1回／選定プールは1実行1回）。実測 pick 12.8分＋pick後11.4分＝24分で予算20分超→Keepa到達0だった。行数肥大の禁止事項は [FULL §7bis](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。要 clasp（①）
+- 2026-09-07: **`appsscript.json` に `script.scriptapp` 復元**（D予約のトリガー作成権限。欠落したまま push されていた）。要 clasp＋再承認。
+- 2026-09-07: **C／D／E／B メニュー復元**（truncate→Git復元で旧IAに戻った分を bak から復帰）。要 clasp＋シート再読込。[CDE](org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md)
+- 2026-09-06: **マトリクス Drive プレビューを thumbnail w1000**（Sheets `IMAGE` の `uc?export=view` 空白対策。アップは fileId のまま）。要 clasp。
+- 2026-09-06: **サブ昇順詰め**（N昇順・同Nはファイル名昇順・列に詰める。番号なしは余り枠／候補）。要 clasp。[SUB_PACK_ASC](org/D_MENU_RAKUTEN_MATRIX_SUB_PACK_ASC_REQUIREMENTS.md)
+- 2026-09-05: **C①02+一時合算**＋**②レ点外JANは青枠スキップ**（先頭行強制投入廃止）。要 clasp。[WORK_MERGE_SCOPE](org/D_MENU_RAKUTEN_MATRIX_WORK_MERGE_SCOPE_REQUIREMENTS.md)
+- 2026-09-05: **C取得100枚**＋**マスタ既存URLは枠ごとアップ省略**。要 clasp。[SKIP](org/D_MENU_RAKUTEN_UPLOAD_SKIP_EXISTING_URL.md)
+- 2026-09-05: **楽天マトリクス L1〜L3**: メイン他セット／サブ全子／親=最少セット。直接青枠へ IMAGE。要 clasp。[LAYOUT](org/D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md)
+- 2026-09-05: **C／D／Eメニュー分割**: C=楽天マッチング。D=楽天・Yahooのみ。E=Amazon画像＋出品。D補助廃止→Z。要 clasp。[CDE](org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md)
+- 2026-09-04: **正本・個品・文字色 完全連携**: B-④で正本を共有から初期選択、個品確定ラベル表示。`_b5_parent_shared.json`／Prop 親SKU。要 clasp。[ALIGN §2](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-04: **文字色共有 実装**: Prop `B5_TEXT_COLOR_BY_PARENT`＋Drive `_b5_text_color_by_parent.json`。解決順 共有→マップ→FB。要 clasp。[ALIGN §3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-05: **B-⑥ Amazon MAIN**: メニュー本線化（パターン選択→Cursor指示）。CからAmazon量産を外し「仕上げ・救済・補助」化。要 clasp。[B6](org/D_MENU_B6_AMAZON_MAIN_REQUIREMENTS.md)／[ALIGN §1.2](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-04: **B一括＋B-③ 案1実装**: メニュー増なし。B起動確認で Property `B_INTEGRATED_INCLUDE_B3_IMAGES`。全パック完了後に約1分で B-③（Amazon自動・Keepa全件なし）。単体B-③残置。要 clasp。[ALIGN §1.1](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[B3確認](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)
+- 2026-09-04: **文字色共有＋B+B3オプション**: 親単位 textColor（MAIN／サブ順不同）。B一括＋B-③はオプション（案1実装済）。[ALIGN §1／§3／§1.1](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-04: **弱い統合・親絞り**: 02後C指示は既定＝今の親だけ（`--parent-sku`）。任意でレビューからC実行。全親一括は切替。[SET_MAIN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)／[ALIGN §3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-03: **弱い統合 B-④→C**: レビューUIで02成功後にC楽天量産指示を表示（自動composeなし）。`c_set_main_rakuten_prompt.py`。[SET_MAIN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)／[ALIGN §3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-09-03: **CセットMAIN楽天**: 文字色は MAIN `set_base_map` 自動／複数品番サマリ付き指示。要 clasp。[SET_MAIN HUMAN_RUN](org/D_MENU_SET_MAIN_IMAGE_PHASE_A_HUMAN_RUN.md)
+- 2026-09-03: **B-④ MAIN キャッチ高さ MAX155・下限なし合格**（かつお／まぐろ／ぶり全件）。縦書き≠おしゃれ・和風のみ少数。既定 `B5_CATCH_H_MAX=155`。[GRID_FIT §3.1](org/B5_MAIN_GRID_FIT_REQUIREMENTS.md)
+- 2026-08-31: **レ点に行かない根因**: 店ラウンド尽きた判定が自動レ点より先→大へ。修正=auto_ck優先／lastNew未設定即終了修正。要 clasp＋A-1。[CYCLE §4.4](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-30: **小中=0→店ラウンド≤10→大**（`prCycleShopBeforeLargeAction_`／`shop_after_large`／`defer_shop_before_large`）。full_trigger も大を target にしない。要 clasp＋A-1。[CYCLE §4.4・§6.3bis・§7](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-30: **A-1後Catalog遅延対策**: abort世代・孤児ロック破棄・`other_busy`→1分再試行。要 clasp＋A-1。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-30: **A-1=実行中一時停止＋先頭再選定**: `a1_park`（キュー・Keepa済残し）・続き選定スキップ・C4はD1未のみ recover。要 clasp＋A-1。[CYCLE §7.1・§7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-30: **大→特大＋週間枠を続きにも＋完走後店レーン**: `defer_xl_large_remain`／queue続きでも N=2。大特大完走後も shop_after。進捗は keep。要 clasp＋停止→A-1。[CYCLE §6.3bis・§7](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-29: **C4→心拍一本化＋Catalog先行**: C4成功後は次社直armせず心拍。`Catalog見積`未了は Keepa新規禁止・上限時メール。保留は選定外。要 clasp＋A-1。[CYCLE §6.3〜§6.4・§7](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-29: **週次転記チェック（§6.4ter）**: ①候補 `転記チェック`（未／済／漏れ）。日曜トリガー＋漏れ時D1＋社内メール。要 clasp＋A-1。[CYCLE §6.4ter](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-29: **洗い再開待ち=次cap分**（特大の常時61分修正。負 tokLeft=0）。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-29: **途中D1（§6.4bis）**: Keepaスライスごと門通過→品番リスト（完走待ち漏れ防止）。`PR_CYCLE_MID_D1_ENABLED`。要 clasp＋洗い続き。[CYCLE §6.4bis](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-29: **案B・N=2・ブランド追加 実装**（`PR_CYCLE_SHOP_AFTER_SM`／週間XL枠／title0→`brand_hint`）。仮想 T-CHB-20/21。要 clasp＋A-1。[CYCLE §6.3bis〜§6.6](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-09-06: **法人格ゆれ Phase A**: 実態AIが `(株)`／株式会社 等を同一キー扱い。サマリ全別名へミラー・マスタ heal（行削除なし）。要 clasp（競合＋①）。[B_COMPETITOR_JITTA](org/B_COMPETITOR_JITTA_REQUIREMENTS.md)
+- 2026-09-05: **競合DB実態AI第一段**: `competitor_jitta/`（実態のみ・トリガー可）。① `PR_JITTA_OWNER=comp` で心拍実態OFF。切戻し OWNER=hb。要 clasp（競合＋①別）。[B_COMPETITOR_JITTA](org/B_COMPETITOR_JITTA_REQUIREMENTS.md)
+- 2026-09-04: **実態AI分離**: 心拍 `jitta_resolve`（店と分離・1回8件）。小中=0時は店より先。未調査≥30で自動レ点抑制。切戻し `PR_JITTA_HB_LANE_ENABLED=false`。仮想 T-CHB-24〜27。要 clasp。[CYCLE §4.5bis](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-09-03: **店レーン譲り**: 洗い→心拍で inflight clear＋3分網＋shop busy。alight 完了で 1 分再開。切戻し `PR_SHOP_LANE_CLEAR_INFLIGHT=false`。仮想 T-CTW-23/24。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-09-03: **P-eff-1/2 効率ループ整流**: 実行中 ckpt 廃止・満タン `afterMin≤2`・WAIT_TOKEN 前 inflight clear・overlap age≥8 即 takeover。切戻し `PR_WASH_EFF_LOOP_ENABLED=false`。仮想 T-CTW-19〜22。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-09-01: **洗い ckpt 自己衝突対策**（3者レビュー条件付きYES・社長承認）: ckpt/overlap `wait_shortened` 無効・overlap 必ず再予約・inflight 中 missed 抑制。仮想18/18。**clasp 前**: dry PASS 済＋実機1回（発火済み trigger 残存確認）。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)／[多数決](org/B_WASH_TRIGGER_CKPT_FIX_MAJORITY.md)
+- 2026-08-29: **CYCLE §6.3bis**（列挙理想・中小完走ごと店挟み・大特大週間N=2・empty_research）／**§6.6**ブランド閾値／偽完了自動1回＋99メニュー。Keepa cap既定30。[CYCLE](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-29: **偽完了走査の欠落関数修正**（`prCandGatePassCountForMaker_` → `prLoadCandPassByAsin_`）。机上は通っても本番だけ止まる穴。要 clasp＋A-1→サトウ確認。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-28: **title0/C4 フェーズ3**（仮想10/10）: 永久 skip 集合・選定除外・候補あり C4 のみ・偽完了再洗い。要 clasp＋A-1。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-28: **title0_skip＋C4 needs recover**（`PurchaseResearch.js`）: タイトル含有0×3→保留＋心拍。完走済み D1 未を `PR_CYCLE_C4_NEEDS_D1` で A-1／番犬が C4 回収。要 clasp＋A-1。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-30: **店規模 §4.1bis GAS実装**（調査カテゴリー・カテゴリ別query・A-light OR・内訳列）。要 clasp。[CYCLE §4.1bis](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-30: **店規模 §4.1bis 要件了承**（調査カテゴリーレ点・カテゴリ別 query 見積・構成比は規模に使わない・在庫サンプル中止）。実装は次。[CYCLE §4.1bis](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-30: **店A-light 1店フル**（特大≥501はフルしない）・日次レ点8／店目標5／上限10／追加round≤10・心拍 `alight_continue`／`shop_before_large`。要 clasp＋止めてから A-1。[CYCLE §4](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-28: **予定超過リセット＋A-1単独復旧**（仮想16/16）: Keepa最大回復+5分超で hard reset→再武装。token `wait_shortened`。洗い→C4は別実行維持。要 clasp。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-28: **洗いトリガー予約前 Keepa `/token`**: ①ログ `Keepa token`（`liveLeft`／`calcLeft`／`afterMin`）。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-26: **後回し原因ログ＋不明残でも大特大後回し**: ①ログ `heartbeat sanitize`／`heartbeat pool`／`defer_xl`／`deferred_skip`。要 clasp。[CYCLE §7](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-26: **enumOnly後の沈黙修正**: 規模帯記録・Keepa中解除・心拍再arm。小中残存時は大特大キュー続き後回し。要 clasp。
+- 2026-08-26: **C4 pick=0→心拍arm**＋メニュー「心拍を今すぐ再開」。要 clasp。[CYCLE §6.4](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-27: **メニュー整理**: ルート「自動リサーチ」→ A全自動（A-1開始／A-2全診断）・B個別・C見積枠・99運用。要 clasp。[HUMAN_RUN §2.1](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-27: **心拍全体の沈黙対策**（仮想→16/16）: 生存番犬15分・C4 D失敗→心拍・no_maker再武装・`heartbeat end`／`heartbeat liveness`。要 clasp。[CYCLE §7.5](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-27: **洗いトリガー沈黙対策**（仮想12/12）: inflight・`full_trigger phase`・二重発火 `overlap_skip`・outer catch `watchdog_rearm`。要 clasp。[CYCLE §6.4](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-26: **心拍完成形**（仮想19/19）: 続き無しトリガー→列挙／小中洗い／A-light／自動レ点／C0／大。`小規模出現`再計算・日次メール本文拡充。切戻し `PR_CYCLE_HEARTBEAT_ENABLED=false`。要 clasp。[CYCLE §7](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[HUMAN_RUN §10.5](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-26: **規模帯選定（小→中→大→特大）・他メニューで心拍停止／01:00再開／日次生存メール**。仮想 C3+心拍 PASS。要 clasp。[CYCLE §6.3〜§7・§13](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-25: **見積発注_三協乾物** を共通スプシ参照に登録（メニュー `見積・発注`、intent `estimate`/`order`/`estimate_profit`）。[COMMON_SS_VIEW](org/COMMON_SS_VIEW_REQUIREMENTS.md)
+- 2026-08-25: **洗い強制終了耐性**（予算20分・スライスごと checkpoint 再予約・①ログ `洗いスライス`・lock_busyは残り秒待ち）。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-25: **洗いトリガー診断ログ**（`expectedAt`／`fire`／`trigger_cleared`／`trigger_missed`／99メニュー診断）。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-25: **取得日時を日本時間**（`+09:00`）＋**C3+T/洗いトリガー停滞対策**（未完でも再武装・`lock_busy`再予約・PROP rescue）。要 clasp。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-08-25: **B-③時間スライス**: 親のみ・1親ずつ・途中保存＋トリガー再開。切戻し `B3_IMAGE_TIME_SLICE_ENABLED=false`。要 clasp。[B3 docs](B3_COMPETITOR_IMAGE_AND_B_MENU_CONFIRMATIONS.md)。
+- 2026-08-19: **共通スプシ参照** ファイル＋ログ確認は最小セット・回答先頭に見た場所。手元は `tools/common_ss_view/`。[COMMON_SS_VIEW](org/COMMON_SS_VIEW_REQUIREMENTS.md)。ルール `common-ss-view.mdc`。
+- 2026-08-19: **メニュー成功は toast**（OK不要で競合DBへ即反映）。失敗のみ alert。要 clasp。
+- 2026-08-19: **再調査は上書き**。同じ店は1行。機械欄は今回値。メモ追記。手修正はメモ「手修正」。切戻し `PR_SELLER_REWALK_OVERWRITE=false`。要 clasp。
+- 2026-08-19: **A①空行** レ点時に同一sellerIdの店名行から構成比をコピー。採取元は残す。要 clasp。
+- 2026-08-19: **レ点なし**は競合DB「セラー」調査CK。完了で外れる。①候補は見ない。要 clasp（メッセージのみ）。
+- 2026-08-19: **起動時間の帯** onOpenは30秒・I/O禁止。店GETはレ点の店のみ（まとめは台帳JOIN）。要 clasp。
+- 2026-08-18: **店名はIDとセット**。台帳に無ければ Keepa `/seller storefront=0` で取り台帳へ。切戻し `PR_SELLER_NAME_GET_ENABLED=false`。要 clasp。
+- 2026-08-22: **Yahoo検索マージ**: 1件打ち切り廃止。最大6クエリ・上位20・`sort=-score`（おすすめ順）。要 clasp。
+- 2026-08-22: **Yahooカテゴリ改修**: 点数制・ゆるいシリーズ第1FB・おだしゆれ・Driveガード。仮想9PASS（`AFTER_20260822.md`）。要 clasp。
+- 2026-08-22: **Yahooカテゴリ＋同シリーズ**: 同商品(+2)／同シリーズ(+1・メーカー＋核)。仮想6PASS。要 clasp。
+- 2026-08-22: **Yahooカテゴリ組み直し**: 同商品→投票→票内重み。食品path専用オフ。仮想 `python tools/yahoo_category_virt/run_virt.py`（4PASS）。要 clasp。
+- 2026-08-22: **診断ログ強化（要出品clasp）**: Step1 `[SKU監査]`／ミックス `COMPARE`+Gemini byMall／`DUP_URL`／Yahoo `BRANCH1〜5`＋食品path優先。GB〜GD「・」偽重複はスプシ数式を修正済。
+- 2026-08-22: **A→B検収メモ**（水色子=`sanky`行／Yahoo catFail・誤分類／一人分19035／7207）。[CURRENT_PHASE](CURRENT_PHASE.md) §0ab。
+- 2026-08-22: **B再実行HUMAN_RUN**: 消去列チェックリスト＋再B後合否（青線／7207／JAN Yahoo／SKU監査）。[B_RERUN_CLEAR_AND_JUDGE](org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md)。
+- 2026-08-23: **G7（7207／ミックス楽天同一URL）保留**: 楽天に当該セット競合無し時の汎用ヒット。非クリティカル。厳格合否から外す。[CURRENT_PHASE](CURRENT_PHASE.md) §0ab／[B_RERUN §4.3](org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md)。
+- 2026-08-22: **A→B検収FIX（コード済・要出品clasp）**: Yahoo `DECIDE_*`ログ＋SHP数字query回避／一人分 `190g 35g`→19035連結修正／Step1色付けを子SKU判定／ミックスWRITEに title・src・url。既存マスタ値は再同期・再色が必要。
+- 2026-08-22: **Keepaフル索引B1**: 書込時自動再構築。D1は必要ASINだけ読む。初回は99「索引再構築」可。要 clasp。
+- 2026-08-22: **C0 `セラー調査済みSP-API`**: ①候補 N/O列。SP-API 成功後タグ。未済のみ次回。fixture 6/6。要 clasp
+- 2026-08-22: **C0 fixture dry 4/4 PASS**: `dry_cycle_seller_accum.py`／T-CSA-01〜04
+- 2026-08-22: **C0 セラー貯め GAS**: メニュー C0／`prRunSellerAccum_`。FLOW §5.4。要 clasp
+- 2026-08-22: **CYCLE 開発方針＋C1+C2 dry**: [DEV_MEMO](org/B_PURCHASE_RESEARCH_CYCLE_DEV_MEMO.md)／`dry_cycle_alight_hit.py` fixture 7件 PASS
+- 2026-08-22: **CYCLE 社長決定**: ≤500→ヒット固定・巨大はティアBで分割完走・A-light非書込・テスト期間半自動／完成形全自動。[CYCLE §11](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)
+- 2026-08-22: **3レーン CYCLE**: A-light／セラー貯め／1社完走連鎖。3者条件付きYES。[CYCLE](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[MAJORITY](org/B_PURCHASE_RESEARCH_CYCLE_THREE_REVIEW_MAJORITY.md)。実装前。
+- 2026-08-22: **Keepaフル再門**: 99メニュー。生JSONのみ①候補再門（GETなし）。`PR_REGATE_ONLY_BLANK` 既定true。要 clasp（①）。
+- 2026-08-22: **門プロファイル**: 順位下限（初期1・欠測落ち）＋価格上限（初期10万・カテゴリ別可）。要 clasp（①）。
+- 2026-08-22: **Keepa単価プロファイル**: offers20既定6・実測consumed/件数優先。洗いループは残tokで継続。要 clasp。
+- 2026-08-22: **洗いトリガー予約修正**: arm時 Prop先ON→トークン見積予約。①ログに `トリガー予約`／`trigger_armed afterMin=`。要 clasp。
+- 2026-08-22: **実態ck**: メーカーサマリ末尾。実態=要確認のみ Amazon検索URL。M列実態は不変。メニュー99「実態ck付与」。要 clasp。
+- 2026-08-22: **実態シード**（Generic=非仕入先等）＋サマリへ実態付与。A→Dは洗えるメーカーのみ・製造優先。要 clasp。
+- 2026-08-22: **本線メニュー** 1.店1件通し／0.試験A→D(メーカー最大1)／5.D1→D2。旧は99。全店自動はFLOW§7.1メモ。要 clasp。
+- 2026-08-25: **S 要確認の見た目**（`要確認（異種セット）` 等の文言＋赤白／黄セル）。要 clasp
+- 2026-08-25: **S 単品名 合格プロンプト実装**（最少名・異種mix・同一JAN寄せ）。要 clasp。[SINGLE_NAME](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **単品名比較仮想**（現状 vs メーカー辞書寄せ）。タブ `単品名比較_仮想`。`dry_single_name_compare.py`
+- 2026-08-24: **S 続き＋D2後自動**（見積候補の未充填を cap100／leftover で消化。`PR_SINGLE_NAME_AFTER_D2`）。要 clasp。[SINGLE_NAME §8.3](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **S 単品商品名AI充填 GAS**（見積候補・既存非上書き・簡易存在）。メニュー「S. 単品商品名AI充填」。要 clasp。[SINGLE_NAME](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **単品名パターン仮想 20/20 PASS**（`dry_single_name_classify.py`）。[SINGLE_NAME §8.1](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **単品名・JAN 要件定義**（見積前。存在=Catalog／Keepa。タイトル不一致F。コーパスはAI迷い等の限定補助のみ）。[SINGLE_NAME](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **単品名・JAN充填** 要件メモ再整理（存在＝Catalog正本・公式突合不採用・JAN複数パターン A–E）。[SINGLE_NAME](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **単品名・JAN充填** 要件メモ案（E前。AI抽出→JAN照合。正本=`単品商品名`）。[SINGLE_NAME](org/B_PURCHASE_RESEARCH_SINGLE_NAME_REQUIREMENTS.md)
+- 2026-08-24: **D2 大型・重量**（クイックショップ大型・特大＋重量≥上限g を見送り。寸法・重量欠測は見積候補。`①プロファイル` `大型`/`重量上限g`）。dry 8/8。要 clasp。[V1 §9](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)
+- 2026-08-24: **C5 CYCLE docs 済**。C3+T 本線・実機 PASS（アサヒ `pr_20260824_013324` C3+T→完走→C4→永谷園 arm）。[HUMAN_RUN §10](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)／[FLOW §3](org/B_PURCHASE_RESEARCH_FLOW.md)。
+- 2026-08-23: **C4完走連鎖**（dry 8/8 PASS・完走→D1→D2→次社 P3 arm）。`PR_CYCLE_C4_ENABLED`。要 clasp。[DEV_MEMO §7.3](org/B_PURCHASE_RESEARCH_CYCLE_DEV_MEMO.md)
+- 2026-08-23: **C3自動選定**（dry 7/7 PASS・`prPickCycleMakerSelectRows_`）。実態プルダウン・マスタ4社クリアメニュー。要 clasp。[CYCLE DEV_MEMO](org/B_PURCHASE_RESEARCH_CYCLE_DEV_MEMO.md)。
+- 2026-08-23: **実態AI cap100・スキップ非カウント・確定=ミラーhigh**（`PurchaseResearch.js`／`maker_alias.py`）。シードは非仕入先のみ。メニュー「実態AI調査（未調査メーカー）」。要 clasp。[JITTA](org/B_MAKER_JITTA_CLASSIFICATION.md)。
+- 2026-08-22: **洗いGET offers=20**で Keepaフル揃え＋**D1案A**（フル行あれば再GETしない）。単価既定2。要 clasp。
+- 2026-08-22: **洗い完走で調査CK解除**（トリガー含む）＋**D1→D2 統合メニュー**。要 clasp。
+- 2026-08-21: **洗いキュー期限切れ削除**（Keepa済・既定90日。メニュー＋完走時。`PR_WASH_QUEUE_RETENTION_DAYS`）。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。
+- 2026-08-21: **洗い完走安定化**（ロック・トリガー予約のみ・Keepaフル upsert・門出品者数1–20・D1 offers補強）。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。
+- 2026-08-21: **洗い完走トリガー待ち**を残り×単価（上限バケツ300）÷rate＋1分に変更。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。
+- 2026-08-21: **洗い完走 P3 トリガー**（承認済）。メニュー開始／停止。429温和停止→after で再開。完走で解除。Prop `PR_WASH_FULL_TRIGGER_ENABLED`。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。
+- 2026-08-21: **洗い完走ループ**メニュー（`full_loop`）。1実行内で Keepa 反復。トリガーなし。要 clasp。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。
+- 2026-08-21: **分割語 nextToken 再開**。頁上限でトークン保存。続きはサマリ→分割語未済→キューKeepa未の順。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。要 clasp。
+- 2026-08-21: **洗い完走 P1b実装**。`①洗い分割語`・Gemini(`gemini-3.6-flash`)主／OpenAI失敗時のみ・完走消込。ドライ尾西 PASS（シート非書）。P2ドライ未。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。要 clasp＋① Script Properties に `GEMINI_API_KEY`。
+- 2026-08-21: **洗い完走 分割B** タイトルからカテゴリ推定。Gemini主・OpenAIは失敗時のみ。`①洗い分割語` メモ＋完走消込。[FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。実装 P1b は別承認。
+- 2026-08-20: **メーカー洗い完走（案A+C）要件** [FULL](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。一時キュー列挙→Keepa完走。>500はメーカーマスタ第2語分割。cap≠完了。最終調査日は完走時のみ。P0=docs。実装は別承認。
+- 2026-08-20: **競合DB先頭挿入** Keepaフル／モールヒット／スナップショット新規は2行目へ（最新=上）。セラーは末尾のまま。メーカーサマリは新規のみ先頭＋`dry_maker_sum`全消し非本線。[COMPETITOR_STORE](org/COMPETITOR_STORE_REQUIREMENTS.md) §3。要 clasp（出品＋①）。
+- 2026-08-20: **Keepa 実測確定** `refillRate=5`（`pr_20260820_211319`）。料金画面 Starter=20 は候補のみ。フォールバック既定5。①洗い **cap20** 実機合格（want=20）。待ち=`ceil(消費/refillRate)`。正は [Keepa取得](Keepa取得_token分割実行_要件定義.md) §3。
+- 2026-08-20: **Keepa トークン**は日次枠ではない。公式は毎分 `refillRate`、未使用は60分失効。正は [Keepa取得](Keepa取得_token分割実行_要件定義.md) §3／[V1](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md) §3。
+- 2026-08-18: **①候補 1ASIN1行**。sellerId（参考）と **店名** を `|` で別セルへ。店名はセラー台帳JOIN。メニュー「①候補 重複ASINまとめ」。要 clasp。
+- 2026-08-18: **レ点の店／メーカー** ① GAS。セラーとメーカーサマリに A列 `調査CK`（チェック枠。レ点で行が青字）。total>1000は当該店保留・次へ。再巡回は仮6か月。切戻し `PR_CK_SELLER_ENABLED`／`PR_CK_MAKER_ENABLED=false`。要 clasp。
 - 2026-08-16: **A①再開** 2秒で+7。まとめ20で+34。429。台帳67。
 - 2026-08-16: **SP-API回数メモ** FLOW §5.5。A①再開+3。429。洗わないA3L1確認。
 - 2026-08-16: **A①貯め** カート＋新品オファー。新規19。SP-API429で停止。構成比は店洗い時。
+- 2026-08-16: **Peacefulショップ** 構成比35.5% query11 門10 リスト208。ストアASIN数空。
+- 2026-08-16: **Camel プロファイル再門** 通過15／落ち7。リスト200。Keepa追加なし。
+- 2026-08-16: **門に使う順位段階** プルダウンは「順位段階1/2/3」。数字1–3も読める。要 clasp（①）。
+- 2026-08-16: **①プロファイル** Amazonカテゴリ別マスタ。本体6ヶ月・冷凍生等を列化。要 clasp（①）。
+- 2026-08-16: **ストアASIN数** 応答があれば書く。Camelは空維持。通過9はKeepaフル既存。
+- 2026-08-20: **D1 差分更新＋先頭移動** 既存ASINは機械列差分で上書き→行5。差分なし skip。商品名/JAN直書き。要 clasp。
+- 2026-08-18: **E 実装保留** メモのみ（FLOW §5.3.1）。下書き=シート。可／不可=品番リストの品番ごと。送信なし。
+- 2026-08-18: **D1 新規は行5挿入**（既存は下へ）。要 clasp。A–D は人間がメニュー実行。
+- 2026-08-18: **D2 GAS 機械絞込** `prMenuListFilterD2`。見積候補／見送り理由列。門・実態・タイトル規則。切戻し `PR_LIST_FILTER_ENABLED=false`。要 clasp。
+- 2026-08-18: **D1 GAS 品番リスト追記** 実機 PASS（`pr_20260818_082140` append=1）。
+- 2026-08-17: **① GAS Keepaフル追記** GET分のみ。csv[]落とす・目的=リサーチ・指紋同なら非書。切戻し `PR_KEEPA_FULL_WRITE_ENABLED=false`。要 clasp。尾西再実行は skip が合格。
+- 2026-08-17: **① GAS メーカー洗い cap5**（`PurchaseResearch.js`）。メニュー尾西。Catalog page0→Keepa→門→①候補。実態ガード。切戻し `PR_MAKER_WASH_ENABLED=false`。要 clasp push＋SP-API Properties。
+- 2026-08-17: **接続スイート T1–T4 合格**（`dry_connect_suite.py --skip-t1 --apply --live`）。T1 尾西食品 pass2/drop3。T2 味の素＋AGF→①候補+5・門 drop5（接続路OK）。T3 リフココ非仕入先で洗わない。T4 BBQ FOUNDATION 要確認で下書きのみ。
+- 2026-08-17: **接続T1合格** 尾西食品（製造メーカー）cap5。Catalogタイトル含有→Keepa+4→門 pass2/drop3→①候補+5。
+- 2026-08-17: **実態4分類** 製造メーカー／入口ブランド／要確認／非仕入先。要確認16件のメール下書き（送信なし）。
+- 2026-08-17: **入口推奨**列（ペヤング型＝ブランド）。倉庫ブランド Catalog page0 を20件。次スライス `--offset 20`。
+- 2026-08-17: **別名辞書** AGF→味の素／いしもと→いし本／S&B→エスビー。サマリに入口語ヒット列（小テスト種＋未計測）。
+- 2026-08-17: **API小テスト** Catalog page0×8語（いずれも満杯疑い）。Keepa既存15ASIN突合・再GETなし。ブランド≠親／製造者ゴミでもタイトルに候補メーカーが多い。
+- 2026-08-17: **メーカーサマリ** メーカー1行に戻す（33行）。倉庫SKUは寄せ。ブランド列廃止。API小テスト案は dry_maker_api_probe。
+- 2026-08-16: **メーカーサマリ** A=メーカー B=ブランド/ライン。ノーブランドは集計メーカーへ。GETなし。
+- 2026-08-16: **Camel Trading 1店最終** query22・門9・メーカー11・リスト192。ストアASIN数は出品一覧禁止のため空。
+- 2026-08-16: **台帳→構成比** Camel Trading 食品66.7%。既存行更新（L4追記は使わず二重行を増やさない）。
+- 2026-08-16: **フェーズ1–5** リフココ Keepa+20 門14 リスト184。いしとき total=1 チーズかつお既通過。
 - 2026-08-16: **輪1周** 台帳上から A18COIYGTMT3AC。query894・Keepa20・門11・リスト170。⑧自動判別は未実装（正は人手→完成形機械）。
+- 2026-08-19: **R12 ミックス親 FBA** Catalog梱包が空ならセット構成3辺で本線書込。1袋子ASINは重量取得用。親の競合店ASINは空のまま。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §7
+- 2026-08-19: **R12 ミックス親 FBAティア** は1袋子のミックスKeepa ASINで Catalog。親の競合店ASINは空のまま。自己発CQは子行。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §7
+- 2026-08-18: **R12 ミックス寸法** 長辺・短辺は最大、一番短い辺だけ数量倍して足す。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §7
+- 2026-08-18: **R12 ミックスKeepa◎** がある袋はAmazonその値段。物流は親1袋3辺×袋数。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6–§7
+- 2026-08-18: **R12 ミックス価格** 12-⑭はミックス非書。1袋欠けは別モール1袋のみ借用（単品列は非書）。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6 / §6.2
+- 2026-08-18: **R12 Bキュー** 単品/ミックス分離・構成ゲート・競合は子行セット1優先。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6.1
+- 2026-08-18: **R12 大きさ** 単品親の競合Keepa梱包。無ければ同シリーズ・セット数1のみ流用。人は寸法を書かない。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §7
+- 2026-08-16: **R12-0〜4** 組み合わせセット。色AZ/BA/BB灰除外。Keepa＝AI行。構成列は式コピー除外。親SKU＋競合足し算＋3辺。R12-5は人のB。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md)
 - 2026-08-16: **フェーズ1–2** カレー11をリスト。JOIN159。メーカー全部洗いは不要。
 - 2026-08-16: **フェーズ1–4** page0残16完了。フロム13リスト。カレーpass11。永谷園第2語洗い切り。
 - 2026-08-16: **フェーズ1–5** page0 Keepa20+20 rest16。そうざいpass0。フロムpass13未転記。
@@ -124,7 +279,8 @@
 - 2026-08-16: **S4合格** モリタ `/seller` storefront=0。構成比4ノード・食品46.9%・複数カテゴリ（食品専業ではない）。asinListなし。consumed=1。`pr_20260816_s4col`。
 - 2026-08-16: **S3合格** モリタ `/query` GET page0 total=30。①候補に30。productなし。台帳巡回日・件数。`pr_20260816_s3qcol`。次は見積後／週次トリガー後。
 - 2026-08-16: **T2合格** 複製品番リスト JOIN82の画像URLをメインHYPERLINK。式32非書。未JOIN43はGETせず。`pr_20260816_t2col`。次の GET はセラー③ `/query`（承認後）。
-- 2026-08-16: **後続検証** AのGemini画像照合OFF可か（Catalog→Keepa名）。`KEEPA_SKIP_REF_IMAGE_AND_MATCH`。今は付けない。
+- 2026-08-21: **保留メモ** Keepaフル「目的=出品」書込はリサーチ完了後に再提案（`KEEPA_FULL_WRITE` OFFのまま）。12-⑩は在庫／競合価格側。A画像照合OFFはコスト過大時。[CURRENT_PHASE](CURRENT_PHASE.md) 0amz。
+- 2026-08-16: **後続検証** AのGemini画像照合OFF可か（Catalog→Keepa名）。`KEEPA_SKIP_REF_IMAGE_AND_MATCH`。**コスト過大時に再検討**（2026-08-21）。
 - 2026-08-16: **K8メモ** Buy Box現在/30/90・レビュー評価/件数・BuyBox_FBAは今のKeepaフルJSONでは空。取得方法・代替は NOW。実装なし。
 - 2026-08-16: **F2c** Keepaフル「サブ画像」を「画像」(E)の右隣(F)へ。`pr_20260816_f2cmove`。
 - 2026-08-16: **F2b合格** Keepaフル「画像」=メインHYPERLINK 220。「サブ画像」=2枚目以降を `|` 区切り 183。旧「画像一覧」はヘッダ改名。GETなし。`pr_20260816_f2bcol`。
@@ -168,6 +324,7 @@
 - 2026-08-15: **12-⑲⑳ P3 GAS**。貼付◎→マスタAmazon列。dryは可。書込は `AMAZON_PASTE_P3_WRITE_ENABLED` 未設定=OFF。要 clasp。[PASTE](org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)。
 - 2026-08-15: **袋数 N種×各M／P2機械◎でも非候補**。人が直す前の精度。Keepaセルよりタイトル。T17–T20・P3 dry済。マスタ未書。要 clasp。[ACCURACY](org/COMPETITOR_SETCOUNT_ACCURACY.md)。
 - 2026-08-15: **Amazon貼付 P2コード**（12-⑰/⑱）。仮想T19済。A非改変。clasp未。
+- 2026-08-16: **組み合わせセット** 要件正本 [COMBO_SET_BOM_REQUIREMENTS.md](org/COMBO_SET_BOM_REQUIREMENTS.md)。AIは名前＋数量（最大5）／マスタ親は親SKU＋数量。競合は単品最安の足し算→既存価格提案。大きさは3辺を足す。列は作業エリア右に先置き（Bは未記入）。KeepaはAI行ブロック。在庫は今マスタに持たない。B上限3。実装未。
 - 2026-08-16: **処理時間** シート `▼実行時間`。B Step と Step5 API のみ。共通 `logOpTiming_`。切戻し `OP_TIMING_ENABLED=false`。全関数計測は禁止（再指示は [op-timing-scope.mdc](../.cursor/rules/op-timing-scope.mdc) で止める）。要 clasp。
 - 2026-08-16: **Step5** Gemini成功時 OpenAI Visionスキップ（`B_STEP5_SKIP_OPENAI_IF_GEMINI_OK` 未設定=ON）。AI梱包停止（`B_STEP5_SKIP_PACK_AI` 未設定=ON）。ジャンルAIは既存スキップ維持。連番 [PHASE 0b5](CURRENT_PHASE.md)。要 clasp。
 - 2026-08-16: **行高さStep8廃止**（WRAP＋改行で伸びるため）。CLIP/高さロジック削除。要 clasp。[PHASE](CURRENT_PHASE.md)。
@@ -198,7 +355,7 @@
 - 2026-08-14: **ペヤング型は後続**: 商品名≠メーカー名の対策は第1版外。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)／[V1 §6](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)。
 - 2026-08-14: **領域1①専用スプシ複製**: ID `1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE`。原本は別。clasp差し替え禁止。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)。
 - 2026-08-14: **領域1①経路3先行**: 品質CPを第1版本体より先。[NOW](org/B_PURCHASE_RESEARCH_NOW.md)／PoC `tools/purchase_research_path3/`。clasp差し替え禁止。
-- 2026-08-14: **領域1①詳細稿**: Keepaは件数キャップなし・回復上限300トークン。列・門順・検証。[B_PURCHASE_RESEARCH_V1](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)。
+- 2026-08-14: **領域1①詳細稿**: Keepaは件数キャップなし・**当時「回復上限300」**（2026-08-20: 応答正・実測5/分・バケツ約300・洗いcap20）。列・門順・検証。[B_PURCHASE_RESEARCH_V1](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)。
 - 2026-08-14: **領域1立て直し**: ①仕入れ検討が第1、C見積は下書きまで第2、A後回し、②はキャッチアップ。調査スプシ＋マニュアルURLを正。[DOMAIN1](DOMAIN1_RESEARCH_PURCHASING.md)。
 - 2026-08-14: **リサーチ・見積もり セッション引継ぎ（②出品用）**: CPO V2／画像ガード／F/P／3D物流。[SESSION](SESSION_HANDOVER_RESEARCH_ESTIMATE_20260814.md)。領域1本線は DOMAIN1。
 - 2026-08-14: **B Step1 上挿入・実装（ローカル）**: 既存AK/IB値固定・テンプレ1–2新式・`B_STEP1_TOP_INSERT_ENABLED`（未設定=旧末尾）。人間: clasp push → Property true → HUMAN_RUN。[要件](org/B_STEP1_TOP_INSERT_REQUIREMENTS.md)／[HUMAN_RUN](org/B_STEP1_TOP_INSERT_HUMAN_RUN.md)。復元: `_local_backup/pre_B_STEP1_TOP_INSERT_20260814_001210/`。
@@ -253,6 +410,46 @@
 - 2026-08-14: **Bハード死対策**: AI最大3＋名前/税込ゲート／Step1後強制切断／`insertedProducts`マージ／Step2〜8集合のみ／`getUi`トリガー安全／番犬非設置。Z単独は全レ点。要 clasp push＋`B_WATCHDOG_ENABLED=false`。[要件](org/B_HARD_DEATH_SCOPE_REQUIREMENTS.md)／[HUMAN_RUN](org/B_HARD_DEATH_SCOPE_HUMAN_RUN.md)。
 - 2026-08-12: **B番犬P0実装**: ハード死後の自動再開（1発20分＋定期15分）／Step5 行CP＋中間TIME_SLICE／プルダウンTIME_SLICE／`▼B実行サマリ`／進捗メニュー。未設定=`B_WATCHDOG_ENABLED` ON。要 clasp push。[要件](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)／[CURRENT_PHASE](CURRENT_PHASE.md)。
 - 2026-08-10: **Amazon本番常時ONセット**: `PUT_ENABLED`／`ALLOW_PROD`／`LV4_ENABLED`／`SC_SUMMARY` の未設定既定=true（明示falseで緊急停止）。`MASTER_QTY`／`P4B`／`U2`／`U4`は常時OFF。A1〜B2・A3合格。要 clasp push＋旧falseキー削除or true。[CURRENT_PHASE](CURRENT_PHASE.md)／[D_ENTRY](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。
+- 2026-09-01: **B-④見本ゲート案内**: `finishB5AfterTruthBind` に食材見本ゲート必須（§7.14）。要 clasp。[ALIGN §7.14](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-09-01: **P-align-3 実装**: MAIN compose が `theme_new_run_{jan}` の人間確定 IDENTITY／SIZZLE を添付。[ALIGN §7.14](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-09-01: **§7.14 個品見本共有**: MAIN／サブで同一 IDENTITY（人間確定）。構図は別。サブ再設定不要。[ALIGN §7.14](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-09-01: **MAIN catch大＋sales小**: `catch_sales_pair_ja`・階層プロンプト。[ALIGN §7.6ter](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-31: **MAIN Phase1（scene/catch分離）**: `catchImage` 短文化・STYLE_TYPO 色競合解消。[ALIGN §7.6ter](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-31: **MAIN textColor 配線**: `_prompt_p3_free` に `accent_text_block`（サブと同系統）。[ALIGN §7.6bis](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-31: **textColor 親ごと自動**: `--text-color auto`／`--text-color-for`／GAS が Drive `set_base_map` を読んで指示へ。要 clasp。[ALIGN §7.6bis](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-31: **生成不要＝正本紐付け**: 「画像の生成不要」を最初の画面へ。ONならテーマ案Geminiもスキップして指示直行。要 clasp。[ALIGN §7.13](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **画像の生成不要（§7.13）**: B-⑤「画像の生成不要」CK→skip指示。`b5_skip_generate_finish.py`／`--skip-generate`／compose `--export-only`／theme_new `--auto-export`。要 clasp。[ALIGN §7.13](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **IDENTITY／SIZZLE 選定UI**: ゲートで2系統レ点。副のみはエラー。`food_canons.json`・T03=sizzle 等。[ALIGN §7.12.6](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **B-⑤指示＝見本ゲート必須**: Cursor 指示先頭で `sub_image_food_canon_launch` → 人間確定後に生成。要 clasp。[ALIGN §7.12.3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
+- 2026-08-30: **§7.12 食材見本**: IDENTITY／SIZZLE・常時任意コピペ（最大3）・競合ゼロ時必須案内・個品なしは正本のみ。[ALIGN §7.12](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **食材見本ゲート**: 機械候補5〜6→人間が主1＋副0〜2→実行でテーマ別新規生成→同画面レビュー。`sub_image_food_canon_launch.py`。[ALIGN §7.11](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **混在レビュー段階B**: 独自制作も再生成可（`__rN`）。**FOOD_UNIT_CANON** で食材見た目を機械統一（競合ぶれ時は正本フォールバック）。[ALIGN §7.10–7.11](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **混在レビュー段階A**: 独自制作＋競合を1画面で採用→出口。`sub_image_mix_review_launch.py`。compose最新は日時優先。[ALIGN §7.10](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **競合本線 1テーマ1枚**: チェック済みかつ競合写真があるテーマだけ。想像埋めしない。袋はパーツに含めない。スケール／FOOD_IDENTITY／needPackage。要 clasp。[ALIGN §7.9](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **テーマ別新規・サイズ／強調色**: 定型テンプレ2本＋初回プロンプト `--text-color`（マップ固定・微差可）。要 clasp。[ALIGN §7.6bis](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **P-align-2d テーマ別新規本線**: B-⑤概要＋訴求＋needPackage。T1/T2詳細人物・物背景実写・袋は必要時のみ。切戻し `B5_THEME_NEW_PATH=false`。要 clasp。[ALIGN §7](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **P-align-2b 本線**: B-⑤材料門＋Gemini概要2文（80〜140字）。1・2必須＋ほか最大8＝上限10。切戻し `B5_PROPOSE_GEMINI_ENABLED=false`。要 clasp。[ALIGN](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **P-align-2a サブUI寄せ**: lightbox／再生成`__rN`／採用再export／目視フォルダ／launch枚数優先。[ALIGN](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
+- 2026-08-30: **B-④/⑤表示入替＋文字色引き継ぎ**: 表示B-④＝MAIN基礎／B-⑤＝サブ（関数名互換）。`set_base_map.json` に `textColor`、Cは親ごと参照。整合 [B45_MAIN_SUB_ALIGN](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。要 clasp。
+- 2026-08-30: **B-⑤ P3b 要件ロック**: 採用1〜4＋出品CKレ点子SKU割当。`set_base_map.json`。Cは子ごとに土台。Yahoo同エンジン／Amazon対象外。既存ラン再利用・拡大・再生成世代保持。**コード済**（要 clasp・人間検収）。[要件 §3.6.1〜3.6.3](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ P3 ブラウザ本線**: `b5_main_base_review_launch.py`／`review_loop.py`（写真・レ点再生成・ラジオ→02）。GAS採用UI外し。指示文に起動コマンド。要 clasp。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ P2**: `b5_main_base_compose.py --role rakuten_main_base --from-json`。チェック分だけ OpenAI＋Pillow金丸/Octas。実画像は人間が明示したとき。要 clasp。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ M1**: ダイアログでセールストーク案（門＋Gemini整文）→複数チェック→指示。`buildB5ProposalsForBindings`。切戻し `B5_PROPOSE_GEMINI_ENABLED=false`。要 clasp。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ P1**: メニュー `menuB5RakutenMainBaseCursorPrompt`＋`b5_main_base_propose.py`。Property `B5_RAKUTEN_MAIN_BASE_ENABLED`（falseで非表示）。要 clasp。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ abc16**: キャッチ【見出し】優先・語途中禁止。Octas文字禁止聖域。キャッチ上部左寄り。OpenAIのみ。[要件 §0](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)。
+- 2026-08-29: **B-⑤ 案F正本掃除**: 旧案A（字数事前全修正・T4食感マクロ）を削除。Gemini画像生成はしない。売れる順は1商品ずつ試行点数。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)。
+- 2026-08-29: **B-⑤ 売れる順=1商品ずつ**: カテゴリ差し替え表は持たない。その商品の材料だけ点数化（試行・精度見て調整）。[要件 §3.2](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)。
+- 2026-08-29: **B-⑤ 案F本線ロック**: 材料から毎回提案。人が複数チェック→画像複数→1枚採用。字数事前全修正なし。根拠薄い案は出さない。T4=成果ベネフィット（売れる順）。[要件 §0・§3.2–3.3](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ 仮想v13**: T3×3＋T4×2。③Pillow Octas右下1.3マス。OpenAI本線。P1/P2メニューは指示まで作らない。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ 画像本線=OpenAI**（仮想v12人間ロック。`gpt-image-2` medium）。Gemini画像は比較用のみ。[要件 §0](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-29: **B-⑤ 仮想v12**: ③b/cに主婦向け `IMAGE_STYLE_TYPO`（`04.楽天見本/99.おしゃれ文字装飾見本`）。T3新規30は既存・退避ID除外。①は abc11 流用。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v11**: ③b/cにスマホ主役サイズ（キーワード1語≧金丸直径の約半分）。おしゃれ・トンマナ・背景と同色にしない。Gemini/OpenAI再比較。`4906283045119_20260828_213826_abc11`。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v10**: ③に写真実写＋後載せキャッチ必須1本（0本は再作成）。Gemini/OpenAI再比較。`4906283045119_20260828_200941_abc10`。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v9**: 同じ指示でGemini/OpenAI比較。③右上聖域空け→Pillow金丸。OpenAI=サブと同じgpt-image-2・medium。`4906283045119_20260828_190230_abc9`。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v8**: ③b/c=マスタ＋AI情報取得data・IMAGE_GOLDをAIが変更不可で配置（Pillow後載せなし）・文字20%超は再作成。`4906283045119_20260828_084819_abc8`。①②③aは流用。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v7**: ③b/c=虚偽禁止・金丸固定・白背景不可・文字20%・材料内売りのみ。`4906283045119_20260828_082224_abc7`。③aは流用。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-28: **B-⑤ 仮想v6**: ③a=添付構図固定。③b/c=規約＋売れる短い指示のみ。`4906283045119_20260828_022438_abc6`。①は流用。02未書込。[要件 §3.8](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
+- 2026-08-26: **B-⑤ 楽天MAIN基礎 P0 案Aロック**: テーマ対ドラフト最大4（文言＋画像）→人が1枚採用→`02.楽天ベース`。Pillowアピール＋K1空金丸。材料はマスタキャッチ／箇条書き＋`AI情報取得data`（JAN一致）。実装（P1〜）は別承認。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。
 - 2026-08-10: **サブ画像ベース色 PoC 3択**（beige/warm_white/soft_gray）: B-④ドロップダウン → compose `--base-color`（別名 `--tonmana`）。`tonmana_palette.py`／GAS `b4TonmanaPalette_` 同期。背景・カードのみ（PACKAGE_LOCK）。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
 - 2026-08-10: **B-④正本人間紐付け／写真実写ルール／サブファイル名にpattern**: Driveの`01.amazon白抜きベース`画像をJANと対応付け（`--package-truth`）。`photo_realism_rules.py`をcomposeが毎回読込。exportは`{子SKU}_{themeSlug}_subN.jpg`。要 clasp push／任意 Property `SET_MAIN_AMAZON_BASE_FOLDER_ID`。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
 - 2026-08-09: **サブ画像1話完結 auto-export**: compose後に `02.楽天アップロード画像保存場所` へ `{子SKU}_subN` 自動配置（JAN→出品CK子）。人間目視はこの1フォルダのみ。再生成後も再export。要 clasp push。[HUMAN_RUN](org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md)。
@@ -472,6 +669,14 @@
 - 2026-07-26: **Yahooカテゴリ／ブランド Stage 実装**: メニュー8へ。売れ筋(review_count近似)＋自社最安。トグル `AMAZON_AI_ADOPT_YAHOO_CATEGORY_BRAND_ENABLED`。要 clasp push。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md)／[HUMAN_RUN](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)。
 - 2026-07-26: **Yahooカテゴリ選定改定**: 売れ筋（`-review_count`近似）＋自社`Yahoo!価格設定`が最安になりやすいカテゴリ優先。単純多数決廃止。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md)。
 - 2026-07-26: **Yahooカテゴリ／ブランド Stage 要件起草**: 都度API（itemSearch投票）・階層名`:`連結・ショップ＝プロダクト写し。実装は承認後。[STAGE](YAHOO_CATEGORY_BRAND_STAGE.md)／[承認](org/LV4_YAHOO_CATEGORY_BRAND_IMPLEMENTATION_APPROVAL.md)／[HUMAN_RUN](org/D_MENU_YAHOO_CATEGORY_BRAND_HUMAN_RUN.md)。
+- 2026-08-20: **楽天 Ichiba API版**: `20220601` 廃止対応→既定 `20260701`。Property `RAKUTEN_ICHIBA_ITEM_SEARCH_API_VERSION`。要 clasp。[LEDGER](../CHANGE_LEDGER.md)
+- 2026-08-21: **画像袋数** 抜き出し→分類→highのみ。単位は袋限定なし。ミックス＋単品（タイトル不能・上限5）。要 clasp。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6.2／[SETCOUNT](org/COMPETITOR_SETCOUNT_ACCURACY.md)
+- 2026-08-21: **ミックスセット数**（何セットか）。各N→N／計N袋不使用／Vision＋参考画像ゲート・上限20。単品パース分離。要 clasp。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6.2.1
+- 2026-08-21: **ミックス袋数 Vision** タイトル不能時のみ Gemini 画像AI（親上限5・Yahoo優先）。`MIX_COMPETITOR_SET_COUNT_FROM_IMAGE`。要 clasp。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6.2
+- 2026-08-20: **ミックス楽天Yahoo検索**: N種クエリ→袋数一致の価格＋URL。0件は空（足し算なし）。選択・よりどり除外。R12足し算はAmazonのみ。要 clasp。[COMBO](org/COMBO_SET_BOM_REQUIREMENTS.md) §6.2
+- 2026-08-20: **楽天ジャンル汎用化**: Ichiba クエリ1本化（セット親=N種＋JAN最後／単品=JAN優先）。投票フィルタはセット系ワード＋商品名一致。Yahoo 7.6 共用。要 clasp。[STAGE3](RAKUTEN_NAV_GENRE_STAGE3.md)。
+- 2026-08-20: **Yahoo 競合フォールバック**: 楽天同順（jan_code→query=JAN→メーカー+商品名→商品名）。14-②/セット別/B Step2。Amazon◎確定は不変更。要 clasp。[RAKUTEN_YAHOO](RAKUTEN_YAHOO_COMPETITIVE_PRICE_REQUIREMENTS.md)。
+- 2026-08-20: **JAN≤5 で商品名マージ**: Ichiba 1ページ目 / Yahoo `jan_code` が5件以下ならメーカー+商品名を URL マージ。6件以上は JAN のみ。14-②除外。要 clasp。
 - 2026-07-26: **楽天ジャンル Stage3**: 都度API（Ichiba投票→Nav）をメニュー8へ。AI推奨不使用。トグル `AMAZON_AI_ADOPT_RAKUTEN_GENRE_ENABLED`。要 clasp push。[STAGE3](RAKUTEN_NAV_GENRE_STAGE3.md)／[HUMAN_RUN](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)。
 - 2026-07-26: **メニュー8 v1.6**: バリエーションテーマ選定をメニュー8へ（マスタは日本語。HPC=`サイズ`／食品=`パッケージサイズ`。Amazon裏マップで FOOD→`PACKAGE_SIZE_NAME`）。要 clasp push。[HUMAN_RUN](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)。
 - 2026-07-26: **メニュー8 v1.5**: 下限=上限−5・半角0.5換算・容量語1つ・特徴/用途は商品名酷似なら空可。要 clasp push。[HUMAN_RUN](org/D_MENU_AMAZON_AI_ADOPT_HUMAN_RUN.md)。
@@ -660,7 +865,7 @@
 - 現在の境界（2026-03 更新、`B_INTEGRATED_STEP_FUNCTIONS` と一致）:  
   - Step **1**: `menuSetCompositionProposal`  
   - Step **2**: `menuResearchBatchCrossMallAndPropose`  
-  - Step **2.1**（統合）: `menuApplyCompetitorStoreHitsForBIntegratedStep_`（12-⑭。JAN＋袋数。1件目禁止。ストア有効時は Step2 の横断シート直書きをスキップ。`B_COMPETITOR_STORE_APPLY_ENABLED` 未設定=ON）  
+  - Step **2.1**（統合）: `menuApplyCompetitorStoreHitsForBIntegratedStep_`（12-⑭単品JAN＋袋数。続けてミックスはN種検索→価格＋URL。0件は空。選択・よりどり不採用。ストア有効時は Step2 の横断シート直書きをスキップ。`B_COMPETITOR_STORE_APPLY_ENABLED` 未設定=ON）  
   - Step **3**: `menuCPOProposePricesRound1`（Amazon CPO V2・②.5前。F/Pガード既定オフ。送料スナップショット保存）  
   - Step **3.1**: `runEstimateLogisticsCostStep`（想定物流費AI試算）  
   - Step **3.2**: `menuRakutenYahooCpoProposePricesV2ForBIntegrated_`（楽天Yahoo CPO V2）  
