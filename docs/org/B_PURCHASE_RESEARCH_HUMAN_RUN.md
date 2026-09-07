@@ -224,7 +224,8 @@ full_trigger / heartbeat
 - `lock_busy` の待ちは **ロック残り秒＋1分**（2分連打しない）
 - **C4 完走連鎖は洗い完走と別 GAS 実行**（`C4トリガー予約` → 約1分後 `C4 trigger` fire）。長い洗い完走直後の 30 分壁で D2 前切断しない（2026-08-27）
 - **発火ライフサイクル**（2026-08-27）: `inflight` を expect より先に立てる。①ログ `full_trigger phase`（after_clear / pick_begin / pick_end）。二重発火は `overlap_skip`。例外は `outer FAILED`＋`watchdog_rearm`。30分殺し後は inflight が残り、次発火または診断で `inflight_stale`
-- **心拍全体の生存**（2026-08-27／28）: 洗い発火だけでなく C4・心拍分岐・pause も対象。15分ごとの `heartbeat liveness`。沈黙・**予定超過（Keepa最大回復＋5分）**なら `hard_reset`→`liveness_reset`。心拍の終わりは `heartbeat end`（washN/c4N/inflight）。C4 の D失敗は停止せず心拍へ。**A-1 だけで再開**（腐った実行印・予約も消す）
+- **心拍全体の生存**（2026-08-27／28）: 洗い発火だけでなく C4・心拍分岐・pause も対象。15分ごとの `heartbeat liveness`。沈黙・**予定超過（Keepa最大回復＋5分）**なら `hard_reset`→`liveness_reset`。
+  - **実行中印だけの腐りは 35分基準**（2026-09-08・`PR_CYCLE_INFLIGHT_STALE_FAST` 省略=ON）: GAS は約30分で殺すので、`inflight` が35分を超えたら生きている可能性はない。トークン回復基準の66分を待つと**沈黙死を拾うまで70分空く**（実測 09/08 00:02 発火→`phase=pick_begin` のまま沈黙→01:12 `hard_reset`＝Keepa作業ゼロが179分）。予約トリガーが残っていると `reason=wash_trigger` で生存扱いになり、この inflight 判定だけが唯一の検知口。**予定時刻超過（`expect_overdue`）は従来どおり66分**。`liveness_reset` に `deadPhase=` `overdueMin=` が付く。切戻し `PR_CYCLE_INFLIGHT_STALE_FAST=false`心拍の終わりは `heartbeat end`（washN/c4N/inflight）。C4 の D失敗は停止せず心拍へ。**A-1 だけで再開**（腐った実行印・予約も消す）
 - **洗い→リスト転記は別実行**（維持）: 完走後 C4 は約1分後の別 GAS。同一実行に混ぜない
 - **Keepa 残量**: 予約前 `/token`。`calcLeft` 欠落／不足でも `liveLeft` で次スライス可なら `wait_shortened`（長待ち短縮）。**`*_ckpt` / `overlap_wait` は短縮しない**（2026-09-01。`PR_WASH_CKPT_NO_SHORTEN` 未設定=ON）。効率ループ ON 時は実行中 ckpt 自体を出さない
 - **overlap**（2026-09-01／**整流 2026-09-03**）: age&lt;8分は `overlap_skip`＋短再試行（効率ONは **2分**）。**age≥8分は即 takeover**（`inflight_overlap_takeover`）して本処理。切戻し `PR_WASH_EFF_LOOP_ENABLED=false` で旧 stale 寄せ長待ち
@@ -322,6 +323,7 @@ python tools/common_ss_view/eff_judge_report.py --hours 24
 | `PR_CYCLE_DAILY_MAIL_ENABLED` | ON（実装後） | 日次生存メール切戻し |
 | `PR_EFF_JUDGE_ENABLED` | ON | ①ログ「効率合否」。切戻し `false` |
 | `PR_EFF_CKPT_BUDGET_RULE` | ON | **ckpt 合否を予算基準に**（≤予算+2+3=25分は PASS）。切戻し `false`（旧 固定15分で WARN） |
+| `PR_CYCLE_INFLIGHT_STALE_FAST` | ON | **番犬の実行中印を35分基準に**（30分壁準拠。沈黙死の検知を70分→40分に）。切戻し `false`（旧66分） |
 | `PR_WASH_EFF_LOOP_ENABLED` | ON | **P-eff-1/2**: ckpt実行中廃止・満タン≤2・inflight clear・overlap即takeover。切戻し `false`（旧ckpt0） |
 | `PR_SHOP_LANE_CLEAR_INFLIGHT` | ON | **店レーン譲り**: yield で inflight clear＋busy。切戻し `false` |
 | `PR_JITTA_HB_LANE_ENABLED` | ON | **実態AI分離**: 心拍 `jitta_resolve`。切戻し `false`（旧 A-light 末尾） |

@@ -258,6 +258,15 @@ var PR_CYCLE_LIVENESS_SILENCE_MS_ = 20 * 60 * 1000;
  * 予定時刻がこれ以上過ぎても発火しない／実行中印だけ残る → リセットして再開。
  */
 var PR_CYCLE_STALE_ALPHA_MIN_ = 5;
+/**
+ * 実行中印（inflight）だけの腐り判定は **30分壁基準の35分**にする（2026-09-08）。
+ * トークン回復基準の66分を待つと、選定で沈黙死した実行を番犬が拾うまで70分空く
+ * （実測 09/08 00:02 発火→pick_begin のまま沈黙→01:12 hard_reset＝179分の空白）。
+ * GAS は約30分で殺すので、35分を超えた実行中印は生きている可能性がない。
+ * 予定時刻超過（expect_overdue）は従来どおりトークン回復基準のまま。
+ * 切戻し: Property PR_CYCLE_INFLIGHT_STALE_FAST=false。
+ */
+var PR_CYCLE_INFLIGHT_STALE_FAST_PROP_ = 'PR_CYCLE_INFLIGHT_STALE_FAST';
 /** タイトル含有0がこの回数続いたら保留（title0_skip）して心拍へ。 */
 var PR_WASH_TITLE0_SKIP_AFTER_ = 3;
 var PR_WASH_TITLE0_FAIL_PROP_ = 'PR_WASH_TITLE0_FAIL_JSON';
@@ -2512,6 +2521,18 @@ function prCycleStaleLimitMs_() {
   return prCycleStaleLimitMin_() * 60 * 1000;
 }
 
+/** Property PR_CYCLE_INFLIGHT_STALE_FAST。未設定=ON。false で旧66分基準。 */
+function prCycleInflightStaleFastEnabled_() {
+  return prCkEnabled_(PR_CYCLE_INFLIGHT_STALE_FAST_PROP_);
+}
+
+/** 実行中印だけの腐り上限（ms）。30分壁基準の35分（洗い本体の stale と同値）。 */
+function prCycleInflightStaleLimitMs_() {
+  var tokenBased = prCycleStaleLimitMs_();
+  if (!prCycleInflightStaleFastEnabled_()) return tokenBased;
+  return Math.min(PR_WASH_INFLIGHT_STALE_MS_, tokenBased);
+}
+
 /** 洗い／C4 の次発火予定（ms）。無いときは 0。 */
 function prCycleNextExpectedFireMs_() {
   var props = PropertiesService.getScriptProperties();
@@ -3136,12 +3157,16 @@ function prCycleAliveReason_() {
       staleLimitMin: prCycleStaleLimitMin_(),
     };
   }
-  if (owner && age >= staleLimit) {
+  var inflightLimit = prCycleInflightStaleLimitMs_();
+  if (owner && age >= inflightLimit) {
     return {
       alive: false,
       reason: 'inflight_overdue',
       overdueMs: age,
-      staleLimitMin: prCycleStaleLimitMin_(),
+      staleLimitMin: Math.round(inflightLimit / 60000),
+      phase: String(
+        PropertiesService.getScriptProperties().getProperty(PR_WASH_INFLIGHT_PHASE_PROP_) || ''
+      ),
     };
   }
   if (washN > 0) return { alive: true, reason: 'wash_trigger' };
@@ -3214,7 +3239,9 @@ function prCycleEnsureLiveness_(runId, via) {
       afterMin +
       (c4Parent ? ' c4=' + c4Parent : '') +
       ' staleLimitMin=' +
-      prCycleStaleLimitMin_() +
+      (snap.staleLimitMin != null ? snap.staleLimitMin : prCycleStaleLimitMin_()) +
+      (snap.phase ? ' deadPhase=' + snap.phase : '') +
+      (snap.overdueMs != null ? ' overdueMin=' + Math.round(snap.overdueMs / 60000) : '') +
       ' ' +
       clocks,
   ]);
