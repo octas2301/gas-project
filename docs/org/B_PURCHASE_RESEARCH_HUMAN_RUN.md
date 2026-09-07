@@ -324,6 +324,7 @@ python tools/common_ss_view/eff_judge_report.py --hours 24
 | `PR_EFF_JUDGE_ENABLED` | ON | ①ログ「効率合否」。切戻し `false` |
 | `PR_EFF_CKPT_BUDGET_RULE` | ON | **ckpt 合否を予算基準に**（≤予算+2+3=25分は PASS）。切戻し `false`（旧 固定15分で WARN） |
 | `PR_CYCLE_INFLIGHT_STALE_FAST` | ON | **番犬の実行中印を35分基準に**（30分壁準拠。沈黙死の検知を70分→40分に）。切戻し `false`（旧66分） |
+| `PR_MAKER_BAND_MAP` | ON | **規模帯を「メーカー→帯」表1回読みで引く**（空振り選定 2〜11.9分→数秒）。切戻し `false`（1社ずつ3回読み） |
 | `PR_WASH_EFF_LOOP_ENABLED` | ON | **P-eff-1/2**: ckpt実行中廃止・満タン≤2・inflight clear・overlap即takeover。切戻し `false`（旧ckpt0） |
 | `PR_SHOP_LANE_CLEAR_INFLIGHT` | ON | **店レーン譲り**: yield で inflight clear＋busy。切戻し `false` |
 | `PR_JITTA_HB_LANE_ENABLED` | ON | **実態AI分離**: 心拍 `jitta_resolve`。切戻し `false`（旧 A-light 末尾） |

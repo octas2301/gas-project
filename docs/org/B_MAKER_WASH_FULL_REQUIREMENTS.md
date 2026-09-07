@@ -204,6 +204,8 @@ flowchart TD
 7. **1行ずつ `setValue` を件数ぶん繰り返さない。** Keepa済は連続行まとめ書き（`prWashQueueWriteKeepaDoneRows_`）
 8. **`Keepaフル` は1行ずつ読まない。** 実データ約8,400行なので、`getRange(r,1,1,lastCol)` を行ループで回すと空行0でも**約22分**かかる（2026-09-07 実測。1ASINのスライスでも22.9分）。まず ASIN 列だけ読んで候補を絞る（`prCleanupKeepaFullBlankRows_`）
 9. **`Keepaフル` の全列読みは必要なときだけ。** ASIN→行 の索引づくりは ASIN 列だけで足りる（`prKeepaFullAsinRowIndex_`）。生JSON 列は1行あたりが大きい
+10. **規模帯は「メーカー→帯」表から引く。** `prMakerBandFromSum_` は `prMakerBandRowMap_()`（実行内キャッシュ・`PR_MAKER_BAND_MAP`）を使う。旧実装は1社ごとに `prFindMakerSumRow_`（サマリ全読み）＋ヘッダ＋当該行の**3回読み**で、選定はキューの社ごとにこれを呼んでいた。規模帯・見積を書き換えたら `prMakerBandMapClear_()`（`prWriteMakerSumBand_` は内部で呼ぶ）
+   - **上の2番が守られていなかった箇所**。1社見つかる pick は19秒なのに、全社後回しの pick が2〜11.9分だったのが目印（2026-09-08 実測。空振り24回・夜間の61%が Keepa作業ゼロ）
 
 **症状の見分け方（①ログ）**: `phase=pick_end elapsedMs=` が数分を超える／`LOOP timeup slices=0 wrote=0` が続く／`liveLeft=300` が満タンのまま。この3点が揃ったら肥大が原因。
 **1スライスが20分超のとき**は `blank_scan`／`queue_snap`／`queue_mark_done` のログを見る。`queue_snap` が何度も出ていれば読み直しが残っている（正常は1社1回）。**件数に比例せず一定の20分超なら、キューではなく `Keepaフル` 側の行ループを疑う**（Keepa取得0件のスライスだけ速い、が目印）。
@@ -238,6 +240,8 @@ flowchart TD
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-08 | **規模帯引きの全社ループ内シート読みを撤去**（§7bis 10）: `prMakerBandFromSum_` を「メーカー→帯」表1回読みに。旧は1社ごとに3回読み（模擬 120社で **480回→2回**・判定結果は一致）。**洗える社が無いときの選定が2〜11.9分かかり、その間 Keepa が完全に空いていた真因**（1社見つかる選定は19秒。空振り24回・夜間の61%が Keepa作業ゼロ）。切戻し `PR_MAKER_BAND_MAP=false` |
+| 2026-09-08 | **番犬の実行中印を35分基準に**: GAS 30分壁より上の35分（洗い本体の stale と同値）。トークン回復基準の66分だと沈黙死を拾うまで70分空く（実測 00:02 発火→`pick_begin` 沈黙→01:12 hard_reset＝179分の空白・唯一の FAIL）。`expect_overdue` は不変。切戻し `PR_CYCLE_INFLIGHT_STALE_FAST=false` |
 | 2026-09-07 | **ckpt の効率合否を予算基準に**: `*_ckpt` は「残り予算+2分」で貼るのが正（同一実行と重ならない安全ネット。満タン2分上限も ckpt 除外）。判定側だけ古い前提で、正常な15〜22分を `ckpt_long_net` WARN／`ckpt_full_bucket_long_wait` FAIL にしていた（**実害の空き時間はゼロ＝純粋な誤検知**。実測7件すべて）。予算+2+3（既定25分）以下は `ckpt_safety_net` PASS、超過**かつ満タン**だけ `ckpt_long_despite_tokens` WARN。切戻し `PR_EFF_CKPT_BUDGET_RULE=false` |
 | 2026-09-07 | **Keepa GET を2段ゲートに**（§5.1・5.2）: 門は `stats` だけで判定できるので1段目は offers なし＝1トークン/件。通過（実測3%）だけ offers=20 を取り直す。**1件あたり約5→約1.2トークン**。落ちも薄い行として Keepaフルに残す（GETなし再門の資産）。D1補強に「通過なのに BuyBox 2列とも空」を追加（実測 通過782件中5件・20件/回上限）。切戻し `PR_KEEPA_TWO_STAGE_GATE=false` / `PR_D1_ENRICH_BLANK_BB=false` |
 | 2026-09-07 | **Keepaフルの空行掃除を1行ずつ読むのをやめる**（§7bis 8・9）: ASIN列を1回読んで候補行だけ全列を見る。索引づくりも ASIN 列だけ。**スライスが件数に比例せず常に22〜29分だった真因**（`prAppendKeepaFull_` 冒頭で毎回8,385回の個別読み取り。1ASINでも22.9分／Keepa取得0件のスライスだけ2.2分だったのが証拠）。切戻し `PR_KEEPA_FULL_BLANK_SCAN_BATCH=false` |

@@ -152,6 +152,16 @@ var PR_WASH_QUEUE_COUNT_MAP_PROP_ = 'PR_WASH_QUEUE_COUNT_MAP';
  */
 var PR_WASH_QUEUE_SNAP_ = {};
 var PR_WASH_QUEUE_SNAPSHOT_PROP_ = 'PR_WASH_QUEUE_SNAPSHOT';
+/**
+ * メーカーサマリの「メーカー→規模帯／洗い進捗／Catalog見積」実行内キャッシュ。
+ * 旧: prMakerBandFromSum_ が1社ごとに prFindMakerSumRow_（サマリ全読み）＋ヘッダ＋当該行の
+ * 3回読みをしていた。選定はキューに出てくる社ごとにこれを呼ぶので、
+ * 洗える社が無い（全社後回し）ときの pick が最大11.9分かかり、その間 Keepa は完全に空いていた。
+ * 実測 2026-09-08 夜間: 空振り pick 24回。1社見つかる pick は19秒、全社後回しは2〜11.9分。
+ * 切戻し: Property PR_MAKER_BAND_MAP=false（1社ずつ読み直す旧動作）。
+ */
+var PR_MAKER_BAND_CACHE_ = null;
+var PR_MAKER_BAND_MAP_PROP_ = 'PR_MAKER_BAND_MAP';
 var PR_FROZEN_RE_ = /冷凍|冷蔵|生鮮/;
 var PR_SPAPI_LWA_URL_ = 'https://api.amazon.com/auth/o2/token';
 var PR_SPAPI_DEFAULT_ENDPOINT_ = 'https://sellingpartnerapi-fe.amazon.com';
@@ -956,6 +966,7 @@ function prGasStart_() {
   PR_CYCLE_POOL_CACHE_ = null;
   PR_WASH_QUEUE_COUNT_CACHE_ = null;
   PR_WASH_QUEUE_SNAP_ = {};
+  PR_MAKER_BAND_CACHE_ = null;
   prClearSellerLedgerCache_();
 }
 
@@ -1625,10 +1636,72 @@ function prCyclePoolCounts_() {
   return out;
 }
 
+/** Property PR_MAKER_BAND_MAP。未設定=ON。false で1社ずつ読み直す旧動作。 */
+function prMakerBandMapEnabled_() {
+  return prCkEnabled_(PR_MAKER_BAND_MAP_PROP_);
+}
+
+/**
+ * メーカーサマリを1回だけ読み「メーカー→{band, prog, est}」を作る。
+ * 同名は先頭行を採る（prFindMakerSumRow_ と同じ）。
+ * @return {!Object<string, {band:string, prog:string, est:*}>}
+ */
+function prMakerBandRowMap_() {
+  if (PR_MAKER_BAND_CACHE_) return PR_MAKER_BAND_CACHE_;
+  var out = {};
+  var t0 = new Date().getTime();
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    PR_MAKER_BAND_CACHE_ = out;
+    return out;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  if (idxM < 0) {
+    PR_MAKER_BAND_CACHE_ = out;
+    return out;
+  }
+  var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var p = String(vals[r][idxM] || '').trim();
+    if (!p || out[p]) continue;
+    out[p] = {
+      band: idxBand >= 0 ? String(vals[r][idxBand] || '').trim() : '',
+      prog: idxProg >= 0 ? String(vals[r][idxProg] || '') : '',
+      est: idxEst >= 0 ? vals[r][idxEst] : '',
+    };
+  }
+  PR_MAKER_BAND_CACHE_ = out;
+  Logger.log(
+    '[仕入れ検討①] maker_band_map rows=%s makers=%s elapsedMs=%s',
+    vals.length,
+    Object.keys(out).length,
+    new Date().getTime() - t0
+  );
+  return out;
+}
+
+/** サマリの規模帯／見積を書き換えたあとに呼ぶ（表を作り直させる）。 */
+function prMakerBandMapClear_() {
+  PR_MAKER_BAND_CACHE_ = null;
+}
+
 /** メーカーの規模帯（サマリ列優先）。 */
 function prMakerBandFromSum_(parent) {
   parent = String(parent || '').trim();
   if (!parent) return PR_BAND_UNK_;
+  if (prMakerBandMapEnabled_()) {
+    // 全社ループから呼ばれる。表を1回作って以降は読まない
+    var row = prMakerBandRowMap_()[parent];
+    if (!row) return PR_BAND_UNK_;
+    if (row.band) return row.band;
+    return prMakerCatalogBand_(prMakerCatalogEstimate_(parent, row.prog, row.est));
+  }
   var loc = prFindMakerSumRow_(parent);
   if (!loc || !loc.sh) return PR_BAND_UNK_;
   var lastCol = Math.max(loc.sh.getLastColumn(), 1);
@@ -9462,6 +9535,7 @@ function prWriteMakerSumBand_(sh, sheetRow, estimate, cut501) {
   var writeN = cut501 ? Math.max(n, PR_CATALOG_SPLIT_THRESHOLD_ + 1) : n;
   sh.getRange(sheetRow, idxEst + 1).setValue(writeN);
   sh.getRange(sheetRow, idxBand + 1).setValue(prMakerCatalogBand_(writeN));
+  prMakerBandMapClear_();
 }
 
 function prLoadMakerQ2Words_(parent) {
