@@ -257,6 +257,7 @@ full_trigger / heartbeat
 | `title0_skip` / `title0_retry` | タイトル含有0が3回→保留＋心拍。`PR_WASH_TITLE0_SKIP_SET` 永久除外。未満は再試行 |
 | `done_no_candidates` / `false_complete_rewash` / `empty_research` | 偽完了→再洗い（自動1回）／空調査は保留。手動は **99 → 偽完了を列挙中に戻す** |
 | `shop_after_sm` / `xl_week_cap` / `brand_hint` | 中小完走→店挟み（案B）。大特大週間N=2。title0→ブランド行追加 |
+| `enum_batch n=8/8 … stop=` | **まとめ列挙の結果**（2026-09-08）。`stop=sm_found=（社名）`＝小中が出て打ち切り／`stop=budget`＝予算残5分で中断／`stop=list_end`＝対象切れかcap到達。`skip=` は例外で飛ばした社数。帯の内訳（`小=1 特大=4` 等）も並ぶ |
 | `C4_d_fail_heartbeat` / `hb_no_maker` | D失敗・メーカー空でも次時計 |
 | `hint=prop_on_but_no_trigger` 等 | 未発火時の推定 |
 | メニュー **洗いトリガー診断** | 99→2。いつでも現状を①ログへ |
@@ -325,6 +326,7 @@ python tools/common_ss_view/eff_judge_report.py --hours 24
 | `PR_EFF_CKPT_BUDGET_RULE` | ON | **ckpt 合否を予算基準に**（≤予算+2+3=25分は PASS）。切戻し `false`（旧 固定15分で WARN） |
 | `PR_CYCLE_INFLIGHT_STALE_FAST` | ON | **番犬の実行中印を35分基準に**（30分壁準拠。沈黙死の検知を70分→40分に）。切戻し `false`（旧66分） |
 | `PR_MAKER_BAND_MAP` | ON | **規模帯を「メーカー→帯」表1回読みで引く**（空振り選定 2〜11.9分→数秒）。切戻し `false`（1社ずつ3回読み） |
+| `PR_CYCLE_ENUM_BATCH_N` | **8** | **1実行でまとめて規模帯を確定する社数**（未判定244社の消化 約28時間→約7時間）。小中1社／予算残5分で打ち切り。切戻し `1`（心拍1回=1社） |
 | `PR_WASH_EFF_LOOP_ENABLED` | ON | **P-eff-1/2**: ckpt実行中廃止・満タン≤2・inflight clear・overlap即takeover。切戻し `false`（旧ckpt0） |
 | `PR_SHOP_LANE_CLEAR_INFLIGHT` | ON | **店レーン譲り**: yield で inflight clear＋busy。切戻し `false` |
 | `PR_JITTA_HB_LANE_ENABLED` | ON | **実態AI分離**: 心拍 `jitta_resolve`。切戻し `false`（旧 A-light 末尾） |

@@ -277,6 +277,20 @@ var PR_CYCLE_STALE_ALPHA_MIN_ = 5;
  * 切戻し: Property PR_CYCLE_INFLIGHT_STALE_FAST=false。
  */
 var PR_CYCLE_INFLIGHT_STALE_FAST_PROP_ = 'PR_CYCLE_INFLIGHT_STALE_FAST';
+/**
+ * 規模帯の確定（Catalog列挙）を1実行で何社まとめるか（2026-09-08）。
+ * 列挙そのものは16〜48秒だが、1社ごとに 洗い→店→心拍 の受け渡しをやり直すため
+ * 実測1社あたり7分かかっていた（内訳: 選定1.6分＋yield2分＋店busy2分＋往復1分）。
+ * 未判定が実測244社あり、1社7分では消化に約28時間。その間 Keepa は材料切れで空く
+ * （2026-09-08 夜間: 10.3時間のうち61%が Keepa作業ゼロ・空振り選定24回）。
+ * 打ち切り: 予算残り不足／小中が1社出た時点。1 にすると旧動作（1社ずつ）。
+ * 切戻し: Property PR_CYCLE_ENUM_BATCH_N=1。
+ */
+var PR_CYCLE_ENUM_BATCH_N_PROP_ = 'PR_CYCLE_ENUM_BATCH_N';
+var PR_CYCLE_ENUM_BATCH_N_DEFAULT_ = 8;
+var PR_CYCLE_ENUM_BATCH_N_MAX_ = 20;
+/** まとめ列挙を打ち切る予算残り（予約とログのために残す）。 */
+var PR_CYCLE_ENUM_BATCH_RESERVE_MS_ = 5 * 60 * 1000;
 /** タイトル含有0がこの回数続いたら保留（title0_skip）して心拍へ。 */
 var PR_WASH_TITLE0_SKIP_AFTER_ = 3;
 var PR_WASH_TITLE0_FAIL_PROP_ = 'PR_WASH_TITLE0_FAIL_JSON';
@@ -2584,6 +2598,133 @@ function prCycleClockSnapshot_() {
   );
 }
 
+/**
+ * 規模帯の確定（Catalog列挙）を1実行で複数社まとめて回す。
+ * 打ち切り: 予算残り不足／小・中が1社出た（洗いを待たせない）／対象切れ。
+ * 1社の例外は飛ばして次へ（タイトル含有0は保留処理だけして継続）。
+ * @param {string} runId
+ * @param {string} firstParent 心拍が選んだ先頭社（必ず最初に処理する）
+ * @return {{n:number, detail:string}}
+ */
+function prCycleRunEnumBatch_(runId, firstParent) {
+  var cap = prCycleEnumBatchN_();
+  var order = [];
+  var seen = {};
+  firstParent = String(firstParent || '').trim();
+  if (firstParent) {
+    order.push(firstParent);
+    seen[firstParent] = true;
+  }
+  var pend = prCycleCatalogPendingList_(cap + 1);
+  var i;
+  for (i = 0; i < pend.length && order.length < cap; i++) {
+    var p = String(pend[i].parent || '').trim();
+    if (!p || seen[p]) continue;
+    seen[p] = true;
+    order.push(p);
+  }
+  var t0 = new Date().getTime();
+  var bands = {};
+  var doneN = 0;
+  var skipN = 0;
+  var stopBy = 'list_end';
+  for (i = 0; i < order.length; i++) {
+    if (i > 0 && !prCycleEnumBatchHasBudget_()) {
+      stopBy = 'budget';
+      break;
+    }
+    var parent = order[i];
+    try {
+      prRunMakerWashFull_({
+        parent: parent,
+        entry: prMakerCatalogEntry_(parent, '', ''),
+        needles: prMakerWashNeedles_(parent, ''),
+        tag: 'hb_enum',
+        runId: runId,
+        loopKeepa: false,
+        quiet: true,
+        armTrigger: false,
+        enumOnly: true,
+      });
+      var fin = prFinalizeEnumOnlySize_(parent);
+      doneN++;
+      var band = String(fin.band || PR_BAND_UNK_);
+      bands[band] = (bands[band] || 0) + 1;
+      Logger.log(
+        '[仕入れ検討①] enum_batch %s/%s parent=%s band=%s queue=%s',
+        i + 1,
+        order.length,
+        parent,
+        band,
+        fin.queueN
+      );
+      // 小・中が出たら列挙をやめて洗いへ譲る（小中優先を崩さない）
+      if (band === PR_BAND_S_ || band === PR_BAND_M_) {
+        stopBy = 'sm_found=' + parent;
+        break;
+      }
+    } catch (eB) {
+      var msgB = prRedactKey_(String((eB && eB.message) || eB));
+      if (/タイトル含有0/.test(msgB)) {
+        try {
+          prHandleWashTitleZero_({
+            parent: parent,
+            runId: runId,
+            tag: 'hb_enum_title0',
+            armTrigger: false,
+            quiet: true,
+          });
+        } catch (eT) {}
+      }
+      skipN++;
+      Logger.log(
+        '[仕入れ検討①] WARN enum_batch_skip parent=%s %s',
+        parent,
+        msgB.slice(0, 120)
+      );
+    }
+  }
+  var bandStr = Object.keys(bands)
+    .map(function (k) {
+      return k + '=' + bands[k];
+    })
+    .join(' ');
+  return {
+    n: doneN,
+    detail:
+      'enum_batch n=' +
+      doneN +
+      '/' +
+      order.length +
+      ' cap=' +
+      cap +
+      ' skip=' +
+      skipN +
+      ' stop=' +
+      stopBy +
+      (bandStr ? ' ' + bandStr : '') +
+      ' elapsedMs=' +
+      (new Date().getTime() - t0),
+  };
+}
+
+/** 1実行でまとめて規模帯を確定する社数（Property。1=旧動作の1社ずつ）。 */
+function prCycleEnumBatchN_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_CYCLE_ENUM_BATCH_N_PROP_);
+  var n = Number(raw);
+  if (raw == null || String(raw).trim() === '' || isNaN(n) || n < 1) {
+    return PR_CYCLE_ENUM_BATCH_N_DEFAULT_;
+  }
+  return Math.min(Math.floor(n), PR_CYCLE_ENUM_BATCH_N_MAX_);
+}
+
+/** まとめ列挙を続けてよいか（予算残りに予約・ログぶんを残す）。 */
+function prCycleEnumBatchHasBudget_() {
+  if (!PR_GAS_START_MS_) return true;
+  var elapsed = new Date().getTime() - PR_GAS_START_MS_;
+  return PR_GAS_BUDGET_MS_ - elapsed > PR_CYCLE_ENUM_BATCH_RESERVE_MS_;
+}
+
 /** Keepa 最大回復待ち＋α（分）。腐った予約／実行印のリセット閾値。 */
 function prCycleStaleLimitMin_() {
   var maxWait = Math.ceil(prKeepaTokenBucketMax_() / prKeepaRefillRate_()) + 1;
@@ -4874,6 +5015,22 @@ function prDispatchHeartbeat_(runId) {
     var needles = prMakerWashNeedles_(parent, '');
     var entry = prMakerCatalogEntry_(parent, '', '');
     var enumOnly = act.action === 'enum_unknown';
+    // 規模帯の確定は1実行でまとめる（1社ごとの受け渡し待ちが実測7分だった）
+    if (enumOnly && prCycleEnumBatchN_() > 1) {
+      var batch = prCycleRunEnumBatch_(runId, parent);
+      var hbMinB = prCycleArmHeartbeatAfterIdle_(runId, 'hb_after_enum');
+      prAppendLog_([
+        runId,
+        'heartbeat enum',
+        'DONE',
+        new Date(),
+        batch.n,
+        parent,
+        '',
+        batch.detail + ' heartbeat_armed afterMin=' + hbMinB,
+      ]);
+      return act;
+    }
     if (!enumOnly && (act.action === 'wash_large' || act.action === 'wash_xl')) {
       if (!prCycleXlWeeklyTryConsume_(parent)) {
         var armCap = prCycleArmHeartbeatAfterIdle_(runId, 'hb_xl_week_cap');
@@ -9354,8 +9511,20 @@ function prMakerCatalogEstCellOk_(parent) {
  * @return {{parent:string, detail:string}|null}
  */
 function prCycleFirstCatalogPending_() {
+  var list = prCycleCatalogPendingList_(1);
+  return list.length ? list[0] : null;
+}
+
+/**
+ * Catalog見積未了の洗えるメーカーを最大 cap 社（規模不明を先、次に帯あり見積なし）。
+ * 絞り込み条件は先頭1社版と同じ（`prCycleFirstCatalogPending_` はこれの cap=1）。
+ * @param {number} cap
+ * @return {!Array<{parent:string, detail:string}>}
+ */
+function prCycleCatalogPendingList_(cap) {
+  var want = Math.max(1, Number(cap) || 1);
   var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
-  if (!sh || sh.getLastRow() < 2) return null;
+  if (!sh || sh.getLastRow() < 2) return [];
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
@@ -9367,7 +9536,7 @@ function prCycleFirstCatalogPending_() {
   var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
   var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
   var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
-  if (idxMaker < 0) return null;
+  if (idxMaker < 0) return [];
   var sellerVals = [];
   var sellerHdr = [];
   try {
@@ -9379,8 +9548,8 @@ function prCycleFirstCatalogPending_() {
     }
   } catch (eS) {}
   var cutoffMs = Date.now() - prAutoMakerRewalkDays_() * 24 * 60 * 60 * 1000;
-  var unkFirst = null;
-  var missFirst = null;
+  var unkList = [];
+  var missList = [];
   var r;
   for (r = 0; r < vals.length; r++) {
     var parent = String(vals[r][idxMaker] || '').trim();
@@ -9406,13 +9575,15 @@ function prCycleFirstCatalogPending_() {
         : prMakerCatalogBand_(prMakerCatalogEstimate_(parent, prog, estCell));
     if (!estOk) {
       if (band === PR_BAND_UNK_ || !band) {
-        if (!unkFirst) unkFirst = { parent: parent, detail: 'band_unknown_no_est' };
-      } else if (!missFirst) {
-        missFirst = { parent: parent, detail: 'band=' + band + '_no_catalog_est' };
+        if (unkList.length < want) unkList.push({ parent: parent, detail: 'band_unknown_no_est' });
+      } else if (missList.length < want) {
+        missList.push({ parent: parent, detail: 'band=' + band + '_no_catalog_est' });
       }
     }
+    if (unkList.length >= want) break;
   }
-  return unkFirst || missFirst;
+  // 規模不明を優先。足りない分だけ「帯あり見積なし」で埋める
+  return unkList.concat(missList).slice(0, want);
 }
 
 /** Keepa中＋候補ゼロ＋未済0 を保留へ（片岡型の空ループ救済）。 */
