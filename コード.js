@@ -531,7 +531,9 @@ function onOpen() {
       .addItem('B-① amazon競合価格のみKeepa修正を反映', 'menuUpdateCompetitivePriceOnly')
       .addItem('B-② 送料・競合価格修正後、価格を再設定（全モール）', 'menuRunPriceProposalOnly')
       .addItem('B-③ マスタレ点行の競合画像取得（必要時のみ実行）', 'menuB3MasterCheckedCompetitorImages')
-      .addItem('B-④ サブ画像作成（Python／Cursor指示）', 'menuB4SubImageCursorPrompt')
+      .addItem('B-④ 楽天MAIN基礎（Python／Cursor指示）', 'menuB5RakutenMainBaseCursorPrompt')
+      .addItem('B-⑤ サブ画像作成（Python／Cursor指示）', 'menuB4SubImageCursorPrompt')
+      .addItem('B-⑥ Amazon MAIN（透過確認＋Cursor指示）', 'menuB6AmazonSetMainCursorPrompt')
       .addItem('C. 画像コース（選択可）', 'showCImageCourseModal')
       .addItem('D. 画像＋出品全モール一括アップロード（選択可）', 'showBatchExportModal')
       .addSubMenu(ui.createMenu('D補助. Amazon段階実行（旧E）')
@@ -548,11 +550,19 @@ function onOpen() {
     // Yahoo!出品メニュー
     ui.createMenu('🛒 Yahoo!出品')
       .addItem('▶ 出品実行', 'runYahooExport')
+      .addItem('Yahoo説明をAPI反映（テンプレ→caption/FS）', 'menuYahooCaptionRichApply')
       .addSeparator()
       .addItem('Yahoo再認証（認可コード貼付）', 'menuYahooOauthReauth')
       .addItem('Yahoo認証期限を確認（メール可）', 'menuYahooOauthCheckExpiry')
       .addItem('Yahoo認証期限メール・日次トリガー設置', 'menuYahooOauthInstallExpiryTrigger')
       .addItem('Yahoo認証期限メール・トリガー削除', 'menuYahooOauthRemoveExpiryTrigger')
+      .addSeparator()
+      .addSubMenu(ui.createMenu('販促リマインド（クーポン期限）')
+        .addItem('シート初期化（2四半期シード）', 'menuPromoRemindInitSheet')
+        .addItem('今すぐリマインド実行', 'menuPromoRemindRunNow')
+        .addItem('強制テストメール', 'menuPromoRemindTestMailForce')
+        .addItem('日次トリガー設置', 'menuPromoRemindInstallTrigger')
+        .addItem('日次トリガー削除', 'menuPromoRemindRemoveTrigger'))
       .addSeparator()
       .addItem('🗑️ 商品を削除...', 'showDeleteSelectionDialog')
       .addToUi();
@@ -752,6 +762,57 @@ function menuCSetMainRakutenCursorPrompt_(textColorId) {
 }
 
 /**
+ * B-⑥ Amazon MAIN — パターン選択 → Cursor／Agent 指示（GASは合成しない）。
+ * 本線入口。旧 C「セットMAIN量産（Amazon）」相当。
+ * 2026-10-05 修復: 9月14日控えの入口のみ。指示文の本体は既存のまま。
+ */
+function menuB6AmazonSetMainCursorPrompt() {
+  var fn = 'menuB6AmazonSetMainCursorPrompt';
+  Logger.log('[' + fn + '] state=PENDING');
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
+    '<body style="font-family:sans-serif;padding:16px;">' +
+    '<h3 style="margin-top:0;">B-⑥ Amazon MAIN</h3>' +
+    '<p style="font-size:13px;">パターンを選び、指示文を Cursor に渡します（GASは合成しません）。素材は <code>01.amazon白抜きベース</code>。出力は 07。</p>' +
+    '<div style="margin:12px 0;padding:10px;border:1px solid #ddd;border-radius:6px;">' +
+      '<div style="font-weight:bold;margin-bottom:8px;">量産パターン</div>' +
+      '<label style="display:block;margin-bottom:6px;"><input type="radio" name="aspect" value="square" checked> ①正方形（本線）</label>' +
+      '<label style="display:block;margin-bottom:6px;"><input type="radio" name="aspect" value="portrait"> ②縦長タイプ（合格固定）</label>' +
+      '<label style="display:block;margin-bottom:6px;"><input type="radio" name="aspect" value="landscape"> ③横長タイプ（合格固定）</label>' +
+      '<div style="margin-top:8px;color:#666;font-size:11px;">正方形＝縁際。縦長＝扇／の字。横長＝N1中央／N2縦二段／N3–4階段／N≥5上hero+下グリッド。いずれもキャンバス正方形・N=1含む。</div>' +
+    '</div>' +
+    '<div style="font-size:12px;background:#fff8e1;padding:10px;border-radius:6px;margin-bottom:12px;">' +
+      '<b>必須確認（指示内にも記載）</b><br>' +
+      '① 素材が透過PNGか　② Canva背景リムーバー実施済みか' +
+    '</div>' +
+    '<p><button id="run">指示文を出す</button> <button id="cancel">キャンセル</button></p>' +
+    '<p id="msg" style="color:#666;font-size:12px;"></p>' +
+    '<script>' +
+    'document.getElementById("run").onclick=function(){' +
+      'var asEl=document.querySelector("input[name=aspect]:checked");' +
+      'var as=asEl?asEl.value:"square";' +
+      'document.getElementById("run").disabled=true;' +
+      'document.getElementById("msg").textContent="開いています…";' +
+      'google.script.run.withSuccessHandler(function(){google.script.host.close();})' +
+      '.withFailureHandler(function(e){document.getElementById("run").disabled=false;' +
+        'document.getElementById("msg").textContent="エラー: "+e.message;})' +
+      '.runB6AmazonSetMainWithAspect(as);' +
+    '};' +
+    'document.getElementById("cancel").onclick=function(){google.script.host.close();};' +
+    '</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(520).setHeight(420),
+    'B-⑥ Amazon MAIN'
+  );
+  Logger.log('[' + fn + '] state=DONE dialogShown');
+}
+
+/** B-⑥ ダイアログから呼ぶ公開入口（google.script.run 用。末尾 _ は不可） */
+function runB6AmazonSetMainWithAspect(aspectId) {
+  return menuCSetMainAmazonCursorPrompt_(aspectId);
+}
+
+/**
  * セットMAIN量産（Amazon）— 透過2点確認＋アスペクト選択を含む Cursor／Agent 指示文。
  * GASは画像合成しない。出力は 07（C→D本線）。メタは _meta/。
  * @param {string} aspectId square|portrait|landscape
@@ -911,28 +972,36 @@ function createZSplitMenu(ui) {
       .addItem('14-⑤ Yahoo認証期限メール・日次トリガー設置', 'menuYahooOauthInstallExpiryTrigger')
       .addItem('14-⑥ Yahoo認証期限メール・トリガー削除', 'menuYahooOauthRemoveExpiryTrigger'))
     .addSubMenu(ui.createMenu('15. 共通・検証')
-      .addItem('15-① 列番号マスタを生成（8行目から）', 'menuGenerateColumnMasterFromRow8')
-      .addItem('15-② 3モール商品名繋ぎ計算式作成', 'menuCreateThreeMallProductNameFormulas')
-      .addItem('15-③ Amazon商品名計算式を表示（コピペ用）', 'menuShowAmazonProductNameFormula')
-      .addItem('15-④ 選択行に競合価格を入力', 'menuWriteCompetitivePricesToSelection')
-      .addItem('15-⑤ メーカー品番取得（選択行）', 'menuFetchMakerModelFromApis')
-      .addItem('15-⑥ メーカー品番取得（レ点・親SKU行）', 'menuFetchMakerModelFromApisForCheckedParentRows')
-      .addItem('15-⑦ SerpAPI取得結果をシートに出力（選択行）', 'menuOutputSerpApiResultsToSheet')
-      .addItem('15-⑧ モール横断セット数統合判定（単体）', 'menuTestCrossMallSetCountJudge')
-      .addItem('15-⑨ モール横断結果を楽天・Yahoo!マスタに反映（単体）', 'menuApplyCrossMallResultToRakutenYahooMaster')
-      .addItem('15-⑩ 抜けセット数行の挿入（単体）', 'menuInsertMissingSetCountRows')
-      .addItem('15-⑪ 選択行に価格・セット数提案を反映', 'menuProposePriceAndSetToSelection')
-      .addItem('15-⑫ Amazonカテゴリーを自動入力（Gemini）', 'menuFillAmazonCategoryByGemini')
-      .addItem('15-⑬ メーカー辞書をマスタから更新（月次）', 'menuUpdateMakerDictFromMasterMonthly')
-      .addItem('15-⑭ 保存方法の改行を除去（レ点・親）', 'menuSanitizeStorageNewlinesForCheckedParents')
-      .addItem('15-⑮ N列ASIN自動（◎×ブランド＝メーカー・レ点親）', 'menuFillAsinNFromOfficialCompetitorForCheckedParents')
-      .addItem('15-⑯ 競合ASIN投票診断U3（セット数確定後・診断シートのみ）', 'menuCompetitorAsinVoteDiagnoseU3ForCheckedParents')
-      .addItem('15-⑰ FBAティア診断P1a（Catalog寸法・レ点親・診断シートのみ）', 'menuFbaTierCatalogDiagnoseP1aForCheckedParents')
-      .addItem('15-⑱ FBAティア本線書込P1b（FBAティア/手数料・空のみ）', 'menuFbaTierCatalogWriteP1bForCheckedParents')
-      .addItem('15-⑲ メーカー品番U7診断（Catalog vs Keepa・診断シートのみ）', 'menuMakerPartCatalogDiagnoseU7ForCheckedParents')
-      .addItem('15-⑳ 競合店ASIN空のみ自動（U3高信頼・レ点親）', 'menuFillCompetitorAsinFromU3ForCheckedParents')
-      .addItem('15-㉑ マスタ色ルール適用（選択行）', 'menuMasterColorApplyLockedToSelection')
-      .addItem('15-㉒ マスタ色ルール適用（データ全行）', 'menuMasterColorApplyLockedHistoricDataRows'))
+      .addSubMenu(ui.createMenu('シート・色')
+        .addItem('15-① 列番号マスタを生成（8行目から）', 'menuGenerateColumnMasterFromRow8')
+        .addItem('15-② 3モール商品名繋ぎ計算式作成', 'menuCreateThreeMallProductNameFormulas')
+        .addItem('15-③ Amazon商品名計算式を表示（コピペ用）', 'menuShowAmazonProductNameFormula')
+        .addItem('15-㉑ マスタ色ルール適用（選択行）', 'menuMasterColorApplyLockedToSelection')
+        .addItem('15-㉒ マスタ色ルール適用（データ全行）', 'menuMasterColorApplyLockedHistoricDataRows'))
+      .addSubMenu(ui.createMenu('価格・セット')
+        .addItem('15-④ 選択行に競合価格を入力', 'menuWriteCompetitivePricesToSelection')
+        .addItem('15-⑧ モール横断セット数統合判定（単体）', 'menuTestCrossMallSetCountJudge')
+        .addItem('15-⑨ モール横断結果を楽天・Yahoo!マスタに反映（単体）', 'menuApplyCrossMallResultToRakutenYahooMaster')
+        .addItem('15-⑩ 抜けセット数行の挿入（単体）', 'menuInsertMissingSetCountRows')
+        .addItem('15-⑪ 選択行に価格・セット数提案を反映', 'menuProposePriceAndSetToSelection'))
+      .addSubMenu(ui.createMenu('メーカー・品番')
+        .addItem('15-⑤ メーカー品番取得（選択行）', 'menuFetchMakerModelFromApis')
+        .addItem('15-⑥ メーカー品番取得（レ点・親SKU行）', 'menuFetchMakerModelFromApisForCheckedParentRows')
+        .addItem('15-⑬ メーカー辞書をマスタから更新（月次）', 'menuUpdateMakerDictFromMasterMonthly')
+        .addItem('15-⑭ 保存方法の改行を除去（レ点・親）', 'menuSanitizeStorageNewlinesForCheckedParents')
+        .addItem('15-⑲ メーカー品番U7診断（Catalog vs Keepa・診断シートのみ）', 'menuMakerPartCatalogDiagnoseU7ForCheckedParents'))
+      .addSubMenu(ui.createMenu('検索・ASIN')
+        .addItem('15-⑦ SerpAPI取得結果をシートに出力（選択行）', 'menuOutputSerpApiResultsToSheet')
+        .addItem('15-⑫ Amazonカテゴリーを自動入力（Gemini）', 'menuFillAmazonCategoryByGemini')
+        .addItem('15-⑮ N列ASIN自動（◎×ブランド＝メーカー・レ点親）', 'menuFillAsinNFromOfficialCompetitorForCheckedParents')
+        .addItem('15-⑯ 競合ASIN投票診断U3（セット数確定後・診断シートのみ）', 'menuCompetitorAsinVoteDiagnoseU3ForCheckedParents')
+        .addItem('15-⑳ 競合店ASIN空のみ自動（U3高信頼・レ点親）', 'menuFillCompetitorAsinFromU3ForCheckedParents'))
+      .addSubMenu(ui.createMenu('設定・診断')
+        .addItem('15-⑰ FBAティア診断P1a（Catalog寸法・レ点親・診断シートのみ）', 'menuFbaTierCatalogDiagnoseP1aForCheckedParents')
+        .addItem('15-⑱ FBAティア本線書込P1b（FBAティア/手数料・空のみ）', 'menuFbaTierCatalogWriteP1bForCheckedParents')
+        .addItem('15-㉓ Script Properties使用量をメモシートへ', 'menuScriptPropsAuditToSheet')
+        .addItem('15-㉔ 巨大JSONを退避してPropertiesから外す', 'menuScriptPropsEvacuateLarge')
+        .addItem('15-㉕ 個別メニュー用フラグをメモして削除', 'menuScriptPropsMemoIndividual')))
     .addSubMenu(ui.createMenu('16. 楽天削除・URL・反映停止')
       .addItem('16-① 一括出品トリガーをすべて削除', 'menuDeleteBatchExportTriggers')
       .addItem('16-② 楽天 商品を削除...', 'showRakutenDeleteSelectionDialog')
@@ -1365,6 +1434,213 @@ function getBoolScriptProperty_(key, defaultVal) {
   } catch (e) {
     return defaultVal;
   }
+}
+
+/** Script Properties 総量500KB・1件9KB。巨大JSONはシート／Driveへ退避する。2026-10-05 修復で入口を戻した。 */
+var SCRIPT_PROPS_MEMO_SHEET_ = '▼ScriptPropertiesメモ';
+var SCRIPT_PROPS_DRIVE_FOLDER_ = 'ScriptProps退避';
+var SCRIPT_PROPS_PROP_SOFT_MAX_ = 7000;
+
+function scriptPropsIsSecretKey_(key) {
+  var k = String(key || '').toUpperCase();
+  return /SECRET|TOKEN|API_KEY|LICENSE|PASSWORD|ACCESS_KEY|SERVICE_SECRET|CLIENT_SECRET|REFRESH/.test(k);
+}
+
+function scriptPropsClassify_(key) {
+  var k = String(key || '');
+  if (scriptPropsIsSecretKey_(k)) return '秘密(残す)';
+  var large = {
+    B5_PACKAGE_TRUTH_BY_NAMEBASE: 1,
+    B5_PACKAGE_TRUTH_BY_PARENT: 1,
+    B5_TEXT_COLOR_BY_PARENT: 1,
+    APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP: 1
+  };
+  if (large[k]) return '巨大JSON';
+  if (/^PROMO_REMIND_/.test(k) || k === 'YAHOO_OAUTH_REDIRECT_URI' ||
+      k === 'YAHOO_DELETE_WEBAPP_URL' || /^APPROVAL_YAHOO_LV3_/.test(k) ||
+      /^APPROVAL_RAKUTEN_LV2_/.test(k)) {
+    return '個別メニュー';
+  }
+  return 'A-E必須';
+}
+
+function scriptPropsByteLen_(s) {
+  try {
+    return Utilities.newBlob(String(s || ''), 'text/plain', 'x').getBytes().length;
+  } catch (e) {
+    return String(s || '').length;
+  }
+}
+
+function scriptPropsMemoSheet_(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SCRIPT_PROPS_MEMO_SHEET_);
+  if (!sh) {
+    sh = ss.insertSheet(SCRIPT_PROPS_MEMO_SHEET_);
+    sh.getRange(1, 1, 1, 6).setValues([[
+      'キー', '分類', 'Propertiesバイト', '値または退避先', '更新', 'メモ'
+    ]]);
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 280);
+    sh.setColumnWidth(4, 420);
+  }
+  return sh;
+}
+
+function scriptPropsDriveFolder_(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
+  var file = DriveApp.getFileById(ss.getId());
+  var it = file.getParents();
+  var parent = it.hasNext() ? it.next() : DriveApp.getRootFolder();
+  var folders = parent.getFoldersByName(SCRIPT_PROPS_DRIVE_FOLDER_);
+  return folders.hasNext() ? folders.next() : parent.createFolder(SCRIPT_PROPS_DRIVE_FOLDER_);
+}
+
+function scriptPropsDriveRead_(key) {
+  try {
+    var folder = scriptPropsDriveFolder_();
+    var name = String(key) + '.json';
+    var files = folder.getFilesByName(name);
+    if (!files.hasNext()) return '';
+    return files.next().getBlob().getDataAsString();
+  } catch (e) {
+    return '';
+  }
+}
+
+function scriptPropsDriveWrite_(key, raw) {
+  var folder = scriptPropsDriveFolder_();
+  var name = String(key) + '.json';
+  var files = folder.getFilesByName(name);
+  var blob = Utilities.newBlob(String(raw || '{}'), 'application/json', name);
+  if (files.hasNext()) {
+    files.next().setContent(String(raw || '{}'));
+  } else {
+    folder.createFile(blob);
+  }
+  return 'Drive:' + SCRIPT_PROPS_DRIVE_FOLDER_ + '/' + name;
+}
+
+function scriptPropsMemoUpsert_(key, klass, valueOrWhere, bytes, note) {
+  var sh = scriptPropsMemoSheet_();
+  var last = Math.max(sh.getLastRow(), 1);
+  var keys = last >= 2 ? sh.getRange(2, 1, last - 1, 1).getValues() : [];
+  var row = -1;
+  for (var i = 0; i < keys.length; i++) {
+    if (String(keys[i][0]) === key) {
+      row = i + 2;
+      break;
+    }
+  }
+  var now = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm');
+  var line = [key, klass, bytes, valueOrWhere, now, note || ''];
+  if (row > 0) sh.getRange(row, 1, 1, 6).setValues([line]);
+  else sh.appendRow(line);
+}
+
+function scriptPropsJsonLoad_(key) {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(key);
+    if (raw) {
+      var obj = JSON.parse(raw);
+      if (obj && typeof obj === 'object') return obj;
+    }
+  } catch (eProp) {}
+  var fromDrive = scriptPropsDriveRead_(key);
+  if (fromDrive) {
+    try {
+      var objD = JSON.parse(fromDrive);
+      if (objD && typeof objD === 'object') return objD;
+    } catch (eDrv) {}
+  }
+  return {};
+}
+
+function scriptPropsJsonSave_(key, obj) {
+  var raw = JSON.stringify(obj || {});
+  var bytes = scriptPropsByteLen_(raw);
+  var where = scriptPropsDriveWrite_(key, raw);
+  scriptPropsMemoUpsert_(key, '巨大JSON', where, bytes, 'A-EはDriveを正。Propertiesからは外す');
+  var props = PropertiesService.getScriptProperties();
+  try {
+    props.deleteProperty(key);
+  } catch (eDel) {}
+  if (bytes <= SCRIPT_PROPS_PROP_SOFT_MAX_) {
+    try {
+      props.setProperty(key, raw);
+    } catch (eSet) {
+      Logger.log('[SCRIPT_PROPS] set_skip ' + key + ' ' + String(eSet && eSet.message));
+    }
+  }
+}
+
+function menuScriptPropsAuditToSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties() || {};
+  var keys = Object.keys(all).sort();
+  var total = 0;
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    var v = String(all[k] == null ? '' : all[k]);
+    var n = scriptPropsByteLen_(v);
+    total += n + scriptPropsByteLen_(k);
+    var klass = scriptPropsClassify_(k);
+    var shown = scriptPropsIsSecretKey_(k) ? '(秘密・非表示)' : (n > 400 ? v.substring(0, 200) + '…' : v);
+    scriptPropsMemoUpsert_(k, klass, shown, n, '');
+  }
+  var msg = '件数=' + keys.length + ' 概算バイト=' + total + '（上限500KB／1件9KB）';
+  Logger.log('[SCRIPT_PROPS] audit ' + msg);
+  try { ss.toast(msg, 'Script Properties', 8); } catch (eT) {}
+}
+
+function menuScriptPropsEvacuateLarge() {
+  var ui = SpreadsheetApp.getUi();
+  var ans = ui.alert(
+    '巨大JSON退避',
+    'B5正本／文字色／Amazon PT指紋をDrive＋メモシートへ移し、Script Propertiesから外します。A〜Eの読み取りはDriveを見ます。秘密は移しません。',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (ans !== ui.Button.OK) return;
+  var keys = [
+    'B5_PACKAGE_TRUTH_BY_NAMEBASE',
+    'B5_PACKAGE_TRUTH_BY_PARENT',
+    'B5_TEXT_COLOR_BY_PARENT',
+    'APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP'
+  ];
+  var moved = 0;
+  for (var i = 0; i < keys.length; i++) {
+    var obj = scriptPropsJsonLoad_(keys[i]);
+    if (!obj || !Object.keys(obj).length) continue;
+    scriptPropsJsonSave_(keys[i], obj);
+    moved++;
+  }
+  var msg = '退避=' + moved + '／対象' + keys.length;
+  Logger.log('[SCRIPT_PROPS] evacuate ' + msg);
+  SpreadsheetApp.getUi().alert(msg);
+}
+
+function menuScriptPropsMemoIndividual() {
+  var ui = SpreadsheetApp.getUi();
+  var ans = ui.alert(
+    '個別フラグをメモして削除',
+    'A〜Eが使わない小さなフラグだけメモシートへ残してPropertiesから消します。秘密・A-E必須・巨大JSONは消しません。',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (ans !== ui.Button.OK) return;
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties() || {};
+  var n = 0;
+  var keys = Object.keys(all);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (scriptPropsClassify_(k) !== '個別メニュー') continue;
+    if (scriptPropsIsSecretKey_(k)) continue;
+    var v = String(all[k] == null ? '' : all[k]);
+    scriptPropsMemoUpsert_(k, '個別メニュー', v, scriptPropsByteLen_(v), 'Propertiesから削除済。戻すときはこの値を再登録');
+    try { props.deleteProperty(k); n++; } catch (eDel) {}
+  }
+  SpreadsheetApp.getUi().alert('削除=' + n);
 }
 
 /** メニュー8 楽天ジャンル都度API（未設定=ON） */
@@ -15262,7 +15538,7 @@ function collectImageFilesFromFolder_(folder, prefix, into) {
     var n = f.getName();
     if (!/\.(png|jpe?g|webp)$/i.test(n)) continue;
     if (n.indexOf('.') === 0) continue;
-    into.push({ name: n, rel: String(prefix || '') + n });
+    into.push({ name: n, rel: String(prefix || '') + n, id: String(f.getId() || '') });
   }
 }
 
@@ -37188,3 +37464,3245 @@ function appendRakutenNavGenreStage1Rows_(rows) {
   Logger.log('[RakutenNavGenreStage1] append startRow=' + startRow + ' numRows=' + rows.length +
     ' numCols=' + headers.length + ' state=DONE');
 }
+
+/**
+ * B-④ 楽天MAIN基礎。2026-09-14 の控えから、呼び出しが閉じる範囲だけ追加。
+ * 補助3つは 2026-09-06 の切れた控えのうち、関数が完結しているもの。
+ */
+function b3MasterCheckboxOn_(v) {
+  return v === true || v === 'TRUE' || v === 'true' || v === '1' ||
+    String(v).trim() === '✓' || String(v).trim() === 'レ';
+}
+
+/** 親行＝子SKU空（B-③は親のみ対象。子レ点は調査不要）。 */
+
+function b3IsParentMasterRow_(row, childSkuIdx) {
+  if (childSkuIdx === undefined || childSkuIdx === null) return true;
+  var c = row[childSkuIdx];
+  return c === undefined || c === null || String(c).trim() === '';
+}
+
+function b4NormalizeTextColor_(v, fallback) {
+  var s = String(v == null ? '' : v).trim();
+  if (s === '1' || s === '2' || s === '3' || s === '4' || s === '5') return s;
+  var fb = String(fallback == null ? '1' : fallback).trim();
+  return fb === '1' || fb === '2' || fb === '3' || fb === '4' || fb === '5' ? fb : '1';
+}
+
+/**
+ * 親SKU → textColor 共有マップを読む。
+ * @return {Object<string,string>}
+ */
+
+function amazonAiLoadAiGenreLookup_(ss) {
+  var out = { aiData: null, aiColMap: null };
+  if (!ss) return out;
+  var sh = ss.getSheetByName(TARGET_SHEET_NAME);
+  if (!sh) return out;
+  var data = sh.getDataRange().getValues();
+  if (!data || data.length < 2) return out;
+  out.aiData = data;
+  out.aiColMap = amazonAiBuildAiColMapFromHeaderRow_(data[0]);
+  return out;
+}
+
+function amazonAiBuildAiColMapFromHeaderRow_(headerRow) {
+  var map = {};
+  if (!headerRow) return map;
+  for (var c = 0; c < headerRow.length; c++) {
+    var h = String(headerRow[c] || '').trim();
+    if (h) map[h] = c;
+  }
+  for (var i = 1; i <= 5; i++) {
+    var canon = '構成' + i + '_商品名';
+    var alt = 'セット構成' + i + '_商品名';
+    if (map[canon] === undefined && map[alt] !== undefined) map[canon] = map[alt];
+  }
+  return map;
+}
+
+function wnExact_(a, b) {
+  return String(a || '').trim() === String(b || '').trim() && !!String(a || '').trim();
+}
+
+/** @deprecated 商品名ベース照合へ。互換のため nameBase 必須。 */
+
+function resolveTruthRelForNameBase_(nameBase, files, savedMapOrOpt) {
+  var opt = {};
+  var mapNb;
+  if (savedMapOrOpt && typeof savedMapOrOpt === 'object' && !Array.isArray(savedMapOrOpt)) {
+    if (savedMapOrOpt.savedNameBase || savedMapOrOpt.parentSku || savedMapOrOpt.savedParent) {
+      opt = savedMapOrOpt;
+      mapNb = opt.savedNameBase || loadB5PackageTruthByNameBase_();
+    } else {
+      // 旧呼び出し: 第3引数が nameBase→rel マップ
+      mapNb = savedMapOrOpt;
+    }
+  } else {
+    mapNb = loadB5PackageTruthByNameBase_();
+  }
+  var mapSku = opt.savedParent || loadB5PackageTruthByParent_();
+  var sku = String(opt.parentSku || '').trim();
+  if (sku && mapSku[sku]) return String(mapSku[sku]).replace(/\//g, '\\');
+
+  var nb = normalizeBProductNameKey_(nameBase);
+  if (nb && mapNb[nb]) return String(mapNb[nb]).replace(/\//g, '\\');
+
+  // Drive 親共有
+  try {
+    var work = b5ResolveSetMainWorkFolder_();
+    if (work && sku) {
+      var f = b5FindFileInFolder_(work, B5_PARENT_SHARED_FILE_NAME);
+      if (f) {
+        var doc = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
+        var row = doc && doc.byParentSku && doc.byParentSku[sku];
+        if (row && row.packageTruthRel) return String(row.packageTruthRel).replace(/\//g, '\\');
+      }
+    }
+  } catch (eShared) {
+    /* ignore */
+  }
+
+  var hits = [];
+  for (var i = 0; i < (files || []).length; i++) {
+    var rel = String(files[i].rel || files[i].name || '').trim();
+    if (!rel) continue;
+    var sn = b5ShortNameFromTruthRel_(rel);
+    if (sn && sn.length >= 2 && nb && nb.indexOf(sn) >= 0) hits.push(rel);
+  }
+  if (hits.length === 1) return hits[0];
+  return '';
+}
+
+/**
+ * 人がチェックした案だけ指示文へ（google.script.run 用。末尾 _ なし）。
+ * @param {{selections:Array<{jan:string,parentSku?:string,rel:string,textColor?:string,proposals:Array}>}} payload
+ * @return {{ok:boolean,prompt?:string,error?:string}}
+ */
+
+var B5_RAKUTEN_MAIN_BASE_ENABLED_PROP = 'B5_RAKUTEN_MAIN_BASE_ENABLED';
+/** B-⑤ キャッチ整文に Gemini を使う。未設定=ON。`false` でルール案のまま */
+var B5_PROPOSE_GEMINI_ENABLED_PROP = 'B5_PROPOSE_GEMINI_ENABLED';
+/** Drive: `00.テスト出力/b5_main_base_compose`（任意。無ければ名前検索） */
+var B5_COMPOSE_ROOT_FOLDER_ID_PROP = 'B5_COMPOSE_ROOT_FOLDER_ID';
+/** Drive: `02.楽天ベース`（任意。無ければ名前検索） */
+var B5_RAKUTEN_BASE_FOLDER_ID_PROP = 'B5_RAKUTEN_BASE_FOLDER_ID';
+/** Drive: `00.テスト出力`（個品見本ステータス JSON 用。任意） */
+var B5_TEST_OUTPUT_FOLDER_ID_PROP = 'B5_TEST_OUTPUT_FOLDER_ID';
+/** B-④ ①′ GAS が読む個品見本確定状態（Drive 00.テスト出力 直下） */
+var B5_FOOD_CANON_STATUS_FILE_NAME = '_b5_food_canon_status.json';
+/**
+ * B-④ MAIN が確定した PACKAGE_TRUTH（商品名ベース正規化キー → 相対パス）。
+ * B-⑤ サブ正本ダイアログの初期選択に使う。
+ */
+var B5_PACKAGE_TRUTH_BY_NAMEBASE_PROP = 'B5_PACKAGE_TRUTH_BY_NAMEBASE';
+/** 親SKU → 正本 rel（MAIN／サブ共有。商品名ベースと併用） */
+var B5_PACKAGE_TRUTH_BY_PARENT_PROP = 'B5_PACKAGE_TRUTH_BY_PARENT';
+/**
+ * 親SKU → textColor 1..5（MAIN／サブ共有・ALIGN §3）。
+ * Drive ミラー: 05.画像生成（セットMAIN）/_b5_text_color_by_parent.json
+ */
+var B5_TEXT_COLOR_BY_PARENT_PROP = 'B5_TEXT_COLOR_BY_PARENT';
+var B5_TEXT_COLOR_SHARED_FILE_NAME = '_b5_text_color_by_parent.json';
+/** 親共有まとめ（正本・色・個品サマリ）Drive ミラー */
+var B5_PARENT_SHARED_FILE_NAME = '_b5_parent_shared.json';
+
+function b5DiagLog_(fn, t0, state, extra) {
+  var ms = typeof t0 === 'number' ? Math.round(Date.now() - t0) : -1;
+  Logger.log(
+    '[' + fn + '] state=' + state + ' ms=' + ms + (extra ? ' ' + extra : '')
+  );
+}
+
+function b5JanDigits_(s) {
+  return String(s || '').replace(/\D/g, '');
+}
+
+function b5ZenkakuLen_(s) {
+  var n = 0;
+  var t = String(s || '');
+  for (var i = 0; i < t.length; i++) {
+    var c = t.charCodeAt(i);
+    n += c >= 0x20 && c <= 0x7e ? 0.5 : 1;
+  }
+  return n;
+}
+
+function b5ZenkakuSlice_(s, maxN) {
+  var out = '';
+  var n = 0;
+  var t = String(s || '');
+  for (var i = 0; i < t.length; i++) {
+    var c = t.charCodeAt(i);
+    var add = c >= 0x20 && c <= 0x7e ? 0.5 : 1;
+    if (n + add > maxN) break;
+    out += t.charAt(i);
+    n += add;
+  }
+  return out;
+}
+
+/** 提案ダイアログ用。画像焼き込み時はレイアウトで短縮してよい。 */
+var B5_PROPOSE_CATCH_MIN_ = 12;
+var B5_PROPOSE_CATCH_MAX_ = 36;
+
+function b5TrimCatchLen_(t) {
+  t = String(t || '').trim();
+  if (!t) return t;
+  if (t.charAt(0) === '【' && t.indexOf('】') < 0) t = t.substring(1);
+  if (b5ZenkakuLen_(t) <= B5_PROPOSE_CATCH_MAX_) return t;
+  var cut = b5ZenkakuSlice_(t, B5_PROPOSE_CATCH_MAX_);
+  var i;
+  for (i = cut.length - 1; i > 0; i--) {
+    if ('。！？、・／】」』'.indexOf(cut.charAt(i)) >= 0) {
+      var cand = cut.substring(0, i + (/[、・／]/.test(cut.charAt(i)) ? 0 : 1)).replace(/[、・／]+$/, '');
+      if (b5ZenkakuLen_(cand) >= B5_PROPOSE_CATCH_MIN_) return cand;
+    }
+  }
+  for (i = cut.length - 1; i > 0; i--) {
+    if (
+      'にをがはでともへのや'.indexOf(cut.charAt(i)) >= 0 &&
+      b5ZenkakuLen_(cut.substring(0, i + 1)) >= B5_PROPOSE_CATCH_MIN_
+    ) {
+      return cut.substring(0, i + 1);
+    }
+  }
+  for (i = cut.length - 1; i > 0; i--) {
+    var ch = cut.charAt(i);
+    if (
+      ch >= '\u3040' &&
+      ch <= '\u309f' &&
+      b5ZenkakuLen_(cut.substring(0, i + 1)) >= B5_PROPOSE_CATCH_MIN_
+    ) {
+      return cut.substring(0, i + 1);
+    }
+  }
+  return b5ZenkakuSlice_(t, 28);
+}
+
+function b5ShortCatch_(text, fallback) {
+  var raw = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!raw) raw = String(fallback || '');
+  var m = raw.match(/【([^】]{2,40})】/);
+  var t;
+  if (m) {
+    var inner = String(m[1] || '').trim();
+    // 見出し＋直後の短い続きを残してイメージが伝わる長さに
+    var after = raw.substring(m.index + m[0].length).replace(/\s+/g, '');
+    after = after.replace(/^[。．、，・／]+/, '');
+    t = '【' + inner + '】';
+    if (after && b5ZenkakuLen_(t) < B5_PROPOSE_CATCH_MAX_) {
+      var rest = b5ZenkakuSlice_(after, B5_PROPOSE_CATCH_MAX_ - b5ZenkakuLen_(t));
+      t = t + rest;
+    }
+  } else {
+    t = raw.replace(/\s+/g, '').replace(/^[にもをはがでとにのへや]、*/, '').replace(/^】+/, '');
+  }
+  if (!t) t = String(fallback || '').replace(/\s+/g, '');
+  t = b5TrimCatchLen_(t);
+  if (b5ZenkakuLen_(t) < B5_PROPOSE_CATCH_MIN_ && fallback) {
+    t = b5TrimCatchLen_(String(fallback).replace(/\s+/g, ''));
+  }
+  return t || fallback || '';
+}
+
+function b5AiPick_(map, names) {
+  for (var i = 0; i < names.length; i++) {
+    var v = String((map && map[names[i]]) || '').trim();
+    if (v && v !== '不明') return v;
+  }
+  return '';
+}
+
+function b5HasAny_(text, marks) {
+  var t = String(text || '');
+  for (var i = 0; i < marks.length; i++) {
+    if (t.indexOf(marks[i]) >= 0) return true;
+  }
+  return false;
+}
+
+function b5SnipAround_(text, needles) {
+  var t = String(text || '').replace(/\s+/g, ' ');
+  if (!t) return '';
+  for (var ni = 0; ni < needles.length; ni++) {
+    var n = needles[ni];
+    var i = t.indexOf(n);
+    if (i < 0) continue;
+    var re = /【[^】]{1,40}】/g;
+    var mm;
+    while ((mm = re.exec(t))) {
+      if (mm[0].indexOf(n) >= 0) return mm[0];
+    }
+    var end = Math.min(t.length, i + Math.max(n.length, 24));
+    var seps = ['。', '！', '？', '\n', '【'];
+    for (var s = 0; s < seps.length; s++) {
+      var j = t.indexOf(seps[s], i + n.length);
+      if (j >= 0) end = Math.min(end, j);
+    }
+    return t.substring(i, end).trim();
+  }
+  return t.substring(0, 80);
+}
+
+function b5Prominence_(materials, needles) {
+  var checks = [
+    { pts: 12, text: String(materials.rakuten || '') },
+    { pts: 8, text: String(materials.yahoo || '') }
+  ];
+  var bullets = materials.bullets || [];
+  for (var bi = 0; bi < bullets.length; bi++) {
+    checks.push({ pts: bi < 2 ? 6 : 3, text: String(bullets[bi] || '') });
+  }
+  checks.push({
+    pts: 1,
+    text:
+      String(materials.desc || '') +
+      ' ' +
+      String(materials.kw || '') +
+      ' ' +
+      String(materials.feats || '')
+  });
+  var best = 0;
+  var ev = '';
+  for (var c = 0; c < checks.length; c++) {
+    if (b5HasAny_(checks[c].text, needles) && checks[c].pts > best) {
+      best = checks[c].pts;
+      ev = b5SnipAround_(checks[c].text, needles);
+    }
+  }
+  return { pts: best, ev: ev };
+}
+
+/**
+ * 材料行の照合。正は商品名ベース完全一致。
+ * 不一致時のみ「名前が類似 かつ JAN一致」で採用。JAN単独は使わない。
+ * @param {string} wantName マスタ商品名ベース
+ * @param {string} wantJanDigits JAN数字のみ（補助）
+ * @param {string} candName 候補の商品名／商品名ベース
+ * @param {string} candJanDigits 候補JAN数字のみ
+ * @return {{ok:boolean,how:string}} how=nameExact|nameNear+jan|''
+ */
+function b5MatchMaterialRow_(wantName, wantJanDigits, candName, candJanDigits) {
+  var wn = String(wantName || '').trim();
+  var cn = String(candName || '').trim();
+  if (!wn || !cn) return { ok: false, how: '' };
+  if (wn === cn) return { ok: true, how: 'nameExact' };
+  var near = amazonAiTokensNearDuplicate_(wn, cn);
+  if (near && wantJanDigits && candJanDigits && wantJanDigits === candJanDigits) {
+    return { ok: true, how: 'nameNear+jan' };
+  }
+  return { ok: false, how: '' };
+}
+
+/**
+ * マスタ＋AI情報取得data から材料。
+ * 照合キー正＝商品名ベース。完全一致しないときだけ類似＋JAN。
+ * @param {string} jan
+ * @param {string} nameBase マスタ「商品名ベース」
+ * @return {{materials:Object,error:string,name:string,matchHow?:string}}
+ */
+function b5LoadMaterialsForParent_(jan, nameBase) {
+  var wantJan = b5JanDigits_(jan);
+  var wantName = String(nameBase || '').trim();
+  var out = {
+    materials: {
+      name: '',
+      maker: '',
+      feats: '',
+      kw: '',
+      yahoo: '',
+      rakuten: '',
+      bullets: [],
+      desc: ''
+    },
+    error: '',
+    name: '',
+    matchHow: ''
+  };
+  if (!wantName) {
+    out.error = '商品名ベースが空（照合できない）';
+    return out;
+  }
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) {
+    out.error = 'マスタなし';
+    return out;
+  }
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) {
+    out.error = 'マスタヘッダなし';
+    return out;
+  }
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = colMap['JANコード'];
+  var colNameBase = colMap['商品名ベース'] !== undefined ? colMap['商品名ベース'] : colMap['商品名'];
+  var masterBits = {};
+  var masterHow = '';
+  var mKeys = [
+    '商品名ベース',
+    'メーカー名ベース',
+    'メーカー名',
+    '商品説明の箇条書き①',
+    '商品説明の箇条書き②',
+    '商品説明の箇条書き③',
+    '商品説明の箇条書き④',
+    '商品説明の箇条書き⑤',
+    '楽天キャッチコピーAIから取得',
+    '商品説明文AIから取得'
+  ];
+  // 1) 商品名ベース完全一致 → 2) 類似＋JAN（JAN単独は不可）
+  var masterPass;
+  for (masterPass = 1; masterPass <= 2; masterPass++) {
+    for (var r = headerRowIdx + 1; r < values.length; r++) {
+      var mName = colNameBase !== undefined ? String(values[r][colNameBase] || '').trim() : '';
+      var mJan = colJan !== undefined ? b5JanDigits_(values[r][colJan]) : '';
+      var mHit = b5MatchMaterialRow_(wantName, wantJan, mName, mJan);
+      if (masterPass === 1 && mHit.how !== 'nameExact') continue;
+      if (masterPass === 2 && mHit.how !== 'nameNear+jan') continue;
+      if (!mHit.ok) continue;
+      for (var mk = 0; mk < mKeys.length; mk++) {
+        var ci = colMap[mKeys[mk]];
+        if (ci !== undefined && String(values[r][ci] || '').trim()) {
+          masterBits[mKeys[mk]] = String(values[r][ci]).trim();
+        }
+      }
+      masterHow = 'master:' + mHit.how;
+      break;
+    }
+    if (masterHow) break;
+  }
+
+  var aiLookup = amazonAiLoadAiGenreLookup_(ss);
+  var aiBits = {};
+  var aiHow = '';
+  if (aiLookup.aiData && aiLookup.aiColMap) {
+    var aiJanIdx = aiLookup.aiColMap['JANコード'];
+    var aiNameIdx = aiLookup.aiColMap['商品名'];
+    var aiNameBaseIdx = aiLookup.aiColMap['商品名ベース'];
+    var aiPass;
+    for (aiPass = 1; aiPass <= 2; aiPass++) {
+      for (var ar = 1; ar < aiLookup.aiData.length; ar++) {
+        var arow = aiLookup.aiData[ar];
+        var aJan = aiJanIdx !== undefined ? b5JanDigits_(arow[aiJanIdx]) : '';
+        var candNames = [];
+        if (aiNameIdx !== undefined) candNames.push(String(arow[aiNameIdx] || '').trim());
+        if (aiNameBaseIdx !== undefined) candNames.push(String(arow[aiNameBaseIdx] || '').trim());
+        var aHit = { ok: false, how: '' };
+        for (var cni = 0; cni < candNames.length; cni++) {
+          var cn = candNames[cni];
+          if (!cn) continue;
+          if (aiPass === 1) {
+            if (wnExact_(wantName, cn)) {
+              aHit = { ok: true, how: 'nameExact' };
+              break;
+            }
+          } else {
+            var nearHit = b5MatchMaterialRow_(wantName, wantJan, cn, aJan);
+            if (nearHit.how === 'nameNear+jan') {
+              aHit = nearHit;
+              break;
+            }
+          }
+        }
+        if (!aHit.ok) continue;
+        for (var hk in aiLookup.aiColMap) {
+          if (!aiLookup.aiColMap.hasOwnProperty(hk)) continue;
+          var ix = aiLookup.aiColMap[hk];
+          if (ix < arow.length && String(arow[ix] || '').trim()) {
+            aiBits[hk] = String(arow[ix]).trim();
+          }
+        }
+        aiHow = 'ai:' + aHit.how;
+        break;
+      }
+      if (aiHow) break;
+    }
+  }
+
+  var name =
+    masterBits['商品名ベース'] ||
+    wantName ||
+    b5AiPick_(aiBits, ['商品名', '商品名ベース']) ||
+    '';
+  var maker =
+    b5AiPick_(aiBits, ['メーカー名']) ||
+    masterBits['メーカー名ベース'] ||
+    masterBits['メーカー名'] ||
+    '';
+  var feats = b5AiPick_(aiBits, [
+    '特徴キーワード[正解]',
+    '特徴キーワード[GPT]',
+    '▼マスタ(特徴キーワード)'
+  ]).replace(/\n/g, '／');
+  var kw = b5AiPick_(aiBits, [
+    '検索KW(商品名用)[正解]',
+    '検索KW(商品名用)[GPT]',
+    '▼マスタ(検索KW(商品名用))'
+  ]);
+  var yahoo = b5AiPick_(aiBits, [
+    'Yahooキャッチ(20-30字)[正解]',
+    'Yahooキャッチ(20-30字)[GPT]',
+    '▼マスタ(Yahooキャッチ(20-30字))'
+  ]);
+  var rakuten =
+    b5AiPick_(aiBits, [
+      '楽天キャッチ(60-80字)[正解]',
+      '楽天キャッチ(60-80字)[GPT]',
+      '▼マスタ(楽天キャッチ(60-80字))'
+    ]) ||
+    masterBits['楽天キャッチコピーAIから取得'] ||
+    '';
+  var bullets = [];
+  var circ = '①②③④⑤';
+  for (var bi = 1; bi <= 5; bi++) {
+    var b = b5AiPick_(aiBits, [
+      '箇条書き' + bi + '[正解]',
+      '箇条書き' + bi + '[GPT]',
+      '▼マスタ(箇条書き' + bi + ')'
+    ]);
+    if (!b) b = masterBits['商品説明の箇条書き' + circ.charAt(bi - 1)] || '';
+    if (b) bullets.push(String(b).substring(0, 80));
+  }
+  var desc =
+    b5AiPick_(aiBits, ['商品説明[正解]', '商品説明[GPT]', '▼マスタ(商品説明)']) ||
+    masterBits['商品説明文AIから取得'] ||
+    '';
+  out.materials = {
+    name: name,
+    maker: maker,
+    feats: feats,
+    kw: kw,
+    yahoo: yahoo,
+    rakuten: rakuten,
+    bullets: bullets,
+    desc: desc
+  };
+  out.name = name;
+  out.matchHow = [masterHow, aiHow].filter(Boolean).join(',');
+  if (!aiHow && !masterHow) {
+    out.error = '商品名ベース不一致（類似＋JANでも見つからず）';
+  } else if (!aiHow) {
+    out.error = 'AI情報取得dataに商品名ベース一致なし（マスタのみ）';
+  } else if (!name && !rakuten && !bullets.length) {
+    out.error = '材料がほぼ空（商品名ベース照合行を確認）';
+  }
+  b5DiagLog_(
+    'b5LoadMaterialsForParent_',
+    Date.now(),
+    'MATCH',
+    'name=' + wantName.slice(0, 40) + ' how=' + (out.matchHow || '-') + ' err=' + (out.error || '-')
+  );
+  return out;
+}
+
+function b5LoadMaterialsForJan_(jan, nameBase) {
+  return b5LoadMaterialsForParent_(jan, nameBase);
+}
+
+/** Python propose_from_materials と同型の門＋点数（最大4）。 */
+function b5ProposeFromMaterials_(materials) {
+  var blob = [
+    materials.name || '',
+    materials.feats || '',
+    materials.kw || '',
+    materials.yahoo || '',
+    materials.rakuten || '',
+    materials.desc || '',
+    (materials.bullets || []).join(' ')
+  ].join('\n');
+  var name = String(materials.name || '商品');
+  var T1 = ['受賞', '金賞', '累計', '突破', '億粒', '万枚', '万袋'];
+  var T2 = ['国産', '産地', '原料', 'かつお節', '本枯', '枕崎', '鹿児島'];
+  var T3 = ['お茶漬け', 'おつまみ', '振る', 'かける', '晩酌', 'おやつ', 'お茶請け'];
+  var ban = ['健康', '低糖質', 'ダイエット', '糖質オフ', 'カロリーオフ', '血圧', '免疫'];
+  var sellClasses = [
+    { id: 'time_save', w: 100, needles: ['時短', 'すぐ', 'さっと', 'だしをとらず', '一品', '手軽'] },
+    { id: 'drink_snack', w: 80, needles: ['晩酌', 'おつまみ', '酒', 'ビール', 'お酒'] },
+    { id: 'tea_snack', w: 60, needles: ['お茶請け', 'おやつ', 'お茶うけ'] },
+    { id: 'table_expand', w: 40, needles: ['食卓が広が', '両用', 'お茶漬け', 'おつまみ'] }
+  ];
+  var raw = [];
+  var n1Catch = b5BuildN1Catch_(materials);
+  raw.push({
+    themeId: 'N1',
+    themeName: '商品名明示',
+    catch: n1Catch,
+    sceneHint: '袋＋商品名が大きく読める。特徴（味・製法）も短く明示。シズルは小さくてよい。',
+    evidence: name + (materials.feats ? '／' + materials.feats : ''),
+    classId: 'name',
+    sellScore: 10
+  });
+  if (b5HasAny_(blob, T1)) {
+    var ev1 = '';
+    for (var t1i = 0; t1i < T1.length; t1i++) {
+      if (blob.indexOf(T1[t1i]) >= 0) {
+        ev1 = T1[t1i];
+        break;
+      }
+    }
+    raw.push({
+      themeId: 'T1',
+      themeName: '実績・受賞',
+      catch: b5ShortCatch_(ev1, ev1),
+      sceneHint: '袋＋シズル。トロフィーは作らない。根拠のある数字のみ。',
+      evidence: ev1,
+      classId: 'proof',
+      sellScore: 70
+    });
+  }
+  if (b5HasAny_(blob, T2)) {
+    var p2 = b5Prominence_(materials, T2);
+    var ev2 = p2.ev;
+    if (!ev2) {
+      for (var t2i = 0; t2i < T2.length; t2i++) {
+        if (blob.indexOf(T2[t2i]) >= 0) {
+          ev2 = T2[t2i];
+          break;
+        }
+      }
+    }
+    raw.push({
+      themeId: 'T2',
+      themeName: '産地・素材',
+      catch: b5ShortCatch_(ev2 || '国産', '素材の信頼'),
+      sceneHint: '原料の静物。袋は残す。偽認証は描くな。',
+      evidence: ev2,
+      classId: 'origin',
+      sellScore: 30 + p2.pts
+    });
+  }
+  if (b5HasAny_(blob, T3)) {
+    var ev3 = '';
+    for (var t3i = 0; t3i < T3.length; t3i++) {
+      if (blob.indexOf(T3[t3i]) >= 0) {
+        ev3 = T3[t3i];
+        break;
+      }
+    }
+    var p3 = b5Prominence_(materials, T3);
+    raw.push({
+      themeId: 'T3',
+      themeName: '使い方・シーン',
+      catch: b5ShortCatch_(p3.ev || ev3, ev3),
+      sceneHint: 'キャッチにある食べ方（' + ev3 + '）。材料に無いシーンは出さない。',
+      evidence: p3.ev || ev3,
+      classId: 'usage',
+      sellScore: 50 + p3.pts
+    });
+  }
+  for (var si = 0; si < sellClasses.length; si++) {
+    var sc = sellClasses[si];
+    if (sc.id === 'table_expand') {
+      if (
+        !(
+          (blob.indexOf('お茶漬け') >= 0 && blob.indexOf('おつまみ') >= 0) ||
+          blob.indexOf('食卓が広が') >= 0 ||
+          blob.indexOf('両用') >= 0
+        )
+      ) {
+        continue;
+      }
+    }
+    if (!b5HasAny_(blob, sc.needles)) continue;
+    var needleJoin = sc.needles.join('');
+    var banned = false;
+    for (var bi = 0; bi < ban.length; bi++) {
+      if (needleJoin.indexOf(ban[bi]) >= 0) {
+        banned = true;
+        break;
+      }
+    }
+    if (banned) continue;
+    var pr = b5Prominence_(materials, sc.needles);
+    var labelMap = {
+      time_save: 'すぐ一品',
+      drink_snack: '晩酌が華やぐ',
+      tea_snack: 'お茶請け・おやつ',
+      table_expand: '食卓が広がる'
+    };
+    var label = labelMap[sc.id] || '成果';
+    var ev4 = pr.ev;
+    if (!ev4) {
+      for (var ni = 0; ni < sc.needles.length; ni++) {
+        if (blob.indexOf(sc.needles[ni]) >= 0) {
+          ev4 = sc.needles[ni];
+          break;
+        }
+      }
+    }
+    raw.push({
+      themeId: 'T4',
+      themeName: '成果・' + label,
+      catch: b5ShortCatch_(ev4 || label, label),
+      sceneHint: '買うと良い未来（' + label + '）。食感だけの説明にしない。袋は必須。',
+      evidence: ev4 || label,
+      classId: sc.id,
+      sellScore: sc.w + pr.pts
+    });
+  }
+  raw.sort(function (a, b) {
+    return (b.sellScore || 0) - (a.sellScore || 0);
+  });
+  // 先に themeId を1つずつ（T4が3つ並ばない）。空きがあれば別 classId の T4 等で埋める
+  var out = [];
+  var seenClass = {};
+  var seenTheme = {};
+  var ri;
+  for (ri = 0; ri < raw.length; ri++) {
+    var key1 = raw[ri].themeId + ':' + raw[ri].classId;
+    if (seenClass[key1] || seenTheme[raw[ri].themeId]) continue;
+    seenClass[key1] = true;
+    seenTheme[raw[ri].themeId] = true;
+    var row1 = raw[ri];
+    row1.catchRule = row1.catch;
+    row1.sellRank = out.length + 1;
+    out.push(row1);
+    if (out.length >= 4) break;
+  }
+  if (out.length < 4) {
+    for (ri = 0; ri < raw.length; ri++) {
+      var key2 = raw[ri].themeId + ':' + raw[ri].classId;
+      if (seenClass[key2]) continue;
+      seenClass[key2] = true;
+      var row2 = raw[ri];
+      row2.catchRule = row2.catch;
+      row2.sellRank = out.length + 1;
+      out.push(row2);
+      if (out.length >= 4) break;
+    }
+  }
+  return out;
+}
+
+function b5ProposalKey_(p) {
+  return String((p && p.themeId) || '') + ':' + String((p && p.classId) || '');
+}
+
+function b5NormalizeCatchKey_(s) {
+  return String(s || '')
+    .replace(/\s+/g, '')
+    .replace(/[【】]/g, '')
+    .toLowerCase();
+}
+
+/**
+ * N1以外から商品名フル・内容量を除く。魚種1語（ぶり等）は残してよい。
+ * @param {string} catchText
+ * @param {Object} materials
+ * @param {string} themeId
+ * @return {string}
+ */
+/**
+ * N1用: 商品名＋特徴（味・製法など）。名前だけにしない。
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5BuildN1Catch_(materials) {
+  var name = String((materials && materials.name) || '商品').trim();
+  var feats = String((materials && materials.feats) || '')
+    .replace(/[／/|,，、]+/g, '・')
+    .replace(/\s+/g, '');
+  var featBits = feats
+    ? feats.split('・').map(function (x) {
+        return String(x || '').trim();
+      }).filter(Boolean)
+    : [];
+  // 健康系はN1でも避ける（売り過ぎ）
+  var banFeat = ['健康', '低糖質', 'ダイエット', '糖質オフ', 'カロリーオフ', '高タンパク'];
+  var picked = [];
+  for (var i = 0; i < featBits.length && picked.length < 2; i++) {
+    var ok = true;
+    for (var b = 0; b < banFeat.length; b++) {
+      if (featBits[i].indexOf(banFeat[b]) >= 0) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) picked.push(featBits[i]);
+  }
+  if (!picked.length && materials) {
+    var rak = String(materials.rakuten || '');
+    var m = rak.match(/【([^】]{2,20})】/);
+    if (m) picked.push(m[1]);
+  }
+  var featLine = picked.length ? picked.join('・') : '';
+  var draft = featLine ? name + '。' + featLine : name;
+  // 見出し形式も可
+  if (featLine && b5ZenkakuLen_(name) <= 20) {
+    draft = '【' + name.replace(/^【|】$/g, '') + '】' + featLine;
+  }
+  return b5TrimCatchLen_(draft) || name;
+}
+
+function b5SanitizeCatchForTheme_(catchText, materials, themeId) {
+  var t = String(catchText || '').trim();
+  if (!t) return t;
+  var tid = String(themeId || '');
+  if (tid === 'N1') return t;
+  var name = String((materials && materials.name) || '').trim();
+  var variants = [];
+  if (name) {
+    variants.push(name);
+    variants.push(name.replace(/\s+/g, ''));
+    variants.push(name.replace(/[（）()]/g, ''));
+    variants.push(name.replace(/\s+/g, '').replace(/[（）()]/g, ''));
+  }
+  // 「食べるおだし（ ぶり ） 40ｇ」系の共通パターン
+  variants.push('食べるおだし');
+  variants.push('たべるおだし');
+  variants = variants.filter(Boolean);
+  variants.sort(function (a, b) {
+    return b.length - a.length;
+  });
+  for (var vi = 0; vi < variants.length; vi++) {
+    var v = variants[vi];
+    if (v.length < 3) continue;
+    if (t.indexOf(v) >= 0) t = t.split(v).join('');
+  }
+  // 内容量・空白の括弧残り
+  t = t.replace(/\d+\s*[gｇG]\b/g, '');
+  t = t.replace(/[（(]\s*[）)]/g, '');
+  t = t.replace(/[・／|,，]{2,}/g, '・');
+  t = t.replace(/\s{2,}/g, ' ').replace(/^[\s・／|,，]+|[\s・／|,，]+$/g, '');
+  t = t.replace(/】\s*【/g, '】');
+  return b5TrimCatchLen_(t) || String(catchText || '').trim();
+}
+
+function b5MaterialsPromptBlock_(materials) {
+  return [
+    '商品名: ' + (materials.name || ''),
+    'メーカー: ' + (materials.maker || ''),
+    '特徴: ' + (materials.feats || ''),
+    '用途KW: ' + (materials.kw || ''),
+    'Yahoo: ' + String(materials.yahoo || '').substring(0, 120),
+    '楽天: ' + String(materials.rakuten || '').substring(0, 160),
+    '箇条書き: ' + (materials.bullets || []).join('／'),
+    '説明: ' + String(materials.desc || '').substring(0, 200)
+  ].join('\n');
+}
+
+/**
+ * Gemini JSON配列／オブジェクトから catch 文字列を1つ取る。
+ * @return {string}
+ */
+function b5ParseOneGeminiCatch_(rawText, themeId, classId) {
+  if (!rawText) return '';
+  var jsonStr = String(rawText).trim();
+  var fence = jsonStr.indexOf('```');
+  if (fence >= 0) {
+    var fence2 = jsonStr.indexOf('```', fence + 3);
+    var block = fence2 > fence ? jsonStr.substring(fence + 3, fence2) : jsonStr.substring(fence + 3);
+    block = block.replace(/^json\s*/i, '').trim();
+    jsonStr = block;
+  }
+  var arrStart = jsonStr.indexOf('[');
+  var objStart = jsonStr.indexOf('{');
+  var parsed = null;
+  try {
+    if (arrStart >= 0 && (objStart < 0 || arrStart <= objStart)) {
+      var arrEnd = jsonStr.lastIndexOf(']');
+      if (arrEnd > arrStart) parsed = JSON.parse(jsonStr.substring(arrStart, arrEnd + 1));
+    } else if (objStart >= 0) {
+      var objEnd = jsonStr.lastIndexOf('}');
+      if (objEnd > objStart) parsed = [JSON.parse(jsonStr.substring(objStart, objEnd + 1))];
+    }
+  } catch (eParse) {
+    return '';
+  }
+  if (!parsed) return '';
+  if (!parsed.length && parsed.catch) parsed = [parsed];
+  if (!parsed.length) return '';
+  var wantKey = String(themeId || '') + ':' + String(classId || '');
+  var i;
+  for (i = 0; i < parsed.length; i++) {
+    var tid = String((parsed[i] && parsed[i].themeId) || '');
+    var cid = String((parsed[i] && parsed[i].classId) || '');
+    var c = String((parsed[i] && parsed[i].catch) || '').trim();
+    if (!c) continue;
+    if (tid + ':' + cid === wantKey || (tid === themeId && !classId)) return b5TrimCatchLen_(c);
+  }
+  for (i = 0; i < parsed.length; i++) {
+    var c2 = String((parsed[i] && parsed[i].catch) || '').trim();
+    if (c2) return b5TrimCatchLen_(c2);
+  }
+  return '';
+}
+
+/** 【見出し】だけで外側の続きが無いとき false。 */
+function b5CatchHasBodyOutsideBrackets_(catchText) {
+  var t = String(catchText || '').trim();
+  if (!t) return false;
+  var close = t.lastIndexOf('】');
+  if (close < 0) {
+    // 括弧なしでも本文があれば可
+    return b5ZenkakuLen_(t) >= B5_PROPOSE_CATCH_MIN_;
+  }
+  var after = t.substring(close + 1).replace(/\s+/g, '');
+  return b5ZenkakuLen_(after) >= 4;
+}
+
+/**
+ * テーマ1件だけ Gemini。失敗時は空文字。
+ * @param {Object} materials
+ * @param {Object} proposal
+ * @param {string[]} avoidCatches 同一商品内の他案（酷似禁止）
+ * @param {boolean} forceBody 【】外本文を必須にする再送
+ * @return {string}
+ */
+function b5GeminiCatchOneTheme_(materials, proposal, avoidCatches, forceBody) {
+  var matLines = b5MaterialsPromptBlock_(materials);
+  var productHint = String((materials && materials.name) || '');
+  var tid = String(proposal.themeId || '');
+  var cid = String(proposal.classId || '');
+  var avoid = avoidCatches || [];
+  var prompt =
+    '楽天MAINのセールストーク案を、このテーマだけ1つ作ってください（他テーマは考えない）。\n' +
+    'テーマ: ' +
+    tid +
+    ' / ' +
+    cid +
+    ' / ' +
+    (proposal.themeName || '') +
+    '\n根拠: ' +
+    (proposal.evidence || '') +
+    '\n角度: ' +
+    (proposal.sceneHint || '') +
+    '\n商品名: ' +
+    productHint +
+    '\n材料（この商品のみ）:\n' +
+    matLines +
+    '\n' +
+    (avoid.length ? '禁止（同じ・酷似不可）: ' + JSON.stringify(avoid) + '\n' : '') +
+    '条件:\n' +
+    '- 形式は必ず【見出し】＋外側の続き。例: 【晩酌に】生姜醤油が香るぶり。\n' +
+    '- 【】の中だけで終わらせない。】の後ろに全角4字以上の本文を付ける（必須）\n' +
+    '- 全体は全角' +
+    B5_PROPOSE_CATCH_MIN_ +
+    '〜' +
+    B5_PROPOSE_CATCH_MAX_ +
+    '字。語の途中で切らない\n' +
+    (tid === 'N1'
+      ? '- N1: 商品名フル＋特徴（味・製法）。名前だけ／メーカーだけは不可。特徴は】の外にも書いてよい\n'
+      : '- T1〜T4: 商品名フル・内容量・「食べるおだし」禁止。魚種1語のみ可\n') +
+    '- 材料にある製法・味・使い方は可。材料に無い効能・累計・受賞・No.1禁止\n' +
+    (forceBody ? '- 前回は【】だけだった。必ず】の外に本文を付けてやり直すこと\n' : '') +
+    '- 出力は JSON のみ: {"themeId":"' +
+    tid +
+    '","classId":"' +
+    cid +
+    '","catch":"……"}';
+  var raw = callGeminiForCPO(prompt);
+  return b5ParseOneGeminiCatch_(raw, tid, cid);
+}
+
+/**
+ * テーマ門通過後、キャッチはテーマごとに Gemini（まとめて出さない）。
+ * 【】外本文が無い／酷似は再送。失敗時はルール案。
+ * @param {Object} materials
+ * @param {Array<Object>} proposals
+ * @return {Array<Object>}
+ */
+function b5PolishCatchesWithGemini_(materials, proposals) {
+  if (!proposals || !proposals.length) return proposals || [];
+  if (!isB5ProposeGeminiEnabled_()) {
+    Logger.log('[b5PolishCatchesWithGemini_] skipped prop=off');
+    return proposals;
+  }
+  if (!getGeminiApiKey()) {
+    Logger.log('[b5PolishCatchesWithGemini_] skipped no GEMINI_API_KEY');
+    return proposals;
+  }
+  var used = {};
+  for (var i = 0; i < proposals.length; i++) {
+    var p = proposals[i];
+    var avoid = [];
+    for (var j = 0; j < proposals.length; j++) {
+      if (j !== i && proposals[j].catch) avoid.push(proposals[j].catch);
+    }
+    var got = b5GeminiCatchOneTheme_(materials, p, avoid, false);
+    got = b5SanitizeCatchForTheme_(got, materials, p.themeId);
+    if (got && (!b5CatchHasBodyOutsideBrackets_(got) || b5ZenkakuLen_(got) < B5_PROPOSE_CATCH_MIN_)) {
+      Logger.log('[b5PolishCatchesWithGemini_] body-retry key=' + b5ProposalKey_(p));
+      try {
+        Utilities.sleep(250);
+      } catch (eSleep1) {}
+      var got2 = b5GeminiCatchOneTheme_(materials, p, avoid, true);
+      got2 = b5SanitizeCatchForTheme_(got2, materials, p.themeId);
+      if (got2 && b5CatchHasBodyOutsideBrackets_(got2)) got = got2;
+    }
+    var nk = b5NormalizeCatchKey_(got);
+    if (got && nk && used[nk]) {
+      try {
+        Utilities.sleep(250);
+      } catch (eSleep2) {}
+      var got3 = b5GeminiCatchOneTheme_(materials, p, avoid.concat([got]), true);
+      got3 = b5SanitizeCatchForTheme_(got3, materials, p.themeId);
+      if (got3 && b5CatchHasBodyOutsideBrackets_(got3) && !used[b5NormalizeCatchKey_(got3)]) {
+        got = got3;
+        nk = b5NormalizeCatchKey_(got);
+      }
+    }
+    if (got && b5ZenkakuLen_(got) >= 8 && b5CatchHasBodyOutsideBrackets_(got)) {
+      p.catch = got;
+      p.catchSource = 'gemini';
+      if (nk) used[nk] = true;
+      Logger.log('[b5PolishCatchesWithGemini_] ok key=' + b5ProposalKey_(p) + ' len=' + b5ZenkakuLen_(got));
+    } else {
+      p.catch = b5SanitizeCatchForTheme_(p.catchRule || p.catch, materials, p.themeId);
+      // ルール案が【】だけなら N1 は build、それ以外は evidence を外付け
+      if (!b5CatchHasBodyOutsideBrackets_(p.catch)) {
+        if (p.themeId === 'N1') {
+          p.catch = b5BuildN1Catch_(materials);
+        } else {
+          var ev = String(p.evidence || '').replace(/\s+/g, '');
+          if (ev) {
+            var head = p.catch && p.catch.indexOf('】') >= 0 ? p.catch : '【' + (p.themeName || p.themeId) + '】';
+            if (head.indexOf('】') < 0) head = '【' + head + '】';
+            p.catch = b5TrimCatchLen_(head + b5ZenkakuSlice_(ev, 18));
+          }
+        }
+      }
+      p.catchSource = 'rule';
+      Logger.log('[b5PolishCatchesWithGemini_] fallback rule key=' + b5ProposalKey_(p));
+    }
+    try {
+      Utilities.sleep(200);
+    } catch (eSleep3) {}
+  }
+  for (var si = 0; si < proposals.length; si++) {
+    proposals[si].catch = b5SanitizeCatchForTheme_(
+      proposals[si].catch,
+      materials,
+      proposals[si].themeId
+    );
+  }
+  return proposals;
+}
+
+/**
+ * B-⑤: 出品CK付き親行（JAN・親SKU・商品名）。合成しない。
+ * @return {{rows:Array<{jan:string,parentSku:string,nameBase:string,maker:string}>,error?:string}}
+ */
+function collectB5RakutenMainBaseParents_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) return { rows: [], error: 'マスタシート「' + MASTER_SHEET_NAME + '」がありません' };
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) return { rows: [], error: 'ヘッダ行が見つかりません' };
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = colMap['JANコード'];
+  var colCk = colMap[CHECKBOX_HEADER_NAME];
+  var colChild = colMap['子SKU'];
+  var colParent = colMap['親SKU'];
+  var colName = colMap['商品名ベース'] !== undefined ? colMap['商品名ベース'] : colMap['商品名'];
+  var colMaker = colMap['メーカー名ベース'] !== undefined ? colMap['メーカー名ベース'] : colMap['メーカー名'];
+  if (colJan === undefined || colCk === undefined) {
+    return { rows: [], error: 'マスタに JANコード・' + CHECKBOX_HEADER_NAME + ' が必要です' };
+  }
+  var rows = [];
+  var seen = {};
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    if (!b3MasterCheckboxOn_(values[r][colCk])) continue;
+    if (colChild !== undefined && !b3IsParentMasterRow_(values[r], colChild)) continue;
+    var jan = String(values[r][colJan] || '').trim();
+    if (jan.length < 8 || seen[jan]) continue;
+    seen[jan] = true;
+    rows.push({
+      jan: jan,
+      parentSku: colParent !== undefined ? String(values[r][colParent] || '').trim() : '',
+      nameBase: colName !== undefined ? String(values[r][colName] || '').trim() : '',
+      maker: colMaker !== undefined ? String(values[r][colMaker] || '').trim() : ''
+    });
+  }
+  return { rows: rows };
+}
+
+/**
+ * B-④ 楽天MAIN基礎 — 正本→個品見本→案→指示（GASは合成しない）。
+ * docs/org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md
+ */
+function isB5ThemeNewPathEnabled_() {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty('B5_THEME_NEW_PATH');
+    if (v === null || v === undefined || String(v).trim() === '') return true;
+    return String(v).trim().toLowerCase() !== 'false' && String(v).trim() !== '0';
+  } catch (e) {
+    return true;
+  }
+}
+
+function isB5RakutenMainBaseEnabled_() {
+  return getBoolScriptProperty_(B5_RAKUTEN_MAIN_BASE_ENABLED_PROP, true);
+}
+
+function isB5ProposeGeminiEnabled_() {
+  return getBoolScriptProperty_(B5_PROPOSE_GEMINI_ENABLED_PROP, true);
+}
+
+function readB5FoodCanonStatusDoc_() {
+  var fn = 'readB5FoodCanonStatusDoc_';
+  var t0 = Date.now();
+  try {
+    var resolved = resolveB5TestOutputFolderDetailed_();
+    if (!resolved.folder) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_test_output_folder');
+      return {
+        ok: false,
+        error:
+          'Drive「00.テスト出力」が見つかりません。ゲート確定後 python b5_food_canon_status.py --export-drive を実行するか、Property「' +
+          B5_TEST_OUTPUT_FOLDER_ID_PROP +
+          '」を設定してください。',
+        doc: { byJan: {} }
+      };
+    }
+    var files = resolved.folder.getFilesByName(B5_FOOD_CANON_STATUS_FILE_NAME);
+    if (!files.hasNext()) {
+      b5DiagLog_(fn, t0, 'DONE', 'missing_file via=' + resolved.via);
+      return {
+        ok: true,
+        doc: { schema: 'b5_food_canon_status_v1', updatedAt: '', byJan: {} },
+        via: resolved.via,
+        hint: 'status_file_missing'
+      };
+    }
+    var raw = files.next().getBlob().getDataAsString('UTF-8');
+    var doc = JSON.parse(raw);
+    if (!doc || typeof doc !== 'object') doc = { byJan: {} };
+    if (!doc.byJan || typeof doc.byJan !== 'object') doc.byJan = {};
+    b5DiagLog_(fn, t0, 'DONE', 'keys=' + Object.keys(doc.byJan).length + ' via=' + resolved.via);
+    return { ok: true, doc: doc, via: resolved.via };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e).slice(0, 160));
+    return { ok: false, error: String(e), doc: { byJan: {} } };
+  }
+}
+
+/**
+ * B-④ ①′: JAN ごとの個品見本確定状態（confirmedBy=human のみ ok）。
+ * @param {{jans:Array<string>}} payload
+ * @return {{ok:boolean, statuses?:Array, allConfirmed?:boolean, updatedAt?:string, error?:string, hint?:string}}
+ */
+function menuB5RakutenMainBaseCursorPrompt() {
+  var fn = 'menuB5RakutenMainBaseCursorPrompt';
+  var t0 = Date.now();
+  var ui = SpreadsheetApp.getUi();
+  if (!isB5RakutenMainBaseEnabled_()) {
+    ui.alert('B-④', 'Property B5_RAKUTEN_MAIN_BASE_ENABLED=false のため B-④ MAIN基礎は非表示相当です。', ui.ButtonSet.OK);
+    b5DiagLog_(fn, t0, 'DONE', 'reason=disabled');
+    return;
+  }
+  b5DiagLog_(fn, t0, 'RUNNING', 'diag=m1_propose');
+  var parents = collectB5RakutenMainBaseParents_();
+  if (parents.error) {
+    ui.alert('B-④｜楽天MAIN基礎', parents.error, ui.ButtonSet.OK);
+    b5DiagLog_(fn, t0, 'DONE', 'reason=collect_error');
+    return;
+  }
+  if (!parents.rows.length) {
+    ui.alert(
+      'B-④｜楽天MAIN基礎',
+      '出品CKが付いた親行（有効JAN）がありません。\nマスタで親に出品CKを付けてから再実行してください。',
+      ui.ButtonSet.OK
+    );
+    b5DiagLog_(fn, t0, 'DONE', 'reason=no_parents');
+    return;
+  }
+  var imgInfo = listAmazonBaseTruthImageFiles_();
+  b5DiagLog_(
+    fn,
+    t0,
+    'AFTER_LIST',
+    'parents=' + parents.rows.length + ' truthFiles=' + ((imgInfo.files && imgInfo.files.length) || 0)
+  );
+  showB5PackageTruthBindDialog_({
+    rows: parents.rows,
+    files: imgInfo.files || [],
+    folderOk: !!imgInfo.ok,
+    folderError: imgInfo.error || '',
+    folderHint: imgInfo.hint || ''
+  });
+  b5DiagLog_(fn, t0, 'DONE', 'next=buildB5ProposalsForBindings');
+}
+
+/**
+ * Drive サムネURL（B-④ ダイアログ用）。
+ * @param {string} fileId
+ * @param {number=} w
+ * @return {string}
+ */
+function b5DriveThumbUrl_(fileId, w) {
+  var id = String(fileId || '').trim();
+  if (!id) return '';
+  var size = w && w > 0 ? w : 220;
+  return 'https://drive.google.com/thumbnail?sz=w' + size + '&id=' + encodeURIComponent(id);
+}
+
+/**
+ * 正本サムネ選択HTML（親1行分）。候補は関連を優先し、最大16枚。
+ * @param {Array<{name:string,rel:string,id:string}>} files
+ * @param {string} jan
+ * @param {string} parentSku
+ * @param {string} preRel
+ * @return {string}
+ */
+function b5TruthThumbPickerHtml_(files, jan, parentSku, preRel) {
+  var j = String(jan || '');
+  var sku = String(parentSku || '');
+  var pre = String(preRel || '').replace(/\//g, '\\');
+  var list = files || [];
+  var related = [];
+  var rest = [];
+  for (var i = 0; i < list.length; i++) {
+    var rel = String(list[i].rel || list[i].name || '');
+    var hit =
+      (j && rel.indexOf(j) >= 0) ||
+      (sku && rel.toLowerCase().indexOf(sku.toLowerCase()) >= 0);
+    if (hit) related.push(list[i]);
+    else rest.push(list[i]);
+  }
+  var shown = related.length
+    ? related.concat(rest.slice(0, Math.max(0, 12 - related.length)))
+    : list.slice(0, 16);
+  if (!shown.length) {
+    return '<span style="color:#b00020;font-size:12px;">正本候補がありません</span>';
+  }
+  var h = '<div class="b5-truth-grid">';
+  for (var k = 0; k < shown.length; k++) {
+    var f = shown[k];
+    var r = String(f.rel || f.name || '');
+    var rN = r.replace(/\//g, '\\');
+    var id = String(f.id || '');
+    var ck = pre && rN === pre ? ' checked' : '';
+    var sel = pre && rN === pre ? ' selected' : '';
+    var thumb = b5DriveThumbUrl_(id, 200);
+    h += '<label class="b5-truth-card' + sel + '">';
+    if (thumb) {
+      h +=
+        '<img src="' +
+        thumb.replace(/"/g, '&quot;') +
+        '" alt="' +
+        r.replace(/"/g, '&quot;').replace(/</g, '&lt;') +
+        '" loading="lazy"/>';
+    } else {
+      h += '<div class="b5-truth-miss">プレビュー不可</div>';
+    }
+    h +=
+      '<input type="radio" class="b5-truth" name="truth_' +
+      j.replace(/"/g, '') +
+      '_' +
+      sku.replace(/"/g, '') +
+      '" value="' +
+      r.replace(/"/g, '&quot;') +
+      '"' +
+      ck +
+      '/>';
+    h +=
+      '<span class="b5-truth-name">' +
+      r.replace(/</g, '&lt;') +
+      '</span></label>';
+  }
+  h += '</div>';
+  return h;
+}
+
+/**
+ * B-⑤ 正本→案チェック→指示（同一ダイアログ。二重 showModalDialog 禁止）。
+ * @param {Object} payload
+ */
+function showB5PackageTruthBindDialog_(payload) {
+  try {
+    b5SeedTextColorSharedFromMaps_();
+  } catch (eSeed) {
+    Logger.log('[B5.TEXT_COLOR] seed_on_dialog ' + String(eSeed && eSeed.message ? eSeed.message : eSeed));
+  }
+  try {
+    b5SeedPackageTruthFromCompose_();
+  } catch (eSeed2) {
+    Logger.log('[B5.TRUTH_MAP] seed_on_dialog ' + String(eSeed2 && eSeed2.message ? eSeed2.message : eSeed2));
+  }
+  var rows = payload.rows || [];
+  var files = payload.files || [];
+  var savedNb = loadB5PackageTruthByNameBase_();
+  var savedSku = loadB5PackageTruthByParent_();
+  var foodRead = readB5FoodCanonStatusDoc_();
+  var foodByJan = (foodRead.doc && foodRead.doc.byJan) || {};
+  var colorShared = loadB5TextColorByParent_();
+  var preTruthN = 0;
+  var foodOkN = 0;
+
+  function b5TruthOptionsHtmlForRel_(selectedRel) {
+    var selNorm = String(selectedRel || '')
+      .trim()
+      .replace(/\//g, '\\');
+    var html = '<option value="">（未選択＝スキップ）</option>';
+    for (var i = 0; i < files.length; i++) {
+      var rel = String(files[i].rel || files[i].name || '');
+      var relNorm = rel.replace(/\//g, '\\');
+      var sel = selNorm && relNorm === selNorm ? ' selected' : '';
+      html +=
+        '<option value="' +
+        rel.replace(/"/g, '&quot;') +
+        '"' +
+        sel +
+        '>' +
+        rel.replace(/</g, '&lt;') +
+        '</option>';
+    }
+    return html;
+  }
+
+  var rowHtml = '';
+  for (var ri = 0; ri < rows.length; ri++) {
+    var row = rows[ri];
+    var jan = String(row.jan || '');
+    var sku = String(row.parentSku || '');
+    var nameBaseFull = String(row.nameBase || '');
+    var nm = nameBaseFull.slice(0, 40);
+    var prefTc = '1';
+    if (sku && colorShared[sku]) prefTc = b4NormalizeTextColor_(colorShared[sku], '1');
+    else {
+      var rTc = b5ResolveTextColorForParent_(sku, jan, null);
+      if (rTc.source === 'shared' || rTc.source === 'map') prefTc = rTc.textColor;
+    }
+    var preRel = resolveTruthRelForNameBase_(nameBaseFull, files, {
+      savedNameBase: savedNb,
+      savedParent: savedSku,
+      parentSku: sku
+    });
+    if (preRel) preTruthN++;
+    var foodRow = foodByJan[jan] || {};
+    var foodLabel = String(foodRow.label || '未確定');
+    var foodOk = String(foodRow.confirmedBy || '') === 'human';
+    if (foodOk) foodOkN++;
+    var foodColor = foodOk ? '#2e7d32' : '#b00020';
+    var colorOptHtmlRow =
+      '<option value="1"' +
+      (prefTc === '1' ? ' selected' : '') +
+      '>1 えんじ</option>' +
+      '<option value="2"' +
+      (prefTc === '2' ? ' selected' : '') +
+      '>2 青</option>' +
+      '<option value="3"' +
+      (prefTc === '3' ? ' selected' : '') +
+      '>3 黒</option>' +
+      '<option value="4"' +
+      (prefTc === '4' ? ' selected' : '') +
+      '>4 緑</option>' +
+      '<option value="5"' +
+      (prefTc === '5' ? ' selected' : '') +
+      '>5 茶</option>';
+    rowHtml +=
+      '<tr data-jan="' +
+      jan.replace(/"/g, '&quot;') +
+      '" data-sku="' +
+      sku.replace(/"/g, '&quot;') +
+      '" data-name="' +
+      nameBaseFull.replace(/"/g, '&quot;') +
+      '">' +
+      '<td style="font-size:12px;">' +
+      jan.replace(/</g, '&lt;') +
+      '<br><span style="color:#666;">' +
+      sku.replace(/</g, '&lt;') +
+      '</span><br><span style="color:#444;">' +
+      nm.replace(/</g, '&lt;') +
+      '</span><br><span style="font-size:11px;color:' +
+      foodColor +
+      ';">個品: ' +
+      foodLabel.replace(/</g, '&lt;') +
+      '</span>' +
+      (preRel
+        ? '<br><span style="font-size:11px;color:#2e7d32;">正本: 共有から初期選択</span>'
+        : '') +
+      '</td>' +
+      '<td>' +
+      b5TruthThumbPickerHtml_(files, jan, sku, preRel) +
+      '</td>' +
+      '<td><select class="b5-color" style="width:100%;font-size:12px;" title="MAIN／サブ共有の文字色">' +
+      colorOptHtmlRow +
+      '</select></td></tr>';
+  }
+  var folderWarn = payload.folderOk
+    ? ''
+    : '<p style="color:#b00020;font-size:12px;">正本フォルダ: ' +
+      String(payload.folderError || payload.folderHint || '取得失敗').replace(/</g, '&lt;') +
+      '</p>';
+
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+    'body{font-family:sans-serif;padding:12px;font-size:13px;}' +
+    'table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ddd;padding:6px;vertical-align:top;}' +
+    'textarea{width:100%;font-family:Consolas,monospace;font-size:12px;}' +
+    '.panel{display:none;} .panel.on{display:block;}' +
+    '.prop{margin:10px 0;padding:8px;border:1px solid #eee;background:#fafafa;}' +
+    '.catch{width:96%;font-size:13px;}' +
+    'label.row{display:block;margin:4px 0;}.b5-truth-grid{display:flex;flex-wrap:wrap;gap:8px;max-height:280px;overflow:auto;}.b5-truth-card{display:block;width:120px;border:2px solid #ccc;border-radius:6px;padding:4px;background:#fafafa;cursor:pointer;}.b5-truth-card.selected,.b5-truth-card:has(input:checked){border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,.25);}.b5-truth-card img{width:100%;height:100px;object-fit:contain;background:#eee;display:block;}.b5-truth-miss{height:100px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;background:#f0f0f0;}.b5-truth-name{display:block;font-size:10px;color:#444;word-break:break-all;margin-top:4px;}.b5-truth-card input{margin-top:4px;}' +
+    '</style></head><body>' +
+    '<div id="bindPanel" class="panel on">' +
+    '<h3 style="margin-top:0;">B-④ 楽天MAIN基礎 — ①正本紐付け</h3>' +
+    '<p style="font-size:12px;color:#444;">出品CK親ごとに <strong>正本画像（サムネを選ぶ）</strong>・<strong>文字色</strong>・個品見本（共有）を揃える。フォルダを開かなくても選べます。MAIN／サブどちらが先でも他方が読む。' +
+    '<b>GASは画像を合成しません</b>。</p>' +
+    '<p style="font-size:12px;background:#e8f5e9;border:1px solid #2e7d32;padding:6px;">' +
+    '共有初期反映: 正本 ' +
+    preTruthN +
+    ' / ' +
+    rows.length +
+    ' ／ 個品確定 ' +
+    foodOkN +
+    ' / ' +
+    rows.length +
+    ' ／ 文字色はドロップダウンに反映</p>' +
+    '<p style="font-size:12px;background:#fff8e6;border:1px solid #e6d9a8;padding:8px;">' +
+    '<b>すでに画像を作ったことがある場合</b>：正本を選ばなくても ' +
+    '<b>「過去の画像を使う（案・生成をスキップ）」</b> で進めます（親SKU／JANで過去フォルダを探します）。' +
+    '文字色・正本は共有値に自動で合わせます。新規に案・画像を作るときだけ正本が必要です。</p>' +
+    folderWarn +
+    '<table><thead><tr><th>JAN／親SKU／商品名</th><th>正本画像</th><th style="width:110px;">文字色</th></tr></thead><tbody>' +
+    rowHtml +
+    '</tbody></table>' +
+    '<p><button id="b5GoBind">紐付け確定 → 見本へ</button> ' +
+    '<button id="b5GoReuse" style="font-weight:bold;">過去の画像を使う（案・生成をスキップ）</button> ' +
+    '<button onclick="google.script.host.close();">閉じる</button></p>' +
+    '<p id="b5Err" style="color:#b00020;font-size:12px;"></p>' +
+    '</div>' +
+    '<div id="canonPanel" class="panel">' +
+    '<h3 style="margin-top:0;">B-④ — ①′ 中身の見本（必須）</h3>' +
+    '<p style="font-size:12px;color:#444;">下表が<strong>緑の「確定」</strong>なら、画像確認を飛ばして<strong>「次へ」</strong>で案に進めます。<br>' +
+    '中身の見本を<strong>これから選ぶ</strong>、または<strong>画像で確認し直す</strong>ときは、下の命令をコピーして実行してください（サブと同じ画面が開きます）。Web下は<strong>「変更なしで閉じる」</strong>か<strong>「選び直したらここで保存」</strong>の2つ。戻って<strong>「次へ」</strong>。<br>' +
+    '<span style="color:#666;">この画面を開いた時点で、セールストーク案は裏で順番に作成を開始します（見本と同時進行）。</span></p>' +
+    '<div id="b5CanonStatus"></div>' +
+    '<p id="b5ProposePrefetchHint" style="font-size:12px;color:#555;margin:8px 0;"></p>' +
+    '<p style="font-size:12px;background:#fff8e6;border:1px solid #e6d9a8;padding:8px;">' +
+    '<b>命令の使い方</b>：PowerShell または Cursor に貼って実行 → ブラウザで写真を見る／選ぶ → 戻って「次へ」。</p>' +
+    '<textarea id="b5GateCmd" rows="6" readonly style="background:#f7f7f7;"></textarea>' +
+    '<p><button id="b5CopyGate">命令をコピー（見本を選ぶ／画像で確認）</button> ' +
+    '<button id="b5GoCanonNext" style="font-weight:bold;">次へ（確定済み・確認スキップ）</button> ' +
+    '<button onclick="google.script.host.close();">閉じる</button></p>' +
+    '<p id="b5ErrCanon" style="color:#b00020;font-size:12px;"></p>' +
+    '</div>' +
+    '<div id="proposePanel" class="panel">' +
+    '<h3 style="margin-top:0;">B-④ — ②セールストーク案（複数チェック可）</h3>' +
+    '<p style="font-size:12px;color:#444;">材料から出した案です。良いものだけチェック（キャッチは直してよい）。' +
+    'チェックした分だけ画像指示に載せます。画像の実行は後でOK。</p>' +
+    '<div id="b5ProposeBody"></div>' +
+    '<p><button id="b5GoPrompt">チェック確定 → 指示文</button> ' +
+    '<button onclick="google.script.host.close();">閉じる</button></p>' +
+    '<p id="b5Err2" style="color:#b00020;font-size:12px;"></p>' +
+    '</div>' +
+    '<div id="promptPanel" class="panel">' +
+    '<h3 style="margin-top:0;">B-④ Cursor／Agent 指示</h3>' +
+    '<p style="font-size:12px;">下をコピーして Cursor へ。<strong>個品見本は ①′ で確定済み</strong> → compose → ブラウザレビュー。<strong>「過去の画像を使う」のときは生成せずレビューだけ</strong>。スプレッドシートでは採用しません。</p>' +
+    '<p id="b5PromptHint" style="font-size:12px;color:#0a7;"></p>' +
+    '<textarea id="b5Prompt" rows="18"></textarea>' +
+    '<p><button onclick="var el=document.getElementById(\'b5Prompt\');el.focus();el.select();">全選択</button> ' +
+    '<button onclick="google.script.host.close();">閉じる</button></p>' +
+    '</div>' +
+    '<script>' +
+    'var B5_STATE={items:[],selections:[],bindings:[],proposalsReady:false,proposalsLoading:false,proposalsError:""};' +
+    'var B5_PROPOSE_WAITERS=[];' +
+    'var B5_COLOR_JA={"1":"えんじ","2":"青","3":"黒","4":"緑","5":"茶"};' +
+    'function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}' +
+    'function renderCanonStatus(st){' +
+    'var h="<table><thead><tr><th>JAN</th><th>状態</th><th>選んだ見本</th></tr></thead><tbody>";' +
+    'var rows=st||[];' +
+    'if(!rows.length) h+="<tr><td colspan=3>（未取得）</td></tr>";' +
+    'for(var i=0;i<rows.length;i++){' +
+    'var r=rows[i];' +
+    'var col=r.ok?"#0a7":"#b00020";' +
+    'h+="<tr><td>"+esc(r.jan)+"</td>";' +
+    'h+="<td style=\\"color:"+col+";font-weight:bold;\\">"+esc(r.label||"")+"</td>";' +
+    'h+="<td style=\\"font-size:11px;color:#555\\">"+esc(r.identityName||"")+"</td></tr>";' +
+    '}' +
+    'h+="</tbody></table>";' +
+    'document.getElementById("b5CanonStatus").innerHTML=h;' +
+    '}' +
+    'function setB5ProposePrefetchHint(msg,color){' +
+    'var el=document.getElementById("b5ProposePrefetchHint");' +
+    'if(!el) return;' +
+    'el.style.color=color||"#555";' +
+    'el.textContent=String(msg||"");' +
+    '}' +
+    'function onB5ProposalsDone(res){' +
+    'B5_STATE.proposalsLoading=false;' +
+    'if(res&&res.ok){' +
+    'B5_STATE.items=res.items||[];' +
+    'B5_STATE.proposalsReady=!!(B5_STATE.items&&B5_STATE.items.length);' +
+    'B5_STATE.proposalsError="";' +
+    'setB5ProposePrefetchHint("セールストーク案: 準備できました（次へですぐ表示）","#0a7");' +
+    '}else{' +
+    'B5_STATE.proposalsReady=false;' +
+    'B5_STATE.proposalsError=(res&&res.error)||"案の作成に失敗";' +
+    'setB5ProposePrefetchHint("セールストーク案: 失敗 — 次へで再試行します","#b00020");' +
+    '}' +
+    'var w=B5_PROPOSE_WAITERS.slice();' +
+    'B5_PROPOSE_WAITERS=[];' +
+    'for(var wi=0;wi<w.length;wi++){try{w[wi](res);}catch(ex){}}' +
+    '}' +
+    'function prefetchB5Proposals(){' +
+    'if(!B5_STATE.bindings||!B5_STATE.bindings.length) return;' +
+    'if(B5_STATE.proposalsLoading) return;' +
+    'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length) return;' +
+    'B5_STATE.proposalsLoading=true;' +
+    'B5_STATE.proposalsReady=false;' +
+    'setB5ProposePrefetchHint("セールストーク案: 裏で作成中（見本を選んでいる間に "+B5_STATE.bindings.length+" 品番を順番に処理）…");' +
+    'google.script.run.withSuccessHandler(onB5ProposalsDone)' +
+    '.withFailureHandler(function(e){onB5ProposalsDone({ok:false,error:String(e&&e.message?e.message:e)});})' +
+    '.buildB5ProposalsForBindings({bindings:B5_STATE.bindings,prefetch:true});' +
+    '}' +
+    'function waitB5ProposalsThen(next){' +
+    'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length){next({ok:true,items:B5_STATE.items});return;}' +
+    'if(B5_STATE.proposalsLoading){B5_PROPOSE_WAITERS.push(next);return;}' +
+    'B5_PROPOSE_WAITERS.push(next);' +
+    'prefetchB5Proposals();' +
+    '}' +
+    'function showB5ProposePanelFromItems(res2,errEl){' +
+    'if(!res2||!res2.ok){if(errEl) errEl.textContent=(res2&&res2.error)||B5_STATE.proposalsError||"案作成失敗";return;}' +
+    'B5_STATE.items=res2.items||[];' +
+    'renderProposals(B5_STATE.items);' +
+    'document.getElementById("canonPanel").className="panel";' +
+    'document.getElementById("proposePanel").className="panel on";' +
+    'if(errEl) errEl.textContent="";' +
+    '}' +
+    'function refreshCanonStatus(cb){' +
+    'var jans=[];' +
+    'for(var i=0;i<(B5_STATE.bindings||[]).length;i++){' +
+    'var j=String(B5_STATE.bindings[i].jan||"");' +
+    'if(j&&jans.indexOf(j)<0) jans.push(j);' +
+    '}' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(cb) cb(res);' +
+    '}).withFailureHandler(function(e){if(cb) cb({ok:false,error:String(e&&e.message?e.message:e)});})' +
+    '.checkB5FoodCanonStatusForJans({jans:jans});' +
+    '}' +
+    'function renderProposals(items){' +
+    'var h="";' +
+    'for(var i=0;i<items.length;i++){' +
+    'var it=items[i];' +
+    'var tc=String(it.textColor||"1");' +
+    'h+="<div class=\\"prop\\" data-idx=\\""+i+"\\">";' +
+    'h+="<b>JAN "+esc(it.jan)+"</b> "+esc(it.parentSku||"")+" <span style=\\"color:#666\\">"+esc(it.name||"")+"</span>";' +
+    'h+=" <span style=\\"font-size:11px;color:#333\\">文字色 "+esc(tc)+" "+esc(B5_COLOR_JA[tc]||"")+"</span>";' +
+    'if(it.error) h+="<div style=\\"color:#b00020\\">材料注意: "+esc(it.error)+"</div>";' +
+    'var ps=it.proposals||[];' +
+    'if(!ps.length) h+="<div>案が0件（材料の根拠が足りない）</div>";' +
+    'for(var p=0;p<ps.length;p++){' +
+    'var pr=ps[p];' +
+    'var id="b5p_"+i+"_"+p;' +
+    'h+="<label class=\\"row\\"><input type=\\"checkbox\\" class=\\"b5-pick\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" id=\\""+id+"\\" checked> ";' +
+    'h+="#"+esc(pr.sellRank)+" <b>"+esc(pr.themeId)+"</b> "+esc(pr.themeName);' +
+    'h+=" <span style=\\"color:#888;font-size:11px\\">("+esc(pr.catchSource||"rule")+")</span><br>";' +
+    'h+="キャッチ <input class=\\"catch b5-catch\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.catch)+"\\"><br>";' +
+    'h+="<span style=\\"font-size:11px;color:#555\\">根拠: "+esc(pr.evidence||"")+"</span>";' +
+    'h+="</label>";' +
+    '}' +
+    'h+="</div>";' +
+    '}' +
+    'document.getElementById("b5ProposeBody").innerHTML=h;' +
+    '}' +
+    'document.addEventListener("change",function(e){if(!e.target||!e.target.classList||!e.target.classList.contains("b5-truth"))return;var grid=e.target.closest(".b5-truth-grid");if(!grid)return;var cards=grid.querySelectorAll(".b5-truth-card");for(var ci=0;ci<cards.length;ci++)cards[ci].classList.remove("selected");var lab=e.target.closest(".b5-truth-card");if(lab)lab.classList.add("selected");});' +
+    'function collectB5Bindings(requireTruth){' +
+    'var bindings=[];' +
+    'var trs=document.querySelectorAll("#bindPanel tbody tr");' +
+    'for(var i=0;i<trs.length;i++){' +
+    'var jan=trs[i].getAttribute("data-jan")||"";' +
+    'var sku=trs[i].getAttribute("data-sku")||"";' +
+    'var nameBase=trs[i].getAttribute("data-name")||"";' +
+    'var sel=trs[i].querySelector(".b5-truth:checked");' +
+    'var rel=sel?String(sel.value||"").trim():"";' +
+    'var col=trs[i].querySelector(".b5-color");' +
+    'var textColor=col?String(col.value||"1"):"1";' +
+    'if(!jan) continue;' +
+    'if(requireTruth && !rel) continue;' +
+    'bindings.push({jan:jan,parentSku:sku,nameBase:nameBase,rel:rel,textColor:textColor});' +
+    '}' +
+    'return bindings;' +
+    '}' +
+    'function applyB5PastColors(colorByJan){' +
+    'if(!colorByJan) return;' +
+    'var trs=document.querySelectorAll("#bindPanel tbody tr");' +
+    'for(var i=0;i<trs.length;i++){' +
+    'var jan=trs[i].getAttribute("data-jan")||"";' +
+    'var tc=colorByJan[jan];' +
+    'if(!tc) continue;' +
+    'var col=trs[i].querySelector(".b5-color");' +
+    'if(col) col.value=String(tc);' +
+    '}' +
+    '}' +
+    'document.getElementById("b5GoBind").onclick=function(){' +
+    'var err=document.getElementById("b5Err"); err.textContent="正本を保存し、見本状態を確認中…";' +
+    'var bindings=collectB5Bindings(true);' +
+    'if(!bindings.length){err.textContent="正本が1件も選ばれていません（新規作成時は正本が必要です）";return;}' +
+    'B5_STATE.proposalsReady=false;B5_STATE.proposalsLoading=false;B5_STATE.proposalsError="";B5_STATE.items=[];B5_PROPOSE_WAITERS=[];' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(!res||!res.ok){err.textContent=(res&&res.error)||"失敗";return;}' +
+    'B5_STATE.bindings=res.bindings||bindings;' +
+    'document.getElementById("b5GateCmd").value=res.gateCmd||"";' +
+    'renderCanonStatus(res.statuses||[]);' +
+    'document.getElementById("bindPanel").className="panel";' +
+    'document.getElementById("canonPanel").className="panel on";' +
+    'prefetchB5Proposals();' +
+    'err.textContent="";' +
+    '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
+    '.beginB5AfterTruthBind({bindings:bindings});' +
+    '};' +
+    'document.getElementById("b5CopyGate").onclick=function(){' +
+    'var el=document.getElementById("b5GateCmd"); el.focus(); el.select(); document.execCommand("copy");' +
+    '};' +
+    'document.getElementById("b5GoCanonNext").onclick=function(){' +
+    'var err=document.getElementById("b5ErrCanon"); err.style.color="#b00020"; err.textContent="確認中…";' +
+    'refreshCanonStatus(function(res){' +
+    'if(!res||!res.ok){err.textContent=(res&&res.error)||"状態取得失敗";return;}' +
+    'renderCanonStatus(res.statuses||[]);' +
+    'if(!res.allConfirmed){err.textContent="まだ未確定の商品があります。「命令をコピー」で見本を選んでから、もう一度「次へ」を押してください。";return;}' +
+    'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length){' +
+    'showB5ProposePanelFromItems({ok:true,items:B5_STATE.items},err);return;' +
+    '}' +
+    'err.textContent="案を仕上げ中（裏で作成した分を待っています）…";' +
+    'waitB5ProposalsThen(function(res2){showB5ProposePanelFromItems(res2,err);});' +
+    '});' +
+    '};' +
+    'document.getElementById("b5GoReuse").onclick=function(){' +
+    'var err=document.getElementById("b5Err");' +
+    'err.style.color="#b00020";' +
+    'err.textContent="過去の比較フォルダを Drive から探しています…";' +
+    'var bindings=collectB5Bindings(false);' +
+    'if(!bindings.length){err.textContent="対象の親がありません（出品CKの親が一覧に出ているか確認）";return;}' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(!res||!res.ok){err.textContent=(res&&res.error)||"失敗";return;}' +
+    'applyB5PastColors(res.colorByJan||{});' +
+    'document.getElementById("bindPanel").className="panel";' +
+    'document.getElementById("promptPanel").className="panel on";' +
+    'document.getElementById("b5Prompt").value=res.prompt||"";' +
+    'var ph=document.getElementById("b5PromptHint");' +
+    'if(ph) ph.textContent=res.hint||"過去画像の指示です。コピーして Cursor へ。";' +
+    'err.textContent="";' +
+    '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
+    '.finishB5ReuseExistingCompose({bindings:bindings});' +
+    '};' +
+    'document.getElementById("b5GoPrompt").onclick=function(){' +
+    'var err=document.getElementById("b5Err2"); err.textContent="指示文を作成中…";' +
+    'var selections=[];' +
+    'for(var i=0;i<B5_STATE.items.length;i++){' +
+    'var it=B5_STATE.items[i];' +
+    'var picked=[];' +
+    'var boxes=document.querySelectorAll(".b5-pick[data-i=\\""+i+"\\"]");' +
+    'for(var b=0;b<boxes.length;b++){' +
+    'if(!boxes[b].checked) continue;' +
+    'var p=parseInt(boxes[b].getAttribute("data-p"),10);' +
+    'var pr=(it.proposals||[])[p];' +
+    'if(!pr) continue;' +
+    'var inp=document.querySelector(".b5-catch[data-i=\\""+i+"\\"][data-p=\\""+p+"\\"]");' +
+    'var catchText=inp?String(inp.value||"").trim():String(pr.catch||"");' +
+    'if(!catchText) continue;' +
+    'picked.push({themeId:pr.themeId,themeName:pr.themeName,catch:catchText,sceneHint:pr.sceneHint,evidence:pr.evidence,sellRank:pr.sellRank,classId:pr.classId});' +
+    '}' +
+    'if(picked.length) selections.push({jan:it.jan,parentSku:it.parentSku,rel:it.rel,nameBase:it.nameBase||it.name||"",name:it.name,textColor:it.textColor||"1",proposals:picked});' +
+    '}' +
+    'if(!selections.length){err.textContent="案を1つ以上チェックしてください";return;}' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(!res||!res.ok){err.textContent=(res&&res.error)||"失敗";return;}' +
+    'B5_STATE.selections=selections;' +
+    'document.getElementById("proposePanel").className="panel";' +
+    'document.getElementById("promptPanel").className="panel on";' +
+    'document.getElementById("b5Prompt").value=res.prompt||"";' +
+    'err.textContent="";' +
+    '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
+    '.finishB5AfterTruthBind({selections:selections});' +
+    '};' +
+    '</script></body></html>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(900).setHeight(760),
+    'B-④ 楽天MAIN基礎（正本→見本→案→指示）'
+  );
+}
+
+/**
+ * 正本紐付け後: 材料→門→Gemini整文→案一覧（google.script.run 用。末尾 _ なし）。
+ * @param {{bindings:Array<{jan:string,parentSku?:string,rel:string,textColor?:string}>}} payload
+ * @return {{ok:boolean,items?:Array,error?:string}}
+ */
+function buildB5ProposalsForBindings(payload) {
+  var fn = 'buildB5ProposalsForBindings';
+  var t0 = Date.now();
+  var prefetch = !!(payload && payload.prefetch);
+  try {
+    var bindings = (payload && payload.bindings) || [];
+    if (!bindings.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_bindings');
+      return { ok: false, error: '紐付けが空です' };
+    }
+    var items = [];
+    var seen = {};
+    for (var i = 0; i < bindings.length; i++) {
+      var jan = String(bindings[i].jan || '').trim();
+      var sku = String(bindings[i].parentSku || '').trim();
+      var nameBase = String(bindings[i].nameBase || '').trim();
+      var rel = String(bindings[i].rel || '')
+        .trim()
+        .replace(/\//g, '\\');
+      var textColor = String(bindings[i].textColor || '1');
+      if ('12345'.indexOf(textColor) < 0) textColor = '1';
+      var dedupeKey = nameBase || jan;
+      if (!jan || !rel || !dedupeKey || seen[dedupeKey]) continue;
+      seen[dedupeKey] = true;
+      var loaded = b5LoadMaterialsForParent_(jan, nameBase);
+      var proposals = b5ProposeFromMaterials_(loaded.materials || {});
+      proposals = b5PolishCatchesWithGemini_(loaded.materials || {}, proposals);
+      items.push({
+        jan: jan,
+        parentSku: sku,
+        nameBase: nameBase,
+        rel: rel,
+        textColor: textColor,
+        name: loaded.name || nameBase || (loaded.materials && loaded.materials.name) || '',
+        error: loaded.error || '',
+        matchHow: loaded.matchHow || '',
+        proposals: proposals
+      });
+      b5DiagLog_(
+        fn,
+        t0,
+        'NAME',
+        'name=' +
+          nameBase.slice(0, 40) +
+          ' jan=' +
+          jan +
+          ' n=' +
+          proposals.length +
+          ' how=' +
+          (loaded.matchHow || '-') +
+          ' color=' +
+          textColor +
+          ' matErr=' +
+          (loaded.error || '-')
+      );
+    }
+    if (!items.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_items');
+      return { ok: false, error: '有効な紐付けがありません' };
+    }
+    // サブ B-⑤ 初期選択用（商品名ベース → 正本 rel）＋親SKU共有
+    saveB5PackageTruthByNameBase_(items);
+    // 文字色共有（MAIN／サブ）
+    saveB5TextColorByParent_(items);
+    b5DiagLog_(fn, t0, 'DONE', 'items=' + items.length + (prefetch ? ' prefetch=1' : ''));
+    return { ok: true, items: items, prefetch: prefetch };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: '提案例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * 正本相対パスから作業用の商品名省略（たべるおだしかつお.png → かつお）。
+ * @param {string} rel
+ * @return {string}
+ */
+function b5ShortNameFromTruthRel_(rel) {
+  var base = String(rel || '')
+    .replace(/^.*[\\\/]/, '')
+    .replace(/\.(png|jpg|jpeg|webp)$/i, '')
+    .replace(/\s+/g, '');
+  var prefixes = ['たべるおだし', '食べるおだし', 'たべるお出汁', '食べるお出汁'];
+  for (var i = 0; i < prefixes.length; i++) {
+    if (base.indexOf(prefixes[i]) === 0) {
+      var rest = base.substring(prefixes[i].length).replace(/^[\s_\-・]+/, '');
+      if (rest) return rest;
+    }
+  }
+  return base || 'item';
+}
+
+/**
+ * MAIN 確定の正本マップを読む（キー＝normalizeBProductNameKey_ した商品名ベース）。
+ * @return {Object<string,string>} nameBaseKey → rel
+ */
+function loadB5PackageTruthByNameBase_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(B5_PACKAGE_TRUTH_BY_NAMEBASE_PROP);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * @return {Object<string,string>} parentSku → rel
+ */
+function loadB5PackageTruthByParent_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(B5_PACKAGE_TRUTH_BY_PARENT_PROP);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * 正本を商品名ベース＋親SKUで共有保存し、Drive 親共有 JSON も更新。
+ * @param {Array<{nameBase?:string,rel?:string,parentSku?:string,jan?:string,textColor?:string}>} entries
+ */
+function saveB5PackageTruthByNameBase_(entries) {
+  if (!entries || !entries.length) return;
+  var mapNb = loadB5PackageTruthByNameBase_();
+  var mapSku = loadB5PackageTruthByParent_();
+  var n = 0;
+  var parentSharedRows = [];
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i] || {};
+    var nb = normalizeBProductNameKey_(e.nameBase || '');
+    var rel = String(e.rel || '')
+      .trim()
+      .replace(/\//g, '\\');
+    var sku = String(e.parentSku || '').trim();
+    var jan = String(e.jan || '').trim();
+    if (!rel) continue;
+    if (nb) {
+      mapNb[nb] = rel;
+      n++;
+    }
+    if (sku) {
+      mapSku[sku] = rel;
+      n++;
+    }
+    if (sku || nb) {
+      parentSharedRows.push({
+        parentSku: sku || '',
+        jan: jan,
+        nameBase: e.nameBase || '',
+        rel: rel,
+        textColor: e.textColor || ''
+      });
+    }
+  }
+  if (!n && !parentSharedRows.length) return;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty(B5_PACKAGE_TRUTH_BY_NAMEBASE_PROP, JSON.stringify(mapNb));
+    props.setProperty(B5_PACKAGE_TRUTH_BY_PARENT_PROP, JSON.stringify(mapSku));
+    Logger.log(
+      '[B5.TRUTH_MAP] saved nameBase=' +
+        Object.keys(mapNb).length +
+        ' parent=' +
+        Object.keys(mapSku).length
+    );
+  } catch (eSave) {
+    Logger.log('[B5.TRUTH_MAP] save_fail ' + String(eSave && eSave.message ? eSave.message : eSave));
+  }
+  b5SyncParentSharedToDrive_(parentSharedRows);
+}
+
+/**
+ * 親共有 JSON（正本・色）を Drive 作業ルートへマージ。
+ * @param {Array<{parentSku?:string,jan?:string,nameBase?:string,rel?:string,textColor?:string}>} rows
+ */
+function b5SyncParentSharedToDrive_(rows) {
+  try {
+    var work = b5ResolveSetMainWorkFolder_();
+    if (!work) return;
+    var name = B5_PARENT_SHARED_FILE_NAME;
+    var existing = b5FindFileInFolder_(work, name);
+    var doc = { schema: 'b5_parent_shared_v1', updatedAt: '', byParentSku: {} };
+    if (existing) {
+      try {
+        var parsed = JSON.parse(existing.getBlob().getDataAsString('UTF-8'));
+        if (parsed && parsed.byParentSku) doc = parsed;
+      } catch (e0) {
+        /* fresh */
+      }
+    }
+    if (!doc.byParentSku || typeof doc.byParentSku !== 'object') doc.byParentSku = {};
+    var now = new Date().toISOString();
+    for (var i = 0; i < (rows || []).length; i++) {
+      var r = rows[i] || {};
+      var sku = String(r.parentSku || '').trim();
+      if (!sku) continue;
+      var row = doc.byParentSku[sku] || {};
+      if (r.jan) row.jan = String(r.jan).trim();
+      if (r.nameBase) row.nameBase = String(r.nameBase).trim();
+      if (r.rel) row.packageTruthRel = String(r.rel).trim().replace(/\//g, '\\');
+      if (r.textColor && '12345'.indexOf(String(r.textColor)) >= 0) row.textColor = String(r.textColor);
+      row.updatedAt = now;
+      doc.byParentSku[sku] = row;
+    }
+    doc.schema = 'b5_parent_shared_v1';
+    doc.updatedAt = now;
+    var body = JSON.stringify(doc, null, 2);
+    if (existing) existing.setContent(body);
+    else work.createFile(Utilities.newBlob(body, 'application/json', name));
+    Logger.log('[B5.PARENT_SHARED] drive_sync keys=' + Object.keys(doc.byParentSku).length);
+  } catch (eDrv) {
+    Logger.log(
+      '[B5.PARENT_SHARED] drive_sync_fail ' + String(eDrv && eDrv.message ? eDrv.message : eDrv)
+    );
+  }
+}
+
+/**
+ * 正本 rel を解決: 親SKU共有 → 商品名ベース → 省略名一意推測。
+ * @param {string} nameBase
+ * @param {Array<{rel?:string,name?:string}>} files
+ * @param {Object=} opt {savedNameBase?, savedParent?, parentSku?}
+ * @return {string} rel or ''
+ */
+function finishB5AfterTruthBind(payload) {
+  var fn = 'finishB5AfterTruthBind';
+  var t0 = Date.now();
+  try {
+    var selections = (payload && payload.selections) || [];
+    if (!selections.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_selections');
+      return { ok: false, error: '選択が空です' };
+    }
+    var baseLocal = 'G:\\マイドライブ\\05.画像生成（セットMAIN）\\01.amazon白抜きベース';
+    var toolDir = 'c:\\Users\\takuy\\Desktop\\gas-project\\tools\\set_main_image';
+    var compareHint =
+      'G:\\マイドライブ\\05.画像生成（セットMAIN）\\00.テスト出力\\b5_main_base_compose\\';
+    var colorJa = { '1': 'えんじ', '2': '青', '3': '黒', '4': '緑', '5': '茶' };
+    var janOnly = [];
+    for (var ji = 0; ji < selections.length; ji++) {
+      var jn = String(selections[ji].jan || '').trim();
+      if (jn && janOnly.indexOf(jn) < 0) janOnly.push(jn);
+    }
+    var janGateArgs = janOnly
+      .map(function (j) {
+        return '--jan ' + j;
+      })
+      .join(' ');
+    var lines = [];
+    lines.push('【B-④ 楽天MAIN基礎・案F／P2】人がダイアログで選んだ案。GASは合成しない。OpenAI画像のみ（Gemini画像は作らない）。');
+    lines.push('文字色は親ごと（サイズ・味違いで変更可）。後続Cの --text-color と同じ番号。');
+    lines.push(
+      'キャッチ: 下の文言を優先（人が確定した提案文）。提案はだいたい' +
+        B5_PROPOSE_CATCH_MIN_ +
+        '〜' +
+        B5_PROPOSE_CATCH_MAX_ +
+        '字。画像はキャッチ大＋セールストーク小（§7.6ter）。上部左寄り・金丸＋Octas聖域。'
+    );
+    lines.push(
+      '個品見本: compose は _out/theme_new_run_{JAN} の人間確定 FOOD_UNIT を自動添付（§7.14）。構図はMAIN専用。'
+    );
+    lines.push(
+      '出口: ブラウザで1〜4版を採用＋出品CKレ点子SKU割当 → 02.楽天ベース\\{親SKU}_単体__{adoptKey}.png ＋ set_base_map.json（比較は残す）。'
+    );
+    lines.push('');
+    lines.push(
+      '【①′で確定済みならスキップ可】食材見本ゲート（B45 §7.12／§7.14）。B-④ ダイアログ ①′ で未確定の JAN だけ下を実行。'
+    );
+    lines.push('cd "' + toolDir + '"');
+    lines.push(
+      'python sub_image_food_canon_launch.py ' +
+        (janGateArgs || '--jan （JAN）') +
+        ' --force-pick --context main --no-wait'
+    );
+    lines.push(
+      '→ ブラウザ（8790起算）で見本確認。MAIN用: 「変更なしで閉じる」または「選び直したらここで保存」→ B-④「次へ」。競合ゼロ時は案内に従いコピペ or 正本のみ。'
+    );
+    lines.push('');
+    lines.push('Agent手順:');
+    lines.push('0. 個品見本: B-④ ①′ で human 確定済みならスキップ。未確定 JAN のみ下のゲート');
+    lines.push('1. 各親の JSON を tools/set_main_image/_b5_checked_{JAN}.json に保存（下のブロックをそのまま）');
+    lines.push(
+      '2. 既存ラン確認: python b5_main_base_review_launch.py --list-latest → 人が「既存を使う／足りない分だけ／全部作り直し」を選ぶ'
+    );
+    lines.push(
+      '   ・既存を使う → その親は compose せず --compose-dir で review のみ'
+    );
+    lines.push('   ・全部作り直し／足りない分 → 必要分だけ compose（親ごと・見本確定後）');
+    lines.push(
+      '3. review_launch 起動（人がブラウザで修正・複数採用・レ点子割当・02）。スプレッドシートでは採用しない'
+    );
+    lines.push('');
+    lines.push('実行ディレクトリ:');
+    lines.push('cd "' + toolDir + '"');
+    lines.push('');
+    var n = 0;
+    var truthMapEntries = [];
+    for (var i = 0; i < selections.length; i++) {
+      var jan = String(selections[i].jan || '').trim();
+      var sku = String(selections[i].parentSku || '').trim();
+      var rel = String(selections[i].rel || '')
+        .trim()
+        .replace(/\//g, '\\');
+      var textColor = String(selections[i].textColor || '1');
+      if ('12345'.indexOf(textColor) < 0) textColor = '1';
+      var props = selections[i].proposals || [];
+      if (!jan || !rel || !props.length) continue;
+      n++;
+      var full = baseLocal + '\\' + rel;
+      var jsonName = '_b5_checked_' + jan + '.json';
+      var propRows = [];
+      for (var p = 0; p < props.length; p++) {
+        var pr = props[p] || {};
+        propRows.push({
+          themeId: String(pr.themeId || ''),
+          themeName: String(pr.themeName || ''),
+          catch: String(pr.catch || ''),
+          evidence: String(pr.evidence || ''),
+          sceneHint: String(pr.sceneHint || ''),
+          sellRank: pr.sellRank || p + 1,
+          sellScore: pr.sellScore
+        });
+      }
+      var shortName = b5ShortNameFromTruthRel_(rel);
+      var nameBaseSel = String(
+        selections[i].nameBase || selections[i].name || ''
+      ).trim();
+      if (nameBaseSel) truthMapEntries.push({ nameBase: nameBaseSel, rel: rel });
+      var payloadObj = {
+        role: 'rakuten_main_base',
+        jan: jan,
+        parentSku: sku,
+        shortName: shortName,
+        nameBase: nameBaseSel,
+        textColor: textColor,
+        packageTruth: full,
+        proposals: propRows
+      };
+      lines.push('--- JAN ' + jan + (sku ? ' 親SKU ' + sku : '') + ' 省略名 ' + shortName + ' ---');
+      lines.push('正本: ' + full);
+      lines.push('文字色: ' + textColor + ' ' + (colorJa[textColor] || '') + '（後続Cの --text-color）');
+      lines.push('人が選んだ案:');
+      for (var q = 0; q < propRows.length; q++) {
+        var row = propRows[q];
+        lines.push(
+          '  - #' +
+            row.sellRank +
+            ' ' +
+            row.themeId +
+            ' ' +
+            row.themeName +
+            ' catch=' +
+            row.catch
+        );
+      }
+      lines.push('保存ファイル名: ' + jsonName);
+      lines.push('```json');
+      lines.push(JSON.stringify(payloadObj, null, 2));
+      lines.push('```');
+      lines.push('画像（P2 compose・OpenAI・チェック分だけ最大4・見本確定後）:');
+      lines.push(
+        'python b5_main_base_compose.py --role rakuten_main_base --from-json ' +
+          jsonName +
+          ' --openai-quality medium'
+      );
+      lines.push(
+        '※ FOOD_UNIT は theme_new_run_' +
+          jan +
+          ' から自動添付（人間確定済み前提）。'
+      );
+      lines.push(
+        '見る場所: ' +
+          compareHint +
+          shortName +
+          '_*\\比較（ファイル例: ' +
+          shortName +
+          '_T4_忙しい日の一品に.jpg）'
+      );
+      lines.push('');
+    }
+    if (!n) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_valid');
+      return { ok: false, error: '有効な選択がありません' };
+    }
+    lines.push('【レビュー・必須・ブラウザ同型＋P3b】写真レビュー（ブラウザ）:');
+    lines.push('python b5_main_base_review_launch.py --list-latest  … 既存確認');
+    lines.push('python b5_main_base_review_launch.py --from-root-latest  … 最新を開く');
+    lines.push('（または --compose-dir で各ラン指定。ポート 8865〜。1タブ＝1親）');
+    lines.push(
+      'ブラウザ: 画像クリック拡大／比較フォルダを開く → 再生成は旧を残す → 採用1〜4＋レ点子SKU割当 → 02へ → メニュー C'
+    );
+    lines.push(
+      '※比較は残す。Yahooは楽天と同じマップ。Amazonは対象外。楽天ULは C 量産。'
+    );
+    if (truthMapEntries.length) saveB5PackageTruthByNameBase_(truthMapEntries);
+    saveB5TextColorByParent_(selections);
+    b5DiagLog_(fn, t0, 'DONE', 'parents=' + n);
+    return { ok: true, prompt: lines.join('\n'), bindCount: n };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: 'finishB5例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * ①「過去の画像を使う」: 案・compose を飛ばし、既存比較フォルダのレビュー指示だけ出す。
+ * 文字色は前回 b5_proposals.json の textColor に合わせる（ダイアログ反映＋C指示）。
+ * @param {{bindings:Array<{jan:string,parentSku?:string,rel:string,textColor?:string}>}} payload
+ * @return {{ok:boolean,prompt?:string,colorByJan?:Object,hint?:string,error?:string}}
+ */
+function finishB5ReuseExistingCompose(payload) {
+  var fn = 'finishB5ReuseExistingCompose';
+  var t0 = Date.now();
+  try {
+    var bindings = (payload && payload.bindings) || [];
+    if (!bindings.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty');
+      return { ok: false, error: '対象の親がありません' };
+    }
+    var resolved = resolveB5ComposeRootFolderDetailed_();
+    if (!resolved.folder) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_compose_root');
+      return {
+        ok: false,
+        error:
+          '過去フォルダ（b5_main_base_compose）が見つかりません。Drive で場所を確認するか、Property「' +
+          B5_COMPOSE_ROOT_FOLDER_ID_PROP +
+          '」を設定してください。'
+      };
+    }
+    var runs = b5ScanComposeRuns_(resolved.folder);
+    var toolDir = 'c:\\Users\\takuy\\Desktop\\gas-project\\tools\\set_main_image';
+    var localRoot =
+      'G:\\マイドライブ\\05.画像生成（セットMAIN）\\00.テスト出力\\b5_main_base_compose\\';
+    var colorJa = { '1': 'えんじ', '2': '青', '3': '黒', '4': '緑', '5': '茶' };
+    var colorByJan = {};
+    var reused = [];
+    var missing = [];
+    var truthMapEntries = [];
+
+    for (var i = 0; i < bindings.length; i++) {
+      var b = bindings[i] || {};
+      var jan = String(b.jan || '').trim();
+      var sku = String(b.parentSku || '').trim();
+      var rel = String(b.rel || '').trim();
+      var shortName = rel ? b5ShortNameFromTruthRel_(rel) : '';
+      var nameBase = String(b.nameBase || '').trim();
+      // 候補を全部拾い、比較枚数が最多のランを採用（1枚だけの再生成フォルダより元の4枚を優先）
+      var cands = [];
+      for (var r = 0; r < runs.length; r++) {
+        var run = runs[r];
+        var matched = false;
+        if (sku && run.parentSku && run.parentSku === sku) matched = true;
+        else if (jan && run.jan && run.jan === jan) matched = true;
+        else if (shortName && run.shortName && run.shortName === shortName) matched = true;
+        else if (shortName && String(run.composeDir).indexOf(shortName + '_') === 0) matched = true;
+        if (matched) cands.push(run);
+      }
+      var hit = null;
+      var imgs = [];
+      var bestN = -1;
+      for (var c = 0; c < cands.length; c++) {
+        var candImgs = b5ListCompareImages_(cands[c].folder);
+        if (candImgs.length > bestN) {
+          bestN = candImgs.length;
+          hit = cands[c];
+          imgs = candImgs;
+        }
+      }
+      if (!hit || !imgs.length) {
+        missing.push((sku || jan || nameBase || shortName || '?') + '（比較フォルダ無し）');
+        continue;
+      }
+      var textColor = '1';
+      var metaTruthRel = rel;
+      var metaFile = b5FindFileInFolder_(hit.folder, 'b5_proposals.json');
+      var sharedHit = b5ResolveTextColorForParent_(sku, jan, null);
+      if (sharedHit.source === 'shared' || sharedHit.source === 'map') {
+        textColor = sharedHit.textColor;
+      }
+      if (metaFile) {
+        try {
+          var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+          if (sharedHit.source === 'default') {
+            var tc = String(meta.textColor || meta.text_color || '1');
+            if ('12345'.indexOf(tc) >= 0) textColor = tc;
+          }
+          if (!shortName && meta.shortName) shortName = String(meta.shortName);
+          if (!sku && meta.parentSku) sku = String(meta.parentSku);
+          var pt = String(meta.packageTruth || meta.package_truth || '').trim();
+          if (pt) {
+            var marker = '01.amazon白抜きベース\\';
+            var ptNorm = pt.replace(/\//g, '\\');
+            var mIdx = ptNorm.indexOf(marker);
+            metaTruthRel =
+              mIdx >= 0 ? ptNorm.substring(mIdx + marker.length) : ptNorm.replace(/^.*[\\\/]/, '');
+          }
+        } catch (eMeta) {
+          /* keep default */
+        }
+      }
+      if (nameBase && metaTruthRel) {
+        truthMapEntries.push({ nameBase: nameBase, rel: metaTruthRel });
+      }
+      colorByJan[jan] = textColor;
+      reused.push({
+        jan: jan,
+        parentSku: sku,
+        shortName: shortName,
+        composeDir: hit.composeDir,
+        localPath: localRoot + hit.composeDir,
+        textColor: textColor,
+        imageN: imgs.length
+      });
+    }
+    if (truthMapEntries.length) saveB5PackageTruthByNameBase_(truthMapEntries);
+    if (reused.length) saveB5TextColorByParent_(reused);
+
+    if (!reused.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'none_reused');
+      return {
+        ok: false,
+        error:
+          '使える過去画像がありません。' +
+          (missing.length ? ' ' + missing.join('／') : '') +
+          ' 通常どおり「紐付け確定 → 案を出す」から作成してください。'
+      };
+    }
+    if (missing.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'partial_missing');
+      return {
+        ok: false,
+        error:
+          '一部の親に過去画像がありません（全部そろってから再利用できます）: ' +
+          missing.join('／')
+      };
+    }
+
+    var lines = [];
+    lines.push('【B-④ 過去画像を再利用・生成スキップ】');
+    lines.push('人が①で「過去の画像を使う」を選んだ。案出し・OpenAI compose はしない。');
+    lines.push('文字色は各親の前回 textColor に合わせる（下に記載。メニューCも同じ番号）。');
+    lines.push('スプレッドシートでは採用しない。ブラウザで校正・レ点子割当・02へ。');
+    lines.push('');
+    lines.push('実行ディレクトリ:');
+    lines.push('cd "' + toolDir + '"');
+    lines.push('');
+    lines.push('Agent手順（必須・この順）:');
+    lines.push('1. 下の各親について compose しない');
+    lines.push('2. まとめてレビュー起動（パス付き・compose しない）:');
+    var launchCmd = 'python b5_main_base_review_launch.py';
+    for (var u = 0; u < reused.length; u++) {
+      launchCmd += ' --compose-dir "' + reused[u].localPath + '"';
+    }
+    lines.push(launchCmd);
+    lines.push('（ポート 8865〜。1タブ＝1親）');
+    lines.push('');
+    for (var j = 0; j < reused.length; j++) {
+      var row = reused[j];
+      lines.push(
+        '--- JAN ' +
+          row.jan +
+          (row.parentSku ? ' 親SKU ' + row.parentSku : '') +
+          ' 省略名 ' +
+          row.shortName +
+          ' ---'
+      );
+      lines.push('過去フォルダ: ' + row.localPath);
+      lines.push('比較画像数: ' + row.imageN);
+      lines.push(
+        '文字色（前回合わせ）: ' +
+          row.textColor +
+          ' ' +
+          (colorJa[row.textColor] || '') +
+          ' → メニューCの --text-color ' +
+          row.textColor
+      );
+      lines.push('');
+    }
+    lines.push('ブラウザ: 拡大確認 → 必要なら再生成（旧は残る）→ 採用＋レ点子SKU割当 → 02へ → メニュー C');
+    lines.push('※足りないテーマだけ作り直したい場合は、その親だけ通常の compose に戻す。');
+
+    b5DiagLog_(fn, t0, 'DONE', 'reused=' + reused.length);
+    return {
+      ok: true,
+      prompt: lines.join('\n'),
+      colorByJan: colorByJan,
+      hint:
+        '過去画像 ' +
+        reused.length +
+        ' 親分の指示です。文字色は前回値に合わせ済み。コピーして Cursor へ（生成はしません）。',
+      reusedCount: reused.length
+    };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: '再利用例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * Drive: b5_main_base_compose ルート。
+ * @return {{folder:GoogleAppsScript.Drive.Folder|null, via:string, folderId?:string}}
+ */
+function resolveB5ComposeRootFolderDetailed_() {
+  var prop = PropertiesService.getScriptProperties().getProperty(B5_COMPOSE_ROOT_FOLDER_ID_PROP);
+  if (prop && String(prop).trim()) {
+    var id = String(prop).trim();
+    return { folder: DriveApp.getFolderById(id), via: 'property', folderId: id };
+  }
+  var parents = DriveApp.getFoldersByName('05.画像生成（セットMAIN）');
+  while (parents.hasNext()) {
+    var p = parents.next();
+    var t0 = p.getFoldersByName('00.テスト出力');
+    while (t0.hasNext()) {
+      var t = t0.next();
+      var c = t.getFoldersByName('b5_main_base_compose');
+      if (c.hasNext()) {
+        var cf = c.next();
+        return { folder: cf, via: 'name_under_05', folderId: cf.getId() };
+      }
+    }
+  }
+  var direct = DriveApp.getFoldersByName('b5_main_base_compose');
+  if (direct.hasNext()) {
+    var d = direct.next();
+    return { folder: d, via: 'name_direct', folderId: d.getId() };
+  }
+  return { folder: null, via: 'none' };
+}
+
+/**
+ * Drive: 00.テスト出力（b5_main_base_compose の親）。
+ * @return {{folder:GoogleAppsScript.Drive.Folder|null, via:string, folderId?:string}}
+ */
+function resolveB5TestOutputFolderDetailed_() {
+  var prop = PropertiesService.getScriptProperties().getProperty(B5_TEST_OUTPUT_FOLDER_ID_PROP);
+  if (prop && String(prop).trim()) {
+    var id = String(prop).trim();
+    return { folder: DriveApp.getFolderById(id), via: 'property', folderId: id };
+  }
+  var parents = DriveApp.getFoldersByName('05.画像生成（セットMAIN）');
+  while (parents.hasNext()) {
+    var p = parents.next();
+    var kids = p.getFoldersByName('00.テスト出力');
+    if (kids.hasNext()) {
+      var kid = kids.next();
+      return { folder: kid, via: 'name_under_05', folderId: kid.getId() };
+    }
+  }
+  var direct = DriveApp.getFoldersByName('00.テスト出力');
+  if (direct.hasNext()) {
+    var d = direct.next();
+    return { folder: d, via: 'name_direct', folderId: d.getId() };
+  }
+  return { folder: null, via: 'none' };
+}
+
+/**
+ * Drive 上の _b5_food_canon_status.json を読む（無ければ空）。
+ * @return {{ok:boolean, doc?:Object, error?:string, via?:string}}
+ */
+function checkB5FoodCanonStatusForJans(payload) {
+  var fn = 'checkB5FoodCanonStatusForJans';
+  var t0 = Date.now();
+  try {
+    var jans = (payload && payload.jans) || [];
+    var uniq = [];
+    var seen = {};
+    for (var i = 0; i < jans.length; i++) {
+      var j = String(jans[i] || '').trim();
+      if (!j || seen[j]) continue;
+      seen[j] = true;
+      uniq.push(j);
+    }
+    if (!uniq.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_jans');
+      return { ok: false, error: 'JAN がありません' };
+    }
+    var read = readB5FoodCanonStatusDoc_();
+    var byJan = (read.doc && read.doc.byJan) || {};
+    var statuses = [];
+    var allConfirmed = true;
+    for (var u = 0; u < uniq.length; u++) {
+      var jan = uniq[u];
+      var row = byJan[jan] || {};
+      var confirmed = String(row.confirmedBy || '');
+      var okHuman = confirmed === 'human';
+      if (!okHuman) allConfirmed = false;
+      var label = String(row.label || '');
+      if (!label) {
+        if (okHuman && row.packageOnly) label = '確定（正本のみ）';
+        else if (okHuman) label = '確定（個品あり）';
+        else if (confirmed === 'machine') label = '機械のみ（要人間確定）';
+        else label = '未確定';
+      }
+      statuses.push({
+        jan: jan,
+        ok: okHuman,
+        confirmedBy: confirmed,
+        label: label,
+        packageOnly: !!row.packageOnly,
+        identityName: row.identityName || '',
+        identityStatus: row.identityStatus || ''
+      });
+    }
+    b5DiagLog_(
+      fn,
+      t0,
+      'DONE',
+      'n=' + statuses.length + ' all=' + allConfirmed + ' hint=' + String(read.hint || '')
+    );
+    return {
+      ok: true,
+      statuses: statuses,
+      allConfirmed: allConfirmed,
+      updatedAt: (read.doc && read.doc.updatedAt) || '',
+      hint: read.hint || '',
+      readError: read.error || ''
+    };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * B-④ ① 確定後 → ①′ 個品見本へ（正本 Property 保存＋ゲート起動文）。
+ * @param {{bindings:Array<{jan:string,parentSku?:string,nameBase?:string,rel:string,textColor?:string}>}} payload
+ * @return {{ok:boolean,bindings?:Array,gateCmd?:string,gateLines?:Array,statuses?:Array,allConfirmed?:boolean,error?:string}}
+ */
+function beginB5AfterTruthBind(payload) {
+  var fn = 'beginB5AfterTruthBind';
+  var t0 = Date.now();
+  try {
+    var bindings = (payload && payload.bindings) || [];
+    if (!bindings.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_bindings');
+      return { ok: false, error: '紐付けが空です' };
+    }
+    var truthEntries = [];
+    var jans = [];
+    var seenJan = {};
+    for (var i = 0; i < bindings.length; i++) {
+      var b = bindings[i] || {};
+      var jan = String(b.jan || '').trim();
+      var rel = String(b.rel || '')
+        .trim()
+        .replace(/\//g, '\\');
+      if (!jan || !rel) continue;
+      if (!seenJan[jan]) {
+        seenJan[jan] = true;
+        jans.push(jan);
+      }
+      truthEntries.push({
+        jan: jan,
+        parentSku: String(b.parentSku || '').trim(),
+        nameBase: String(b.nameBase || ''),
+        rel: rel,
+        textColor: String(b.textColor || '')
+      });
+    }
+    if (!truthEntries.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_valid_bindings');
+      return { ok: false, error: '有効な正本紐付けがありません' };
+    }
+    saveB5PackageTruthByNameBase_(truthEntries);
+    if (truthEntries.length) {
+      var colorRows = [];
+      for (var ci = 0; ci < truthEntries.length; ci++) {
+        if (truthEntries[ci].parentSku && truthEntries[ci].textColor) {
+          colorRows.push({
+            parentSku: truthEntries[ci].parentSku,
+            textColor: truthEntries[ci].textColor
+          });
+        }
+      }
+      if (colorRows.length) saveB5TextColorByParent_(colorRows);
+    }
+    var toolDir = 'c:\\Users\\takuy\\Desktop\\gas-project\\tools\\set_main_image';
+    var janGateArgs = jans
+      .map(function (j) {
+        return '--jan ' + j;
+      })
+      .join(' ');
+    var gateLines = [
+      'cd "' + toolDir + '"',
+      'python sub_image_food_canon_launch.py ' +
+        (janGateArgs || '--jan （JAN）') +
+        ' --force-pick --context main --no-wait',
+      '→ ブラウザが開きます。中身の見本を選ぶ／画像で確認。',
+      '確認だけ: Web「変更なしで閉じる」→ B-④「次へ」。選び直し: Web「選び直したらここで保存」→ B-④「次へ」。',
+      '（手動で状態を書き直すとき）python b5_food_canon_status.py ' +
+        (janGateArgs || '--jan （JAN）') +
+        ' --export-drive'
+    ];
+    var gateCmd = gateLines.join('\n');
+    var st = checkB5FoodCanonStatusForJans({ jans: jans });
+    b5DiagLog_(
+      fn,
+      t0,
+      'DONE',
+      'bindings=' + bindings.length + ' jans=' + jans.length + ' all=' + !!st.allConfirmed
+    );
+    return {
+      ok: true,
+      bindings: bindings,
+      gateCmd: gateCmd,
+      gateLines: gateLines,
+      statuses: st.statuses || [],
+      allConfirmed: !!st.allConfirmed,
+      updatedAt: st.updatedAt || '',
+      statusHint: st.hint || st.readError || ''
+    };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: '見本準備例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * Drive: 02.楽天ベース。
+ * @return {{folder:GoogleAppsScript.Drive.Folder|null, via:string, folderId?:string}}
+ */
+function resolveB5RakutenBaseFolderDetailed_() {
+  var prop = PropertiesService.getScriptProperties().getProperty(B5_RAKUTEN_BASE_FOLDER_ID_PROP);
+  if (prop && String(prop).trim()) {
+    var id = String(prop).trim();
+    return { folder: DriveApp.getFolderById(id), via: 'property', folderId: id };
+  }
+  var parents = DriveApp.getFoldersByName('05.画像生成（セットMAIN）');
+  while (parents.hasNext()) {
+    var p = parents.next();
+    var kids = p.getFoldersByName('02.楽天ベース');
+    if (kids.hasNext()) {
+      var kid = kids.next();
+      return { folder: kid, via: 'name_under_05', folderId: kid.getId() };
+    }
+  }
+  var direct = DriveApp.getFoldersByName('02.楽天ベース');
+  if (direct.hasNext()) {
+    var d = direct.next();
+    return { folder: d, via: 'name_direct', folderId: d.getId() };
+  }
+  return { folder: null, via: 'none' };
+}
+
+/**
+ * @param {GoogleAppsScript.Drive.Folder} folder
+ * @param {string} name
+ * @return {GoogleAppsScript.Drive.File|null}
+ */
+function b5FindFileInFolder_(folder, name) {
+  var it = folder.getFilesByName(name);
+  return it.hasNext() ? it.next() : null;
+}
+
+/**
+ * textColor 1..5。不正は fallback（既定 1）。
+ * @param {*} v
+ * @param {string=} fallback
+ * @return {string}
+ */
+function loadB5TextColorByParent_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(B5_TEXT_COLOR_BY_PARENT_PROP);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * 親SKUの文字色を共有へマージ（Script Properties ＋ Drive ミラー）。
+ * @param {Array<{parentSku?:string,textColor?:string}>} entries
+ */
+function saveB5TextColorByParent_(entries) {
+  if (!entries || !entries.length) return;
+  var map = loadB5TextColorByParent_();
+  var n = 0;
+  for (var i = 0; i < entries.length; i++) {
+    var sku = String((entries[i] && entries[i].parentSku) || '').trim();
+    var tc = b4NormalizeTextColor_((entries[i] && entries[i].textColor) || '1', '1');
+    if (!sku) continue;
+    map[sku] = tc;
+    n++;
+  }
+  if (!n) return;
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      B5_TEXT_COLOR_BY_PARENT_PROP,
+      JSON.stringify(map)
+    );
+    Logger.log('[B5.TEXT_COLOR] saved n=' + n + ' keys=' + Object.keys(map).length);
+  } catch (eSave) {
+    Logger.log('[B5.TEXT_COLOR] save_fail ' + String(eSave && eSave.message ? eSave.message : eSave));
+  }
+  b5SyncTextColorSharedToDrive_(map);
+  var parentRows = [];
+  for (var j = 0; j < entries.length; j++) {
+    var ej = entries[j] || {};
+    if (ej.parentSku) {
+      parentRows.push({
+        parentSku: ej.parentSku,
+        textColor: b4NormalizeTextColor_(ej.textColor || map[String(ej.parentSku).trim()] || '1', '1')
+      });
+    }
+  }
+  if (parentRows.length) b5SyncParentSharedToDrive_(parentRows);
+}
+
+/**
+ * 05.画像生成（セットMAIN）直下へ共有 JSON を書く（Python と共通）。
+ * @param {Object<string,string>} map
+ */
+function b5SyncTextColorSharedToDrive_(map) {
+  try {
+    var work = b5ResolveSetMainWorkFolder_();
+    if (!work) return;
+    var name = B5_TEXT_COLOR_SHARED_FILE_NAME;
+    var existing = b5FindFileInFolder_(work, name);
+    var body = JSON.stringify(map || {}, null, 2);
+    if (existing) {
+      existing.setContent(body);
+    } else {
+      work.createFile(Utilities.newBlob(body, 'application/json', name));
+    }
+    Logger.log('[B5.TEXT_COLOR] drive_sync ok');
+  } catch (eDrv) {
+    Logger.log(
+      '[B5.TEXT_COLOR] drive_sync_fail ' + String(eDrv && eDrv.message ? eDrv.message : eDrv)
+    );
+  }
+}
+
+/**
+ * @return {GoogleAppsScript.Drive.Folder|null}
+ */
+function b5ResolveSetMainWorkFolder_() {
+  var hit = resolveB5RakutenBaseFolderDetailed_();
+  if (hit.folder) {
+    try {
+      var parents = hit.folder.getParents();
+      if (parents.hasNext()) return parents.next();
+    } catch (e0) {
+      /* fall through */
+    }
+  }
+  var it = DriveApp.getFoldersByName('05.画像生成（セットMAIN）');
+  return it.hasNext() ? it.next() : null;
+}
+
+/**
+ * 共有 → マップ → default。マップのみあるときは共有へ昇格。
+ * @param {string} parentSku
+ * @param {string=} jan
+ * @param {GoogleAppsScript.Drive.Folder=} rakutenFolder
+ * @return {{textColor:string, source:string}}
+ */
+function b5ResolveTextColorForParent_(parentSku, jan, rakutenFolder) {
+  var sku = String(parentSku || '').trim();
+  var j = String(jan || '').trim();
+  if (!sku && j) sku = 'ishi-' + j + '-oya';
+  var shared = loadB5TextColorByParent_();
+  if (sku && shared[sku]) {
+    return { textColor: b4NormalizeTextColor_(shared[sku], '1'), source: 'shared' };
+  }
+  var folder = rakutenFolder;
+  if (!folder) {
+    var hit = resolveB5RakutenBaseFolderDetailed_();
+    folder = hit.folder;
+  }
+  var tc = '';
+  if (folder && sku) {
+    var mapFile = b5FindFileInFolder_(folder, sku + '_set_base_map.json');
+    if (!mapFile && j) {
+      mapFile = b5FindFileInFolder_(folder, 'ishi-' + j + '-oya_set_base_map.json');
+    }
+    if (!mapFile) {
+      var doneFolder = b5FindSubFolder_(folder, '処理済み');
+      if (doneFolder) {
+        mapFile = b5FindFileInFolder_(doneFolder, sku + '_set_base_map.json');
+        if (!mapFile && j) {
+          mapFile = b5FindFileInFolder_(doneFolder, 'ishi-' + j + '-oya_set_base_map.json');
+        }
+      }
+    }
+    if (!mapFile && j) {
+      var it = folder.getFiles();
+      while (it.hasNext()) {
+        var file = it.next();
+        var nm = String(file.getName() || '');
+        if (nm.indexOf(j) >= 0 && nm.indexOf('_set_base_map.json') >= 0) {
+          mapFile = file;
+          break;
+        }
+      }
+    }
+    if (mapFile) {
+      try {
+        var obj = JSON.parse(mapFile.getBlob().getDataAsString('UTF-8'));
+        if (obj && obj.textColor != null && String(obj.textColor).trim() !== '') {
+          tc = b4NormalizeTextColor_(obj.textColor, '1');
+          if (sku) saveB5TextColorByParent_([{ parentSku: sku, textColor: tc }]);
+          return { textColor: tc, source: 'map' };
+        }
+      } catch (eMap) {
+        /* ignore */
+      }
+    }
+  }
+  return { textColor: '1', source: 'default' };
+}
+
+/**
+ * Drive／共有から JANごと textColor（ALIGN §3: 共有→マップ→1）。
+ * @param {string[]} jans
+ * @return {{byJan:Object.<string,string>, via:string}}
+ */
+function b5SeedTextColorSharedFromMaps_() {
+  var hit = resolveB5RakutenBaseFolderDetailed_();
+  var folder = hit.folder;
+  if (!folder) return 0;
+  var map = loadB5TextColorByParent_();
+  var before = Object.keys(map).length;
+  var folders = [folder];
+  var done = b5FindSubFolder_(folder, '処理済み');
+  if (done) folders.push(done);
+  for (var fi = 0; fi < folders.length; fi++) {
+    var it = folders[fi].getFiles();
+    while (it.hasNext()) {
+      var file = it.next();
+      var nm = String(file.getName() || '');
+      if (nm.indexOf('_set_base_map.json') < 0) continue;
+      try {
+        var obj = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
+        var sku = String((obj && obj.parentSku) || nm.replace(/_set_base_map\.json$/, '')).trim();
+        if (!sku || map[sku]) continue;
+        if (obj && obj.textColor != null && String(obj.textColor).trim() !== '') {
+          map[sku] = b4NormalizeTextColor_(obj.textColor, '1');
+        }
+      } catch (e1) {
+        /* skip */
+      }
+    }
+  }
+  var after = Object.keys(map).length;
+  if (after > before) {
+    try {
+      PropertiesService.getScriptProperties().setProperty(
+        B5_TEXT_COLOR_BY_PARENT_PROP,
+        JSON.stringify(map)
+      );
+      b5SyncTextColorSharedToDrive_(map);
+      Logger.log('[B5.TEXT_COLOR] seed_from_maps added=' + (after - before) + ' total=' + after);
+    } catch (e2) {
+      Logger.log('[B5.TEXT_COLOR] seed_fail ' + String(e2 && e2.message ? e2.message : e2));
+    }
+  }
+  return after - before;
+}
+
+/**
+ * @param {GoogleAppsScript.Drive.Folder} folder
+ * @param {string} name
+ * @return {GoogleAppsScript.Drive.Folder|null}
+ */
+function b5FindSubFolder_(folder, name) {
+  var it = folder.getFoldersByName(name);
+  return it.hasNext() ? it.next() : null;
+}
+
+/**
+ * compose の b5_proposals.json から正本 rel を親SKU／商品名共有へ昇格。
+ * @return {number} 追加件数
+ */
+function b5SeedPackageTruthFromCompose_() {
+  var resolved = resolveB5ComposeRootFolderDetailed_();
+  if (!resolved.folder) return 0;
+  var mapNb = loadB5PackageTruthByNameBase_();
+  var mapSku = loadB5PackageTruthByParent_();
+  var before = Object.keys(mapNb).length + Object.keys(mapSku).length;
+  var runs = b5ScanComposeRuns_(resolved.folder);
+  var entries = [];
+  for (var i = 0; i < runs.length; i++) {
+    var run = runs[i];
+    var metaFile = b5FindFileInFolder_(run.folder, 'b5_proposals.json');
+    if (!metaFile) continue;
+    try {
+      var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+      var sku = String(meta.parentSku || meta.parent_sku || run.parentSku || '').trim();
+      var jan = String(meta.jan || run.jan || '').trim();
+      var nameBase = String(meta.nameBase || meta.name_base || meta.name || '').trim();
+      var pt = String(meta.packageTruth || meta.package_truth || '').trim();
+      var rel = '';
+      if (pt) {
+        var marker = '01.amazon白抜きベース\\';
+        var ptNorm = pt.replace(/\//g, '\\');
+        var mIdx = ptNorm.indexOf(marker);
+        rel =
+          mIdx >= 0 ? ptNorm.substring(mIdx + marker.length) : ptNorm.replace(/^.*[\\\/]/, '');
+      }
+      var tc = String(meta.textColor || meta.text_color || '').trim();
+      if (!rel) continue;
+      if (sku && mapSku[sku]) continue;
+      var nbKey = normalizeBProductNameKey_(nameBase);
+      if (!sku && nbKey && mapNb[nbKey]) continue;
+      entries.push({
+        parentSku: sku,
+        jan: jan,
+        nameBase: nameBase,
+        rel: rel,
+        textColor: tc
+      });
+    } catch (e1) {
+      /* skip */
+    }
+  }
+  if (entries.length) saveB5PackageTruthByNameBase_(entries);
+  var after =
+    Object.keys(loadB5PackageTruthByNameBase_()).length +
+    Object.keys(loadB5PackageTruthByParent_()).length;
+  Logger.log('[B5.TRUTH_MAP] seed_from_compose added~=' + Math.max(0, after - before));
+  return Math.max(0, after - before);
+}
+
+/**
+ * compose ランを走査（proposals.json 優先）。
+ * @param {GoogleAppsScript.Drive.Folder} composeRoot
+ * @return {Array<{composeDir:string,folder:GoogleAppsScript.Drive.Folder,jan:string,parentSku:string,shortName:string,updated:number}>}
+ */
+function b5ScanComposeRuns_(composeRoot) {
+  var out = [];
+  var it = composeRoot.getFolders();
+  while (it.hasNext()) {
+    var folder = it.next();
+    var composeDir = folder.getName();
+    if (composeDir.indexOf('_') === 0) continue;
+    var jan = '';
+    var parentSku = '';
+    var shortName = '';
+    var metaFile = b5FindFileInFolder_(folder, 'b5_proposals.json');
+    if (metaFile) {
+      try {
+        var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+        jan = String(meta.jan || '').trim();
+        parentSku = String(meta.parentSku || meta.parent_sku || '').trim();
+        shortName = String(meta.shortName || meta.short_name || '').trim();
+      } catch (eParse) {
+        /* ignore */
+      }
+    }
+    if (!shortName) {
+      var m = composeDir.match(/^(.+)_(\d{8}_\d{6})$/);
+      shortName = m ? m[1] : composeDir;
+    }
+    out.push({
+      composeDir: composeDir,
+      folder: folder,
+      jan: jan,
+      parentSku: parentSku,
+      shortName: shortName,
+      updated: folder.getLastUpdated() ? folder.getLastUpdated().getTime() : 0
+    });
+  }
+  out.sort(function (a, b) {
+    return (b.updated || 0) - (a.updated || 0);
+  });
+  return out;
+}
+
+/**
+ * @param {GoogleAppsScript.Drive.Folder} runFolder
+ * @return {Array<{name:string,fileId:string}>}
+ */
+function b5ListCompareImages_(runFolder) {
+  var pick = b5FindSubFolder_(runFolder, '比較');
+  if (!pick) return [];
+  var files = [];
+  var it = pick.getFiles();
+  while (it.hasNext()) {
+    var f = it.next();
+    var n = f.getName();
+    if (!/\.(png|jpe?g|webp)$/i.test(n)) continue;
+    if (n.indexOf('.') === 0) continue;
+    files.push({ name: n, fileId: f.getId() });
+  }
+  files.sort(function (a, b) {
+    return String(a.name).localeCompare(String(b.name), 'ja');
+  });
+  return files;
+}
+
+/**
+ * 親ごとに最新 compose の比較候補（google.script.run 用）。
+ * @param {{parents:Array<{jan?:string,parentSku?:string,rel?:string}>}} payload
+ * @return {{ok:boolean,groups?:Array,error?:string,hint?:string}}
+ */
+function listB5AdoptCandidates(payload) {
+  var fn = 'listB5AdoptCandidates';
+  var t0 = Date.now();
+  try {
+    var parents = (payload && payload.parents) || [];
+    if (!parents.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_parents');
+      return { ok: false, error: '親が空です' };
+    }
+    var resolved = resolveB5ComposeRootFolderDetailed_();
+    if (!resolved.folder) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_compose_root');
+      return {
+        ok: false,
+        error:
+          'compose フォルダが見つかりません。Drive で b5_main_base_compose を開き、URLのIDを Script Properties「' +
+          B5_COMPOSE_ROOT_FOLDER_ID_PROP +
+          '」へ。'
+      };
+    }
+    var runs = b5ScanComposeRuns_(resolved.folder);
+    var groups = [];
+    for (var i = 0; i < parents.length; i++) {
+      var p = parents[i] || {};
+      var jan = String(p.jan || '').trim();
+      var sku = String(p.parentSku || '').trim();
+      var shortName = b5ShortNameFromTruthRel_(String(p.rel || ''));
+      var hit = null;
+      for (var r = 0; r < runs.length; r++) {
+        var run = runs[r];
+        if (sku && run.parentSku && run.parentSku === sku) {
+          hit = run;
+          break;
+        }
+        if (jan && run.jan && run.jan === jan) {
+          hit = run;
+          break;
+        }
+        if (shortName && run.shortName && run.shortName === shortName) {
+          hit = run;
+          break;
+        }
+        if (shortName && String(run.composeDir).indexOf(shortName + '_') === 0) {
+          hit = run;
+          break;
+        }
+      }
+      if (!hit) {
+        groups.push({
+          jan: jan,
+          parentSku: sku,
+          shortName: shortName,
+          composeDir: '',
+          files: [],
+          error: 'compose ランが見つかりません（画像未作成 or Drive未同期）'
+        });
+        continue;
+      }
+      var files = b5ListCompareImages_(hit.folder);
+      groups.push({
+        jan: hit.jan || jan,
+        parentSku: hit.parentSku || sku,
+        shortName: hit.shortName || shortName,
+        composeDir: hit.composeDir,
+        files: files,
+        error: files.length ? '' : '比較フォルダが空です'
+      });
+    }
+    b5DiagLog_(fn, t0, 'DONE', 'via=' + resolved.via + ' groups=' + groups.length);
+    return {
+      ok: true,
+      groups: groups,
+      feedbackTemplates: getB5ReviewFeedbackTemplates_(),
+      hint: 'compose via=' + resolved.via + (resolved.folderId ? ' id=' + resolved.folderId : '')
+    };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: 'listB5Adopt例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * 採用1枚を 02.楽天ベース へコピー（比較は残す。google.script.run 用）。
+ * @param {{picks:Array<{parentSku:string,fileId:string,composeDir?:string,fileName?:string}>}} payload
+ * @return {{ok:boolean,report?:string,error?:string,results?:Array}}
+ */
+function exportB5AdoptedTo02(payload) {
+  var fn = 'exportB5AdoptedTo02';
+  var t0 = Date.now();
+  try {
+    var picks = (payload && payload.picks) || [];
+    if (!picks.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_picks');
+      return { ok: false, error: '採用が空です' };
+    }
+    var destRes = resolveB5RakutenBaseFolderDetailed_();
+    if (!destRes.folder) {
+      b5DiagLog_(fn, t0, 'FAIL', 'no_02');
+      return {
+        ok: false,
+        error:
+          '02.楽天ベース が見つかりません。Script Properties「' +
+          B5_RAKUTEN_BASE_FOLDER_ID_PROP +
+          '」にフォルダIDを設定してください。'
+      };
+    }
+    var destFolder = destRes.folder;
+    var results = [];
+    var lines = [];
+    for (var i = 0; i < picks.length; i++) {
+      var pk = picks[i] || {};
+      var sku = String(pk.parentSku || '').trim();
+      var fileId = String(pk.fileId || '').trim();
+      var composeDir = String(pk.composeDir || '').replace(/[\\\/:*?"<>|]/g, '_');
+      if (!sku || !fileId) {
+        results.push({ ok: false, error: 'parentSku/fileId 不足' });
+        continue;
+      }
+      var baseName = sku + '_単体.png';
+      var destName = baseName;
+      var existed = false;
+      var existIt = destFolder.getFilesByName(baseName);
+      if (existIt.hasNext()) {
+        existed = true;
+        destName = sku + '_単体__' + (composeDir || 'compose') + '.png';
+      }
+      var src = DriveApp.getFileById(fileId);
+      var copied = src.makeCopy(destName, destFolder);
+      results.push({
+        ok: true,
+        parentSku: sku,
+        srcName: String(pk.fileName || src.getName()),
+        destName: copied.getName(),
+        destId: copied.getId(),
+        collided: existed,
+        compareKept: true
+      });
+      lines.push(
+        (existed ? '別名 ' : 'OK ') + sku + ' ← ' + String(pk.fileName || src.getName()) + ' → ' + copied.getName()
+      );
+    }
+    var okN = 0;
+    for (var j = 0; j < results.length; j++) if (results[j].ok) okN++;
+    b5DiagLog_(fn, t0, 'DONE', 'ok=' + okN + '/' + picks.length + ' via=' + destRes.via);
+    return {
+      ok: okN > 0,
+      report: lines.join('\n') + '\n\n次: メニュー C「セットMAIN量産（楽天）」',
+      results: results,
+      error: okN ? '' : '1件もコピーできませんでした'
+    };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: 'exportB5例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * b5_review_feedback_templates.py と同期すること。
+ * @return {Array.<{id:string,label:string,text:string}>}
+ */
+function getB5ReviewFeedbackTemplates_() {
+  return [
+    {
+      id: 'text_budget_16',
+      label: '20マス厳守（16目標）',
+      text:
+        '10×10マスで後載せ文字＋文字装飾（帯・縁・影・囲み・矢印）が掛かるマスは16以下（金丸に後工程セット数4マス予約）。' +
+        '絶対上限24、30超禁止。キャッチ大: 全角4〜8字・1行・文字高さ約90px。' +
+        'セールストーク小: 全角6〜12字・1行・約40px。和風大掛け軸・白矩形パネル・太帯・多段囲み・下帯横長禁止。' +
+        '上部左1ブロックに集約。IMAGE_PACKAGE_TRUTHの袋は必ず残せ。'
+    },
+    {
+      id: 'text_over_20',
+      label: '文字が20%マス超過',
+      text:
+        '後載せ文字＋文字装飾が16マス超（金丸4マス予約込みで実質20超）。キャッチを短く・小さく。セールストークは1行短句。' +
+        '白矩形・掛け軸・太帯をやめ細い縁だけ。上部左1ブロック。右上金丸聖域・右下Octas聖域に文字を入れるな。' +
+        'IMAGE_PACKAGE_TRUTHの袋は必ず残せ。'
+    },
+    {
+      id: 'catch_placement',
+      label: 'キャッチ位置が悪い',
+      text:
+        '後載せキャッチが上部・左寄りから外れている、または金丸／袋に被っている。上部左寄りに短い1本だけ置き直せ。下帯横長は禁止。'
+    },
+    {
+      id: 'catch_unreadable',
+      label: 'キャッチが読めない／途中切れ',
+      text:
+        '後載せキャッチが潰れている・途中切れ・意味不明。人が指定した catch 文言に寄せて、語の途中から始まるな。全角だいたい8〜18字に収めて可読に。'
+    },
+    {
+      id: 'package_weak',
+      label: '袋が小さい／弱い',
+      text:
+        'IMAGE_PACKAGE_TRUTHの袋が小さすぎる、または主役になっていない。袋を大きく読みやすく。印字・色・縦横比を正本から変えるな。'
+    },
+    {
+      id: 'gold_keepout',
+      label: '金丸聖域に文字・物',
+      text: '右上の金丸聖域（後載せPillow用）に文字や商品が入り込んでいる。右上を空けろ。金丸・数字・セットは描くな。'
+    },
+    {
+      id: 'octas_keepout',
+      label: 'Octas聖域に文字・物',
+      text: '右下のOctas聖域に文字や商品が入り込んでいる。右下を空けろ。Octasは描くな。'
+    },
+    {
+      id: 'false_sizzle',
+      label: '材料に無いシズル／効能',
+      text:
+        '材料に無いシーン・効能・賞・累計を描いている。テーマの evidence の範囲だけ使え。虚偽の盛り付け・トロフィー禁止。袋は必須。'
+    },
+    {
+      id: 'package_lock',
+      label: 'パッケージ改変',
+      text:
+        'PACKAGE_LOCK違反。正本と色・柄・ラベル文字・ロゴ・縦横比を一致させる。パッケージ表面の再描字・色替え禁止。'
+    },
+    {
+      id: 'text_only_regen',
+      label: '文字だけ差替（構図維持）',
+      regenMode: 'text_only',
+      text:
+        '添付 IMAGE_LAYOUT_REFERENCE の構図・背景・シズル・短冊/刺身/盛り・袋の位置サイズ・照明・金丸/Octas空きは維持。' +
+        '変更は後載せ文字（キャッチ大＋セールストーク小）だけ。下のキャッチ/セールストーク欄の文言を厳守。'
+    },
+    {
+      id: 'food_unit_tune',
+      label: '個品見本だけ微調整',
+      regenMode: 'food_tune',
+      text:
+        '構図・袋・後載せ文字は IMAGE_LAYOUT_REFERENCE どおり維持。' +
+        'IMAGE_FOOD_UNIT_CANON の厚み・1片サイズ・盛り量だけ調整（色・種類は見本どおり）。' +
+        '正本に無い厚切り・別色禁止。具体要望は「個品微調整」欄へ。'
+    }
+  ];
+}
+
+/**
+ * 採用画面からの再生成用 Cursor 指示（google.script.run 用）。
+ * @param {{targets:Array,note:string,parents?:Array}} payload
+ * @return {{ok:boolean,prompt?:string,error?:string}}
+ */
+function buildB5RevisionPrompt(payload) {
+  var fn = 'buildB5RevisionPrompt';
+  var t0 = Date.now();
+  try {
+    var targets = (payload && payload.targets) || [];
+    var note = String((payload && payload.note) || '').trim();
+    var parents = (payload && payload.parents) || [];
+    if (!targets.length) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_targets');
+      return { ok: false, error: '修正対象が空です' };
+    }
+    if (!note) {
+      b5DiagLog_(fn, t0, 'FAIL', 'empty_note');
+      return { ok: false, error: '修正要望が空です（定型ボタンか手入力）' };
+    }
+    var parentByKey = {};
+    for (var i = 0; i < parents.length; i++) {
+      var p = parents[i] || {};
+      var k = String(p.parentSku || p.jan || '');
+      if (k) parentByKey[k] = p;
+    }
+    var toolDir = 'c:\\Users\\takuy\\Desktop\\gas-project\\tools\\set_main_image';
+    var lines = [];
+    lines.push('【B-④ 修正再生成】人が採用画面で指定。GASは合成しない。OpenAI画像のみ。');
+    lines.push('要望:');
+    lines.push(note);
+    lines.push('');
+    lines.push('手順:');
+    lines.push('1. 下の各対象について、元の catch / themeId / 正本パスを維持した JSON を `_b5_checked_{JAN}_rev.json` に保存（proposals は修正対象の1テーマだけ）');
+    lines.push('2. cd "' + toolDir + '"');
+    lines.push('3. python b5_main_base_compose.py --role rakuten_main_base --from-json _b5_checked_{JAN}_rev.json --openai-quality medium');
+    lines.push('4. 完了後、人が B-④ ブラウザレビューで「完成したら…」を押し直して候補を更新→OKなら02へ');
+    lines.push('5. 修正要望をプロンプトの retry / scene に反映すること（文字20%・聖域・袋必須）');
+    lines.push('');
+    for (var t = 0; t < targets.length; t++) {
+      var tg = targets[t] || {};
+      var sku = String(tg.parentSku || '').trim();
+      var jan = String(tg.jan || '').trim();
+      var srcParent = parentByKey[sku] || parentByKey[jan] || {};
+      var rel = String(srcParent.rel || '').trim().replace(/\//g, '\\');
+      var textColor = String(srcParent.textColor || '1');
+      var props = srcParent.proposals || [];
+      var fileName = String(tg.fileName || '');
+      var themeId = '';
+      var m = fileName.match(/_([NT]\d)_/);
+      if (m) themeId = m[1];
+      var hitProp = null;
+      for (var q = 0; q < props.length; q++) {
+        if (themeId && String(props[q].themeId || '') === themeId) {
+          hitProp = props[q];
+          break;
+        }
+      }
+      if (!hitProp && props.length === 1) hitProp = props[0];
+      var shortName = String(tg.shortName || b5ShortNameFromTruthRel_(rel) || '');
+      var full =
+        'G:\\マイドライブ\\05.画像生成（セットMAIN）\\01.amazon白抜きベース\\' + rel;
+      lines.push('--- 修正対象 ' + (t + 1) + ' ---');
+      lines.push('composeDir: ' + String(tg.composeDir || ''));
+      lines.push('比較ファイル: ' + fileName);
+      lines.push('JAN: ' + jan + ' 親SKU: ' + sku + ' 省略名: ' + shortName);
+      lines.push('正本: ' + full);
+      lines.push('文字色: ' + textColor);
+      if (hitProp) {
+        lines.push(
+          'themeId: ' +
+            hitProp.themeId +
+            ' catch: ' +
+            hitProp.catch +
+            ' evidence: ' +
+            (hitProp.evidence || '')
+        );
+        if (hitProp.sceneHint) lines.push('sceneHint: ' + hitProp.sceneHint);
+        var one = {
+          role: 'rakuten_main_base',
+          jan: jan,
+          parentSku: sku,
+          shortName: shortName,
+          textColor: textColor,
+          packageTruth: full,
+          proposals: [
+            {
+              themeId: hitProp.themeId,
+              themeName: hitProp.themeName || '',
+              catch: hitProp.catch || '',
+              evidence: hitProp.evidence || '',
+              sceneHint: (hitProp.sceneHint || '') + '／修正: ' + note.slice(0, 200),
+              sellRank: hitProp.sellRank || 1
+            }
+          ]
+        };
+        lines.push('保存: _b5_checked_' + jan + '_rev.json');
+        lines.push('```json');
+        lines.push(JSON.stringify(one, null, 2));
+        lines.push('```');
+        lines.push(
+          'python b5_main_base_compose.py --role rakuten_main_base --from-json _b5_checked_' +
+            jan +
+            '_rev.json --openai-quality medium'
+        );
+      } else {
+        lines.push(
+          '※元の proposals がセッションに無いので、composeDir の b5_proposals.json から同 themeId を拾って1件だけ再 compose すること。themeId推定=' +
+            themeId
+        );
+      }
+      lines.push('');
+    }
+    b5DiagLog_(fn, t0, 'DONE', 'targets=' + targets.length);
+    return { ok: true, prompt: lines.join('\n') };
+  } catch (e) {
+    b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
+    return { ok: false, error: 'buildB5Revision例外: ' + String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * review_feedback_templates.py と同期すること。
+ * @return {Array.<{id:string,label:string,text:string}>}
+ */

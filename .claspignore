@@ -4,10 +4,13 @@ export-tax-list/**
 広告運用GAS/**
 inventory-app/**
 purchase_research/**
+competitor_jitta/**
 
 # ローカル専用ツール（GAS へ送らない。xlsm/CSVもここに置かない）
 tools/**
 _local_backup/**
+*.bak
+*.local_backup
 
 # ドキュメント・参考資料（GAS コードではない。push 対象外）
 docs/**
