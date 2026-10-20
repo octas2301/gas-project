@@ -107,6 +107,10 @@
 
 ## 6. 更新履歴
 
+- 2026-10-20: **金丸のミックス**: 構成数量が同じとき、数字は合計、下段は「各」。一桁の高さは1、下辺は単位。単品はセットのまま。商品写真は未生成。切戻し `mixEach.enabled=false`。clasp 不要。[レイアウト](org/SET_MAIN_LAYOUT_RULES.md)
+- 2026-10-20: **① Keepaフル案A（ASIN限定読取）**（要① clasp）。マップ／flat／再門は要求ASINのみ。全件 getValues フォールバック廃止。失敗は空マップを焼かず throw。切戻し `PR_KEEPA_FULL_ASIN_MAP=false`。[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)
+- 2026-10-20: **B4 レ点メーカー実態→洗い**（要① clasp）。自動一時停止→レ点だけ実態→洗い→専用トリガーで飲み干し→自動再開。切戻し `PR_B4_ENABLED=false`。[HUMAN_RUN](org/B_PURCHASE_RESEARCH_HUMAN_RUN.md)／[FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)
+- 2026-10-19: **調査カテゴリ外メーカーは洗わない**（要① clasp）。サマリ `Amazonルートカテゴリ` が①プロファイルONと無交差なら選定・続き・洗い本体を止め調査対象外（`survey_root_out`）。切戻し `PR_SURVEY_ROOT_GATE=false`。[CYCLE §4.1bis](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)／[FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)
 - 2026-09-08: **規模帯の確定（Catalog列挙）を1実行でまとめる**（心拍1回=1社 → 最大8社。`PR_CYCLE_ENUM_BATCH_N`）。**列挙そのものは実測16〜48秒なのに、1社あたり7分かかっていた**（内訳: 空振り選定1.6分＋`hb_yield_deferred` 2分＋`shop_busy_wait` 2分＋発火往復1分＝受け渡し待ちが本体）。未判定が実測244社あり、1社7分では消化に約28時間で、その間 Keepa は材料切れで空いていた（夜間10.3時間の61%）。まとめると約7時間。**小・中が1社出たら即打ち切って洗いへ譲る**（小中優先を崩さない）。予算残5分でも中断（列挙は1社ずつ確定書き込みなので途中中断でも成果は残る）。仕様は [CYCLE §6.3](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md)。切戻し `PR_CYCLE_ENUM_BATCH_N=1`。要 clasp（①）
 - 2026-09-08: **規模帯引きの全社ループ内シート読みを撤去**（`prMakerBandFromSum_` を「メーカー→帯」表1回読みに）。旧実装は1社ごとに サマリ全読み＋ヘッダ＋当該行の**3回読み**で、選定はキューに出てくる社ごとにこれを呼んでいた（模擬120社で 480回→2回、判定結果は一致）。**洗える社が無いときの選定が2〜11.9分かかり、その間 Keepa が完全に空いていた真因**（1社見つかる選定は19秒だったのが切り分けの決め手。夜間10.3時間のうち61%が Keepa作業ゼロ・空振り24回）。禁止事項は [FULL §7bis 10](org/B_MAKER_WASH_FULL_REQUIREMENTS.md)。切戻し `PR_MAKER_BAND_MAP=false`。要 clasp（①）
 - 2026-09-08: **番犬（15分周期の生存確認）の実行中印を35分基準に**。GAS は約30分で実行を殺すので、`inflight` が35分を超えたら生きている可能性はない。従来はトークン回復基準の66分を待っていたため、**選定フェーズで沈黙死した実行を拾うまで70分空いていた**（実測 09/08 00:02 発火→`phase=pick_begin` のまま沈黙→01:12 `hard_reset`。Keepa作業ゼロが179分続き、夜間唯一の FAIL `gap_hole` になった）。予約トリガーが残っていると生存確認が `reason=wash_trigger` で生きていると答えるので、この inflight 判定だけが検知口だった。予定時刻超過（`expect_overdue`）は従来どおり。切戻し `PR_CYCLE_INFLIGHT_STALE_FAST=false`。要 clasp（①）

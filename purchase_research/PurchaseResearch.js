@@ -28,6 +28,47 @@ var PR_ORIG_SS_ = '1Uk-DEfoSTVqb5N8XsfSqciaZcIjzbbPpGvg4hQYgDl4';
 var PR_LIST_APPEND_ENABLED_PROP_ = 'PR_LIST_APPEND_ENABLED';
 /** 品番リストの差分判定で数式セルを数式として比べる。未設定=ON。false で旧動作。 */
 var PR_LIST_DIFF_USE_FORMULA_PROP_ = 'PR_LIST_DIFF_USE_FORMULA';
+/**
+ * 対策A: ①候補の門通過を「メーカー列の一致」だけでなく「自社の洗いキューにある ASIN」でも数える。
+ * 社名が包含関係にある社（中村食品 ⊂ 中村食品産業 等・2026-09-10 時点で 415社中 53組）は
+ * カタログ照合が部分一致のため互いの商品を取り込み、①候補は 1ASIN=1行の後勝ちなので
+ * 先に洗った社が合格を奪われて「通過0」に見える。未設定=ON。false でメーカー列一致のみの旧動作。
+ */
+var PR_CAND_PASS_BY_QUEUE_PROP_ = 'PR_CAND_PASS_BY_QUEUE';
+/** ①候補のメーカー別総行数（実行内1回。終わり判定用）。 */
+var PR_CAND_ROW_SNAP_ = null;
+/** 門通過行のスナップ（実行内1回だけ①候補を読む）。 */
+var PR_CAND_PASS_SNAP_ = null;
+/**
+ * 対策B: 偽完了救済で Keepa中 に戻す条件を「未処理>0」だけにする。
+ * 旧条件は queueN（Keepa済も含む全件）を見ていたため、未処理0の社が Keepa中 に戻り
+ * 「洗えない続き相手」になっていた。未設定=ON。false で旧動作。
+ */
+var PR_FALSE_COMPLETE_PENDING_ONLY_PROP_ = 'PR_FALSE_COMPLETE_PENDING_ONLY';
+/**
+ * 対策C: 洗い状態=Keepa中 なのに未処理0の「幽霊の続き相手」を自動で解消する。
+ * 幽霊は洗いレーンに毎回選ばれるが洗えず、他レーンへ譲って自分を再予約するだけなので
+ * 心拍の列挙レーンに永久に順番が来ない（2026-09-09 に 25時間・549回の空転）。未設定=ON。
+ */
+var PR_WASH_PHANTOM_FIX_PROP_ = 'PR_WASH_PHANTOM_FIX';
+var PR_WASH_PHANTOM_PROP_ = 'PR_WASH_PHANTOM_KEEPA';
+/** 幽霊と断定するまでの連続回数（キュー書換の途中を拾わないための猶予）。 */
+var PR_WASH_PHANTOM_STRIKES_ = 2;
+/**
+ * 効率1: キューに未処理を入れて「Keepa中」をサマリに書いた直後、手元の st も同じ値にする。
+ * 反映しないと isKeepaCont が古い st で false になり、洗える相手なのに
+ * catalog_first_other で1サイクル譲る（2026-09-10 実測: 25回・約44分）。未設定=ON。
+ */
+var PR_WASH_ST_SYNC_PROP_ = 'PR_WASH_ST_SYNC';
+/**
+ * 効率2: 心拍へ譲るときの予約を、心拍の実測所要（約4分）より短くしない。
+ * 満タン短縮（2分）が掛かると心拍の途中で洗いが発火し、shop_busy で空振りして
+ * さらに3分後に再予約になる（2026-09-10 実測: 36回・約108分）。未設定=ON。
+ * 切戻し false → 旧（3分＋満タン短縮あり）。
+ */
+var PR_HB_YIELD_ARM_NO_SHORTEN_PROP_ = 'PR_HB_YIELD_ARM_NO_SHORTEN';
+/** 心拍へ譲るときの予約（分）。心拍実測 約4分＋余裕1分。 */
+var PR_HB_YIELD_ARM_MIN_ = 5;
 /** Keepaフル再門メニュー。未設定=ON。false で切戻し。 */
 var PR_REGATE_FROM_FULL_ENABLED_PROP_ = 'PR_REGATE_FROM_FULL_ENABLED';
 /** true=門結果空白行のみ。false=全行を新門で上書き（通過→落ちも可）。 */
@@ -60,11 +101,53 @@ var PR_KEEPA_FULL_INDEX_HEADERS_ = ['ASIN', '行'];
 var PR_KEEPA_FULL_INDEX_PROP_ = 'PR_KEEPA_FULL_INDEX_ENABLED';
 /** Keepaフルの空行掃除を「ASIN列1回読み→候補だけ全列」にする（2026-09-07）。false で旧1行ずつ。 */
 var PR_KEEPA_FULL_BLANK_SCAN_BATCH_PROP_ = 'PR_KEEPA_FULL_BLANK_SCAN_BATCH';
+/**
+ * Keepaフル新規行の setValues 分割件数（生JSONが重いため）。省略=5。0=旧一括。
+ * 2026-10-17: 一括書込で「セルの範囲を小さく」が出た対策。
+ */
+var PR_KEEPA_FULL_INSERT_CHUNK_DEFAULT_ = 5;
+var PR_KEEPA_FULL_INSERT_CHUNK_PROP_ = 'PR_KEEPA_FULL_INSERT_CHUNK';
+/** Keepaフル索引の setValues 分割行数。省略=2000。0=旧一括。 */
+var PR_KEEPA_FULL_INDEX_CHUNK_DEFAULT_ = 2000;
+var PR_KEEPA_FULL_INDEX_CHUNK_PROP_ = 'PR_KEEPA_FULL_INDEX_CHUNK';
+/** 空行掃除で全列を読むときの最大連続行。省略=40。0=旧（連続塊ごと一括）。 */
+var PR_KEEPA_FULL_BLANK_READ_CHUNK_DEFAULT_ = 40;
+var PR_KEEPA_FULL_BLANK_READ_CHUNK_PROP_ = 'PR_KEEPA_FULL_BLANK_READ_CHUNK';
+/**
+ * Keepaフルを要求ASINだけ読む（案A・2026-10-20）。
+ * 未設定=ON。false で旧: 全行×全列一括（サイズ上限再発・切戻し専用）。
+ */
+var PR_KEEPA_FULL_ASIN_MAP_PROP_ = 'PR_KEEPA_FULL_ASIN_MAP';
+/** ASIN限定読取で1回にまとめて読む最大行（連続行をまとめる上限）。省略=10。 */
+var PR_KEEPA_FULL_ASIN_READ_CHUNK_DEFAULT_ = 10;
+var PR_KEEPA_FULL_ASIN_READ_CHUNK_PROP_ = 'PR_KEEPA_FULL_ASIN_READ_CHUNK';
 var PR_MAKER_SUM_SHEET_ = 'メーカーサマリ';
 var PR_SELLER_SHEET_ = 'セラー';
 var PR_CK_HEADER_ = '調査CK';
-/** total≥501 は特大店（フルしない）。旧1000超holdを前倒し。 */
-var PR_QUERY_TOTAL_HOLD_ = 501;
+/** いずれか1カテゴリの totalResults がこれ以上なら特大 hold（規模測定のみ。名取りしない）。未設定=店の大上限+1。 */
+var PR_QUERY_TOTAL_HOLD_PROP_ = 'PR_QUERY_TOTAL_HOLD';
+/** 特大の浅い名取り。未設定=OFF。true で旧 page0+最大20件抽出。 */
+var PR_ALIGHT_XL_EXTRACT_PROP_ = 'PR_ALIGHT_XL_EXTRACT';
+/**
+ * 門／D1／D2 で調査カテゴリON以外を落とす。
+ * 加えてメーカー洗いの選定・続き・洗い開始でも
+ * メーカーサマリ「Amazonルートカテゴリ」がONと無交差なら洗わない（調査対象外）。
+ * 未設定=ON。
+ */
+var PR_SURVEY_ROOT_GATE_PROP_ = 'PR_SURVEY_ROOT_GATE';
+/** メーカーサマリの Amazon ルート列（実態AI／ミラーと同名）。 */
+var PR_MAKER_SUM_AMAZON_ROOT_HEADER_ = 'Amazonルートカテゴリ';
+/** メーカーサマリから消す列（旧Python集計。見出し名で探す）。 */
+var PR_MAKER_SUM_DROP_HEADERS_ = [
+  '倉庫SKU',
+  '門対象',
+  '通過数',
+  '落ち数',
+  '本体いる_通過',
+  '本体在席率_通過%',
+  '第2語あり',
+];
+var PR_QUERY_TOTAL_HOLD_ = 901;
 var PR_CK_SELLER_ENABLED_PROP_ = 'PR_CK_SELLER_ENABLED';
 var PR_CK_MAKER_ENABLED_PROP_ = 'PR_CK_MAKER_ENABLED';
 var PR_CK_BATCH_CAP_PROP_ = 'PR_CK_BATCH_CAP';
@@ -82,13 +165,15 @@ var PR_SELLER_ACCUM_BATCH_PROP_ = 'PR_SELLER_ACCUM_BATCH';
 var PR_SELLER_ACCUM_LOOP_PROP_ = 'PR_SELLER_ACCUM_LOOP';
 var PR_SELLER_ACCUM_429_WAIT_MS_PROP_ = 'PR_SELLER_ACCUM_429_WAIT_MS';
 var PR_SELLER_ACCUM_429_RETRY_MAX_PROP_ = 'PR_SELLER_ACCUM_429_RETRY_MAX';
+/** C0: 新品オファーが200以外の ASIN は済にして次へ（429は従来どおり停止）。未設定=ON。 */
+var PR_C0_SKIP_HTTP_PROP_ = 'PR_C0_SKIP_HTTP';
 var PR_SELLER_ACCUM_CAP_DEFAULT_ = 100;
 var PR_SELLER_ACCUM_CAP_MAX_ = 100;
 var PR_SELLER_ACCUM_SLEEP_DEFAULT_MS_ = 1100;
 var PR_SELLER_ACCUM_429_WAIT_DEFAULT_MS_ = 90000;
 var PR_SELLER_ACCUM_429_RETRY_DEFAULT_ = 5;
 var PR_SELLER_ACCUM_SKIP_IDS_ = { ATVPDKIKX0DER: true, A1VC38T7YXB528: true };
-/** C1 A-light + C2 セラーヒット（CYCLE §4–§5）。門・①候補・Keepaフル upsert なし。 */
+/** C1 A-light。C2 セラーヒットは既定で競合GAS（PR_HIT_RECOUNT_OWNER）。門・①候補・Keepaフル upsert なし。 */
 var PR_ALIGHT_ENABLED_PROP_ = 'PR_ALIGHT_ENABLED';
 var PR_ALIGHT_SHOP_CAP_PROP_ = 'PR_ALIGHT_SHOP_CAP';
 var PR_ALIGHT_PRODUCT_CAP_PROP_ = 'PR_ALIGHT_PRODUCT_CAP';
@@ -103,16 +188,78 @@ var PR_ALIGHT_NO_MAKER_ROUNDS_MAX_PROP_ = 'PR_ALIGHT_NO_MAKER_ROUNDS_MAX';
 var PR_ALIGHT_DAILY_TARGET_DEFAULT_ = 5;
 var PR_ALIGHT_DAILY_MAX_DEFAULT_ = 10;
 var PR_ALIGHT_NO_MAKER_ROUNDS_DEFAULT_ = 10;
+/**
+ * 小中=0 のとき、トークンが予約分より多ければ日次10店でも店を続ける（2026-09-13）。
+ * 洗い1件≈6トークン。予約60＝約10件分を残して店に回す。
+ * 切戻し: PR_SHOP_WHILE_TOKEN=false（日次10で打ち切る旧動作）。
+ */
+var PR_SHOP_WHILE_TOKEN_PROP_ = 'PR_SHOP_WHILE_TOKEN';
+var PR_SHOP_TOKEN_RESERVE_PROP_ = 'PR_SHOP_TOKEN_RESERVE';
+var PR_SHOP_TOKEN_RESERVE_DEFAULT_ = 60;
+/** 余力ありの下限（未設定=200）。中は予約超〜これ未満。切戻しは数を上げる。 */
+var PR_TOKEN_AMPLE_PROP_ = 'PR_TOKEN_AMPLE';
+/**
+ * 余力なしでは店の名取りを始めない。洗える小中が3社以上なら61以上は④（200以上でも店に入らない）。
+ * 3社未満かつ200以上のときだけ補充で店1軒。列挙は余力なしのとき。
+ * 名取り完了時は抽出メーカーをサマリに足す。
+ * 未設定=ON。false で余力なしでも店へ行き、完走直後も3社以上で店に入る旧動作。
+ */
+var PR_SHOP_TOKEN_GATE_PROP_ = 'PR_SHOP_TOKEN_GATE';
+var PR_TOKEN_AMPLE_DEFAULT_ = 200;
+var PR_CYCLE_SHOP_AFTER_WASH_PROP_ = 'PR_CYCLE_SHOP_AFTER_WASH';
+var PR_CYCLE_SKIP_ENUM_ONCE_PROP_ = 'PR_CYCLE_SKIP_ENUM_ONCE';
+var PR_CYCLE_AUTO_CK_PER_WAKE_PROP_ = 'PR_CYCLE_AUTO_CK_PER_WAKE';
+var PR_CYCLE_AUTO_CK_PER_WAKE_DEFAULT_ = 1;
+/** 洗える小中がこれ未満なら店で補充（既定3＝残り2で補充）。 */
+var PR_SM_RESTOCK_BELOW_PROP_ = 'PR_SM_RESTOCK_BELOW';
+/**
+ * 余り時に店1軒だけ挿し、すぐ洗いに戻す（2026-09-15）。
+ * 洗いキュー未済を「続き」扱いすると、洗える小中が2社でも次社洗いが先になり店が来ない。
+ * 実測 2026-09-15 01:50〜: sm=2→1 でも via=queue で洗い継続、liveLeft=300 のまま ckpt 19分。
+ * 守り: Keepa中／分割途中は止めない。余り（予約60超）かつ洗える小中>0 のとき店は1軒。
+ * 1軒のあと PR_CYCLE_WASH_BEFORE_NEXT_SHOP で洗い必須（店連続禁止）。小中=0 は従来の店レーン。
+ * ログの目印: one_shop_yield／wash_before_next_shop／via=queue が出ない（続きは sum/split のみ）。
+ * 切戻し: PR_CYCLE_ONE_SHOP_YIELD=false（キューを続き扱い・余り1軒なしの旧動作）。
+ */
+var PR_CYCLE_ONE_SHOP_YIELD_PROP_ = 'PR_CYCLE_ONE_SHOP_YIELD';
+var PR_CYCLE_WASH_BEFORE_NEXT_SHOP_PROP_ = 'PR_CYCLE_WASH_BEFORE_NEXT_SHOP';
+var PR_KEEPA_LIVE_LEFT_SNAP_ = null;
+/**
+ * 店ラウンドを「新メーカーが出たか」ではなく「洗える小中が0か」で続ける（2026-09-13）。
+ * 旧: `lastNew === 0 && rounds < roundMax` ＝ 新メーカーが1社でも出たら店をやめて大へ。
+ * ところが新メーカーはサマリに 実態=未調査／要確認 で入るため、
+ * `prMakerJittaWashEligible_` を通らず選定プールに入らない。
+ * つまり「見つかったが洗えない」状態でも店ゲートが閉じ、大・特大が始まる。
+ * 実測 2026-09-13 11:20: done=6(目標5超) lastNew=2(10:44に2社) → false →
+ * 未調査の店が21軒あるのに キーコーヒー(大・見積306) が週枠を消費して開始。
+ * その2社は 株式会社マッセル／株式会社K&K で、どちらも 実態=未調査・規模帯=空・見積=空。
+ * 洗える小中は増えていないので `sm=0` のままだった。
+ * 呼び出しは洗える小中が閾値未満（既定3＝残り2で補充）のとき。
+ * 日次上限（done>=maxD 既定10）と予約トークンで止まる。絶対上限40は廃止。
+ * ログの目印: shop_rounds_until_cap。
+ * 切戻し: Property PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP=false（新メーカー数で閉じる旧動作）。
+ */
+var PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP_PROP_ = 'PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP';
 var PR_ALIGHT_DAILY_DONE_DAY_PROP_ = 'PR_ALIGHT_DAILY_DONE_DAY';
 var PR_ALIGHT_DAILY_DONE_COUNT_PROP_ = 'PR_ALIGHT_DAILY_DONE_COUNT';
 var PR_ALIGHT_ROUND_DAY_PROP_ = 'PR_ALIGHT_ROUND_DAY';
 var PR_ALIGHT_ROUND_COUNT_PROP_ = 'PR_ALIGHT_ROUND_COUNT';
 var PR_ALIGHT_LAST_NEW_PROP_ = 'PR_ALIGHT_LAST_NEW_MAKERS';
 var PR_ALIGHT_CONT_PROP_ = 'PR_ALIGHT_CONT_JSON';
-var PR_SELLER_BAND_S_MAX_ = 100;
-var PR_SELLER_BAND_M_MAX_ = 300;
-var PR_SELLER_BAND_L_MAX_ = 500;
+/**
+ * 店の規模帯（SKU見積）。メーカー洗いの帯（Catalog 小≤100／特大≥501）とは別。
+ * 2026-09-15 様子見: 小≤300／中≤600／大≤900／特大≥901。特大以外はフル。
+ * 切戻し Property: PR_SELLER_BAND_S_MAX=100 ／ M=300 ／ L=500 ／ PR_QUERY_TOTAL_HOLD=501
+ */
+var PR_SELLER_BAND_S_MAX_PROP_ = 'PR_SELLER_BAND_S_MAX';
+var PR_SELLER_BAND_M_MAX_PROP_ = 'PR_SELLER_BAND_M_MAX';
+var PR_SELLER_BAND_L_MAX_PROP_ = 'PR_SELLER_BAND_L_MAX';
+var PR_SELLER_BAND_S_MAX_ = 300;
+var PR_SELLER_BAND_M_MAX_ = 600;
+var PR_SELLER_BAND_L_MAX_ = 900;
 var PR_SELLER_BAND_COL_ = '規模帯';
+/** 名取り完了日（店フルで取った日。特大の規模測定だけでは書かない）。 */
+var PR_SELLER_NAME_DAY_COL_ = '名取り日';
 var PR_SELLER_SKU_COL_ = '在庫SKU見積';
 var PR_SELLER_SKU_BREAKDOWN_COL_ = 'SKU見積内訳';
 var PR_SELLER_BAND_BREAKDOWN_COL_ = '規模帯内訳';
@@ -126,6 +273,7 @@ var PR_GAS_START_MS_ = 0;
 var PR_KEEPA_FULL_MAP_CACHE_ = null;
 var PR_KEEPA_FULL_INDEX_CACHE_ = null;
 var PR_PROF_CACHE_ = null;
+var PR_SURVEY_ROOT_SETS_CACHE_ = null;
 var PR_CK_READY_ = {};
 var PR_CAND_MEM_ = null;
 /**
@@ -144,6 +292,15 @@ var PR_CYCLE_POOL_REUSE_PROP_ = 'PR_CYCLE_POOL_REUSE';
  */
 var PR_WASH_QUEUE_COUNT_CACHE_ = null;
 var PR_WASH_QUEUE_COUNT_MAP_PROP_ = 'PR_WASH_QUEUE_COUNT_MAP';
+/**
+ * 「メーカー→未処理（Keepa未済）件数」実行内キャッシュ。
+ * 旧: prWashQueuePendingCount_ が社ごとに prWashQueueSnapshot_（キュー全26,238行の読み直し）を
+ * 呼ぶため、選定で候補8社を試すと8回スキャンしていた。実測 pick 中央値 106〜115秒
+ * （続き=via=sum は15秒）。件数だけ要る選定はこの1回読みに寄せる。
+ * 切戻し: Property PR_WASH_QUEUE_PENDING_MAP=false（社ごとに読み直す旧動作）。
+ */
+var PR_WASH_QUEUE_PENDING_CACHE_ = null;
+var PR_WASH_QUEUE_PENDING_MAP_PROP_ = 'PR_WASH_QUEUE_PENDING_MAP';
 /**
  * 洗いスライス用の「対象メーカーの行」実行内スナップショット（{parent: {rows, idxK}}）。
  * 旧: 1スライスで 重複整理／未済取得／Keepa済マーク／残数＋ループ前後 の計5〜6回、
@@ -177,6 +334,14 @@ var PR_WASH_FULL_TRIGGER_FN_ = 'prRunWashFullFromTrigger';
 var PR_WASH_FULL_TRIGGER_PROP_ = 'PR_WASH_FULL_TRIGGER_ENABLED';
 var PR_WASH_FULL_TRIGGER_AFTER_PROP_ = 'PR_WASH_FULL_TRIGGER_AFTER_MIN';
 var PR_WASH_FULL_TRIGGER_AFTER_DEFAULT_ = 5;
+/**
+ * B4: レ点メーカーを実態→洗い（自動を一時停止→完了で再開）。
+ * 切戻し PR_B4_ENABLED=false。実行中は PR_B4_ACTIVE=1。
+ */
+var PR_B4_ENABLED_PROP_ = 'PR_B4_ENABLED';
+var PR_B4_ACTIVE_PROP_ = 'PR_B4_ACTIVE';
+var PR_B4_TRIGGER_FN_ = 'prRunB4CkMakerFromTrigger';
+var PR_B4_TRIGGER_AFTER_DEFAULT_ = 2;
 /** 洗いトリガー診断: 予約時の発火予定（ms）・arm メタ。未発火切り分け用。 */
 var PR_WASH_TRIGGER_EXPECT_FIRE_MS_PROP_ = 'PR_WASH_TRIGGER_EXPECT_FIRE_MS';
 var PR_WASH_TRIGGER_ARM_TAG_PROP_ = 'PR_WASH_TRIGGER_ARM_TAG';
@@ -222,7 +387,7 @@ var PR_WASH_OVERLAP_TAKEOVER_MIN_ = 8;
 var PR_SHOP_LANE_CLEAR_INFLIGHT_PROP_ = 'PR_SHOP_LANE_CLEAR_INFLIGHT';
 var PR_SHOP_HB_BUSY_MS_PROP_ = 'PR_SHOP_HB_BUSY_MS';
 var PR_SHOP_HB_BUSY_RUN_PROP_ = 'PR_SHOP_HB_BUSY_RUN';
-/** 店/心拍作業中とみなす上限（分）。超えたら busy 失効。 */
+/** 実行中の二重発火だけ見る上限（分）。続き後は居座らせない。超えたら失効。 */
 var PR_SHOP_HB_BUSY_TTL_MIN_ = 25;
 /** 譲り時の安全ネット予約（分）。alight 完了で 1 分に上書き。 */
 var PR_SHOP_YIELD_ARM_MIN_ = 3;
@@ -251,6 +416,23 @@ var PR_EFF_CKPT_MARGIN_MIN_ = 3;
 var PR_EFF_CKPT_BUDGET_RULE_PROP_ = 'PR_EFF_CKPT_BUDGET_RULE';
 /** overlap: age がこれ以上（分）なら FAIL（即 takeover すべき）。 */
 var PR_EFF_OVERLAP_FAIL_AGE_MIN_ = 8;
+/**
+ * 対策C（監視）: 切片がこの分数ぶん出ていなければ 効率合否 を FAIL にする。
+ * 間隔合否 `prEffJudgeAfterSlice_` は切片が出たときしか動かないため、
+ * 1件も洗えない空転では PASS が出続けていた（2026-09-09 の 25時間は全て PASS）。
+ */
+var PR_EFF_STALL_FAIL_MIN_ = 60;
+var PR_EFF_STALL_GUARD_PROP_ = 'PR_EFF_STALL_GUARD';
+/**
+ * 洗い自動リカバリー（FLOW §5.6）。未設定=ON。切戻し false。
+ * skip直後の次予約／ピック除外／stall 番犬。
+ */
+var PR_WASH_AUTO_RECOVER_PROP_ = 'PR_WASH_AUTO_RECOVER';
+/** stall 番犬: liveness で no_slice_stall 相当が連続何回で直すか。 */
+var PR_WASH_STALL_STRIKE_PROP_ = 'PR_WASH_STALL_STRIKE';
+var PR_WASH_STALL_STRIKE_NEED_ = 2;
+/** 実態待ち優先メーカー（|区切り・先頭が新しい・最大20）。 */
+var PR_JITTA_PRIORITY_MAKERS_PROP_ = 'PR_JITTA_PRIORITY_MAKERS';
 /** C4 完走連鎖を洗い完走と別実行にする時間トリガー（30分壁回避）。 */
 var PR_CYCLE_C4_TRIGGER_FN_ = 'prRunCycleC4FromTrigger';
 var PR_CYCLE_C4_TRIGGER_AFTER_DEFAULT_ = 1;
@@ -291,6 +473,117 @@ var PR_CYCLE_ENUM_BATCH_N_DEFAULT_ = 8;
 var PR_CYCLE_ENUM_BATCH_N_MAX_ = 20;
 /** まとめ列挙を打ち切る予算残り（予約とログのために残す）。 */
 var PR_CYCLE_ENUM_BATCH_RESERVE_MS_ = 5 * 60 * 1000;
+/**
+ * まとめ列挙の打ち切りを「①洗いキューが実際に増えた社」にする（2026-09-09）。
+ * 旧: 規模帯が小・中なら打ち切り。中身ゼロ（タイトル含有0）でも小と判定されるため
+ * 実測 31回中29回が1社目で打ち切られ、まとめ列挙が実質1.5社/回しか進まなかった。
+ * ログの目印: enum_batch stop=queue_found=（旧は stop=sm_found=）。
+ * 切戻し: Property PR_CYCLE_ENUM_BATCH_STOP_QUEUE=false。
+ */
+var PR_CYCLE_ENUM_BATCH_STOP_QUEUE_PROP_ = 'PR_CYCLE_ENUM_BATCH_STOP_QUEUE';
+/**
+ * まとめ列挙を「洗える社が何社たまったら」譲るか（2026-09-11）。
+ * 旧は1社で譲っていたため在庫が常にゼロで、1社洗い終わるたびに列挙からやり直し。
+ * 実測（09-11 00:49〜08:05）: 社の切替に中央値 22.4分・窓の75%。内訳は
+ * 予約1.5分＋選定2分＋心拍6分＋予約1分＋選定2分で、洗える相手が無ければこれを繰り返す。
+ * 3社ためれば続く2回の切替は心拍を丸ごと飛ばせる。Catalog は1周の社数が増えるぶん
+ * 周回数が減るので総消費はほぼ変わらない。予算切れは従来どおり prCycleEnumBatchHasBudget_。
+ * 切戻し: Property PR_CYCLE_ENUM_STOCK_N=1（1社で譲る旧動作）。
+ */
+var PR_CYCLE_ENUM_STOCK_N_PROP_ = 'PR_CYCLE_ENUM_STOCK_N';
+var PR_CYCLE_ENUM_STOCK_N_DEFAULT_ = 3;
+/**
+ * 列挙で Catalog の salesRanks も取り、順位が1つも付いていない ASIN を数える（2026-09-11）。
+ * 門の落ち 17,209件のうち stats空 4,769（27.7%）＋順位欠測 1,487（8.6%）＝33.8% は
+ * 「Keepa に90日の価格も順位も無い」＝判定できずに落ちた分で、1件1トークン払って捨てている。
+ * SP-API 実測（400件・読取のみ・tools/purchase_research_path3/_tmp_salesranks_check.py）:
+ *   門通過        → Amazon 順位なし  1%（中央値 156位）
+ *   stats空       → Amazon 順位なし 99%
+ *   順位欠測      → Amazon 順位なし 96%
+ * 順位の「値」は使えない（Amazon はサブカテゴリ順位で Keepa は食品全体。通過の中央値156に対し
+ * 順位>60000 の93%も Amazon では6万位以内＝分離できない）。使えるのは「順位が付いていない」だけ。
+ * 段取り: まず PROBE だけ ON にして取りこぼし件数をログで見る。切るのは CUT を ON にしてから。
+ * ログの目印: catalog_norank。
+ * 切戻し: Property PR_CATALOG_RANK_PROBE=false（salesRanks を取らない旧動作）。
+ */
+var PR_CATALOG_RANK_PROBE_PROP_ = 'PR_CATALOG_RANK_PROBE';
+/** 順位なしをキューに入れない。未設定=OFF（記録だけ）。ON にする前に noRank= を見る。 */
+var PR_CATALOG_RANK_CUT_PROP_ = 'PR_CATALOG_RANK_CUT';
+/**
+ * 「Keepa完走直後の店レーンを1回挟む」を本当に1回にする（2026-09-11）。
+ * §6.3bis 案B の意図は1回だが、`prCycleClearShopAfterSm_` が
+ * 自動レ点・A-light・C0 の3つとも0になるまで呼ばれないため、
+ * 店の未調査が残っている間ずっと `shop_after_sm` を返し続けていた。
+ * その間は心拍が `wash_small` / `enum_unknown` に到達しないので、
+ * 小・中が1社でも残っていると `defer_xl_sm_remain` で大・特大も止まり、
+ * Keepa レーンが丸ごと停止する。
+ * 実測 2026-09-13 03:00〜04:20: トークン満タン（liveLeft=300）のまま洗い0件・1.5時間。
+ * pick は毎回 109〜197秒かけて `via=deferred_all parent=`（やることなし）を返していた。
+ * 店レーンの本体は `smN < PR_SM_RESTOCK_BELOW`（既定3）の
+ * `prCycleShopBeforeLargeAction_` 側なので、ここを1回で降りても店の消化は止まらない。
+ * ログの目印: shop_after_sm_once。
+ * 切戻し: Property PR_CYCLE_SHOP_AFTER_SM_ONCE=false（尽きるまで居座る旧動作）。
+ */
+var PR_CYCLE_SHOP_AFTER_SM_ONCE_PROP_ = 'PR_CYCLE_SHOP_AFTER_SM_ONCE';
+/**
+ * 店ラウンド判定（引数なし呼び）を実行内1回にする（2026-09-13）。
+ * pick の未済ループは社ごとに `prCycleShopBeforeLargeAction_({})` を呼ぶ。
+ * 引数なしだと中で毎回これが走る:
+ *   prSellerUncheckedCount_()       … 別スプシ（統合情報DB）セラー を openById して全読み
+ *   prSellerAutoCkCandidateCount_() … 同じ セラー をもう1回全読み
+ *   prCandUntaggedGateCount_()      … ①候補 26,009行
+ * 未済は 大28＋特大77＋中1＝約106社あるので、1回の pick で外部読みが200回を超える。
+ * 実測 2026-09-13: 小中が 0 になった 11:52 を境に pick が 96〜129秒 → 470〜627秒。
+ * その結果 pick＋pool で実行枠25〜30分を使い切り、A-light（所要約21分）が
+ * 毎回途中で殺され、店の未調査 shops_ck_on=21 が59分間1つも減らなくなった
+ * （エラーは残らない。実行時間上限で落ちるため）。
+ * ループ中は書き込みが無いのでキャッシュで正しい。心拍は3つの実数を渡して呼ぶので対象外。
+ * 店の行を書いたあと（A-light 実行後）と心拍の入口では捨てる。
+ * ログの目印: shop_before_large_cache。
+ * 切戻し: Property PR_SHOP_BEFORE_LARGE_CACHE=false（毎回読み直す旧動作）。
+ */
+var PR_SHOP_BEFORE_LARGE_CACHE_PROP_ = 'PR_SHOP_BEFORE_LARGE_CACHE';
+/** null=未取得。{v: 判定結果} でくるむ（判定結果が null のこともあるため）。 */
+var PR_SHOP_BEFORE_LARGE_CACHE_ = null;
+/** 実行内で何回キャッシュが効いたか（ログ用）。 */
+var PR_SHOP_BEFORE_LARGE_CACHE_HIT_ = 0;
+/** 上2つの実行内キャッシュ（1ページ20件ごとに読むため）。prGasStart_ で null に戻す。 */
+var PR_CATALOG_RANK_PROBE_CACHE_ = null;
+/**
+ * 社名の法人格ゆれを Catalog 照合語に足す（2026-09-09）。
+ * 「大平水産(株)」→ 大平水産／大平水産株式会社。Amazon の商品名にカッコ株は出ないため
+ * prCatalogTitleHits_ の indexOf が全件落ち、タイトル含有0になっていた。
+ * 検索キーワードは0件のときだけ法人格なしで1回だけ言い換える（legal_retry）。
+ * ログの目印: needle_variants / legal_retry。
+ * 切戻し: Property PR_MAKER_NEEDLE_LEGAL=false。
+ */
+var PR_MAKER_NEEDLE_LEGAL_PROP_ = 'PR_MAKER_NEEDLE_LEGAL';
+/** 法人格を落とした語がこの文字数未満なら照合語に足さない（無関係な商品の巻き込み防止）。 */
+var PR_MAKER_NEEDLE_MIN_LEN_ = 3;
+/**
+ * タイトル含有0を1回でも出した社を選定プールから外す（2026-09-09）。
+ * 旧: 3回連続してはじめて保留。中身ゼロの社は推定件数が空のまま残るので unk に居座り、
+ * prWashContinueGuard_ の defer_xl_unk_remain で特大（伊藤園・ロッテ等）の洗いを止め続ける。
+ * さらに列挙候補にも残るため、取れない社を何度も列挙し直していた。
+ * 実測 2026-09-08 夜間は 8.5時間のうち94%が Keepa作業ゼロ。
+ * ログの目印: pool_title0_skip。
+ * 切戻し: Property PR_CYCLE_TITLE0_POOL_SKIP=false。
+ */
+var PR_CYCLE_TITLE0_POOL_SKIP_PROP_ = 'PR_CYCLE_TITLE0_POOL_SKIP';
+/**
+ * Keepa が返さない ASIN を見切って Keepa済にする（2026-09-09）。
+ * 旧: no_product は doneAsins に入らずキューへ残るため、同じ ASIN を
+ * 4分ごとに取り直す無限ループになった（アリアケジャパン 1時間20分で27回・毎回トークン消費）。
+ * ログの目印: keepa_miss_done。
+ * 切戻し: Property PR_KEEPA_MISS_DONE=false。
+ */
+var PR_KEEPA_MISS_DONE_PROP_ = 'PR_KEEPA_MISS_DONE';
+/** Keepa が返さない ASIN をこの回数で見切る（未設定=2）。 */
+var PR_KEEPA_MISS_DONE_AFTER_PROP_ = 'PR_KEEPA_MISS_DONE_AFTER';
+var PR_KEEPA_MISS_DONE_AFTER_DEFAULT_ = 2;
+/** ASIN→Keepa が返さなかった回数（JSON）。上限超は古い順に捨てる。 */
+var PR_KEEPA_MISS_PROP_ = 'PR_KEEPA_MISS_JSON';
+var PR_KEEPA_MISS_MAX_KEYS_ = 500;
 /** タイトル含有0がこの回数続いたら保留（title0_skip）して心拍へ。 */
 var PR_WASH_TITLE0_SKIP_AFTER_ = 3;
 var PR_WASH_TITLE0_FAIL_PROP_ = 'PR_WASH_TITLE0_FAIL_JSON';
@@ -399,7 +692,7 @@ var PR_CYCLE_AUTO_CK_CAP_PROP_ = 'PR_CYCLE_AUTO_CK_DAILY_CAP';
 var PR_CYCLE_AUTO_CK_DAY_PROP_ = 'PR_CYCLE_AUTO_CK_DAY';
 var PR_CYCLE_AUTO_CK_COUNT_PROP_ = 'PR_CYCLE_AUTO_CK_COUNT';
 var PR_CYCLE_K_SMALL_MED_ = 3;
-var PR_CYCLE_AUTO_CK_CAP_DEFAULT_ = 8;
+var PR_CYCLE_AUTO_CK_CAP_DEFAULT_ = 0;
 var PR_SELLER_SMALL_HIT_COL_ = '小規模出現';
 var PR_CATALOG_EST_COL_ = 'Catalog見積';
 var PR_BAND_COL_ = '規模帯';
@@ -411,6 +704,9 @@ var PR_BAND_UNK_ = '不明';
 var PR_CAT_INFER_SAMPLE_MAX_ = 200;
 var PR_CAT_INFER_WORD_MAX_ = 15;
 var PR_WASH_QUEUE_HEADERS_ = ['メーカー', '入口語', 'ASIN', '列挙日時', 'Keepa済', '門結果', 'メモ'];
+/** 大・特大の未済をキューに残す社数。未設定=10。0で上限オフ。 */
+var PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX_PROP_ = 'PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX';
+var PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX_DEFAULT_ = 10;
 var PR_WASH_SPLIT_HEADERS_ = [
   'メーカー',
   '分割語',
@@ -428,6 +724,15 @@ var PR_WASH_ST_KEEPA_ = 'Keepa中';
 var PR_WASH_ST_NEED_Q2_ = '要分割語';
 var PR_WASH_ST_DONE_ = '完了';
 var PR_WASH_ST_HOLD_ = '保留';
+/**
+ * 洗い状態の終わり3区分（CYCLE §6.10・2026-09-13）。
+ * 保留は箱を捨てる。新規には書かない（読取互換のみ）。
+ * 切戻し: Property PR_WASH_ST_SPLIT=false。
+ */
+var PR_WASH_ST_OUT_ = '調査対象外';
+var PR_WASH_ST_FIX_ = '要修復';
+var PR_WASH_ST_SPLIT_PROP_ = 'PR_WASH_ST_SPLIT';
+var PR_WASH_ST_SPLIT_MIGRATED_PROP_ = 'PR_WASH_ST_SPLIT_MIGRATED';
 var PR_SPLIT_ST_PENDING_ = '未';
 var PR_SPLIT_ST_ENUM_ = '列挙中';
 var PR_SPLIT_ST_DONE_ = '済';
@@ -532,6 +837,33 @@ var PR_JITTA_HB_LANE_ENABLED_PROP_ = 'PR_JITTA_HB_LANE_ENABLED';
 var PR_JITTA_HB_CAP_PROP_ = 'PR_JITTA_HB_CAP';
 var PR_JITTA_HB_CAP_DEFAULT_ = 8;
 var PR_JITTA_HB_CAP_MAX_ = 20;
+/**
+ * 信頼度が high でない 要確認・未調査 も実態AIの対象にする（2026-09-13）。
+ * 詳細は `prMakerSummaryRowJittaRetryable_` の注記。切戻し=false で旧判定。
+ */
+var PR_JITTA_RETRY_NON_HIGH_PROP_ = 'PR_JITTA_RETRY_NON_HIGH';
+/**
+ * 再調査しても 要確認／未調査 に戻る社を1回で打ち切る（2026-09-13）。
+ * AI が**結果を返した**ときだけ メーカーマスタ `実態再採取しない` を立てる。
+ * 429・タイムアウトなど結果が無い（`no_resolve`）ときは立てないので、次の回でやり直す。
+ * これが無いと 28社が毎日 jitta レーンに乗り続け、Gemini を無駄に呼ぶ。
+ * ログの目印: jitta_retry_exhausted。
+ * 切戻し: Property PR_JITTA_RETRY_EXHAUST=false（打ち切らない＝毎日再調査する旧動作）。
+ */
+var PR_JITTA_RETRY_EXHAUST_PROP_ = 'PR_JITTA_RETRY_EXHAUST';
+/**
+ * 実態AIレーンの1日あたり回数（安全弁・2026-09-13）。
+ * 本体の空転止めは上の `実態再採取しない` なので、これは保険。
+ * `実態再採取しない` の書き込みが失敗しても心拍が jitta に居座らないようにする
+ * （心拍は `smN < 3 && jittaPend > 0` で jitta を返すため、居座ると洗いが丸ごと止まる。
+ *  実測 2026-09-13 03:00〜04:20 の 1.5時間停止と同じ壊れ方になる）。
+ * 既定8回 × `PR_JITTA_HB_CAP`(8) = 1日64社ぶん。行き止まり28社は通常4回で尽きる。
+ * 切戻し: Property PR_JITTA_HB_DAILY_MAX を大きくする（0以下は既定に戻る）。
+ */
+var PR_JITTA_HB_DAILY_MAX_PROP_ = 'PR_JITTA_HB_DAILY_MAX';
+var PR_JITTA_HB_DAILY_MAX_DEFAULT_ = 8;
+var PR_JITTA_HB_DAY_PROP_ = 'PR_JITTA_HB_DAY';
+var PR_JITTA_HB_COUNT_PROP_ = 'PR_JITTA_HB_COUNT';
 /** 未調査がこの件数以上なら自動レ点を止める（省略=30）。 */
 var PR_JITTA_BACKLOG_GATE_PROP_ = 'PR_JITTA_BACKLOG_GATE';
 var PR_JITTA_BACKLOG_GATE_DEFAULT_ = 30;
@@ -544,6 +876,10 @@ var PR_JITTA_AFTER_ALIGHT_PROP_ = 'PR_JITTA_AFTER_ALIGHT';
 var PR_JITTA_OWNER_PROP_ = 'PR_JITTA_OWNER';
 var PR_JITTA_OWNER_HB_ = 'hb';
 var PR_JITTA_OWNER_COMP_ = 'comp';
+/** C2／小規模出現の実行主体。省略=comp（競合GAS）。切戻し hb=①が名前取りのあと数える。 */
+var PR_HIT_RECOUNT_OWNER_PROP_ = 'PR_HIT_RECOUNT_OWNER';
+var PR_HIT_RECOUNT_OWNER_HB_ = 'hb';
+var PR_HIT_RECOUNT_OWNER_COMP_ = 'comp';
 var PR_JITTA_GYOSHU_UNKNOWN_ = '不明';
 var PR_JITTA_GYOSHU_INFERRED_SUFFIX_ = '（推定）';
 /** メーカーマスタ実態キャッシュ列（schema.py MAKER_HEADERS 同期）。 */
@@ -690,7 +1026,8 @@ function onOpen() {
       .createMenu('B. 個別調査')
       .addItem('1. レ点の店だけ調べる', 'prMenuAlightHit')
       .addItem('2. レ点のメーカーだけ洗う', 'prMenuCkMakers')
-      .addItem('3. 実態だけAI判定（未調査）', 'prMenuResolveMakerJitta');
+      .addItem('3. 実態だけAI判定（未調査）', 'prMenuResolveMakerJitta')
+      .addItem('4. レ点メーカーを実態→洗い（自動一時停止）', 'prMenuCkMakersJittaThenWash');
     var mC = ui
       .createMenu('C. 見積・発注')
       .addItem('（準備中・見積提案〜発注）', 'prMenuEstimateOrderPlaceholder');
@@ -735,6 +1072,11 @@ function onOpen() {
       .addItem('27. レ点の店を調査（旧・複数）', 'prMenuCkSellers')
       .addItem('28. 転記チェック（週次・今すぐ）', 'prMenuListTransferWeeklyCheckNow')
       .addItem('29. D2 backlog解消→C4再開', 'prMenuCycleC4ResumeAfterD2Clear')
+      .addSeparator()
+      .addItem('30. 日次バックアップ今すぐ', 'prMenuProjectDailyBackupRunNow')
+      .addItem('31. 日次バックアップ強制コピー', 'prMenuProjectDailyBackupForceCopy')
+      .addItem('32. 日次バックアップ8時トリガー設置', 'prMenuProjectDailyBackupInstallTrigger')
+      .addItem('33. 日次バックアップトリガー削除', 'prMenuProjectDailyBackupRemoveTrigger')
       .addSeparator()
       .addSubMenu(mTest);
     ui.createMenu('自動リサーチ')
@@ -975,12 +1317,20 @@ function prGasStart_() {
   PR_KEEPA_FULL_MAP_CACHE_ = null;
   PR_KEEPA_FULL_INDEX_CACHE_ = null;
   PR_PROF_CACHE_ = null;
+  PR_SURVEY_ROOT_SETS_CACHE_ = null;
   PR_CK_READY_ = {};
   PR_CAND_MEM_ = null;
+  PR_CAND_PASS_SNAP_ = null;
+  PR_CAND_ROW_SNAP_ = null;
   PR_CYCLE_POOL_CACHE_ = null;
   PR_WASH_QUEUE_COUNT_CACHE_ = null;
+  PR_WASH_QUEUE_PENDING_CACHE_ = null;
   PR_WASH_QUEUE_SNAP_ = {};
   PR_MAKER_BAND_CACHE_ = null;
+  PR_CATALOG_RANK_PROBE_CACHE_ = null;
+  PR_SHOP_BEFORE_LARGE_CACHE_ = null;
+  PR_SHOP_BEFORE_LARGE_CACHE_HIT_ = 0;
+  PR_KEEPA_LIVE_LEFT_SNAP_ = null;
   prClearSellerLedgerCache_();
 }
 
@@ -1072,6 +1422,46 @@ function prMakerJittaWashBlocked_(jitta) {
 function prMakerJittaIsUninvestigatedLabel_(jitta) {
   var j = String(jitta || '').trim();
   return !j || j === PR_JITTAI_UNCHECKED_;
+}
+
+/**
+ * サマリ行が実態AIの再調査対象か（2026-09-13）。
+ *
+ * `prMakerNeedsJittaResolve_` は `prMakerJittaSummaryAiConfirmed_`（信頼度 === 'high'）で
+ * 「AI済み」を判定するのに、`prMakerSummaryRowUninvestigated_` は「信頼度が空でなければ対象外」
+ * で判定していた。`prCollectJittaResolveTargets_` は両方を AND で見るため、
+ * 信頼度 medium／low の 要確認・未調査 は「再調査が必要なのに対象に数えない」＝行き止まりになる。
+ * 実測 2026-09-13: 要確認 medium 10／要確認 low 16／未調査 medium 2 の **28社**が該当し、
+ * `action=jitta_resolve` は 2026-09-04 7:47 以降9日間 `jittaPend=0` で1度も動いていなかった。
+ * プールは `prMakerJittaWashEligible_`（製造メーカー／入口ブランドのみ）なので永久に洗えない。
+ *
+ * さらに `prApplyJittaMirrorToSummary_` も同じ判定で書き込みをスキップしていたため、
+ * **メーカーマスタに `実態候補=製造メーカー` があってもサマリに反映されない**社ができていた。
+ * 実測: 株式会社マッセル／株式会社K&K／高橋商店／笑喜亭　タカヒラ の4社。
+ * この4社は AI もトークンも要らず、ミラーするだけで洗えるようになる。
+ *
+ * **範囲は狭く取る**: 人が手で入れた 製造メーカー／入口ブランド／非仕入先 は絶対に触らない。
+ * 触るのは 実態が 未調査／要確認／空 で、かつ信頼度が high でない行だけ。
+ *
+ * 切戻し: Property PR_JITTA_RETRY_NON_HIGH=false（旧の「信頼度が空だけ」に戻る）。
+ * @return {boolean}
+ */
+function prMakerSummaryRowJittaRetryable_(rowVals, hdr) {
+  if (!rowVals || !hdr) return false;
+  if (!prJittaRetryNonHighEnabled_()) {
+    return prMakerSummaryRowUninvestigated_(rowVals, hdr);
+  }
+  var idxConf = prHeaderIndex_(hdr, '実態信頼度');
+  if (idxConf >= 0 && String(rowVals[idxConf] || '').trim() === 'high') return false;
+  var idxJ = prHeaderIndex_(hdr, '実態');
+  var j = idxJ >= 0 ? String(rowVals[idxJ] || '').trim() : '';
+  if (prMakerJittaIsUninvestigatedLabel_(j)) return true;
+  return j === PR_JITTAI_CHECK_;
+}
+
+/** Property PR_JITTA_RETRY_NON_HIGH。未設定=ON。false で旧の「信頼度が空だけ」判定に戻る。 */
+function prJittaRetryNonHighEnabled_() {
+  return prCkEnabled_(PR_JITTA_RETRY_NON_HIGH_PROP_);
 }
 
 /** サマリ行が未調査（実態信頼度が空で、AI前ラベルまたはレガシー要確認）。 */
@@ -1194,19 +1584,65 @@ function prSplitNeedles_(parent, entryHit) {
   return out;
 }
 
-/** ①候補 parent 列用 needle。入口語ヒット＋ブランド型の明示語を統合。 */
+/** Property PR_MAKER_NEEDLE_LEGAL。未設定=ON。false で旧: 表示名そのままだけで照合。 */
+function prMakerNeedleLegalEnabled_() {
+  return prCkEnabled_(PR_MAKER_NEEDLE_LEGAL_PROP_);
+}
+
+/**
+ * 表示名から法人格ゆれの照合語を作る。「大平水産(株)」→ 大平水産／大平水産株式会社／株式会社大平水産。
+ * 先頭は必ず法人格なしの短縮形（Catalog keywords の言い換え先に使う）。
+ * 法人格が付いていない社は増やさない。落とした語が短いと無関係な商品を拾うので
+ * PR_MAKER_NEEDLE_MIN_LEN_ でガードする。
+ * @param {string} name
+ * @return {!Array<string>}
+ */
+function prMakerLegalVariants_(name) {
+  var out = [];
+  var raw = prCleanEntryToken_(name);
+  if (!raw) return out;
+  var bare = prNormalizeMakerKey_(raw);
+  if (!bare || bare === raw) return out;
+  if (bare.length < PR_MAKER_NEEDLE_MIN_LEN_) return out;
+  var legal = /[（(]有[）)]|㈲|有限会社/.test(raw) ? '有限会社' : '株式会社';
+  var seen = {};
+  [bare, bare + legal, legal + bare].forEach(function (t) {
+    if (!t || t === raw || seen[t]) return;
+    seen[t] = true;
+    out.push(t);
+  });
+  return out;
+}
+
+/** ①候補 parent 列用 needle。入口語ヒット＋ブランド型の明示語＋法人格ゆれを統合。 */
 function prMakerWashNeedles_(parent, entryHit) {
   var needles = prSplitNeedles_(parent, entryHit);
-  var extra = PR_BRAND_NEEDLES_[String(parent || '').trim()];
-  if (!extra) return needles;
   var seen = {};
   var i;
   for (i = 0; i < needles.length; i++) seen[needles[i]] = true;
-  for (i = 0; i < extra.length; i++) {
-    var t = prCleanEntryToken_(extra[i]);
-    if (t && !seen[t]) {
-      seen[t] = true;
-      needles.push(t);
+  function push_(raw) {
+    var t = prCleanEntryToken_(raw);
+    if (!t || seen[t]) return false;
+    seen[t] = true;
+    needles.push(t);
+    return true;
+  }
+  var extra = PR_BRAND_NEEDLES_[String(parent || '').trim()];
+  if (extra) {
+    for (i = 0; i < extra.length; i++) push_(extra[i]);
+  }
+  if (prMakerNeedleLegalEnabled_()) {
+    var added = [];
+    var vars = prMakerLegalVariants_(parent);
+    for (i = 0; i < vars.length; i++) {
+      if (push_(vars[i])) added.push(vars[i]);
+    }
+    if (added.length) {
+      Logger.log(
+        '[仕入れ検討①] needle_variants parent=%s add=%s',
+        parent,
+        added.join('|')
+      );
     }
   }
   return needles;
@@ -1235,7 +1671,8 @@ function prMakerCatalogEntry_(parent, pref, entryHit) {
 function prEnsureMakerSumRowTop_(sh, makerName, opt) {
   opt = opt || {};
   var parent = String(makerName || '').trim();
-  if (!sh || !parent) return 0;
+  if (!sh || !parent || prMakerNameIsCode_(parent)) return 0;
+  prDropMakerSumUnusedCols_(sh);
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
   var idxMaker = prHeaderIndex_(hdr, 'メーカー');
@@ -1356,10 +1793,15 @@ function prEnsureMakerSumHitCol_(sh) {
   return lastCol;
 }
 
+/** メーカー名欄のJAN・EAN・GTIN。数字だけの8〜14桁。 */
+function prMakerNameIsCode_(name) {
+  return /^\d{8,14}$/.test(String(name || '').trim());
+}
+
 /** maker_alias.resolve_alias 相当。 */
 function prResolveMakerAlias_(name) {
   var t = prCleanEntryToken_(name);
-  if (!t) return '';
+  if (!t || prMakerNameIsCode_(t)) return '';
   if (PR_MAKER_ALIASES_[t]) return PR_MAKER_ALIASES_[t];
   var low = t.toLowerCase();
   var k;
@@ -1421,7 +1863,7 @@ function prMergeExtractMakerCell_(old, newMakers) {
 }
 
 function prHitEligibleMaker_(name) {
-  if (!name || PR_HIT_EXCLUDE_SET_[name]) return false;
+  if (!name || PR_HIT_EXCLUDE_SET_[name] || prMakerNameIsCode_(name)) return false;
   if (prJittaForMaker_(name) === PR_JITTAI_EXCLUDE_) return false;
   return true;
 }
@@ -1589,7 +2031,7 @@ function prCycleArmHeartbeatAfterIdle_(runId, tag) {
 
 /**
  * 心拍 enumOnly 完了後: 規模帯だけ残し、Keepa中／列挙中を外す（大特大が小中より先に続き洗いされないため）。
- * キューASINは残す（小中尽きたあとの洗い用）。
+ * 大・特大の未済キューは上限社数だけ残す（PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX）。
  */
 function prFinalizeEnumOnlySize_(parent) {
   parent = String(parent || '').trim();
@@ -1613,6 +2055,11 @@ function prFinalizeEnumOnlySize_(parent) {
     queueN,
     band
   );
+  if (band === PR_BAND_L_ || band === PR_BAND_XL_) {
+    try {
+      prWashQueueTrimXlPendingOverCap_({ runId: 'enum_finalize', quiet: true, parent: parent });
+    } catch (eXlFin) {}
+  }
   return { ok: true, queueN: queueN, band: band };
 }
 
@@ -1752,6 +2199,29 @@ function prCycleShopAfterSmParent_() {
 
 function prCycleClearShopAfterSm_() {
   PropertiesService.getScriptProperties().deleteProperty(PR_CYCLE_SHOP_AFTER_SM_PROP_);
+}
+
+/** Property PR_CYCLE_SHOP_AFTER_SM_ONCE。未設定=ON。false で尽きるまで居座る旧動作。 */
+function prCycleShopAfterSmOnceEnabled_() {
+  return prCkEnabled_(PR_CYCLE_SHOP_AFTER_SM_ONCE_PROP_);
+}
+
+/**
+ * 完走後の店レーンを1つ返す直前に呼ぶ。印を消して次の心拍を洗い／列挙に戻す。
+ * 消さないと店の未調査が残る間ずっと同じ分岐に落ち、Keepa レーンが止まる。
+ * @param {string} action 返す予定のアクション（ログ用）
+ * @param {string} detail 返す予定の detail（ログ用）
+ * @return {string} detail に足す印
+ */
+function prCycleShopAfterSmOnceTag_(action, detail) {
+  if (!prCycleShopAfterSmOnceEnabled_()) return '';
+  prCycleClearShopAfterSm_();
+  Logger.log(
+    '[仕入れ検討①] shop_after_sm_once action=%s detail=%s cleared=Y',
+    action,
+    String(detail || '').slice(0, 120)
+  );
+  return ' once=Y';
 }
 
 function prCycleWeekKeyTokyo_() {
@@ -2142,9 +2612,9 @@ function prWashContinueDeferInfo_(parent, optCounts) {
       band: band,
     };
   }
-  // §4.4: 小中=0・店ラウンド未尽かつ店レーン材料ありなら大続きを選定しない
+  // §4.4: 小中が閾値未満・店ラウンド未尽かつ店レーン材料ありなら大続きを選定しない
   // （材料なしは心拍と同様に大へ進んでよい。pick→defer 禁止）
-  if (counts.smN === 0 && prAlightShouldShopBeforeLarge_()) {
+  if (prSmNeedShopRestock_(counts.smN) && prAlightShouldShopBeforeLarge_()) {
     var shopAct = null;
     try {
       shopAct = prCycleShopBeforeLargeAction_({});
@@ -2163,6 +2633,7 @@ function prWashContinueDeferInfo_(parent, optCounts) {
           prAlightDailyDoneCount_() +
           '/' +
           prAlightDailyMax_() +
+          (prAlightShopRoundsUntilCapEnabled_() ? ' shop_rounds_until_cap' : '') +
           ' band=' +
           band,
         smN: counts.smN,
@@ -2628,6 +3099,10 @@ function prCycleRunEnumBatch_(runId, firstParent) {
   var doneN = 0;
   var skipN = 0;
   var stopBy = 'list_end';
+  var stopOnQueue = prCycleEnumBatchStopQueueEnabled_();
+  // 洗える社を何社ためてから譲るか。旧動作（stopOnQueue=false）は必ず1社で譲る
+  var stockWant = stopOnQueue ? prCycleEnumStockN_() : 1;
+  var stockN = 0;
   for (i = 0; i < order.length; i++) {
     if (i > 0 && !prCycleEnumBatchHasBudget_()) {
       stopBy = 'budget';
@@ -2658,10 +3133,41 @@ function prCycleRunEnumBatch_(runId, firstParent) {
         band,
         fin.queueN
       );
-      // 小・中が出たら列挙をやめて洗いへ譲る（小中優先を崩さない）
+      // 小・中が出たら列挙をやめて洗いへ譲る（小中優先を崩さない）。
+      // ただし中身ゼロの社で止まると洗う材料が無いまま譲り、空振り選定に往復15分を捨てる
       if (band === PR_BAND_S_ || band === PR_BAND_M_) {
-        stopBy = 'sm_found=' + parent;
-        break;
+        var qN = Number(fin.queueN) || 0;
+        if (!stopOnQueue || qN > 0) {
+          stockN++;
+          // 1社で譲ると洗い終わるたびに列挙からやり直しになり、社の切替が実測22.4分。
+          // stockWant 社ためてから譲れば、続く切替は心拍を飛ばせる（2026-09-11）
+          if (stockN >= stockWant) {
+            stopBy =
+              (stopOnQueue ? 'queue_found=' : 'sm_found=') +
+              parent +
+              ' queue=' +
+              qN +
+              ' stock=' +
+              stockN +
+              '/' +
+              stockWant;
+            break;
+          }
+          Logger.log(
+            '[仕入れ検討①] enum_batch_stock parent=%s band=%s queue=%s stock=%s/%s continue',
+            parent,
+            band,
+            qN,
+            stockN,
+            stockWant
+          );
+        } else {
+          Logger.log(
+            '[仕入れ検討①] enum_batch_empty_sm parent=%s band=%s queue=0 continue',
+            parent,
+            band
+          );
+        }
       }
     } catch (eB) {
       var msgB = prRedactKey_(String((eB && eB.message) || eB));
@@ -2716,6 +3222,21 @@ function prCycleEnumBatchN_() {
     return PR_CYCLE_ENUM_BATCH_N_DEFAULT_;
   }
   return Math.min(Math.floor(n), PR_CYCLE_ENUM_BATCH_N_MAX_);
+}
+
+/** 洗える社を何社ためてから洗いへ譲るか（Property。1=旧動作の1社で譲る）。 */
+function prCycleEnumStockN_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_CYCLE_ENUM_STOCK_N_PROP_);
+  var n = Number(raw);
+  if (raw == null || String(raw).trim() === '' || isNaN(n) || n < 1) {
+    return PR_CYCLE_ENUM_STOCK_N_DEFAULT_;
+  }
+  return Math.min(Math.floor(n), prCycleEnumBatchN_());
+}
+
+/** Property PR_CYCLE_ENUM_BATCH_STOP_QUEUE。未設定=ON。false で旧: 規模帯だけで打ち切る。 */
+function prCycleEnumBatchStopQueueEnabled_() {
+  return prCkEnabled_(PR_CYCLE_ENUM_BATCH_STOP_QUEUE_PROP_);
 }
 
 /** まとめ列挙を続けてよいか（予算残りに予約・ログぶんを残す）。 */
@@ -2905,20 +3426,189 @@ function prCyclePipeListRemove_(prop, parent) {
   else props.deleteProperty(prop);
 }
 
-/** 当該メーカーの①候補・門通過件数（D1 と同じ読取）。 */
+/** Property PR_CAND_PASS_BY_QUEUE。未設定=ON。false でメーカー列一致のみの旧動作。 */
+function prCandPassByQueueEnabled_() {
+  return prCkEnabled_(PR_CAND_PASS_BY_QUEUE_PROP_);
+}
+
+function prCandPassSnapClear_() {
+  PR_CAND_PASS_SNAP_ = null;
+  PR_CAND_ROW_SNAP_ = null;
+}
+
+/**
+ * ①候補のメーカー別総行数（通過・落ち両方）。終わり判定用。実行内1回。
+ * @return {Object<string, {n:number, statsEmpty:number}>}
+ */
+function prCandRowSnap_() {
+  if (PR_CAND_ROW_SNAP_) return PR_CAND_ROW_SNAP_;
+  var byMaker = {};
+  var sh = prSpreadsheet_().getSheetByName(PR_CAND_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    PR_CAND_ROW_SNAP_ = byMaker;
+    return byMaker;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var mem = prCandMemGet_(sh, headers, lastCol);
+  var iM = mem.idx['メーカー'];
+  var iW = mem.idx['門理由'];
+  if (iM === undefined) {
+    PR_CAND_ROW_SNAP_ = byMaker;
+    return byMaker;
+  }
+  var vals = mem.vals;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var mk = String(vals[r][iM] || '').trim();
+    if (!mk) continue;
+    if (!byMaker[mk]) byMaker[mk] = { n: 0, statsEmpty: 0 };
+    byMaker[mk].n++;
+    var why = iW === undefined ? '' : String(vals[r][iW] || '');
+    if (why.indexOf('stats空') === 0) byMaker[mk].statsEmpty++;
+  }
+  PR_CAND_ROW_SNAP_ = byMaker;
+  return byMaker;
+}
+
+function prCandRowCountForMaker_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return 0;
+  var row = prCandRowSnap_()[parent];
+  return row ? Number(row.n) || 0 : 0;
+}
+
+function prCandStatsEmptyCountForMaker_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return 0;
+  var row = prCandRowSnap_()[parent];
+  return row ? Number(row.statsEmpty) || 0 : 0;
+}
+
+/** ①候補の門通過行を実行内1回だけ読み、ASIN別・メーカー別に持つ。 */
+function prCandPassSnapshot_() {
+  if (PR_CAND_PASS_SNAP_) return PR_CAND_PASS_SNAP_;
+  var snap = { byAsin: {}, byMaker: {} };
+  var sh = prSpreadsheet_().getSheetByName(PR_CAND_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    PR_CAND_PASS_SNAP_ = snap;
+    return snap;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var mem = prCandMemGet_(sh, headers, lastCol);
+  var iA = mem.idx['ASIN'];
+  var iG = mem.idx['門結果'];
+  var iM = mem.idx['メーカー'];
+  if (iA === undefined || iG === undefined) {
+    PR_CAND_PASS_SNAP_ = snap;
+    return snap;
+  }
+  var vals = mem.vals;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    if (String(vals[r][iG] || '') !== '通過') continue;
+    var a = String(vals[r][iA] || '').trim().toUpperCase();
+    if (!a || snap.byAsin[a] !== undefined) continue;
+    var mk = iM === undefined ? '' : String(vals[r][iM] || '').trim();
+    snap.byAsin[a] = mk;
+    if (mk) {
+      if (!snap.byMaker[mk]) snap.byMaker[mk] = {};
+      snap.byMaker[mk][a] = true;
+    }
+  }
+  PR_CAND_PASS_SNAP_ = snap;
+  return snap;
+}
+
+/**
+ * 当該メーカーの①候補・門通過件数（D1 と同じ読取）。
+ * メーカー列が他社に奪われていても、自社の洗いキューにある ASIN なら自社の合格として数える。
+ */
 function prCandGatePassCountForMaker_(parent) {
   parent = String(parent || '').trim();
   if (!parent) return 0;
-  var makerSet = {};
-  makerSet[parent] = true;
-  var rows = prLoadCandPassByAsin_({ makerSet: makerSet });
-  return Object.keys(rows || {}).length;
+  if (!prCandPassByQueueEnabled_()) {
+    var makerSet = {};
+    makerSet[parent] = true;
+    var rows = prLoadCandPassByAsin_({ makerSet: makerSet });
+    return Object.keys(rows || {}).length;
+  }
+  var snap = prCandPassSnapshot_();
+  var own = snap.byMaker[parent] || {};
+  var ownN = Object.keys(own).length;
+  // 呼び出し側はどれも「>0 か」しか見ない。1件でも自社名義があれば奪われ分は数えず、
+  // 洗いキューの走査（サマリ全社ぶん回る）を省く。
+  if (ownN > 0) return ownN;
+  var stolen = 0;
+  var owner = '';
+  var q = prWashQueueAsinSet_(parent);
+  var a;
+  for (a in q) {
+    if (!Object.prototype.hasOwnProperty.call(q, a)) continue;
+    if (snap.byAsin[a] === undefined) continue;
+    stolen++;
+    if (!owner) owner = String(snap.byAsin[a] || '');
+  }
+  if (stolen > 0) {
+    Logger.log(
+      '[仕入れ検討①] cand_pass_by_queue parent=%s own=0 stolen=%s owner=%s',
+      parent,
+      stolen,
+      owner.slice(0, 30)
+    );
+  }
+  return stolen;
 }
 
-/** 完了だが①候補通過ゼロ → 再洗いへ（偽完了）。自動は1回まで。 */
-function prCycleClearFalseComplete_(parent) {
+/** Property PR_FALSE_COMPLETE_PENDING_ONLY。未設定=ON。false で旧動作（queue>0でも Keepa へ戻す）。 */
+function prFalseCompletePendingOnlyEnabled_() {
+  return prCkEnabled_(PR_FALSE_COMPLETE_PENDING_ONLY_PROP_);
+}
+
+/** Property PR_WASH_PHANTOM_FIX。未設定=ON。false で幽霊の自動解消をしない。 */
+function prWashPhantomFixEnabled_() {
+  return prCkEnabled_(PR_WASH_PHANTOM_FIX_PROP_);
+}
+
+/** 同じ相手で「Keepa中なのに未処理0」が続いた回数を1つ進めて返す。 */
+function prWashPhantomStrike_(parent) {
+  parent = String(parent || '').trim();
+  var props = PropertiesService.getScriptProperties();
+  var cur = String(props.getProperty(PR_WASH_PHANTOM_PROP_) || '');
+  var at = cur.lastIndexOf('|');
+  var who = at >= 0 ? cur.slice(0, at) : '';
+  var n = at >= 0 ? Number(cur.slice(at + 1)) : 0;
+  if (who !== parent || !(n > 0)) n = 0;
+  n += 1;
+  props.setProperty(PR_WASH_PHANTOM_PROP_, parent + '|' + n);
+  return n;
+}
+
+function prWashPhantomClear_() {
+  PropertiesService.getScriptProperties().deleteProperty(PR_WASH_PHANTOM_PROP_);
+}
+
+/** 相手が変わった／正常に洗えたときだけ消す（別の相手の連番を潰さない）。 */
+function prWashPhantomClearIf_(parent) {
+  parent = String(parent || '').trim();
+  var cur = String(
+    PropertiesService.getScriptProperties().getProperty(PR_WASH_PHANTOM_PROP_) || ''
+  );
+  if (!cur) return;
+  var at = cur.lastIndexOf('|');
+  if (at >= 0 && cur.slice(0, at) !== parent) return;
+  prWashPhantomClear_();
+}
+
+/** 完了だが①候補通過ゼロ → 再洗いへ（偽完了）。自動は1回まで。3区分 ON では自動 no-op。 */
+function prCycleClearFalseComplete_(parent, opt) {
+  opt = opt || {};
   parent = String(parent || '').trim();
   if (!parent) return { action: 'skip', parent: '' };
+  if (prWashStSplitEnabled_() && !opt.force) {
+    return { action: 'skip_done_no_pass', parent: parent };
+  }
   prCyclePipeListRemove_(PR_CYCLE_C4_NEEDS_D1_PROP_, parent);
   var queueN = Object.keys(prWashQueueAsinSet_(parent)).length;
   var pending = prWashQueuePendingCount_(parent);
@@ -2951,10 +3641,39 @@ function prCycleClearFalseComplete_(parent) {
       ' queue=' +
       queueN +
       ' cand=0 after_rewash';
+    if (prWashStSplitEnabled_()) {
+      var endFc = prClassifyWashEnd_(parent, { pending: 0, queueN: queueN });
+      if (endFc) {
+        prSetMakerWashStatus_(parent, endFc.status, endFc.progress);
+        return { action: endFc.status === PR_WASH_ST_FIX_ ? 'fix' : 'done_no_pass', parent: parent };
+      }
+    }
     prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, holdProg);
     return { action: 'empty_research', parent: parent };
   }
-  if (queueN > 0 || pending > 0) {
+  if (prFalseCompletePendingOnlyEnabled_()) {
+    // 未処理があるときだけ Keepa へ戻す。旧条件は queueN（Keepa済も含む全件）を見ていたため、
+    // 未処理0の社が「洗えない続き相手」として Keepa中 に居座った（2026-09-09 の空転）。
+    if (pending > 0) {
+      prSetMakerWashStatus_(parent, PR_WASH_ST_KEEPA_, 'false_complete_rewash pending=' + pending);
+      return { action: 'keepa', parent: parent };
+    }
+    if (queueN > 0) {
+      if (prWashStSplitEnabled_()) {
+        var endAll = prClassifyWashEnd_(parent, { pending: 0, queueN: queueN });
+        if (endAll) {
+          prSetMakerWashStatus_(parent, endAll.status, endAll.progress);
+          return { action: endAll.status === PR_WASH_ST_FIX_ ? 'fix' : 'done_no_pass', parent: parent };
+        }
+      }
+      prSetMakerWashStatus_(
+        parent,
+        PR_WASH_ST_HOLD_,
+        'empty_research queue=' + queueN + ' all_done cand=0'
+      );
+      return { action: 'empty_research', parent: parent };
+    }
+  } else if (queueN > 0 || pending > 0) {
     prSetMakerWashStatus_(parent, PR_WASH_ST_KEEPA_, 'false_complete_rewash queue=' + queueN);
     return { action: 'keepa', parent: parent };
   }
@@ -2971,6 +3690,10 @@ function prCycleRewashFalseCompletes_(opt) {
   opt = opt || {};
   var ckOnly = !!opt.ckOnly;
   var quiet = !!opt.quiet;
+  var force = !!opt.force;
+  if (prWashStSplitEnabled_() && !force) {
+    return { n: 0, detail: 'split_skip', parents: [] };
+  }
   var runId =
     opt.runId || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
   var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
@@ -2993,7 +3716,7 @@ function prCycleRewashFalseCompletes_(opt) {
     var parent = String(vals[r][idxM] || '').trim();
     if (!parent) continue;
     if (prCandGatePassCountForMaker_(parent) > 0) continue;
-    var res = prCycleClearFalseComplete_(parent);
+    var res = prCycleClearFalseComplete_(parent, { force: force });
     if (res && res.parent) parents.push(parent + ':' + (res.action || ''));
   }
   var detail =
@@ -3021,7 +3744,7 @@ function prMenuFalseCompleteRewash() {
   );
   if (ans === ui.Button.CANCEL) return;
   var ckOnly = ans === ui.Button.NO;
-  prCycleRewashFalseCompletes_({ ckOnly: ckOnly, quiet: false });
+  prCycleRewashFalseCompletes_({ ckOnly: ckOnly, quiet: false, force: true });
 }
 
 /** 洗い途中の D1 転記（§6.4bis）。未設定=ON。 */
@@ -3117,7 +3840,7 @@ function prCycleListNeedsD1_() {
   var i;
   for (i = 0; i < needs.length; i++) {
     if (prCandGatePassCountForMaker_(needs[i]) <= 0) {
-      prCycleClearFalseComplete_(needs[i]);
+      if (!prWashStSplitEnabled_()) prCycleClearFalseComplete_(needs[i]);
     } else {
       merged[needs[i]] = true;
     }
@@ -3137,7 +3860,7 @@ function prCycleListNeedsD1_() {
           var p = String(vals[i][idxM] || '').trim();
           if (!p) continue;
           if (prCandGatePassCountForMaker_(p) <= 0) {
-            prCycleClearFalseComplete_(p);
+            if (!prWashStSplitEnabled_()) prCycleClearFalseComplete_(p);
             continue;
           }
           merged[p] = true;
@@ -3155,6 +3878,11 @@ function prCycleListNeedsD1_() {
     if (Object.prototype.hasOwnProperty.call(merged, k) && d1done.indexOf(k) < 0) out.push(k);
   }
   return out;
+}
+
+/** Property PR_CYCLE_TITLE0_POOL_SKIP。未設定=ON。false で旧: 3回連続まで選定に残す。 */
+function prCycleTitle0PoolSkipEnabled_() {
+  return prCkEnabled_(PR_CYCLE_TITLE0_POOL_SKIP_PROP_);
 }
 
 function prTitleZeroMap_() {
@@ -3212,6 +3940,7 @@ function prWashTitleZeroBlocked_(parent, st, prog) {
   st = st != null ? String(st).trim() : '';
   prog = prog != null ? String(prog) : '';
   if (st === PR_WASH_ST_HOLD_ && prog.indexOf('title0_skip') >= 0) return true;
+  if (st === PR_WASH_ST_OUT_ && prog.indexOf('title0_skip') >= 0) return true;
   return false;
 }
 
@@ -3242,14 +3971,14 @@ function prHandleWashTitleZero_(opt) {
   var quiet = !!opt.quiet;
   var n = prTitleZeroBump_(parent);
   if (prTitleZeroSkipSetHas_(parent)) {
-    prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, 'title0_skip permanent');
+    prSetMakerWashStatus_(parent, prWashOutStatus_(), 'title0_skip permanent');
     return {
       skipped: true,
       count: n,
       detail: 'title0_skip permanent parent=' + parent,
       wash_armed: false,
       heartbeat_armed: false,
-      status: PR_WASH_ST_HOLD_,
+      status: prWashOutStatus_(),
     };
   }
   if (n < PR_WASH_TITLE0_SKIP_AFTER_) {
@@ -3271,7 +4000,7 @@ function prHandleWashTitleZero_(opt) {
   var mapTz = prTitleZeroMap_();
   mapTz[parent] = PR_WASH_TITLE0_SKIP_AFTER_;
   prTitleZeroSave_(mapTz);
-  prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, 'title0_skip n=' + n);
+  prSetMakerWashStatus_(parent, prWashOutStatus_(), 'title0_skip n=' + n);
   prClearWashFullTriggers_({ reason: 'title0_skip:' + parent, runId: runId, log: true });
   PropertiesService.getScriptProperties().setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'false');
   var detail = 'title0_skip parent=' + parent + ' n=' + n;
@@ -3383,6 +4112,18 @@ function prCycleAliveReason_() {
       ),
     };
   }
+  // washN>0 なのに期待時刻が無く、切片も長い＝ゾンビ予約を生存扱いにしない（FLOW §5.6）
+  if (washN > 0 && prWashAutoRecoverEnabled_() && !(expectMs > 0)) {
+    var stallZ = prEffMinSinceLastSlice_();
+    if (stallZ != null && stallZ >= PR_EFF_STALL_FAIL_MIN_) {
+      return {
+        alive: false,
+        reason: 'wash_trigger_stall',
+        overdueMs: stallZ * 60000,
+        staleLimitMin: PR_EFF_STALL_FAIL_MIN_,
+      };
+    }
+  }
   if (washN > 0) return { alive: true, reason: 'wash_trigger' };
   if (c4N > 0) return { alive: true, reason: 'c4_trigger' };
   if (owner && age > 0 && age < PR_CYCLE_LIVENESS_SILENCE_MS_) {
@@ -3468,6 +4209,15 @@ function prRunCycleLivenessFromTrigger() {
   var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
   var before = prCycleClockSnapshot_();
   var r = prCycleEnsureLiveness_(runId, 'clock15');
+  var stallRec = { acted: false, reason: '' };
+  try {
+    stallRec = prWashAutoRecoverMaybeStall_(runId, 'clock15');
+  } catch (eStall) {
+    Logger.log(
+      '[仕入れ検討①] WARN stall_watchdog %s',
+      String((eStall && eStall.message) || eStall).slice(0, 120)
+    );
+  }
   prAppendLog_([
     runId,
     'heartbeat liveness',
@@ -3481,7 +4231,12 @@ function prRunCycleLivenessFromTrigger() {
       ' rearmed=' +
       (r.rearmed ? '1' : '0') +
       ' before=' +
-      before,
+      before +
+      (stallRec && stallRec.acted
+        ? ' stall_recover=1 parked=' + (stallRec.parked || 0)
+        : stallRec && stallRec.reason
+          ? ' stall=' + stallRec.reason
+          : ''),
   ]);
 }
 
@@ -4022,6 +4777,7 @@ function prPickCycleMakerSelectRows_(vals, hdr, cap) {
   var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
   var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
   var idxStC3 = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxRootC3 = prHeaderIndex_(hdr, PR_MAKER_SUM_AMAZON_ROOT_HEADER_);
   if (idxMaker < 0) return [];
 
   var sellerVals = [];
@@ -4053,6 +4809,7 @@ function prPickCycleMakerSelectRows_(vals, hdr, cap) {
     var never = lastMs == null;
     if (!never && lastMs > cutoffMs) continue;
     if (sellerVals.length && prMakerFoodZeroOnly_(parent, sellerVals, sellerHdr)) continue;
+    if (idxRootC3 >= 0 && prMakerBlockedBySurveyRootCell_(vals[r][idxRootC3])) continue;
     var prog = idxProg >= 0 ? String(vals[r][idxProg] || '') : '';
     var stC3 = idxStC3 >= 0 ? String(vals[r][idxStC3] || '').trim() : '';
     if (prWashTitleZeroBlocked_(parent, stC3, prog)) continue;
@@ -4144,7 +4901,22 @@ function prCycleMakerBandPools_() {
   var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
   var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
   var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxRootBand = prHeaderIndex_(hdr, PR_MAKER_SUM_AMAZON_ROOT_HEADER_);
   if (idxMaker < 0) return empty;
+  var codeRows = [];
+  var cr;
+  for (cr = vals.length - 1; cr >= 0; cr--) {
+    if (prMakerNameIsCode_(vals[cr][idxMaker])) codeRows.push(cr + 2);
+  }
+  if (codeRows.length) {
+    var cd;
+    for (cd = 0; cd < codeRows.length; cd++) {
+      sh.deleteRow(codeRows[cd]);
+      Logger.log('[仕入れ検討①] メーカーサマリからJAN名を削除 row=%s', codeRows[cd]);
+    }
+    if (sh.getLastRow() < 2) return empty;
+    vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  }
   var sellerVals = [];
   var sellerHdr = [];
   try {
@@ -4159,6 +4931,11 @@ function prCycleMakerBandPools_() {
   var byBand = { 小: [], 中: [], 大: [], 特大: [] };
   var unk = [];
   var seen = {};
+  // 中身ゼロの社は推定件数が空のまま unk に居座り、defer_xl_unk_remain で特大の洗いを止める
+  var tz0Skip = prCycleTitle0PoolSkipEnabled_();
+  var tz0Map = tz0Skip ? prTitleZeroMap_() : {};
+  var tz0N = 0;
+  var tz0Names = [];
   var r;
   for (r = 0; r < vals.length; r++) {
     var parent = String(vals[r][idxMaker] || '').trim();
@@ -4172,9 +4949,15 @@ function prCycleMakerBandPools_() {
     var never = lastMs == null;
     if (!never && lastMs > cutoffMs) continue;
     if (sellerVals.length && prMakerFoodZeroOnly_(parent, sellerVals, sellerHdr)) continue;
+    if (idxRootBand >= 0 && prMakerBlockedBySurveyRootCell_(vals[r][idxRootBand])) continue;
     var prog = idxProg >= 0 ? String(vals[r][idxProg] || '') : '';
     var stRow = idxSt >= 0 ? String(vals[r][idxSt] || '').trim() : '';
     if (prWashTitleZeroBlocked_(parent, stRow, prog)) continue;
+    if (tz0Skip && (Number(tz0Map[parent]) || 0) > 0) {
+      tz0N++;
+      if (tz0Names.length < 8) tz0Names.push(parent + '@' + tz0Map[parent]);
+      continue;
+    }
     if (prWashHoldBlockedForSelect_(stRow, prog)) continue;
     var estCell = idxEst >= 0 ? vals[r][idxEst] : '';
     var est = prMakerCatalogEstimate_(parent, prog, estCell);
@@ -4221,6 +5004,9 @@ function prCycleMakerBandPools_() {
     byBand[b].sort(sortBand);
   });
   unk.sort(sortBand);
+  if (tz0N) {
+    Logger.log('[仕入れ検討①] pool_title0_skip n=%s %s', tz0N, tz0Names.join('|'));
+  }
   return { byBand: byBand, unk: unk };
 }
 
@@ -4241,12 +5027,30 @@ function prCycleHeartbeatEnabled_() {
 }
 
 function prCycleAutoCkDailyCap_() {
-  var n = Number(
-    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_AUTO_CK_CAP_PROP_) ||
-      PR_CYCLE_AUTO_CK_CAP_DEFAULT_
-  );
-  if (!(n > 0)) n = PR_CYCLE_AUTO_CK_CAP_DEFAULT_;
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_CYCLE_AUTO_CK_CAP_PROP_);
+  if (raw == null || raw === '') return PR_CYCLE_AUTO_CK_CAP_DEFAULT_;
+  var n = Number(raw);
+  if (!isFinite(n) || n < 0) return 0;
   return Math.floor(n);
+}
+
+function prCycleAutoCkPerWake_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_AUTO_CK_PER_WAKE_PROP_) ||
+      PR_CYCLE_AUTO_CK_PER_WAKE_DEFAULT_
+  );
+  if (!(n > 0)) n = PR_CYCLE_AUTO_CK_PER_WAKE_DEFAULT_;
+  return Math.floor(n);
+}
+
+/** 自動レ点の残り。既定は1日上限なし・1回1店。日次cap>0ならその残と1回分の小さい方。 */
+function prCycleAutoCkLeft_() {
+  var per = prCycleAutoCkPerWake_();
+  var cap = prCycleAutoCkDailyCap_();
+  if (!(cap > 0)) return per;
+  var soft = Math.max(0, cap - prCycleAutoCkAlreadyToday_());
+  if (soft <= 0) return 0;
+  return Math.min(per, soft);
 }
 
 function prCycleAutoCkAlreadyToday_() {
@@ -4308,7 +5112,7 @@ function prSellerAutoCkCandidateCount_() {
 }
 
 /**
- * 店フル／浅いholdまで終わった店か（再レ点・再A-lightの対象外）。
+ * 店フル／特大holdまで終わった店か（再レ点・再A-lightの対象外）。
  * @param {Array} row
  * @param {number} idxWalk 巡回日
  * @param {number} idxSrc 採取元
@@ -4424,6 +5228,7 @@ function prPickAutoCkSellerIds_(capLeft) {
   var idxId = prHeaderIndex_(hdr, 'sellerId');
   var idxName = prHeaderIndex_(hdr, '店名');
   var idxHit = prHeaderIndex_(hdr, PR_SELLER_SMALL_HIT_COL_);
+  var idxBand = prHeaderIndex_(hdr, PR_SELLER_BAND_COL_);
   var idxHold = prHeaderIndex_(hdr, 'hold');
   if (idxHold < 0) idxHold = prHeaderIndex_(hdr, '保留');
   var idxMemo = prHeaderIndex_(hdr, 'メモ');
@@ -4447,9 +5252,17 @@ function prPickAutoCkSellerIds_(capLeft) {
       if (foodRaw !== '' && ratio <= 0) continue;
     }
     var hit = idxHit >= 0 ? Number(vals[r][idxHit]) || 0 : 0;
-    pool.push({ sid: sid, hit: hit, rowIdx: r, sheetRow: r + 2 });
+    var band = idxBand >= 0 ? String(vals[r][idxBand] || '').trim() : '';
+    pool.push({
+      sid: sid,
+      hit: hit,
+      rowIdx: r,
+      sheetRow: r + 2,
+      bandRank: prAutoCkPickBandRank_(band),
+    });
   }
   pool.sort(function (a, b) {
+    if (a.bandRank !== b.bandRank) return a.bandRank - b.bandRank;
     if (b.hit !== a.hit) return b.hit - a.hit;
     return a.rowIdx - b.rowIdx;
   });
@@ -4523,83 +5336,92 @@ function prNextHeartbeatAction_() {
   }
   var pools = prCycleMakerBandPools_();
   var deferNote = cont && cont.deferredDetail ? ' | ' + cont.deferredDetail : '';
-  // Catalog見積未了（規模不明含む）を Keepa より先に列挙し切る
-  var catPend = prCycleFirstCatalogPending_();
-  if (catPend && catPend.parent) {
-    return {
-      action: 'enum_unknown',
-      maker: catPend.parent,
-      detail: 'catalog_first ' + (catPend.detail || '') + deferNote,
-    };
-  }
-  if (pools.unk.length) {
-    return {
-      action: 'enum_unknown',
-      maker: pools.unk[0].parent,
-      detail: 'band_unknown' + deferNote,
-    };
-  }
-  // 店フル途中（トークン／時間続き）はメーカー新規洗いより先
+  var smN = pools.byBand['小'].length + pools.byBand['中'].length;
+  var tokBand = prKeepaTokenBand_();
+  var canWash = prWashHasTokenRoom_();
+  var canShop = prShopHasTokenRoom_();
+  var needRestock = prSmNeedShopRestock_(smN);
+  deferNote += ' tok=' + tokBand;
+  // 店フル途中は列挙より先。予約以下なら洗いへ譲る（洗い用60を食わない）
   if (prAlightHasContinue_()) {
-    return { action: 'alight', detail: 'alight_continue' };
+    if (tokBand === 'none') {
+      deferNote += ' yield_alight_reserve';
+      Logger.log('[仕入れ検討①] yield_alight_reserve left=%s', prKeepaLiveLeftSnap_());
+    } else {
+      return { action: 'alight', detail: 'alight_continue' };
+    }
   }
-  // §6.3bis 案B: Keepa 完走直後は店レーンを1回挟む（大・特大は門通過→セラー優先）
+  // 完走直後の店は、洗える小中が3社未満かつ余力ありのときだけ。3社以上は④。
   var shopParent = prCycleShopAfterSmParent_();
+  if (shopParent && prShopTokenGateEnabled_() && !needRestock) {
+    prCycleClearShopAfterSm_();
+    Logger.log('[仕入れ検討①] skip_shop_sm_full sm=%s tok=%s', smN, tokBand);
+    shopParent = '';
+  } else if (shopParent && prShopTokenGateEnabled_() && !canShop) {
+    prCycleClearShopAfterSm_();
+    Logger.log('[仕入れ検討①] skip_shop_not_ample sm=%s tok=%s', smN, tokBand);
+    shopParent = '';
+  }
+  // §6.3bis 案B: 上記を満たすときだけ店レーンを1回挟む（大・特大は門通過→セラー優先）
   if (shopParent) {
     var uncheckedShop = prSellerUncheckedCount_();
-    var autoLeftShop = Math.max(0, prCycleAutoCkDailyCap_() - prCycleAutoCkAlreadyToday_());
+    var autoLeftShop = prCycleAutoCkLeft_();
     var autoCandShopRaw = autoLeftShop > 0 ? prSellerAutoCkCandidateCount_() : 0;
     var autoCandShop = prEffectiveAutoCkCandidates_(autoCandShopRaw);
     var untaggedShop = prCandUntaggedGateCount_();
     var shopBand = prMakerBandFromSum_(shopParent);
     var shopLarge = shopBand === PR_BAND_L_ || shopBand === PR_BAND_XL_;
+    // 1つ返したら印を消す＝次の心拍は洗い／列挙に戻る（居座ると Keepa レーンが止まる）
+    var shopOnce = function (action, detail) {
+      return { action: action, detail: detail + prCycleShopAfterSmOnceTag_(action, detail) };
+    };
+    var shopNow = !prShopTokenGateEnabled_() || prShopHasTokenRoom_();
     if (shopLarge) {
       // 大・特大完走後: 門通過→セラー追加 → レ点 → A-light
       if (untaggedShop > 0) {
-        return {
-          action: 'c0',
-          detail: 'shop_after_large parent=' + shopParent + ' untagged=' + untaggedShop,
-        };
+        return shopOnce(
+          'c0',
+          'shop_after_large parent=' + shopParent + ' untagged=' + untaggedShop
+        );
       }
-      if (autoCandShop > 0) {
-        return {
-          action: 'auto_ck',
-          detail: 'shop_after_large parent=' + shopParent + ' auto_ck=' + autoCandShop,
-        };
+      if (shopNow && autoCandShop > 0) {
+        return shopOnce(
+          'auto_ck',
+          'shop_after_large parent=' + shopParent + ' auto_ck=' + autoCandShop
+        );
       }
-      if (uncheckedShop > 0) {
-        return {
-          action: 'alight',
-          detail: 'shop_after_large parent=' + shopParent + ' shops=' + uncheckedShop,
-        };
+      if (shopNow && uncheckedShop > 0) {
+        return shopOnce(
+          'alight',
+          'shop_after_large parent=' + shopParent + ' shops=' + uncheckedShop
+        );
       }
     } else {
       // 小中完走後: 自動レ点 → A-light → C0
-      if (autoCandShop > 0) {
-        return {
-          action: 'auto_ck',
-          detail: 'shop_after_sm parent=' + shopParent + ' auto_ck=' + autoCandShop,
-        };
+      if (shopNow && autoCandShop > 0) {
+        return shopOnce(
+          'auto_ck',
+          'shop_after_sm parent=' + shopParent + ' auto_ck=' + autoCandShop
+        );
       }
-      if (uncheckedShop > 0) {
-        return {
-          action: 'alight',
-          detail: 'shop_after_sm parent=' + shopParent + ' shops=' + uncheckedShop,
-        };
+      if (shopNow && uncheckedShop > 0) {
+        return shopOnce(
+          'alight',
+          'shop_after_sm parent=' + shopParent + ' shops=' + uncheckedShop
+        );
       }
-      if (untaggedShop > 0) {
-        return {
-          action: 'c0',
-          detail: 'shop_after_sm parent=' + shopParent + ' untagged=' + untaggedShop,
-        };
+      var smAfter = pools.byBand['小'].length + pools.byBand['中'].length;
+      if (untaggedShop > 0 && smAfter === 0) {
+        return shopOnce(
+          'c0',
+          'shop_after_sm parent=' + shopParent + ' untagged=' + untaggedShop
+        );
       }
     }
-    prCycleClearShopAfterSm_();
+    if (shopNow) prCycleClearShopAfterSm_();
   }
-  var smN = pools.byBand['小'].length + pools.byBand['中'].length;
-  var k = PR_CYCLE_K_SMALL_MED_;
   var unchecked = prSellerUncheckedCount_();
-  var autoLeft = Math.max(0, prCycleAutoCkDailyCap_() - prCycleAutoCkAlreadyToday_());
+  var autoLeft = prCycleAutoCkLeft_();
   var autoCandRaw = autoLeft > 0 ? prSellerAutoCkCandidateCount_() : 0;
   var autoCand = prEffectiveAutoCkCandidates_(autoCandRaw);
   var untagged = prCandUntaggedGateCount_();
@@ -4612,51 +5434,154 @@ function prNextHeartbeatAction_() {
     } catch (eJp) {
       jittaPend = 0;
     }
+    // 安全弁: 1日の回数を使い切ったら 0 扱い。`実態再採取しない` の書き込みが失敗しても
+    // 心拍が jitta に居座らない（居座ると smN=0 のとき洗いが丸ごと止まる）
+    if (jittaPend > 0 && !prJittaHbDailyHasRoom_()) {
+      Logger.log(
+        '[仕入れ検討①] jitta_hb_daily_cap pend=%s count=%s/%s',
+        jittaPend,
+        prJittaHbDailyCount_(),
+        prJittaHbDailyMax_()
+      );
+      jittaPend = 0;
+    }
   }
 
-  // 小・中を先に（大を変数に載せない＝pick→defer 禁止）
-  if (pools.byBand['小'].length) {
+  // 列挙は余力なしのときだけ（Keepaを使わない時間で次の小中を作る）。洗えるあいだは④。
+  // ゲートオフは従来どおり、1回やったら次は洗いに譲る。
+  var skipEnum = prCycleSkipEnumOnce_();
+  var runEnum = !skipEnum;
+  if (prShopTokenGateEnabled_()) {
+    if (canWash) {
+      runEnum = false;
+    } else {
+      if (skipEnum) prCycleClearSkipEnumOnce_('token_none_enum');
+      runEnum = true;
+    }
+  }
+  if (runEnum) {
+    var catPend = prCycleFirstCatalogPending_();
+    if (catPend && catPend.parent) {
+      return {
+        action: 'enum_unknown',
+        maker: catPend.parent,
+        detail: 'catalog_first ' + (catPend.detail || '') + deferNote,
+      };
+    }
+    if (pools.unk.length) {
+      return {
+        action: 'enum_unknown',
+        maker: pools.unk[0].parent,
+        detail: 'band_unknown' + deferNote,
+      };
+    }
+  }
+
+  // 洗いスライス後の補充1回（小中が閾値未満かつ余力ありのときだけ）
+  if (prCycleShopAfterWash_() && prShopTokenGateEnabled_() && !needRestock) {
+    prCycleClearShopAfterWash_('sm_full');
+  }
+  if (prCycleShopAfterWash_() && smN > 0 && (!prShopTokenGateEnabled_() || needRestock)) {
+    if (jittaPend > 0) {
+      prCycleClearShopAfterWash_('jitta');
+      return {
+        action: 'jitta_resolve',
+        detail:
+          'restock_after_wash jitta_pending=' +
+          jittaPend +
+          ' sm_pool=' +
+          smN +
+          deferNote,
+      };
+    }
+    if (canShop) {
+      var shopRestock = prCycleShopBeforeLargeAction_({
+        unchecked: unchecked,
+        autoCand: autoCand,
+        untagged: untagged,
+        deferNote: deferNote,
+      });
+      if (shopRestock && shopRestock.action !== 'c0') {
+        prCycleClearShopAfterWash_('shop');
+        shopRestock.detail =
+          String(shopRestock.detail || '') + ' restock_after_wash sm_pool=' + smN;
+        return shopRestock;
+      }
+    }
+    prCycleClearShopAfterWash_('no_shop');
+  }
+
+  if (smN > 0 && !canWash) {
+    return {
+      action: 'idle',
+      detail: 'token_reserve sm_pool=' + smN + deferNote,
+    };
+  }
+
+  // 小中が閾値以上（既定3）ある間は洗いのみ。店に商品 Keepa を使わない。
+  if (!needRestock && canWash) {
+    if (pools.byBand['小'].length) {
+      return {
+        action: 'wash_small',
+        maker: pools.byBand['小'][0].parent,
+        detail: 'sm_pool=' + smN + deferNote,
+      };
+    }
+    if (pools.byBand['中'].length) {
+      return {
+        action: 'wash_med',
+        maker: pools.byBand['中'][0].parent,
+        detail: 'sm_pool=' + smN,
+      };
+    }
+  }
+
+  // 残っている小中は洗う（補充は洗い後の印だけ。店が洗いを奪わない）
+  if (canWash && pools.byBand['小'].length) {
     return {
       action: 'wash_small',
       maker: pools.byBand['小'][0].parent,
-      detail: 'sm_pool=' + smN,
+      detail: 'sm_pool=' + smN + (needRestock ? ' restock_wash' : '') + deferNote,
     };
   }
-  if (pools.byBand['中'].length) {
+  if (canWash && pools.byBand['中'].length) {
     return {
       action: 'wash_med',
       maker: pools.byBand['中'][0].parent,
-      detail: 'sm_pool=' + smN,
+      detail: 'sm_pool=' + smN + (needRestock ? ' restock_wash' : '') + deferNote,
     };
   }
 
-  // 小中=0: 未調査の実態AIを店ラウンドより先（洗えるメーカーを補充）
+  // 小中=0: 実態AI →（余力ありだけ）店。余力中は下の大の④へ。余力なしは店に行かない。
   if (smN === 0 && jittaPend > 0) {
     return {
       action: 'jitta_resolve',
       detail:
         'sm_empty jitta_pending=' +
         jittaPend +
-        ' cap=' +
+        ' sm_pool=0 cap=' +
         prJittaHbCap_() +
-        (autoCandRaw > autoCand ? ' auto_ck_blocked' : '') +
         deferNote,
     };
   }
-
-  // 小中=0: §4.4 店ラウンドを尽くすまで大・特大に入らない
-  if (smN === 0) {
-    var shopBefore = prCycleShopBeforeLargeAction_({
+  if (smN === 0 && (!prShopTokenGateEnabled_() || canShop)) {
+    var shopEmpty = prCycleShopBeforeLargeAction_({
       unchecked: unchecked,
       autoCand: autoCand,
       untagged: untagged,
       deferNote: deferNote,
     });
-    if (shopBefore) return shopBefore;
+    if (shopEmpty) return shopEmpty;
   }
 
-  // 補助: 小中が薄いが >0 のときは上で wash 済み。ここは sm=0 のみ
+  // 小中=0: 店ラウンド尽きた／材料なし → 大・特大（余力なしでは洗わない）
   if (smN === 0 && (pools.byBand['大'].length || pools.byBand['特大'].length)) {
+    if (!canWash) {
+      return {
+        action: 'idle',
+        detail: 'token_reserve xl_hold sm_empty' + deferNote,
+      };
+    }
     var shopWhy = prAlightShouldShopBeforeLarge_()
       ? 'shop_material_empty'
       : 'shop_rounds_exhausted';
@@ -4710,14 +5635,20 @@ function prNextHeartbeatAction_() {
     };
   }
 
-  if (smN < k && autoCand > 0) {
-    return { action: 'auto_ck', detail: 'sm_pool=' + smN + '<' + k + ' auto_ck=' + autoCand };
+  if (smN === 0 && autoCand > 0 && (!prShopTokenGateEnabled_() || canShop)) {
+    return {
+      action: 'auto_ck',
+      detail: 'sm_pool=0 auto_ck=' + autoCand + deferNote,
+    };
   }
-  if (smN < k && unchecked > 0) {
-    return { action: 'alight', detail: 'sm_pool=' + smN + '<' + k + ' shops=' + unchecked };
+  if (smN === 0 && unchecked > 0 && (!prShopTokenGateEnabled_() || canShop)) {
+    return {
+      action: 'alight',
+      detail: 'sm_pool=0 shops=' + unchecked + deferNote,
+    };
   }
-  if (unchecked === 0 && untagged > 0) {
-    return { action: 'c0', detail: 'untagged=' + untagged };
+  if (smN === 0 && untagged > 0) {
+    return { action: 'c0', detail: 'untagged=' + untagged + deferNote };
   }
   if (jittaPend > 0) {
     return {
@@ -4729,7 +5660,7 @@ function prNextHeartbeatAction_() {
 }
 
 /**
- * 小中=0 のとき大の前の店ラウンド1手（CYCLE §4.4）。
+ * 小中が閾値未満のとき大の前の店ラウンド1手（CYCLE §4.4）。
  * 順: 自動レ点 → A-light →（材料切れ時のみ）C0。大を選定してから defer しない。
  * 自動レ点は「店ラウンド尽きた」判定より先に評価する（未レ点を残したまま大へ行かない）。
  * @param {{unchecked?:number, autoCand?:number, untagged?:number, deferNote?:string}=} opt
@@ -4737,9 +5668,56 @@ function prNextHeartbeatAction_() {
  */
 function prCycleShopBeforeLargeAction_(opt) {
   opt = opt || {};
+  // 引数なし呼び（pick のループ・prAlightShouldShopBeforeLarge_）だけキャッシュする。
+  // 心拍は unchecked/autoCand/untagged を実数で渡すので常に最新を使う
+  var cacheable =
+    prShopBeforeLargeCacheEnabled_() &&
+    opt.unchecked == null &&
+    opt.autoCand == null &&
+    opt.untagged == null &&
+    !opt.deferNote;
+  if (cacheable && PR_SHOP_BEFORE_LARGE_CACHE_) {
+    PR_SHOP_BEFORE_LARGE_CACHE_HIT_++;
+    return PR_SHOP_BEFORE_LARGE_CACHE_.v;
+  }
+  var res = prCycleShopBeforeLargeActionRaw_(opt);
+  if (cacheable) {
+    PR_SHOP_BEFORE_LARGE_CACHE_ = { v: res };
+    Logger.log(
+      '[仕入れ検討①] shop_before_large_cache fill action=%s',
+      (res && res.action) || 'null'
+    );
+  }
+  return res;
+}
+
+/** Property PR_SHOP_BEFORE_LARGE_CACHE。未設定=ON。false で毎回読み直す旧動作。 */
+function prShopBeforeLargeCacheEnabled_() {
+  return prCkEnabled_(PR_SHOP_BEFORE_LARGE_CACHE_PROP_);
+}
+
+/**
+ * 店・①候補の行が変わったあとに呼ぶ（件数が古くなるので捨てる）。
+ * @param {string} reason ログ用
+ */
+function prShopBeforeLargeCacheClear_(reason) {
+  if (PR_SHOP_BEFORE_LARGE_CACHE_ || PR_SHOP_BEFORE_LARGE_CACHE_HIT_ > 0) {
+    Logger.log(
+      '[仕入れ検討①] shop_before_large_cache clear reason=%s hit=%s',
+      String(reason || ''),
+      PR_SHOP_BEFORE_LARGE_CACHE_HIT_
+    );
+  }
+  PR_SHOP_BEFORE_LARGE_CACHE_ = null;
+  PR_SHOP_BEFORE_LARGE_CACHE_HIT_ = 0;
+}
+
+/** 本体（キャッシュなし）。呼ぶのは prCycleShopBeforeLargeAction_ だけ。 */
+function prCycleShopBeforeLargeActionRaw_(opt) {
+  opt = opt || {};
   var unchecked =
     opt.unchecked != null ? Number(opt.unchecked) : prSellerUncheckedCount_();
-  var autoLeft = Math.max(0, prCycleAutoCkDailyCap_() - prCycleAutoCkAlreadyToday_());
+  var autoLeft = prCycleAutoCkLeft_();
   var autoCandRaw =
     opt.autoCand != null
       ? Number(opt.autoCand)
@@ -4774,6 +5752,10 @@ function prCycleShopBeforeLargeAction_(opt) {
         rounds +
         ' shopOpen=' +
         (shopOpen ? '1' : '0') +
+        ' tokenRoom=' +
+        (prShopHasTokenRoom_() ? '1' : '0') +
+        ' left=' +
+        prKeepaLiveLeftSnap_() +
         deferNote,
     };
   }
@@ -4790,6 +5772,10 @@ function prCycleShopBeforeLargeAction_(opt) {
         rounds +
         ' shops_ck_on=' +
         unchecked +
+        ' tokenRoom=' +
+        (prShopHasTokenRoom_() ? '1' : '0') +
+        ' left=' +
+        prKeepaLiveLeftSnap_() +
         deferNote,
     };
   }
@@ -4817,7 +5803,39 @@ function prDispatchHeartbeat_(runId) {
     return { action: 'disabled' };
   }
   var hbAct = { action: '' };
+  // pick のループで貯めた店の件数は捨てる（心拍はここから実数で数え直す）
+  prShopBeforeLargeCacheClear_('heartbeat_enter');
   try {
+  try {
+    var mig = prMigrateWashHoldSplit_({ runId: runId });
+    if (mig && mig.detail && mig.detail !== 'already_migrated' && mig.detail !== 'split_off') {
+      prAppendLog_([
+        runId,
+        'wash_st_split',
+        'DONE',
+        new Date(),
+        mig.n,
+        '',
+        '',
+        String(mig.detail || '').slice(0, 200),
+      ]);
+    }
+  } catch (eMig) {
+    prAppendLog_([
+      runId,
+      'wash_st_split',
+      'FAILED',
+      new Date(),
+      '',
+      '',
+      '',
+      String((eMig && eMig.message) || eMig).slice(0, 120),
+    ]);
+  }
+  try {
+    var sumShGray = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+    prEnsureMakerSumBandGrayCf_(sumShGray);
+  } catch (eGrayHb) {}
   var sanDetail = '';
   try {
     var san = prSanitizeDeferredLargeKeepaStuck_();
@@ -4827,6 +5845,32 @@ function prDispatchHeartbeat_(runId) {
   } catch (eSan) {
     sanDetail = 'sanitize_err=' + String((eSan && eSan.message) || eSan).slice(0, 80);
     prAppendLog_([runId, 'heartbeat sanitize', 'FAILED', new Date(), '', '', '', sanDetail]);
+  }
+  try {
+    var xlTrim = prWashQueueTrimXlPendingOverCap_({ runId: runId, quiet: true });
+    if (xlTrim && xlTrim.deleted > 0) {
+      prAppendLog_([
+        runId,
+        '洗いキュー大特大上限',
+        'DONE',
+        new Date(),
+        xlTrim.keepN,
+        xlTrim.deleted,
+        '',
+        String(xlTrim.detail || '').slice(0, 200),
+      ]);
+    }
+  } catch (eXlHb) {
+    prAppendLog_([
+      runId,
+      '洗いキュー大特大上限',
+      'FAILED',
+      new Date(),
+      '',
+      '',
+      '',
+      String((eXlHb && eXlHb.message) || eXlHb).slice(0, 120),
+    ]);
   }
   try {
     var fc = prCycleRewashFalseCompletes_({ ckOnly: false, quiet: true, runId: runId });
@@ -4890,6 +5934,10 @@ function prDispatchHeartbeat_(runId) {
       pool.largeN +
       ' XL=' +
       pool.xlN +
+      ' tok=' +
+      prKeepaTokenBand_() +
+      ' left=' +
+      prKeepaLiveLeftSnap_() +
       ' ' +
       contWhy +
       (sanDetail && sanDetail.indexOf('sanitize_fixed n=0') < 0 && sanDetail.indexOf('n=0') < 0
@@ -4956,6 +6004,21 @@ function prDispatchHeartbeat_(runId) {
   props.setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
 
   if (act.action === 'wash_continue' || act.action.indexOf('wash_') === 0 || act.action === 'enum_unknown') {
+    if (act.action !== 'enum_unknown') {
+      prCycleClearWashBeforeNextShop_(act.action);
+      prCycleClearSkipEnumOnce_(act.action);
+      if (
+        (act.action === 'wash_small' ||
+          act.action === 'wash_med' ||
+          act.action === 'wash_continue') &&
+        pool.smN > 0 &&
+        pool.smN < prSmRestockBelow_()
+      ) {
+        prCycleMarkShopAfterWash_(act.action);
+      }
+    } else {
+      prCycleMarkSkipEnumOnce_('enum_unknown');
+    }
     var parent = act.maker;
     if (!parent) {
       var armNm = prCycleArmHeartbeatAfterIdle_(runId, 'hb_no_maker');
@@ -5108,9 +6171,9 @@ function prDispatchHeartbeat_(runId) {
 
   if (act.action === 'auto_ck') {
     try {
-      prRecomputeSmallMakerHits_();
+      if (!prHitRecountOwnerIsComp_()) prRecomputeSmallMakerHits_();
     } catch (eR) {}
-    var left = Math.max(0, prCycleAutoCkDailyCap_() - prCycleAutoCkAlreadyToday_());
+    var left = prCycleAutoCkLeft_();
     if (prJittaBacklogBlocksAutoCk_()) {
       prAppendLog_([
         runId,
@@ -5172,6 +6235,7 @@ function prDispatchHeartbeat_(runId) {
           'jitta_disabled',
         ]);
       } else {
+        var roundJ = prJittaHbDailyBump_();
         var targetsJ = prCollectJittaResolveTargets_({});
         var batchJ = prResolveJittaBatch_(targetsJ, {
           runId: runId,
@@ -5187,7 +6251,11 @@ function prDispatchHeartbeat_(runId) {
           ' cap=' +
           batchJ.cap +
           ' pending=' +
-          targetsJ.length;
+          targetsJ.length +
+          ' round=' +
+          roundJ +
+          '/' +
+          prJittaHbDailyMax_();
         prAppendLog_([
           runId,
           'heartbeat jitta',
@@ -5213,14 +6281,20 @@ function prDispatchHeartbeat_(runId) {
       ]);
     }
     prScheduleWashFullTrigger_(1, { runId: runId, parent: '', tag: 'hb_after_jitta' });
+    if (prCycleOneShopYieldEnabled_() && pool.smN > 0) {
+      prCycleMarkWashBeforeNextShop_('after_jitta');
+    }
     return act;
   }
 
   if (act.action === 'alight') {
+    if (prCycleOneShopYieldEnabled_() && pool.smN > 0) {
+      prCycleMarkWashBeforeNextShop_('before_alight');
+    }
     try {
       var ar = prRunAlightHit_({ runId: runId });
       try {
-        prRecomputeSmallMakerHits_();
+        if (!prHitRecountOwnerIsComp_()) prRecomputeSmallMakerHits_();
       } catch (eH) {}
       var dAl = String(act.detail || '');
       if (
@@ -5232,6 +6306,8 @@ function prDispatchHeartbeat_(runId) {
         // 店フル途中は印を残す。完走／hold のときだけ消す
         if (!(ar && ar.needContinue)) prCycleClearShopAfterSm_();
       }
+      // 店の行（巡回日・採取元）が変わったので件数を捨てる
+      prShopBeforeLargeCacheClear_('after_alight');
       prAppendLog_([
         runId,
         'heartbeat alight',
@@ -5244,10 +6320,9 @@ function prDispatchHeartbeat_(runId) {
       ]);
       if (ar && ar.needContinue) {
         var waitA = prWashFullTriggerAfterMin_(ar.waitMin, ar.refillIn);
-        // 続き中も洗い inflight は持たない（死亡時の overdue 防止）。busy は維持。
+        // 続き中も洗い inflight は持たない。busy は置かない（次の起床が分岐に入れない）。
         if (prShopLaneClearInflightEnabled_()) {
           prWashInflightClear_('alight_continue:' + runId);
-          prShopHbBusySet_(runId);
         }
         prScheduleWashFullTrigger_(waitA, {
           runId: runId,
@@ -5269,10 +6344,13 @@ function prDispatchHeartbeat_(runId) {
         prRedactKey_(String((eA && eA.message) || eA)).slice(0, 160),
       ]);
     }
-    // 1店完了 → busy 解除＋即次（死亡待ちをしない）
+    // 1店完了 → busy 解除＋即次（死亡待ちをしない）。次は洗い必須。
     if (prShopLaneClearInflightEnabled_()) {
       prWashInflightClear_('after_alight:' + runId);
       prShopHbBusyClear_('after_alight');
+    }
+    if (prCycleOneShopYieldEnabled_()) {
+      prCycleMarkWashBeforeNextShop_('after_alight');
     }
     prScheduleWashFullTrigger_(1, { runId: runId, parent: '', tag: 'hb_after_alight' });
     return act;
@@ -5319,13 +6397,23 @@ function prDispatchHeartbeat_(runId) {
     return act;
   }
 
-  // idle: 種切れでも短時間後に再予約（沈黙防止）
-  prScheduleWashFullTrigger_(prWashFullTriggerAfterMin_(30, ''), {
+  // idle: 種切れでも短時間後に再予約（沈黙防止）。予約切れ待ちは短くする
+  var idleMin = String((act && act.detail) || '').indexOf('token_reserve') >= 0 ? 5 : 30;
+  prScheduleWashFullTrigger_(prWashFullTriggerAfterMin_(idleMin, ''), {
     runId: runId,
     parent: '',
     tag: 'hb_idle',
   });
-  prAppendLog_([runId, 'heartbeat', 'DONE', new Date(), 30, '', '', 'idle rearm']);
+  prAppendLog_([
+    runId,
+    'heartbeat',
+    'DONE',
+    new Date(),
+    idleMin,
+    '',
+    '',
+    'idle rearm ' + ((act && act.detail) || ''),
+  ]);
   return act;
   } catch (eHb) {
     var msgHb = prRedactKey_(String((eHb && eHb.message) || eHb));
@@ -5349,9 +6437,8 @@ function prDispatchHeartbeat_(runId) {
     return hbAct;
   } finally {
     try {
-      // alight スライス続き中は busy 維持。それ以外は yield で立てた busy を解放
-      var keepBusy = !!(hbAct && hbAct.action === 'alight' && prAlightHasContinue_());
-      if (!keepBusy) prShopHbBusyClear_('hb_finally:' + ((hbAct && hbAct.action) || ''));
+      // 実行が終わったら busy を消す。続きでも居座らせない（次の起床が正本の分岐へ）。
+      prShopHbBusyClear_('hb_finally:' + ((hbAct && hbAct.action) || ''));
     } catch (eBusy) {}
     try {
       prCycleEnsureLiveness_(runId, 'hb_finally');
@@ -5508,7 +6595,7 @@ function prEnsureCkBlue_(sh, idxCk, lastCol, endRow) {
 }
 
 /**
- * /query page0。total≥501（特大）は商品Keepaせず hold（呼び出し側が次の店へ）。
+ * /query page0。特大（いま ≥901）は商品Keepaせず hold（規模測定のみ→次の店へ）。
  * @return {{status:string, total:number, asinCount:number, pass:number, drop:number, detail:string}}
  */
 function prRunSellerQueryGate_(sellerId, runId, shopName) {
@@ -5771,7 +6858,7 @@ function prMenuCkSellers(opt) {
       } else if (g.status === 'done') {
         doneN++;
         sh.getRange(t.sheetRow, idxCk + 1).setValue(false);
-        if (idxWalk >= 0) sh.getRange(t.sheetRow, idxWalk + 1).setValue(prYmdTokyo_());
+        prSellerWriteWalkDay_(sh, t.sheetRow, idxWalk, prYmdTokyo_());
         if (idxCnt >= 0) sh.getRange(t.sheetRow, idxCnt + 1).setValue(g.total);
         if (idxSrc >= 0) sh.getRange(t.sheetRow, idxSrc + 1).setValue('query+storefront0');
       } else {
@@ -5907,6 +6994,7 @@ function prMenuADTrialV1b() {
       if (nCap > 0) makerCap = Math.min(5, Math.floor(nCap));
     }
     // 実態付与後に選定: 製造メーカー→入口ブランド。非仕入先・要確認・Genericは除外
+    // 調査カテゴリONと Amazonルート無交差も除外
     var ranked = [];
     for (mi = 0; mi < added.length; mi++) {
       var jitta = prJittaForMaker_(added[mi]);
@@ -5916,6 +7004,14 @@ function prMenuADTrialV1b() {
           runId,
           added[mi],
           jitta
+        );
+        continue;
+      }
+      if (prMakerBlockedBySurveyRootCell_(prMakerSumAmazonRootCell_(added[mi]))) {
+        Logger.log(
+          '[仕入れ検討①] runId=%s A→D skip maker=%s survey_root_out',
+          runId,
+          added[mi]
         );
         continue;
       }
@@ -6086,6 +7182,11 @@ function prMenuCkMakers() {
         break;
       }
       var t = targets[i];
+      if (prMakerMarkSurveyRootOutIfBlocked_(t.parent)) {
+        skipN++;
+        lines.push(t.parent + ':skip survey_root_out');
+        continue;
+      }
       var needles = prMakerWashNeedles_(t.parent, t.hit);
       var entry = prMakerCatalogEntry_(t.parent, t.pref, t.hit);
       Logger.log(
@@ -6147,6 +7248,501 @@ function prMenuCkMakers() {
     prAppendLog_([runId, 'レ点のメーカーを洗い', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
     prMenuFailAlert_(msg);
     throw e;
+  }
+}
+
+/** B4 メニュー切戻し。未設定=ON。 */
+function prB4Enabled_() {
+  return prCkEnabled_(PR_B4_ENABLED_PROP_);
+}
+
+function prB4Active_() {
+  return String(PropertiesService.getScriptProperties().getProperty(PR_B4_ACTIVE_PROP_) || '') === '1';
+}
+
+/** B4開始: 自動洗い／心拍を止め、01:00再開は張らない（完了時にこちらで戻す）。 */
+function prB4PauseAuto_(runId) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty(PR_CYCLE_HEARTBEAT_PAUSED_PROP_, '1');
+  props.setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'false');
+  props.setProperty(PR_B4_ACTIVE_PROP_, '1');
+  try {
+    prWashAbortBump_('B4');
+  } catch (eAb) {}
+  try {
+    prClearWashFullTriggers_({ reason: 'B4_pause', runId: runId || '', log: true });
+  } catch (eCl) {}
+  try {
+    prCycleClearResume01_();
+  } catch (e01) {}
+  try {
+    prWashFullUnlock_();
+  } catch (eUn) {}
+  Logger.log('[仕入れ検討①] B4_pause runId=%s', String(runId || ''));
+}
+
+/** B4完了: 一時停止を解き、心拍（自動）を再武装。 */
+function prB4ResumeAuto_(runId) {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty(PR_CYCLE_HEARTBEAT_PAUSED_PROP_);
+  props.deleteProperty(PR_B4_ACTIVE_PROP_);
+  try {
+    prCycleClearResume01_();
+  } catch (e01) {}
+  try {
+    prClearB4Triggers_({ reason: 'B4_resume', runId: runId || '', log: true });
+  } catch (eB4) {}
+  props.setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
+  var after = 0;
+  try {
+    after = prCycleArmHeartbeatAfterIdle_(runId || '', 'B4_done');
+  } catch (eArm) {
+    Logger.log(
+      '[仕入れ検討①] WARN B4_resume arm %s',
+      String((eArm && eArm.message) || eArm).slice(0, 120)
+    );
+  }
+  prAppendLog_([
+    runId || '',
+    'B4 自動再開',
+    'DONE',
+    new Date(),
+    after,
+    '',
+    '',
+    'heartbeat_armed afterMin=' + after,
+  ]);
+  return after;
+}
+
+function prCountB4Triggers_() {
+  var n = 0;
+  var list = ScriptApp.getProjectTriggers();
+  var i;
+  for (i = 0; i < list.length; i++) {
+    if (list[i].getHandlerFunction() === PR_B4_TRIGGER_FN_) n++;
+  }
+  return n;
+}
+
+function prClearB4Triggers_(opt) {
+  opt = opt || {};
+  var list = ScriptApp.getProjectTriggers();
+  var i;
+  var del = 0;
+  for (i = 0; i < list.length; i++) {
+    if (list[i].getHandlerFunction() === PR_B4_TRIGGER_FN_) {
+      ScriptApp.deleteTrigger(list[i]);
+      del++;
+    }
+  }
+  if (opt.log) {
+    prAppendLog_([
+      opt.runId || '',
+      'B4トリガー解除',
+      'DONE',
+      new Date(),
+      del,
+      '',
+      '',
+      'reason=' + String(opt.reason || ''),
+    ]);
+  }
+  return del;
+}
+
+function prScheduleB4Trigger_(afterMin, logOpt) {
+  var mins = Number(afterMin);
+  if (!(mins > 0)) mins = PR_B4_TRIGGER_AFTER_DEFAULT_;
+  mins = Math.max(1, Math.floor(mins));
+  var rid =
+    (logOpt && logOpt.runId) ||
+    'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var tag = (logOpt && logOpt.tag) || 'B4';
+  var parent = (logOpt && logOpt.parent) || '';
+  prClearB4Triggers_({ reason: 'reschedule:' + tag, runId: rid, log: false });
+  ScriptApp.newTrigger(PR_B4_TRIGGER_FN_).timeBased().after(mins * 60 * 1000).create();
+  var expectedAt = Utilities.formatDate(
+    new Date(new Date().getTime() + mins * 60 * 1000),
+    'Asia/Tokyo',
+    "yyyy-MM-dd'T'HH:mm:ssXXX"
+  );
+  prAppendLog_([
+    rid,
+    tag + ' トリガー予約',
+    'DONE',
+    new Date(),
+    mins,
+    parent,
+    '',
+    'trigger_armed fn=' +
+      PR_B4_TRIGGER_FN_ +
+      ' afterMin=' +
+      mins +
+      ' expectedAt=' +
+      expectedAt +
+      ' parent=' +
+      parent,
+  ]);
+  return mins;
+}
+
+/**
+ * メーカーサマリの調査CK=TRUE行。
+ * @return {Array<{sheetRow:number,parent:string,jitta:string,pref:string,hit:string,memo:*,st:string,prog:string}>}
+ */
+function prCollectCkMakerTargets_() {
+  var sh = prEnsureLeadingCk_(PR_COMPETITOR_SS_, PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxCk = prHeaderIndex_(hdr, PR_CK_HEADER_);
+  var idxName = prHeaderIndex_(hdr, 'メーカー');
+  var idxJ = prHeaderIndex_(hdr, '実態');
+  var idxPref = prHeaderIndex_(hdr, '入口推奨');
+  var idxHit = prHeaderIndex_(hdr, '入口語ヒット');
+  var idxMemo = prHeaderIndex_(hdr, 'メモ');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  if (idxCk < 0 || idxName < 0) return [];
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var out = [];
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    if (!prCkIsTrue_(vals[r][idxCk])) continue;
+    var parent = String(vals[r][idxName] || '').trim();
+    if (!parent) continue;
+    out.push({
+      sheetRow: r + 2,
+      parent: parent,
+      jitta: idxJ >= 0 ? String(vals[r][idxJ] || '').trim() : '',
+      pref: idxPref >= 0 ? String(vals[r][idxPref] || '').trim() : '',
+      hit: idxHit >= 0 ? String(vals[r][idxHit] || '').trim() : '',
+      memo: idxMemo >= 0 ? vals[r][idxMemo] : '',
+      st: idxSt >= 0 ? String(vals[r][idxSt] || '').trim() : '',
+      prog: idxProg >= 0 ? String(vals[r][idxProg] || '') : '',
+    });
+  }
+  return out;
+}
+
+function prB4MakerWashInFlight_(st) {
+  var s = String(st || '').trim();
+  return (
+    s === PR_WASH_ST_ENUM_ ||
+    s === PR_WASH_ST_INFER_ ||
+    s === PR_WASH_ST_KEEPA_ ||
+    s === PR_WASH_ST_NEED_Q2_
+  );
+}
+
+/**
+ * レ点のうち、まだ B4 でやる仕事があるか（未調査の実態／洗い途中／洗える未完了）。
+ * 要確認のみ残は完了扱い（人が直すまでレ点は残る）。
+ */
+function prB4HasMoreWork_(targets) {
+  var i;
+  for (i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    if (prMakerNeedsJittaResolve_(t.parent)) return true;
+    if (prB4MakerWashInFlight_(t.st)) return true;
+    if (prMakerJittaWashEligible_(t.jitta) && !prMakerBlockedBySurveyRootCell_(prMakerSumAmazonRootCell_(t.parent))) {
+      if (t.st !== PR_WASH_ST_DONE_ && t.st !== PR_WASH_ST_OUT_ && t.st !== PR_WASH_ST_FIX_) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * B4 1スライス: レ点だけ実態AI → 洗い。切れ目は B4 専用トリガー。飲み干したら自動再開。
+ * @return {{ok:boolean, detail:string, more:boolean}}
+ */
+function prB4RunSlice_(runId, opt) {
+  opt = opt || {};
+  var fromTrigger = !!opt.fromTrigger;
+  if (!prB4Enabled_()) {
+    return { ok: false, detail: PR_B4_ENABLED_PROP_ + '=false', more: false };
+  }
+  if (!prCkEnabled_(PR_CK_MAKER_ENABLED_PROP_)) {
+    return { ok: false, detail: PR_CK_MAKER_ENABLED_PROP_ + '=false', more: false };
+  }
+  var targets = prCollectCkMakerTargets_();
+  if (!targets.length) {
+    return { ok: true, detail: 'ck=0', more: false };
+  }
+
+  var jittaNames = [];
+  var ji;
+  for (ji = 0; ji < targets.length; ji++) {
+    if (prMakerNeedsJittaResolve_(targets[ji].parent)) jittaNames.push(targets[ji].parent);
+  }
+  var jittaDetail = 'jitta_skip=0';
+  var jittaResolved = 0;
+  if (jittaNames.length && prJittaResolveEnabled_()) {
+    var batch = prResolveJittaBatch_(jittaNames, {
+      cap: Math.min(prJittaResolveCapMaxForB4_(), jittaNames.length),
+    });
+    jittaResolved = Number(batch.resolved) || 0;
+    jittaDetail =
+      'jitta_resolve=' +
+      batch.resolved +
+      ' auto=' +
+      batch.autoN +
+      ' skip=' +
+      batch.skipped +
+      ' want=' +
+      jittaNames.length;
+    targets = prCollectCkMakerTargets_();
+  } else if (jittaNames.length) {
+    jittaDetail = 'jitta_disabled want=' + jittaNames.length;
+  }
+
+  var washOrder = [];
+  var wi;
+  var hadInflight = false;
+  for (wi = 0; wi < targets.length; wi++) {
+    if (prB4MakerWashInFlight_(targets[wi].st)) {
+      hadInflight = true;
+      washOrder.push(targets[wi]);
+    }
+  }
+  for (wi = 0; wi < targets.length; wi++) {
+    var tw = targets[wi];
+    if (prB4MakerWashInFlight_(tw.st)) continue;
+    if (!prMakerJittaWashEligible_(tw.jitta)) continue;
+    if (tw.st === PR_WASH_ST_DONE_ || tw.st === PR_WASH_ST_OUT_ || tw.st === PR_WASH_ST_FIX_) continue;
+    washOrder.push(tw);
+  }
+
+  var cap = prCkBatchCap_();
+  var doneN = 0;
+  var skipN = 0;
+  var failN = 0;
+  var lines = [];
+  var i;
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  var idxMemo = -1;
+  var idxCk = -1;
+  if (sh) {
+    var hdrM = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+    idxMemo = prHeaderIndex_(hdrM, 'メモ');
+    idxCk = prHeaderIndex_(hdrM, PR_CK_HEADER_);
+  }
+
+  for (i = 0; i < washOrder.length && i < cap; i++) {
+    if (prGasTimeUp_()) {
+      lines.push('timeup at=' + (i + 1));
+      break;
+    }
+    var t = washOrder[i];
+    if (prMakerMarkSurveyRootOutIfBlocked_(t.parent)) {
+      skipN++;
+      lines.push(t.parent + ':skip survey_root_out');
+      continue;
+    }
+    if (!prMakerJittaWashEligible_(prJittaForMaker_(t.parent))) {
+      skipN++;
+      lines.push(t.parent + ':skip jitta=' + prJittaForMaker_(t.parent));
+      continue;
+    }
+    var needles = prMakerWashNeedles_(t.parent, t.hit);
+    var entry = prMakerCatalogEntry_(t.parent, t.pref, t.hit);
+    Logger.log(
+      '[仕入れ検討①] runId=%s B4_wash %s/%s parent=%s fromTrigger=%s',
+      runId,
+      i + 1,
+      Math.min(washOrder.length, cap),
+      t.parent,
+      fromTrigger ? 'Y' : 'N'
+    );
+    var w = prRunMakerWashFull_({
+      parent: t.parent,
+      entry: entry,
+      needles: needles,
+      tag: 'B4_ck',
+      quiet: true,
+      runId: runId,
+      loopKeepa: true,
+      armTrigger: false,
+    });
+    if (w.skip) {
+      skipN++;
+      if (sh && idxMemo >= 0 && w.detail) {
+        sh.getRange(t.sheetRow, idxMemo + 1).setValue(prAppendMemo_(t.memo, w.detail));
+      }
+    } else if (w.ok) {
+      doneN++;
+      if (prMakerWashDetailIsComplete_(w.detail) && sh && idxCk >= 0) {
+        sh.getRange(t.sheetRow, idxCk + 1).setValue(false);
+      }
+    } else {
+      failN++;
+      if (sh && idxMemo >= 0 && w.detail) {
+        sh.getRange(t.sheetRow, idxMemo + 1).setValue(prAppendMemo_(t.memo, w.detail));
+      }
+    }
+    lines.push(
+      t.parent + ':' + (w.skip ? 'skip' : w.ok ? 'done' : 'fail') + ' ' + String(w.detail || '').slice(0, 80)
+    );
+    if (prGasTimeUp_()) break;
+  }
+
+  targets = prCollectCkMakerTargets_();
+  var more = prB4HasMoreWork_(targets);
+  // 実態が進まず洗える社も途中もない → 無限続きを止めて自動へ戻す（要確認／未調査残りはレ点のまま）
+  if (
+    more &&
+    !hadInflight &&
+    washOrder.length === 0 &&
+    jittaResolved === 0 &&
+    doneN + failN === 0
+  ) {
+    more = false;
+    jittaDetail += ' stuck_no_washable';
+  }
+  var detail =
+    jittaDetail +
+    ' wash_done=' +
+    doneN +
+    ' skip=' +
+    skipN +
+    ' fail=' +
+    failN +
+    ' ck=' +
+    targets.length +
+    ' more=' +
+    (more ? 'Y' : 'N') +
+    ' ' +
+    lines.join(' ').slice(0, 120);
+  return { ok: true, detail: detail, more: more };
+}
+
+function prJittaResolveCapMaxForB4_() {
+  var n = prJittaResolveCap_();
+  if (n < 1) n = 1;
+  if (n > PR_JITTA_RESOLVE_CAP_MAX_) n = PR_JITTA_RESOLVE_CAP_MAX_;
+  return n;
+}
+
+/**
+ * B4 メニュー: 自動一時停止 → レ点メーカー実態→洗い → 飲み干し or 専用トリガー → 自動再開。
+ */
+function prMenuCkMakersJittaThenWash() {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=B4 state=RUNNING', runId);
+  try {
+    if (!prB4Enabled_()) throw new Error(PR_B4_ENABLED_PROP_ + '=false（切戻し中）');
+    prB4PauseAuto_(runId);
+    prAppendLog_([runId, 'B4 レ点実態→洗い', 'RUNNING', new Date(), '', '', '', 'pause_auto']);
+    var slice = prB4RunSlice_(runId, { fromTrigger: false });
+    if (!slice.ok) throw new Error(slice.detail || 'B4 failed');
+    if (slice.more) {
+      var after = prScheduleB4Trigger_(PR_B4_TRIGGER_AFTER_DEFAULT_, {
+        runId: runId,
+        tag: 'B4',
+        parent: '',
+      });
+      prAppendLog_([
+        runId,
+        'B4 レ点実態→洗い',
+        'DONE',
+        new Date(),
+        after,
+        '',
+        '',
+        'continue ' + slice.detail,
+      ]);
+      prMenuToast_('B4 レ点実態→洗い', '続き予約 afterMin=' + after + ' ' + slice.detail, 12);
+      return;
+    }
+    var hb = prB4ResumeAuto_(runId);
+    prAppendLog_([
+      runId,
+      'B4 レ点実態→洗い',
+      'DONE',
+      new Date(),
+      hb,
+      '',
+      '',
+      'finished ' + slice.detail,
+    ]);
+    prMenuToast_('B4 レ点実態→洗い', '完了→自動再開 ' + slice.detail, 12);
+  } catch (e) {
+    var msg = prRedactKey_(String((e && e.message) || e));
+    Logger.log('[仕入れ検討①] runId=%s step=B4 state=FAILED %s', runId, msg);
+    prAppendLog_([runId, 'B4 レ点実態→洗い', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    try {
+      prB4ResumeAuto_(runId);
+    } catch (eR) {}
+    prMenuFailAlert_(msg);
+    throw e;
+  }
+}
+
+/** B4 専用トリガー（自動 paused 中でもレ点レーンだけ進める）。 */
+function prRunB4CkMakerFromTrigger() {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=B4_trigger state=RUNNING', runId);
+  try {
+    if (!prB4Enabled_() || !prB4Active_()) {
+      prClearB4Triggers_({ reason: 'B4_inactive', runId: runId, log: true });
+      prAppendLog_([
+        runId,
+        'B4トリガー',
+        'DONE',
+        new Date(),
+        '',
+        '',
+        '',
+        'inactive enabled=' + (prB4Enabled_() ? 'Y' : 'N') + ' active=' + (prB4Active_() ? 'Y' : 'N'),
+      ]);
+      return;
+    }
+    var slice = prB4RunSlice_(runId, { fromTrigger: true });
+    if (!slice.ok) {
+      prAppendLog_([runId, 'B4トリガー', 'FAILED', new Date(), '', '', '', slice.detail.slice(0, 200)]);
+      prB4ResumeAuto_(runId);
+      return;
+    }
+    if (slice.more) {
+      var after = prScheduleB4Trigger_(PR_B4_TRIGGER_AFTER_DEFAULT_, {
+        runId: runId,
+        tag: 'B4',
+        parent: '',
+      });
+      prAppendLog_([
+        runId,
+        'B4トリガー',
+        'DONE',
+        new Date(),
+        after,
+        '',
+        '',
+        'continue ' + slice.detail,
+      ]);
+      return;
+    }
+    var hb = prB4ResumeAuto_(runId);
+    prAppendLog_([
+      runId,
+      'B4トリガー',
+      'DONE',
+      new Date(),
+      hb,
+      '',
+      '',
+      'finished ' + slice.detail,
+    ]);
+  } catch (e) {
+    var msg = prRedactKey_(String((e && e.message) || e));
+    prAppendLog_([runId, 'B4トリガー', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    try {
+      prB4ResumeAuto_(runId);
+    } catch (eR) {}
   }
 }
 
@@ -7124,62 +8720,359 @@ function prParseKeepaFullTime_(raw) {
   return isNaN(t) ? 0 : t;
 }
 
-function prLoadKeepaFullMap_() {
-  if (PR_KEEPA_FULL_MAP_CACHE_) return PR_KEEPA_FULL_MAP_CACHE_;
-  var out = {};
-  try {
-    var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
-    if (!sh || sh.getLastRow() < 2) return out;
-    var lastCol = sh.getLastColumn();
-    var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
-    var idxAsin = -1;
-    var idxAt = -1;
-    var idxJson = -1;
-    var idxFp = -1;
-    var h;
-    for (h = 0; h < hdr.length; h++) {
-      var name = String(hdr[h] || '').trim();
-      if (name === 'ASIN') idxAsin = h;
-      if (name === '取得日時') idxAt = h;
-      if (name === '生JSON') idxJson = h;
-      if (name === '価格指紋') idxFp = h;
-    }
-    if (idxAsin < 0 || idxJson < 0) return out;
-    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
-    var r;
-    for (r = 0; r < vals.length; r++) {
-      var asin = String(vals[r][idxAsin] || '').trim().toUpperCase();
-      if (!asin) continue;
-      // 先頭挿入運用: 上側が最新。先勝ちで上書きしない。
-      if (out[asin]) continue;
-      var product = null;
-      try {
-        product = JSON.parse(String(vals[r][idxJson] || ''));
-      } catch (e1) {
-        product = null;
-      }
-      out[asin] = {
-        at: idxAt >= 0 ? prParseKeepaFullTime_(vals[r][idxAt]) : 0,
-        product: product,
-        fp: idxFp >= 0 ? String(vals[r][idxFp] || '') : '',
-      };
-    }
-  } catch (e) {
-    Logger.log('[仕入れ検討①] Keepaフル読取スキップ %s', String((e && e.message) || e).slice(0, 160));
+/** 案A ON。未設定=ON。 */
+function prKeepaFullAsinMapEnabled_() {
+  return prCkEnabled_(PR_KEEPA_FULL_ASIN_MAP_PROP_);
+}
+
+function prKeepaFullAsinReadChunk_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_FULL_ASIN_READ_CHUNK_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_KEEPA_FULL_ASIN_READ_CHUNK_DEFAULT_;
+  var n = Number(raw);
+  if (!(n > 0)) return PR_KEEPA_FULL_ASIN_READ_CHUNK_DEFAULT_;
+  if (n > 50) n = 50;
+  return Math.floor(n);
+}
+
+function prIsSheetsSizeLimitError_(err) {
+  var s = String((err && err.message) || err || '');
+  return s.indexOf('サイズの上限') >= 0 || s.indexOf('セルの範囲を小さく') >= 0;
+}
+
+function prNormalizeAsinList_(asins) {
+  var want = [];
+  var seen = {};
+  var i;
+  for (i = 0; i < (asins || []).length; i++) {
+    var a = String(asins[i] || '')
+      .trim()
+      .toUpperCase();
+    if (!a || seen[a]) continue;
+    seen[a] = true;
+    want.push(a);
   }
-  PR_KEEPA_FULL_MAP_CACHE_ = out;
+  return want;
+}
+
+/**
+ * Keepaフル行オブジェクト → map 用レコード（生JSONパース）。
+ * @return {{at:number, product:Object|null, fp:string}|null}
+ */
+function prKeepaFullRowToMapRec_(vals, idxAsin, idxAt, idxJson, idxFp) {
+  if (!vals) return null;
+  var asin = String(vals[idxAsin] || '')
+    .trim()
+    .toUpperCase();
+  if (!asin) return null;
+  var product = null;
+  try {
+    product = JSON.parse(String(vals[idxJson] || ''));
+  } catch (e1) {
+    product = null;
+  }
+  return {
+    at: idxAt >= 0 ? prParseKeepaFullTime_(vals[idxAt]) : 0,
+    product: product,
+    fp: idxFp >= 0 ? String(vals[idxFp] || '') : '',
+    _asin: asin,
+  };
+}
+
+/**
+ * ASIN列だけ走査して want の行番号を取る（索引が空／ずれ時）。全列は読まない。
+ * @return {Array<{asin:string,row:number}>}
+ */
+function prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want) {
+  var out = [];
+  if (!sh || sh.getLastRow() < 2 || idxAsin < 0 || !want || !want.length) return out;
+  var need = {};
+  var i;
+  for (i = 0; i < want.length; i++) need[want[i]] = true;
+  var n = sh.getLastRow() - 1;
+  var vals = sh.getRange(2, idxAsin + 1, n, 1).getValues();
+  var found = {};
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var a = String(vals[r][0] || '')
+      .trim()
+      .toUpperCase();
+    if (!a || !need[a] || found[a]) continue;
+    found[a] = true;
+    out.push({ asin: a, row: r + 2 });
+    if (Object.keys(found).length >= want.length) break;
+  }
   return out;
+}
+
+/**
+ * 指定行を小チャンクで全列読み、map レコード化。
+ * @return {{map:Object, mismatch:string}}
+ */
+function prKeepaFullReadRowsToMap_(sh, hdr, rowList, idxAsin, idxAt, idxJson, idxFp) {
+  var map = {};
+  var mismatch = '';
+  if (!rowList || !rowList.length) return { map: map, mismatch: mismatch };
+  var lastCol = hdr.length;
+  var chunk = prKeepaFullAsinReadChunk_();
+  var i = 0;
+  while (i < rowList.length) {
+    var startRow = rowList[i].row;
+    var j = i;
+    while (
+      j + 1 < rowList.length &&
+      rowList[j + 1].row === rowList[j].row + 1 &&
+      j + 1 - i < chunk
+    ) {
+      j++;
+    }
+    var numRows = j - i + 1;
+    var block = sh.getRange(startRow, 1, numRows, lastCol).getValues();
+    var b;
+    for (b = 0; b < block.length; b++) {
+      var expect = rowList[i + b].asin;
+      var rec = prKeepaFullRowToMapRec_(block[b], idxAsin, idxAt, idxJson, idxFp);
+      var got = rec ? rec._asin : '';
+      if (got && got !== expect) {
+        mismatch = 'want=' + expect + ' got=' + got + ' row=' + rowList[i + b].row;
+        return { map: map, mismatch: mismatch };
+      }
+      if (rec) {
+        map[expect] = { at: rec.at, product: rec.product, fp: rec.fp };
+      }
+    }
+    i = j + 1;
+  }
+  return { map: map, mismatch: mismatch };
+}
+
+/**
+ * 要求 ASIN だけ Keepaフルから読む（案A）。実行内キャッシュへマージ。
+ * 切戻し PR_KEEPA_FULL_ASIN_MAP=false のときのみ旧全件一括。
+ * @param {string[]} asins
+ * @param {{retried?:boolean}=} opt
+ * @return {Object<string,{at:number,product:Object|null,fp:string}>}
+ */
+function prLoadKeepaFullMapForAsins_(asins, opt) {
+  opt = opt || {};
+  var retried = !!opt.retried;
+  var want = prNormalizeAsinList_(asins);
+  var out = {};
+  if (!want.length) return out;
+
+  if (!prKeepaFullAsinMapEnabled_()) {
+    return prLoadKeepaFullMapLegacyAll_(want);
+  }
+
+  if (!PR_KEEPA_FULL_MAP_CACHE_) PR_KEEPA_FULL_MAP_CACHE_ = {};
+  var missing = [];
+  var wi;
+  for (wi = 0; wi < want.length; wi++) {
+    var cached = PR_KEEPA_FULL_MAP_CACHE_[want[wi]];
+    if (cached && Object.prototype.hasOwnProperty.call(cached, 'product')) {
+      out[want[wi]] = cached;
+    } else {
+      missing.push(want[wi]);
+    }
+  }
+  if (!missing.length) return out;
+
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    Logger.log('[仕入れ検討①] Keepaフル map_asin sheet_empty miss=%s', missing.length);
+    return out;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxAsin = -1;
+  var idxAt = -1;
+  var idxJson = -1;
+  var idxFp = -1;
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    var name = String(hdr[h] || '').trim();
+    if (name === 'ASIN') idxAsin = h;
+    if (name === '取得日時') idxAt = h;
+    if (name === '生JSON') idxJson = h;
+    if (name === '価格指紋') idxFp = h;
+  }
+  if (idxAsin < 0 || idxJson < 0) {
+    Logger.log('[仕入れ検討①] Keepaフル map_asin cols_missing');
+    return out;
+  }
+
+  try {
+    var rowList = [];
+    var idxMap = prKeepaFullIndexEnabled_() ? prLoadKeepaFullIndexMap_() : {};
+    var i;
+    for (i = 0; i < missing.length; i++) {
+      var row = idxMap[missing[i]];
+      if (row >= 2) rowList.push({ asin: missing[i], row: row });
+    }
+    if (!rowList.length) {
+      if (prKeepaFullIndexEnabled_() && Object.keys(idxMap).length === 0) {
+        prRebuildKeepaFullIndex_(sh);
+        idxMap = prLoadKeepaFullIndexMap_();
+        for (i = 0; i < missing.length; i++) {
+          row = idxMap[missing[i]];
+          if (row >= 2) rowList.push({ asin: missing[i], row: row });
+        }
+      }
+      if (!rowList.length) {
+        rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, missing);
+        Logger.log(
+          '[仕入れ検討①] Keepaフル map_asin via=asin_col n=%s miss=%s',
+          rowList.length,
+          missing.length
+        );
+      }
+    }
+    rowList.sort(function (x, y) {
+      return x.row - y.row;
+    });
+    var read = prKeepaFullReadRowsToMap_(sh, hdr, rowList, idxAsin, idxAt, idxJson, idxFp);
+    if (read.mismatch) {
+      Logger.log(
+        '[仕入れ検討①] Keepaフル map_asin 索引ずれ %s retried=%s',
+        read.mismatch,
+        retried ? 'Y' : 'N'
+      );
+      if (!retried && prKeepaFullIndexEnabled_()) {
+        prRebuildKeepaFullIndex_(sh);
+        return prLoadKeepaFullMapForAsins_(want, { retried: true });
+      }
+      rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, missing);
+      rowList.sort(function (x, y) {
+        return x.row - y.row;
+      });
+      read = prKeepaFullReadRowsToMap_(sh, hdr, rowList, idxAsin, idxAt, idxJson, idxFp);
+    }
+    var k;
+    for (k in read.map) {
+      if (!Object.prototype.hasOwnProperty.call(read.map, k)) continue;
+      out[k] = read.map[k];
+      PR_KEEPA_FULL_MAP_CACHE_[k] = read.map[k];
+    }
+    Logger.log(
+      '[仕入れ検討①] Keepaフル map_asin stage=read ok=%s miss=%s rows=%s',
+      Object.keys(read.map).length,
+      missing.length,
+      rowList.length
+    );
+  } catch (e) {
+    var msg = String((e && e.message) || e);
+    Logger.log(
+      '[仕入れ検討①] Keepaフル map_asin FAILED %s sizeLimit=%s',
+      msg.slice(0, 160),
+      prIsSheetsSizeLimitError_(e) ? 'Y' : 'N'
+    );
+    // 空マップをキャッシュに焼かない（握りつぶし禁止）
+    throw e;
+  }
+  return out;
+}
+
+/**
+ * 切戻し用: 全行×全列一括（サイズ上限再発あり）。want だけ返す。
+ * @param {string[]} want
+ */
+function prLoadKeepaFullMapLegacyAll_(want) {
+  var out = {};
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return out;
+  var lastCol = sh.getLastColumn();
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxAsin = -1;
+  var idxAt = -1;
+  var idxJson = -1;
+  var idxFp = -1;
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    var name = String(hdr[h] || '').trim();
+    if (name === 'ASIN') idxAsin = h;
+    if (name === '取得日時') idxAt = h;
+    if (name === '生JSON') idxJson = h;
+    if (name === '価格指紋') idxFp = h;
+  }
+  if (idxAsin < 0 || idxJson < 0) return out;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var need = {};
+  var i;
+  for (i = 0; i < want.length; i++) need[want[i]] = true;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var asin = String(vals[r][idxAsin] || '')
+      .trim()
+      .toUpperCase();
+    if (!asin || !need[asin] || out[asin]) continue;
+    var rec = prKeepaFullRowToMapRec_(vals[r], idxAsin, idxAt, idxJson, idxFp);
+    if (rec) out[asin] = { at: rec.at, product: rec.product, fp: rec.fp };
+  }
+  if (!PR_KEEPA_FULL_MAP_CACHE_) PR_KEEPA_FULL_MAP_CACHE_ = {};
+  for (i = 0; i < want.length; i++) {
+    if (out[want[i]]) PR_KEEPA_FULL_MAP_CACHE_[want[i]] = out[want[i]];
+  }
+  return out;
+}
+
+/**
+ * @param {string[]} asins 必須（空ならシートを読まず {}）。
+ * @return {Object}
+ */
+function prLoadKeepaFullMap_(asins) {
+  return prLoadKeepaFullMapForAsins_(asins || []);
+}
+
+/** Property PR_KEEPA_MISS_DONE。未設定=ON。false で旧: 取れない ASIN をキューに残す。 */
+function prKeepaMissDoneEnabled_() {
+  return prCkEnabled_(PR_KEEPA_MISS_DONE_PROP_);
+}
+
+/** Keepa が返さない ASIN を見切る回数（未設定=2・最低1）。 */
+function prKeepaMissDoneAfter_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_MISS_DONE_AFTER_PROP_);
+  var n = Number(raw);
+  if (raw == null || String(raw).trim() === '' || isNaN(n) || n < 1) {
+    return PR_KEEPA_MISS_DONE_AFTER_DEFAULT_;
+  }
+  return Math.floor(n);
+}
+
+/** ASIN→Keepa が返さなかった回数。 */
+function prKeepaMissMap_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_MISS_PROP_);
+    if (!raw) return {};
+    return JSON.parse(raw) || {};
+  } catch (eM) {
+    return {};
+  }
+}
+
+/** 上限超は古い順（キー順）に捨てて Property を溢れさせない。 */
+function prKeepaMissSave_(map) {
+  var m = map || {};
+  var keys = Object.keys(m);
+  if (keys.length > PR_KEEPA_MISS_MAX_KEYS_) {
+    var keep = {};
+    var drop = keys.slice(0, keys.length - PR_KEEPA_MISS_MAX_KEYS_);
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      if (drop.indexOf(keys[i]) < 0) keep[keys[i]] = m[keys[i]];
+    }
+    m = keep;
+  }
+  PropertiesService.getScriptProperties().setProperty(PR_KEEPA_MISS_PROP_, JSON.stringify(m));
 }
 
 function prSplitKeepaFull_(asins) {
   var have = [];
   var need = [];
-  var map = prLoadKeepaFullMap_();
+  var list = prNormalizeAsinList_(asins);
+  var map = prLoadKeepaFullMapForAsins_(list);
   var now = new Date().getTime();
   var i;
-  for (i = 0; i < asins.length; i++) {
-    var a = String(asins[i] || '').trim().toUpperCase();
-    if (!a) continue;
+  for (i = 0; i < list.length; i++) {
+    var a = list[i];
     var rec = map[a];
     if (rec && rec.product && rec.at && now - rec.at <= PR_FRESH_MS_) {
       have.push(rec.product);
@@ -7434,14 +9327,27 @@ function prAppendKeepaFull_(products) {
   if (!products || !products.length) return 0;
   var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
   if (!sh) throw new Error('Keepaフルシートなし');
+  Logger.log('[仕入れ検討①] Keepaフル stage=blank_scan start n=%s', products.length);
   prCleanupKeepaFullBlankRows_(sh);
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log('[仕入れ検討①] Keepaフル stage=row_index start');
   var rowIndex = prKeepaFullAsinRowIndex_(sh, headers);
-  var map = prLoadKeepaFullMap_();
+  var asinList = [];
+  var pi;
+  for (pi = 0; pi < products.length; pi++) {
+    var pa = String((products[pi] && (products[pi].asin || products[pi].ASIN)) || '')
+      .trim()
+      .toUpperCase();
+    if (pa) asinList.push(pa);
+  }
+  Logger.log('[仕入れ検討①] Keepaフル stage=map_read asins=%s', asinList.length);
+  var map = prLoadKeepaFullMapForAsins_(asinList);
   var fetched = prNowFetchedAt_();
   var insertLines = [];
   var wrote = 0;
+  var overwriteN = 0;
+  var skipFp = 0;
   var i;
   for (i = 0; i < products.length; i++) {
     var rec = prProductToFullRec_(products[i], fetched);
@@ -7465,11 +9371,14 @@ function prAppendKeepaFull_(products) {
       var prevHasOffers = !!(prev && prev.product && prev.product.offers && prev.product.offers.length);
       // 指紋同でも薄い行→offers=20 への補強は上書きする
       if (sameFp && (!newHasOffers || prevHasOffers)) {
+        skipFp++;
         Logger.log('[仕入れ検討①] Keepaフル skip_same_fp %s row=%s', asin, loc.rowNum);
         continue;
       }
+      Logger.log('[仕入れ検討①] Keepaフル stage=overwrite asin=%s row=%s', asin, loc.rowNum);
       sh.getRange(loc.rowNum, 1, 1, line.length).setValues([line]);
       wrote++;
+      overwriteN++;
       if (loc.extraRows && loc.extraRows.length) {
         prDeleteSheetRowsDescending_(sh, loc.extraRows);
       }
@@ -7477,12 +9386,22 @@ function prAppendKeepaFull_(products) {
       insertLines.push(line);
       wrote++;
     }
-    map[asin] = { at: new Date().getTime(), product: products[i], fp: rec['価格指紋'] };
+    var entry = { at: new Date().getTime(), product: products[i], fp: rec['価格指紋'] };
+    map[asin] = entry;
+    if (!PR_KEEPA_FULL_MAP_CACHE_) PR_KEEPA_FULL_MAP_CACHE_ = {};
+    PR_KEEPA_FULL_MAP_CACHE_[asin] = entry;
   }
-  if (insertLines.length) prInsertRowsBelowHeader_(sh, insertLines);
-  PR_KEEPA_FULL_MAP_CACHE_ = map;
+  if (insertLines.length) {
+    Logger.log(
+      '[仕入れ検討①] Keepaフル stage=insert n=%s chunk=%s',
+      insertLines.length,
+      prKeepaFullInsertChunk_()
+    );
+    prInsertRowsBelowHeader_(sh, insertLines);
+  }
   // 先頭挿入で行番号がずれるため、ASIN列だけ見て索引を自動再構築（人手メンテなし）
   try {
+    Logger.log('[仕入れ検討①] Keepaフル stage=index_rebuild');
     prRebuildKeepaFullIndex_(sh);
   } catch (idxErr) {
     Logger.log(
@@ -7490,6 +9409,13 @@ function prAppendKeepaFull_(products) {
       String((idxErr && idxErr.message) || idxErr).slice(0, 160)
     );
   }
+  Logger.log(
+    '[仕入れ検討①] Keepaフル stage=done wrote=%s overwrite=%s insert=%s skipFp=%s',
+    wrote,
+    overwriteN,
+    insertLines.length,
+    skipFp
+  );
   return wrote;
 }
 
@@ -7543,12 +9469,40 @@ function prKeepaFullBlankScanBatchEnabled_() {
   return prCkEnabled_(PR_KEEPA_FULL_BLANK_SCAN_BATCH_PROP_);
 }
 
+/** Keepaフル新規 insert の1回あたり行数。省略=5。0=旧一括。 */
+function prKeepaFullInsertChunk_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_FULL_INSERT_CHUNK_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_KEEPA_FULL_INSERT_CHUNK_DEFAULT_;
+  var n = Number(raw);
+  if (!(n >= 0)) return PR_KEEPA_FULL_INSERT_CHUNK_DEFAULT_;
+  return Math.floor(n);
+}
+
+/** Keepaフル索引 setValues の1回あたり行数。省略=2000。0=旧一括。 */
+function prKeepaFullIndexChunk_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_FULL_INDEX_CHUNK_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_KEEPA_FULL_INDEX_CHUNK_DEFAULT_;
+  var n = Number(raw);
+  if (!(n >= 0)) return PR_KEEPA_FULL_INDEX_CHUNK_DEFAULT_;
+  return Math.floor(n);
+}
+
+/** 空行掃除の全列読み最大連続行。省略=40。0=連続塊ごと一括。 */
+function prKeepaFullBlankReadChunk_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_FULL_BLANK_READ_CHUNK_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_KEEPA_FULL_BLANK_READ_CHUNK_DEFAULT_;
+  var n = Number(raw);
+  if (!(n >= 0)) return PR_KEEPA_FULL_BLANK_READ_CHUNK_DEFAULT_;
+  return Math.floor(n);
+}
+
 /**
  * ASIN空の完全空行を下から削除。
  * 2026-09-07: ASIN列を1回読んで候補行だけ全列を見る。
  * 旧: 最終行から1行ずつ getRange().getValues()。Keepaフルは実データ約8,400行あるため、
  * 空行が0でも毎回8,400回の個別読み取り＝約22分。Keepa取得のあるスライスが常に
  * 22〜29分（1ASINでも22.9分）になっていた原因。切戻し PR_KEEPA_FULL_BLANK_SCAN_BATCH=false。
+ * 2026-10-17: 連続候補の全列読みも chunk（PR_KEEPA_FULL_BLANK_READ_CHUNK）。
  */
 function prCleanupKeepaFullBlankRows_(sh) {
   if (!sh || sh.getLastRow() < 2) return 0;
@@ -7572,37 +9526,46 @@ function prCleanupKeepaFullBlankRows_(sh) {
       if (String(asinCol[r][0] || '').trim() === '') cand.push(r + 2);
     }
     var blank = [];
-    // 候補だけ全列を見る（生JSON を含む全行読みはしない）。連続行はまとめ読み
+    // 候補だけ全列を見る（生JSON を含む全行読みはしない）。連続行はまとめ読み（上限 chunk）
     var i = 0;
     var reads = 0;
+    var readChunk = prKeepaFullBlankReadChunk_();
     while (i < cand.length) {
       var j = i;
       while (j + 1 < cand.length && cand[j + 1] === cand[j] + 1) j++;
-      var n = j - i + 1;
-      var vals = sh.getRange(cand[i], 1, n, lastCol).getValues();
-      reads++;
-      var k;
-      for (k = 0; k < n; k++) {
-        var any = false;
-        var c;
-        for (c = 0; c < vals[k].length; c++) {
-          if (String(vals[k][c] || '').trim() !== '') {
-            any = true;
-            break;
+      var blockStart = cand[i];
+      var blockN = j - i + 1;
+      var off = 0;
+      while (off < blockN) {
+        var take =
+          readChunk > 0 ? Math.min(readChunk, blockN - off) : blockN - off;
+        var vals = sh.getRange(blockStart + off, 1, take, lastCol).getValues();
+        reads++;
+        var k;
+        for (k = 0; k < take; k++) {
+          var any = false;
+          var c;
+          for (c = 0; c < vals[k].length; c++) {
+            if (String(vals[k][c] || '').trim() !== '') {
+              any = true;
+              break;
+            }
           }
+          if (!any) blank.push(blockStart + off + k);
         }
-        if (!any) blank.push(cand[i] + k);
+        off += take;
       }
       i = j + 1;
     }
     prDeleteSheetRowsDescending_(sh, blank);
     deleted = blank.length;
     Logger.log(
-      '[仕入れ検討①] Keepaフル blank_scan rows=%s cand=%s reads=%s deleted=%s elapsedMs=%s',
+      '[仕入れ検討①] Keepaフル blank_scan rows=%s cand=%s reads=%s deleted=%s readChunk=%s elapsedMs=%s',
       last - 1,
       cand.length,
       reads,
       deleted,
+      readChunk,
       new Date().getTime() - t0
     );
   } else {
@@ -7642,15 +9605,36 @@ function prCleanupKeepaFullBlankRows_(sh) {
 
 /**
  * データ行をヘッダ直下（2行目）へ挿入。複数行はまとめて差し込み（上が先の行）。
+ * 2026-10-17: 生JSONが重いので PR_KEEPA_FULL_INSERT_CHUNK 件ずつ（省略=5。0=旧一括）。
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sh
  * @param {Array<Array<*>>} lines
  */
 function prInsertRowsBelowHeader_(sh, lines) {
   if (!sh || !lines || !lines.length) return;
-  var n = lines.length;
   var cols = lines[0].length;
-  sh.insertRowsBefore(2, n);
-  sh.getRange(2, 1, n, cols).setValues(lines);
+  var chunk = prKeepaFullInsertChunk_();
+  if (!(chunk > 0) || lines.length <= chunk) {
+    sh.insertRowsBefore(2, lines.length);
+    sh.getRange(2, 1, lines.length, cols).setValues(lines);
+    return;
+  }
+  // 上が先の行を保つため、後ろの塊から挿入する（毎回2行目へ差し込む）
+  var start = lines.length;
+  while (start > 0) {
+    var from = Math.max(0, start - chunk);
+    var part = lines.slice(from, start);
+    sh.insertRowsBefore(2, part.length);
+    sh.getRange(2, 1, part.length, cols).setValues(part);
+    try {
+      SpreadsheetApp.flush();
+    } catch (eFlush) {}
+    start = from;
+  }
+  Logger.log(
+    '[仕入れ検討①] Keepaフル insert_chunked n=%s chunk=%s',
+    lines.length,
+    chunk
+  );
 }
 
 function prStripKeepaCsv_(v) {
@@ -8006,6 +9990,7 @@ function prEnsureProfileSurveyCols_(sh) {
   }
   prReorderProfileCols_(sh);
   PR_PROF_CACHE_ = null;
+  PR_SURVEY_ROOT_SETS_CACHE_ = null;
 }
 
 /** 価格上下限・順位まわりを左で隣接。moveColumns(Range, dest) で書式・プルダウンを列ごと移動。 */
@@ -8206,7 +10191,11 @@ function prGateProductRow_(p, prof, sellerId, runId, shopName) {
   var amazonDirect = prAmazonDirectLabel_(p.availabilityAmazon);
   var st = '通過';
   var why = '門通過';
-  if (price === null && rank === null) {
+  var surveyWhy = prSurveyRootDropWhy_(p);
+  if (surveyWhy) {
+    st = '落ち';
+    why = surveyWhy;
+  } else if (price === null && rank === null) {
     st = '落ち';
     why = 'stats空';
   } else if (price !== null && price < priceMin) {
@@ -8328,6 +10317,7 @@ var PR_SELLER_SYNC_SKIP_ = {
   採取元: true,
   メモ: true,
   巡回日: true,
+  名取り日: true,
   asinList件数: true,
   抽出メーカー: true,
   ピック: true,
@@ -8850,7 +10840,7 @@ function prProductFromKeepaFullAsin_(asin) {
     .trim()
     .toUpperCase();
   if (!a) return null;
-  var map = prLoadKeepaFullMap_();
+  var map = prLoadKeepaFullMapForAsins_([a]);
   var rec = map[a];
   if (!rec || !rec.product) return null;
   return rec.product;
@@ -9033,6 +11023,7 @@ function prUpsertCandidate_(row, opt) {
   var vals = mem.vals;
   var asin = String(row[1] || '').toUpperCase();
   if (!asin) return;
+  prCandPassSnapClear_();
   var line = [];
   for (i = 0; i < headers.length; i++) line.push('');
   var rec = {};
@@ -9412,9 +11403,32 @@ function prMenuWashQueuePurgeExpired() {
   }
 }
 
+/** メーカーサマリの旧集計列（倉庫SKU〜第2語あり）を見出し名で削除。 */
+function prDropMakerSumUnusedCols_(sh) {
+  if (!sh) return 0;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxs = [];
+  var i;
+  for (i = 0; i < PR_MAKER_SUM_DROP_HEADERS_.length; i++) {
+    var idx = prHeaderIndex_(hdr, PR_MAKER_SUM_DROP_HEADERS_[i]);
+    if (idx >= 0) idxs.push(idx);
+  }
+  if (!idxs.length) return 0;
+  idxs.sort(function (a, b) {
+    return b - a;
+  });
+  for (i = 0; i < idxs.length; i++) {
+    sh.deleteColumn(idxs[i] + 1);
+  }
+  Logger.log('[仕入れ検討①] maker_sum_drop_cols n=%s', idxs.length);
+  return idxs.length;
+}
+
 /** メーカーサマリに洗い状態／進捗列を確保。 */
 function prEnsureMakerWashStatusCols_(sh) {
   if (!sh) return { idxSt: -1, idxProg: -1 };
+  prDropMakerSumUnusedCols_(sh);
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
   var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
@@ -9465,26 +11479,274 @@ function prClearMakerSumCk_(parent) {
   return true;
 }
 
+/** Property PR_WASH_ST_SPLIT。未設定=ON。false で完了＋通過0を保留にする旧動作。 */
+function prWashStSplitEnabled_() {
+  return prCkEnabled_(PR_WASH_ST_SPLIT_PROP_);
+}
+
+function prWashOutStatus_() {
+  return prWashStSplitEnabled_() ? PR_WASH_ST_OUT_ : PR_WASH_ST_HOLD_;
+}
+
+/**
+ * 選定から外す終わり状態（§6.10）。
+ * 完了はここでは見ない（90日は最終調査日）。
+ */
+function prWashEndBlockedForSelect_(st) {
+  st = st != null ? String(st).trim() : '';
+  return st === PR_WASH_ST_OUT_ || st === PR_WASH_ST_FIX_ || st === PR_WASH_ST_HOLD_;
+}
+
+/**
+ * 未済0の社を完了／調査対象外／要修復のどれにするか。
+ * 未済が残っているときは null（まだ終わりではない）。
+ * @return {{status:string, progress:string}|null}
+ */
+function prClassifyWashEnd_(parent, opt) {
+  opt = opt || {};
+  parent = String(parent || '').trim();
+  if (!parent) return null;
+  var prog = String(opt.progress != null ? opt.progress : '');
+  var pending = opt.pending != null ? Number(opt.pending) : prWashQueuePendingCount_(parent);
+  if (pending > 0) return null;
+  if (prog.indexOf('title0_skip') >= 0) {
+    return { status: prWashOutStatus_(), progress: prog || 'title0_skip' };
+  }
+  if (prog.indexOf('非仕入先') >= 0) {
+    return { status: prWashOutStatus_(), progress: '非仕入先' };
+  }
+  var jitta = opt.jitta != null ? String(opt.jitta) : '';
+  if (!jitta) {
+    try {
+      jitta = prJittaForMaker_(parent);
+    } catch (eJ) {
+      jitta = '';
+    }
+  }
+  if (jitta === PR_JITTAI_EXCLUDE_) {
+    return { status: prWashOutStatus_(), progress: '非仕入先' };
+  }
+  var queueN =
+    opt.queueN != null ? Number(opt.queueN) : Object.keys(prWashQueueAsinSet_(parent)).length;
+  var candN = opt.candN != null ? Number(opt.candN) : prCandRowCountForMaker_(parent);
+  var passN = opt.passN != null ? Number(opt.passN) : prCandGatePassCountForMaker_(parent);
+  if (!(candN > 0) && queueN > 0) {
+    return { status: PR_WASH_ST_FIX_, progress: 'cand_missing queue=' + queueN };
+  }
+  if (passN > 0) {
+    return { status: PR_WASH_ST_DONE_, progress: 'done pass=' + passN };
+  }
+  var noData =
+    opt.statsEmpty != null ? Number(opt.statsEmpty) : prCandStatsEmptyCountForMaker_(parent);
+  if (candN > 0 && noData >= candN) {
+    return { status: PR_WASH_ST_DONE_, progress: 'done_no_pass no_data=' + noData };
+  }
+  return { status: PR_WASH_ST_DONE_, progress: 'done_no_pass judged=' + (candN || 0) };
+}
+
+/** C4 する？ 完了かつ門通過≥1 だけ（§6.10）。 */
+function prWashShouldRunC4_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent || !prCycleC4Enabled_()) return false;
+  var loc = prFindMakerSumRow_(parent);
+  var st = '';
+  if (loc && loc.idxSt >= 0) {
+    st = String(loc.sh.getRange(loc.sheetRow, loc.idxSt + 1).getValue() || '').trim();
+  }
+  if (st !== PR_WASH_ST_DONE_) return false;
+  return prCandGatePassCountForMaker_(parent) > 0;
+}
+
 /**
  * Catalog見積≥1 なのに調査ASIN未済ゼロ → リサーチしない（空ループ防止）。
- * progress に empty_research / done_no_candidates が付いた Keepa中も対象外。
+ * 3区分 ON のときは終わり状態で止める（empty_research 進捗だけでは止めない）。
  */
 function prWashEmptyResearchBlocked_(st, prog) {
   st = st != null ? String(st).trim() : '';
   prog = prog != null ? String(prog) : '';
+  if (prWashStSplitEnabled_()) {
+    return prWashEndBlockedForSelect_(st);
+  }
   if (st === PR_WASH_ST_HOLD_ && prog.indexOf('empty_research') >= 0) return true;
   if (prog.indexOf('empty_research') >= 0) return true;
   if (prog.indexOf('done_no_candidates') >= 0) return true;
   return false;
 }
 
-/** 選定プールから外す保留（empty_research／title0／要確認等）。 */
+/** 選定プールから外す終わり状態。 */
 function prWashHoldBlockedForSelect_(st, prog) {
   st = st != null ? String(st).trim() : '';
   prog = prog != null ? String(prog) : '';
+  if (prWashStSplitEnabled_()) return prWashEndBlockedForSelect_(st);
   if (st === PR_WASH_ST_HOLD_) return true;
   if (prWashEmptyResearchBlocked_(st, prog)) return true;
   return false;
+}
+
+/**
+ * 旧保留1行の行き先（§6.10.4）。シートは読まない。
+ * @return {{status:string, progress:string, setDay:boolean, kind:string}|null}
+ */
+function prMigrateWashHoldSplitDecide_(row) {
+  row = row || {};
+  var st = String(row.st || '').trim();
+  if (st !== PR_WASH_ST_HOLD_) return null;
+  var prog = String(row.prog || '');
+  var jitta = String(row.jitta || '').trim();
+  var candN = Number(row.candN) || 0;
+  var queueN = Number(row.queueN) || 0;
+  if (prog.indexOf('empty_research') >= 0) {
+    if (candN >= 1) {
+      return {
+        status: PR_WASH_ST_DONE_,
+        progress: 'done_no_pass judged=' + candN,
+        setDay: true,
+        kind: 'done',
+      };
+    }
+    return {
+      status: PR_WASH_ST_FIX_,
+      progress: 'cand_missing queue=' + queueN,
+      setDay: false,
+      kind: 'fix',
+    };
+  }
+  if (prog.indexOf('title0_skip') >= 0) {
+    return { status: PR_WASH_ST_OUT_, progress: prog, setDay: false, kind: 'out' };
+  }
+  if (prog.indexOf('非仕入先') >= 0 || jitta === PR_JITTAI_EXCLUDE_) {
+    return { status: PR_WASH_ST_OUT_, progress: '非仕入先', setDay: false, kind: 'out' };
+  }
+  if (jitta === PR_JITTAI_CHECK_ || jitta === PR_JITTAI_UNCHECKED_) {
+    return { status: PR_WASH_ST_NONE_, progress: '', setDay: false, kind: 'none' };
+  }
+  return { status: PR_WASH_ST_OUT_, progress: 'hold_legacy', setDay: false, kind: 'legacy' };
+}
+
+/** 洗いキューを1回読み、メーカー→ユニークASIN数。移行専用（社ごと全読みしない）。 */
+function prWashQueueCountAllByMaker_() {
+  var out = {};
+  var sh = prEnsureWashQueueSheet_();
+  if (!sh || sh.getLastRow() < 2) return out;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxA = prHeaderIndex_(hdr, 'ASIN');
+  if (idxM < 0 || idxA < 0) return out;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var seen = {};
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var m = String(vals[r][idxM] || '').trim();
+    var a = String(vals[r][idxA] || '').trim().toUpperCase();
+    if (!m || !a) continue;
+    var key = m + '\t' + a;
+    if (seen[key]) continue;
+    seen[key] = true;
+    out[m] = (out[m] || 0) + 1;
+  }
+  return out;
+}
+
+/**
+ * 旧保留を完了／調査対象外／要修復へ1回だけ移す（§6.10.4）。
+ * 印 PR_WASH_ST_SPLIT_MIGRATED=Y。完了には空の最終調査日へ今日を入れる。
+ */
+function prMigrateWashHoldSplit_(opt) {
+  opt = opt || {};
+  var runId = opt.runId || '';
+  var force = !!opt.force;
+  if (!prWashStSplitEnabled_()) return { n: 0, detail: 'split_off' };
+  var props = PropertiesService.getScriptProperties();
+  if (!force && String(props.getProperty(PR_WASH_ST_SPLIT_MIGRATED_PROP_) || '') === 'Y') {
+    return { n: 0, detail: 'already_migrated' };
+  }
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    props.setProperty(PR_WASH_ST_SPLIT_MIGRATED_PROP_, 'Y');
+    return { n: 0, detail: 'wash_st_split n=0/0/0 no_sum' };
+  }
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  var idxJ = prHeaderIndex_(hdr, '実態');
+  var idxDay = prHeaderIndex_(hdr, '最終調査日');
+  if (idxM < 0 || idxSt < 0) {
+    props.setProperty(PR_WASH_ST_SPLIT_MIGRATED_PROP_, 'Y');
+    return { n: 0, detail: 'wash_st_split n=0/0/0 no_cols' };
+  }
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var candSnap = {};
+  try {
+    candSnap = prCandRowSnap_();
+  } catch (eC) {
+    candSnap = {};
+  }
+  var queueMap = {};
+  try {
+    queueMap = prWashQueueCountAllByMaker_();
+  } catch (eQ) {
+    queueMap = {};
+  }
+  var today = prYmdTokyo_();
+  var nDone = 0;
+  var nOut = 0;
+  var nFix = 0;
+  var nNone = 0;
+  var nDay = 0;
+  var nLegacy = 0;
+  var changed = false;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    var candRow = candSnap[parent];
+    var dec = prMigrateWashHoldSplitDecide_({
+      st: vals[r][idxSt],
+      prog: idxProg >= 0 ? vals[r][idxProg] : '',
+      jitta: idxJ >= 0 ? vals[r][idxJ] : '',
+      candN: candRow ? Number(candRow.n) || 0 : 0,
+      queueN: queueMap[parent] || 0,
+    });
+    if (!dec) continue;
+    changed = true;
+    vals[r][idxSt] = dec.status;
+    if (idxProg >= 0) vals[r][idxProg] = dec.progress;
+    if (dec.kind === 'done') nDone++;
+    else if (dec.kind === 'fix') nFix++;
+    else if (dec.kind === 'none') nNone++;
+    else {
+      nOut++;
+      if (dec.kind === 'legacy') nLegacy++;
+    }
+    if (dec.setDay && idxDay >= 0) {
+      var dayCur = vals[r][idxDay];
+      if (dayCur == null || String(dayCur).trim() === '') {
+        vals[r][idxDay] = today;
+        nDay++;
+      }
+    }
+  }
+  if (changed) sh.getRange(2, 1, vals.length, lastCol).setValues(vals);
+  props.setProperty(PR_WASH_ST_SPLIT_MIGRATED_PROP_, 'Y');
+  var detail =
+    'wash_st_split n=' +
+    nDone +
+    '/' +
+    nOut +
+    '/' +
+    nFix +
+    ' day=' +
+    nDay +
+    ' none=' +
+    nNone +
+    ' legacy=' +
+    nLegacy;
+  Logger.log('[仕入れ検討①] runId=%s %s', runId || '-', detail);
+  return { n: nDone + nOut + nFix + nNone, detail: detail, nDone: nDone, nOut: nOut, nFix: nFix };
 }
 
 /**
@@ -9536,6 +11798,7 @@ function prCycleCatalogPendingList_(cap) {
   var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
   var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
   var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxRootPend = prHeaderIndex_(hdr, PR_MAKER_SUM_AMAZON_ROOT_HEADER_);
   if (idxMaker < 0) return [];
   var sellerVals = [];
   var sellerHdr = [];
@@ -9561,6 +11824,7 @@ function prCycleCatalogPendingList_(cap) {
     var lastMs = prCellToMsTokyo_(idxDay >= 0 ? vals[r][idxDay] : '');
     if (lastMs != null && lastMs > cutoffMs) continue;
     if (sellerVals.length && prMakerFoodZeroOnly_(parent, sellerVals, sellerHdr)) continue;
+    if (idxRootPend >= 0 && prMakerBlockedBySurveyRootCell_(vals[r][idxRootPend])) continue;
     var prog = idxProg >= 0 ? String(vals[r][idxProg] || '') : '';
     var st = idxSt >= 0 ? String(vals[r][idxSt] || '').trim() : '';
     if (prWashTitleZeroBlocked_(parent, st, prog)) continue;
@@ -9609,16 +11873,22 @@ function prSanitizeEmptyResearchStuck_() {
     var parent = String(vals[r][idxM] || '').trim();
     if (!parent) continue;
     if (prWashQueuePendingCount_(parent) > 0) continue;
-    var estCell = idxEst >= 0 ? vals[r][idxEst] : null;
-    var est = prMakerCatalogEstimate_(parent, prog, estCell);
-    var queueN = Object.keys(prWashQueueAsinSet_(parent)).length;
-    var holdProg =
-      'empty_research est=' +
-      (est != null ? est : '?') +
-      ' queue=' +
-      queueN +
-      ' cand=0';
-    prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, holdProg);
+    if (prWashStSplitEnabled_()) {
+      var endSan = prClassifyWashEnd_(parent, { pending: 0 });
+      if (endSan) prSetMakerWashStatus_(parent, endSan.status, endSan.progress);
+      else prSetMakerWashStatus_(parent, PR_WASH_ST_DONE_, 'done_no_pass judged=0');
+    } else {
+      var estCell = idxEst >= 0 ? vals[r][idxEst] : null;
+      var est = prMakerCatalogEstimate_(parent, prog, estCell);
+      var queueN = Object.keys(prWashQueueAsinSet_(parent)).length;
+      var holdProg =
+        'empty_research est=' +
+        (est != null ? est : '?') +
+        ' queue=' +
+        queueN +
+        ' cand=0';
+      prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, holdProg);
+    }
     fixed.push(parent);
   }
   var detail =
@@ -9633,6 +11903,16 @@ function prSetMakerWashStatus_(parent, status, progress) {
     Logger.log('[仕入れ検討①] 洗い状態書込スキップ（サマリ行なし）%s', parent);
     return;
   }
+  if (status === PR_WASH_ST_HOLD_ && prWashStSplitEnabled_()) {
+    var endHold = prClassifyWashEnd_(parent, { progress: progress });
+    if (endHold) {
+      status = endHold.status;
+      progress = endHold.progress;
+    } else {
+      status = PR_WASH_ST_OUT_;
+      progress = progress || 'hold_legacy';
+    }
+  }
   if (status === PR_WASH_ST_DONE_) {
     var cn = prCandGatePassCountForMaker_(parent);
     if (!(cn > 0)) {
@@ -9641,8 +11921,16 @@ function prSetMakerWashStatus_(parent, status, progress) {
         Logger.log('[仕入れ検討①] WARN done_no_candidates pending parent=%s n=%s', parent, pendingN);
         status = PR_WASH_ST_KEEPA_;
         progress = 'done_no_candidates pending=' + pendingN;
+      } else if (prWashStSplitEnabled_()) {
+        var endDone = prClassifyWashEnd_(parent, { progress: progress, pending: 0, passN: 0 });
+        if (endDone) {
+          status = endDone.status;
+          progress = endDone.progress;
+        } else {
+          progress = progress || 'done_no_pass judged=0';
+        }
       } else {
-        // Catalog見積≥1 でも未済0・候補0 → 完了扱いにせず保留（再armしない）
+        // 旧: 通過0は完了にせず保留
         var estCell = null;
         try {
           var hdrE = loc.sh.getRange(1, 1, 1, Math.max(loc.sh.getLastColumn(), 1)).getValues()[0];
@@ -9673,6 +11961,12 @@ function prSetMakerWashStatus_(parent, status, progress) {
   }
   if (status === PR_WASH_ST_DONE_) {
     prCycleMarkC4NeedsD1_(parent);
+    if (loc.idxDay >= 0) {
+      var dayCur = loc.sh.getRange(loc.sheetRow, loc.idxDay + 1).getValue();
+      if (dayCur == null || String(dayCur).trim() === '') {
+        loc.sh.getRange(loc.sheetRow, loc.idxDay + 1).setValue(prYmdTokyo_());
+      }
+    }
   }
   // 規模帯をサマリへ（選定用）
   var prog = String(progress || '');
@@ -9707,6 +12001,47 @@ function prWriteMakerSumBand_(sh, sheetRow, estimate, cut501) {
   sh.getRange(sheetRow, idxEst + 1).setValue(writeN);
   sh.getRange(sheetRow, idxBand + 1).setValue(prMakerCatalogBand_(writeN));
   prMakerBandMapClear_();
+  try {
+    prEnsureMakerSumBandGrayCf_(sh);
+  } catch (eGray) {}
+}
+
+/**
+ * メーカーサマリの 大／特大 行を薄いグレー（条件付き書式。既存・新規とも）。
+ */
+function prEnsureMakerSumBandGrayCf_(sh) {
+  if (!sh || sh.getLastRow() < 2) return;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
+  if (idxBand < 0) return;
+  var col = prColLetter_(idxBand + 1);
+  var formula =
+    '=OR($' + col + '2="' + PR_BAND_L_ + '",$' + col + '2="' + PR_BAND_XL_ + '")';
+  var endRow = Math.max(sh.getLastRow(), 2);
+  var range = sh.getRange(2, 1, endRow - 1, lastCol);
+  var old = sh.getConditionalFormatRules() || [];
+  var kept = [];
+  var i;
+  for (i = 0; i < old.length; i++) {
+    var f = '';
+    try {
+      var c = old[i].getBooleanCondition();
+      var vals = c && c.getCriteriaValues ? c.getCriteriaValues() : [];
+      f = String((vals && vals[0]) || '');
+    } catch (e1) {
+      f = '';
+    }
+    if (f.indexOf(PR_BAND_L_ + '"') >= 0 && f.indexOf(PR_BAND_XL_) >= 0) continue;
+    kept.push(old[i]);
+  }
+  var rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(formula)
+    .setBackground('#eeeeee')
+    .setRanges([range])
+    .build();
+  kept.unshift(rule);
+  sh.setConditionalFormatRules(kept);
 }
 
 function prLoadMakerQ2Words_(parent) {
@@ -9803,6 +12138,65 @@ function prWashQueueUniqCount_(parent) {
 /** キューへの追記・削除のあとに呼ぶ（件数表を作り直させる）。 */
 function prWashQueueCountCacheClear_() {
   PR_WASH_QUEUE_COUNT_CACHE_ = null;
+  PR_WASH_QUEUE_PENDING_CACHE_ = null;
+}
+
+/** Property PR_WASH_QUEUE_PENDING_MAP。未設定=ON。false で社ごとに読み直す旧動作。 */
+function prWashQueuePendingMapEnabled_() {
+  return prCkEnabled_(PR_WASH_QUEUE_PENDING_MAP_PROP_);
+}
+
+/**
+ * 洗いキューを1回だけ読み、メーカー→未処理（Keepa未済）ユニークASIN数の表にする。
+ * 選定は「洗える相手がいるか」しか見ないので、社ごとの全読みをここに1本化する。
+ * @return {!Object<string, number>}
+ */
+function prWashQueuePendingMap_() {
+  if (PR_WASH_QUEUE_PENDING_CACHE_) return PR_WASH_QUEUE_PENDING_CACHE_;
+  var out = {};
+  var t0 = new Date().getTime();
+  var sh = prEnsureWashQueueSheet_();
+  if (sh.getLastRow() < 2) {
+    PR_WASH_QUEUE_PENDING_CACHE_ = out;
+    return out;
+  }
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxA = prHeaderIndex_(hdr, 'ASIN');
+  var idxK = prHeaderIndex_(hdr, 'Keepa済');
+  if (idxM < 0 || idxA < 0) {
+    PR_WASH_QUEUE_PENDING_CACHE_ = out;
+    return out;
+  }
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  // 同じ ASIN が複数行あるとき、1行でも未済なら未処理として数える（prWashQueuePendingKeepa_ と同じ）
+  var state = {};
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var m = String(vals[r][idxM] || '').trim();
+    var a = String(vals[r][idxA] || '').trim().toUpperCase();
+    if (!m || !a) continue;
+    var done = idxK >= 0 && prCkIsTrue_(vals[r][idxK]);
+    var key = m + '\t' + a;
+    if (state[key] === undefined) state[key] = done;
+    else if (!done) state[key] = false;
+  }
+  var k;
+  for (k in state) {
+    if (!Object.prototype.hasOwnProperty.call(state, k)) continue;
+    if (state[k]) continue;
+    var mk = k.slice(0, k.indexOf('\t'));
+    out[mk] = (out[mk] || 0) + 1;
+  }
+  PR_WASH_QUEUE_PENDING_CACHE_ = out;
+  Logger.log(
+    '[仕入れ検討①] queue_pending_map rows=%s makers=%s elapsedMs=%s',
+    vals.length,
+    Object.keys(out).length,
+    new Date().getTime() - t0
+  );
+  return out;
 }
 
 /** Property PR_WASH_QUEUE_SNAPSHOT。未設定=ON。false で毎回読み直す旧動作。 */
@@ -9860,6 +12254,189 @@ function prWashQueueSnapshotClear_() {
   PR_WASH_QUEUE_SNAP_ = {};
 }
 
+/** 大・特大の未済をキューに残す社数。未設定=10。0で上限オフ。 */
+function prWashQueueXlPendingMakersMax_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(
+    PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX_PROP_
+  );
+  if (raw == null || String(raw).trim() === '') return PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX_DEFAULT_;
+  var n = Number(raw);
+  if (!isFinite(n) || n < 0) return PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX_DEFAULT_;
+  return Math.floor(n);
+}
+
+function prWashQueueXlBand_(parent, bandMap) {
+  var rec = bandMap && bandMap[parent];
+  var b = rec && rec.band ? String(rec.band).trim() : '';
+  if (b) return b;
+  return prMakerBandFromSum_(parent);
+}
+
+function prWashQueueXlKeepParents_(pend, done, maxN) {
+  var bandMap = prMakerBandRowMap_();
+  var stMap = {};
+  try {
+    var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+    if (sh && sh.getLastRow() >= 2) {
+      var lastCol = Math.max(sh.getLastColumn(), 1);
+      var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+      var idxM = prHeaderIndex_(hdr, 'メーカー');
+      var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+      if (idxM >= 0 && idxSt >= 0) {
+        var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+        var r;
+        for (r = 0; r < vals.length; r++) {
+          var p = String(vals[r][idxM] || '').trim();
+          if (!p || stMap[p]) continue;
+          stMap[p] = String(vals[r][idxSt] || '').trim();
+        }
+      }
+    }
+  } catch (eSt) {}
+  var cands = [];
+  var k;
+  for (k in pend) {
+    if (!pend.hasOwnProperty(k)) continue;
+    if (!(Number(pend[k]) > 0)) continue;
+    var band = prWashQueueXlBand_(k, bandMap);
+    if (band !== PR_BAND_L_ && band !== PR_BAND_XL_) continue;
+    var st = stMap[k] || '';
+    var doneN = Number(done[k]) || 0;
+    var estRaw = bandMap[k] && bandMap[k].est;
+    var estN = Number(String(estRaw == null ? '' : estRaw).replace(/[^\d.-]/g, ''));
+    if (!isFinite(estN)) estN = 9999;
+    var score = 0;
+    if (st === PR_WASH_ST_KEEPA_ || st === PR_WASH_ST_ENUM_) score += 100000000;
+    if (band === PR_BAND_L_) score += 1000000;
+    score += Math.min(doneN, 99999) * 100;
+    score += Math.max(0, 10000 - estN);
+    cands.push({ parent: k, score: score, band: band });
+  }
+  cands.sort(function (a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.band !== b.band) return a.band === PR_BAND_L_ ? -1 : 1;
+    return a.parent < b.parent ? -1 : a.parent > b.parent ? 1 : 0;
+  });
+  var keep = {};
+  var i;
+  for (i = 0; i < cands.length && i < maxN; i++) keep[cands[i].parent] = true;
+  return { keep: keep, cands: cands };
+}
+
+/** 大・特大ですでに10社分の未済がある社への追記を止める。小中は対象外。 */
+function prWashQueueXlAppendBlocked_(parent) {
+  var maxN = prWashQueueXlPendingMakersMax_();
+  if (maxN <= 0) return false;
+  parent = String(parent || '').trim();
+  if (!parent) return false;
+  var band = prMakerBandFromSum_(parent);
+  if (band !== PR_BAND_L_ && band !== PR_BAND_XL_) return false;
+  var pend = prWashQueuePendingMap_();
+  var selfPend = Number(pend[parent]) || 0;
+  if (selfPend > 0) return false;
+  var bandMap = prMakerBandRowMap_();
+  var others = 0;
+  var k;
+  for (k in pend) {
+    if (!pend.hasOwnProperty(k)) continue;
+    if (k === parent) continue;
+    if (!(Number(pend[k]) > 0)) continue;
+    var b = prWashQueueXlBand_(k, bandMap);
+    if (b === PR_BAND_L_ || b === PR_BAND_XL_) others++;
+  }
+  return others >= maxN;
+}
+
+function prWashQueueRewriteKeepVals_(sh, hdr, keepVals) {
+  var width = Math.max(hdr.length, PR_WASH_QUEUE_HEADERS_.length);
+  var oldLast = sh.getLastRow();
+  if (keepVals.length) {
+    sh.getRange(2, 1, keepVals.length, width).setValues(keepVals);
+  }
+  var newLast = keepVals.length + 1;
+  if (oldLast > newLast) {
+    sh.getRange(newLast + 1, 1, oldLast - newLast, width).clearContent();
+  }
+  prWashQueueCountCacheClear_();
+  prWashQueueSnapshotClear_();
+}
+
+/**
+ * 大・特大の未済が上限を超えた社をキューから外す。Keepa済と小中は残す。
+ * @param {{quiet?:boolean, runId?:string, parent?:string}} opt
+ */
+function prWashQueueTrimXlPendingOverCap_(opt) {
+  var maxN = prWashQueueXlPendingMakersMax_();
+  var runId =
+    (opt && opt.runId) || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  if (maxN <= 0) return { ok: true, deleted: 0, keepN: 0, detail: 'xl_cap_off' };
+  var sh = prEnsureWashQueueSheet_();
+  if (sh.getLastRow() < 2) return { ok: true, deleted: 0, keepN: 0, detail: 'empty' };
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxK = prHeaderIndex_(hdr, 'Keepa済');
+  if (idxM < 0 || idxK < 0) return { ok: false, deleted: 0, keepN: 0, detail: 'no_cols' };
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var pend = {};
+  var done = {};
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var p = String(vals[r][idxM] || '').trim();
+    if (!p) continue;
+    if (prCkIsTrue_(vals[r][idxK])) {
+      done[p] = (Number(done[p]) || 0) + 1;
+    } else {
+      pend[p] = (Number(pend[p]) || 0) + 1;
+    }
+  }
+  var ranked = prWashQueueXlKeepParents_(pend, done, maxN);
+  if (ranked.cands.length <= maxN) {
+    return {
+      ok: true,
+      deleted: 0,
+      keepN: ranked.cands.length,
+      detail: 'xl_cap_ok n=' + ranked.cands.length + ' max=' + maxN,
+    };
+  }
+  var keep = ranked.keep;
+  var bandMap = prMakerBandRowMap_();
+  var keepVals = [];
+  var deleted = 0;
+  for (r = 0; r < vals.length; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    var band = prWashQueueXlBand_(parent, bandMap);
+    if (band === PR_BAND_L_ || band === PR_BAND_XL_) {
+      if (!prCkIsTrue_(vals[r][idxK]) && !keep[parent]) {
+        deleted++;
+        continue;
+      }
+    }
+    keepVals.push(vals[r]);
+  }
+  if (!deleted) {
+    return { ok: true, deleted: 0, keepN: ranked.cands.length, detail: 'xl_cap_noop' };
+  }
+  prWashQueueRewriteKeepVals_(sh, hdr, keepVals);
+  var names = [];
+  var i;
+  for (i = 0; i < ranked.cands.length && i < maxN; i++) names.push(ranked.cands[i].parent);
+  var detail =
+    'xl_cap max=' +
+    maxN +
+    ' keep=' +
+    names.join('|') +
+    ' deleted=' +
+    deleted +
+    ' remain=' +
+    keepVals.length;
+  Logger.log('[仕入れ検討①] runId=%s wash_queue_xl_cap %s', runId, detail);
+  if (!(opt && opt.quiet)) {
+    prAppendLog_([runId, '洗いキュー大特大上限', 'DONE', new Date(), maxN, deleted, '', detail]);
+  }
+  return { ok: true, deleted: deleted, keepN: names.length, detail: detail };
+}
+
 function prWashQueueAsinSet_(parent) {
   var set = {};
   var rows = prWashQueueSnapshot_(parent).rows;
@@ -9870,6 +12447,11 @@ function prWashQueueAsinSet_(parent) {
 
 function prWashQueueAppendAsins_(parent, entry, asins) {
   if (!asins || !asins.length) return 0;
+  parent = String(parent || '').trim();
+  if (prWashQueueXlAppendBlocked_(parent)) {
+    Logger.log('[仕入れ検討①] xl_cap skip_append parent=%s n=%s', parent, asins.length);
+    return 0;
+  }
   var sh = prEnsureWashQueueSheet_();
   var snap = prWashQueueSnapshot_(parent);
   var existing = {};
@@ -9897,6 +12479,11 @@ function prWashQueueAppendAsins_(parent, entry, asins) {
   if (PR_WASH_QUEUE_COUNT_CACHE_) {
     PR_WASH_QUEUE_COUNT_CACHE_[parent] =
       (Number(PR_WASH_QUEUE_COUNT_CACHE_[parent]) || 0) + newAsins.length;
+  }
+  // 追記ぶんは必ず未処理。表を捨てずに足す（作り直すとキュー全読みに戻る）
+  if (PR_WASH_QUEUE_PENDING_CACHE_) {
+    PR_WASH_QUEUE_PENDING_CACHE_[parent] =
+      (Number(PR_WASH_QUEUE_PENDING_CACHE_[parent]) || 0) + newAsins.length;
   }
   return lines.length;
 }
@@ -9967,11 +12554,23 @@ function prWashQueueMarkKeepaDoneByAsins_(parent, asins) {
   var snap = prWashQueueSnapshot_(parent);
   if (snap.idxK < 0) return;
   var hit = [];
+  var doneAsins = {};
   var r;
   for (r = 0; r < snap.rows.length; r++) {
     if (!want[snap.rows[r].asin] || snap.rows[r].done) continue;
     snap.rows[r].done = true;
+    doneAsins[snap.rows[r].asin] = true;
     hit.push(snap.rows[r].sheetRow);
+  }
+  // 未処理表が古くならないよう、済にしたぶんだけ減らす（作り直すとキュー全読みに戻る）
+  if (PR_WASH_QUEUE_PENDING_CACHE_) {
+    var decN = Object.keys(doneAsins).length;
+    if (decN > 0) {
+      PR_WASH_QUEUE_PENDING_CACHE_[parent] = Math.max(
+        0,
+        (Number(PR_WASH_QUEUE_PENDING_CACHE_[parent]) || 0) - decN
+      );
+    }
   }
   prWashQueueWriteKeepaDoneRows_(hit, snap.idxK + 1);
 }
@@ -10011,6 +12610,11 @@ function prWashQueueMarkKeepaDone_(sheetRows) {
 }
 
 function prWashQueuePendingCount_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return 0;
+  // スライス中などその社の行を既に読んでいるなら、書き換え済みが載っているそちらを使う
+  if (PR_WASH_QUEUE_SNAP_[parent]) return prWashQueuePendingKeepa_(parent, 999999).length;
+  if (prWashQueuePendingMapEnabled_()) return Number(prWashQueuePendingMap_()[parent]) || 0;
   return prWashQueuePendingKeepa_(parent, 999999).length;
 }
 
@@ -10029,12 +12633,26 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
   var seen = prWashQueueAsinSet_(parent);
   var sink = titleSink || null;
   var sinkMax = PR_CAT_INFER_SAMPLE_MAX_;
+  // Amazon 側に順位が1つも付いていないヒット数。Keepa の stats空／順位欠測とほぼ同じ集合（実測99%／96%）
+  var noRank = 0;
+  var cut = prCatalogRankCutEnabled_();
+  function ret_(done, timeup, tk) {
+    return {
+      added: added,
+      pages: pages,
+      hits: hits,
+      noRank: noRank,
+      nextToken: tk,
+      done: done,
+      timeup: timeup,
+    };
+  }
   while (pages < maxP) {
     if (stop > 0 && Object.keys(seen).length >= stop) {
-      return { added: added, pages: pages, hits: hits, nextToken: token, done: false, timeup: false };
+      return ret_(false, false, token);
     }
     if (prGasTimeUp_()) {
-      return { added: added, pages: pages, hits: hits, nextToken: token, done: false, timeup: true };
+      return ret_(false, true, token);
     }
     var cat = prCatalogSearchPage_(entry, token);
     pages++;
@@ -10048,6 +12666,13 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
         var tit = String(pageHits[i].title || '').trim();
         if (tit) sink.push(tit);
       }
+      // rankN は probe OFF のとき -1（判定不能）。0 のときだけ「順位なし」
+      var rankN = Number(pageHits[i].rankN);
+      if (rankN === 0) {
+        noRank++;
+        // CUT が ON のときだけキューから外す。既定は記録だけで従来どおり入れる
+        if (cut) continue;
+      }
       if (!a || seen[a]) continue;
       seen[a] = true;
       batch.push(a);
@@ -10055,11 +12680,11 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
     added += prWashQueueAppendAsins_(parent, entry, batch);
     token = cat.nextToken || '';
     if (!token) {
-      return { added: added, pages: pages, hits: hits, nextToken: '', done: true, timeup: false };
+      return ret_(true, false, '');
     }
     Utilities.sleep(200);
   }
-  return { added: added, pages: pages, hits: hits, nextToken: token, done: !token, timeup: false };
+  return ret_(!token, false, token);
 }
 
 function prEnsureWashSplitSheet_() {
@@ -10458,6 +13083,8 @@ function prEnumerateBySplitWords_(parent, needles, titles, runId) {
     pending = prLoadPendingSplitWords_(parent);
   }
   var totalAdded = 0;
+  var splitNoRank = 0;
+  var splitHits = 0;
   var i;
   for (i = 0; i < pending.length; i++) {
     if (prGasTimeUp_()) {
@@ -10486,6 +13113,8 @@ function prEnumerateBySplitWords_(parent, needles, titles, runId) {
     var er = prCatalogEnumerateQueryToQueue_(parent, qEntry, needles, startTok, 40, 0, null);
     var cum = (pending[i].addedSoFar || 0) + er.added;
     totalAdded += er.added;
+    splitNoRank += Number(er.noRank) || 0;
+    splitHits += Number(er.hits) || 0;
     if (er.timeup || !er.done) {
       prSaveSplitWordResume_(pending[i].sheetRow, er.nextToken || '', cum);
       prSetMakerWashStatus_(parent, PR_WASH_ST_ENUM_, 'split=' + word);
@@ -10506,7 +13135,27 @@ function prEnumerateBySplitWords_(parent, needles, titles, runId) {
     }
     prMarkSplitWordDone_(pending[i].sheetRow, cum);
   }
-  return { ok: true, status: PR_WASH_ST_KEEPA_, detail: '分割列挙完了 added=' + totalAdded, added: totalAdded };
+  return {
+    ok: true,
+    status: PR_WASH_ST_KEEPA_,
+    detail: '分割列挙完了 added=' + totalAdded + prCatalogNoRankTag_(splitNoRank, splitHits),
+    added: totalAdded,
+  };
+}
+
+/**
+ * ①ログ用の「順位なし」内訳。probe OFF（noRank=0 かつ hits>0 でも判定していない）でも
+ * 誤解を生まないよう、probe が効いていないときは何も書かない。
+ * @return {string} 例 ' noRank=41/120(34%)'
+ */
+function prCatalogNoRankTag_(noRank, hits) {
+  if (!prCatalogRankProbeEnabled_()) return '';
+  var n = Number(noRank) || 0;
+  var h = Number(hits) || 0;
+  var pct = h > 0 ? Math.round((100 * n) / h) : 0;
+  return (
+    ' noRank=' + n + '/' + h + '(' + pct + '%)' + (prCatalogRankCutEnabled_() ? ' cut=ON' : '')
+  );
 }
 
 /**
@@ -10554,14 +13203,16 @@ function prEnumerateMakerToQueue_(opt) {
   );
   totalAdded += erMain.added;
   totalPages += erMain.pages;
+  var totalNoRank = Number(erMain.noRank) || 0;
   var uniq = Object.keys(prWashQueueAsinSet_(parent)).length;
   Logger.log(
-    '[仕入れ検討①] runId=%s enum main parent=%s uniq=%s pages=%s titles=%s done=%s timeup=%s',
+    '[仕入れ検討①] runId=%s enum main parent=%s uniq=%s pages=%s titles=%s noRank=%s done=%s timeup=%s',
     runId,
     parent,
     uniq,
     totalPages,
     titles.length,
+    totalNoRank,
     erMain.done ? 'Y' : 'N',
     erMain.timeup ? 'Y' : 'N'
   );
@@ -10580,7 +13231,17 @@ function prEnumerateMakerToQueue_(opt) {
       ok: true,
       skip: false,
       status: PR_WASH_ST_KEEPA_,
-      detail: '列挙完了 parent=' + parent + ' queue=' + uniq + ' added=' + totalAdded + ' pages=' + totalPages,
+      detail:
+        '列挙完了 parent=' +
+        parent +
+        ' queue=' +
+        uniq +
+        ' added=' +
+        totalAdded +
+        ' pages=' +
+        totalPages +
+        // 順位なし＝Keepa で stats空／順位欠測になる見込み（実測99%／96%）。CUT=OFF なので今はキューに入っている
+        prCatalogNoRankTag_(totalNoRank, erMain.hits),
     };
   }
   // 閾値超 → 分割B（タイトル推定 → ①洗い分割語 → 語ごと列挙）
@@ -10609,6 +13270,24 @@ function prEnumerateMakerToQueue_(opt) {
   }
   uniq = Object.keys(prWashQueueAsinSet_(parent)).length;
   if (!uniq) {
+    // 法人格ゆれ。「(株)浜乙女」で0件でも「浜乙女」ならヒットする。1回だけ言い換えて再列挙
+    var altEntry = prMakerNeedleLegalEnabled_() ? prMakerLegalVariants_(parent)[0] || '' : '';
+    if (altEntry && altEntry !== entry && !(opt && opt.legalRetry)) {
+      Logger.log(
+        '[仕入れ検討①] runId=%s legal_retry parent=%s entry=%s -> %s',
+        runId,
+        parent,
+        entry,
+        altEntry
+      );
+      return prEnumerateMakerToQueue_({
+        parent: parent,
+        entry: altEntry,
+        needles: needles,
+        runId: runId,
+        legalRetry: true,
+      });
+    }
     throw new Error('タイトル含有0 entry=' + entry);
   }
   prTitleZeroClear_(parent);
@@ -10639,7 +13318,7 @@ function prWashFullKeepaSlice_(opt) {
     var left0 = prWashQueuePendingCount_(parent);
     if (left0 === 0) {
       prClearSplitWordsForMaker_(parent);
-      // Catalog見積≥1 でも未済0・候補0 なら DONE 経由で empty_research 保留になる
+      // 未済0。通過0でも3区分 ON なら完了／要修復（旧は empty_research 保留）
       prSetMakerWashStatus_(parent, PR_WASH_ST_DONE_, 'done');
       var loc = prFindMakerSumRow_(parent);
       var stAfter = '';
@@ -10659,7 +13338,15 @@ function prWashFullKeepaSlice_(opt) {
           String((purgeErr0 && purgeErr0.message) || purgeErr0).slice(0, 120)
         );
       }
-      if (stAfter === PR_WASH_ST_HOLD_) {
+      if (stAfter === PR_WASH_ST_FIX_) {
+        return {
+          ok: true,
+          detail: 'cand_missing parent=' + parent + ' queue_done',
+          complete: true,
+          wrote: 0,
+        };
+      }
+      if (stAfter === PR_WASH_ST_HOLD_ || stAfter === PR_WASH_ST_OUT_) {
         return {
           ok: true,
           detail: 'empty_research parent=' + parent + ' queue_done',
@@ -10687,6 +13374,13 @@ function prWashFullKeepaSlice_(opt) {
   var wrote = 0;
   var held = 0;
   var doneAsins = [];
+  // Keepa が返さない ASIN は doneAsins に入らずキューへ残り、同じ ASIN を取り直す
+  // 無限ループになる（実測1社で1時間20分・27回）。回数上限で見切る
+  var missOn = prKeepaMissDoneEnabled_();
+  var missAfter = prKeepaMissDoneAfter_();
+  var missMap = missOn ? prKeepaMissMap_() : {};
+  var missDirty = false;
+  var missDrop = 0;
   for (i = 0; i < pending.length; i++) {
     if (notReady[pending[i].asin]) {
       // 門は通ったが offers=20 が取れていない。BuyBox 欠けで確定させず次スライスへ回す
@@ -10695,8 +13389,36 @@ function prWashFullKeepaSlice_(opt) {
     }
     var p = byAsin[pending[i].asin];
     if (!p) {
-      Logger.log('[仕入れ検討①] runId=%s WARN no_product %s', runId, pending[i].asin);
+      var missN = 0;
+      if (missOn) {
+        missN = (Number(missMap[pending[i].asin]) || 0) + 1;
+        missMap[pending[i].asin] = missN;
+        missDirty = true;
+      }
+      if (missOn && missN >= missAfter) {
+        doneAsins.push(pending[i].asin);
+        delete missMap[pending[i].asin];
+        missDrop++;
+        Logger.log(
+          '[仕入れ検討①] runId=%s keepa_miss_done asin=%s n=%s parent=%s',
+          runId,
+          pending[i].asin,
+          missN,
+          parent
+        );
+      } else {
+        Logger.log(
+          '[仕入れ検討①] runId=%s WARN no_product %s miss=%s',
+          runId,
+          pending[i].asin,
+          missN
+        );
+      }
       continue;
+    }
+    if (missOn && missMap[pending[i].asin]) {
+      delete missMap[pending[i].asin];
+      missDirty = true;
     }
     var row = prGateProductRow_(p, prReadProfile_(), '', runId);
     row[0] = parent;
@@ -10707,6 +13429,7 @@ function prWashFullKeepaSlice_(opt) {
     if (row[8] === '通過') pass++;
     else drop++;
   }
+  if (missOn && missDirty) prKeepaMissSave_(missMap);
   prWashQueueMarkKeepaDoneByAsins_(parent, doneAsins);
   var left = prWashQueuePendingCount_(parent);
   var complete = left === 0;
@@ -10764,6 +13487,7 @@ function prWashFullKeepaSlice_(opt) {
     pass +
     ' drop=' +
     drop +
+    (missDrop ? ' miss=' + missDrop : '') +
     ' left=' +
     left +
     ' full+=' +
@@ -11028,8 +13752,24 @@ function prRunMakerWashFullBody_(opt) {
     if (locDone && locDone.idxProg >= 0) {
       progDone = String(locDone.sh.getRange(locDone.sheetRow, locDone.idxProg + 1).getValue() || '');
     }
-    // empty_research 保留は D1 材料なし → C4 せず心拍へ（同社再arm防止）
-    if (prWashEmptyResearchBlocked_(stDone, progDone) || stDone === PR_WASH_ST_HOLD_) {
+    // 調査対象外／要修復／旧保留は C4 しない。完了＋通過0も C4 しない（店レーンは挟む）
+    if (
+      stDone === PR_WASH_ST_OUT_ ||
+      stDone === PR_WASH_ST_FIX_ ||
+      stDone === PR_WASH_ST_HOLD_ ||
+      prWashEmptyResearchBlocked_(stDone, progDone)
+    ) {
+      if (stDone === PR_WASH_ST_DONE_) {
+        var bandHold = prMakerBandFromSum_(parent);
+        if (
+          bandHold === PR_BAND_S_ ||
+          bandHold === PR_BAND_M_ ||
+          bandHold === PR_BAND_L_ ||
+          bandHold === PR_BAND_XL_
+        ) {
+          prCycleMarkShopAfterSm_(parent);
+        }
+      }
       var hbEmpty = prCycleHeartbeatEnabled_()
         ? prCycleArmHeartbeatAfterIdle_(runId, 'empty_research_heartbeat')
         : 0;
@@ -11038,7 +13778,7 @@ function prRunMakerWashFullBody_(opt) {
         (hbEmpty ? ' heartbeat_armed afterMin=' + hbEmpty : ' empty_research_no_c4');
       return done_(true, false, emptyDetail, 'DONE');
     }
-    // 完走 → 店レーン1回を挟む（小中に加え大・特大も。§6.3bis）
+    // 完走 → 店レーン1回を挟む（通過0の完了も含む。§6.10）
     if (stDone === PR_WASH_ST_DONE_) {
       var bandDone = prMakerBandFromSum_(parent);
       if (
@@ -11050,9 +13790,9 @@ function prRunMakerWashFullBody_(opt) {
         prCycleMarkShopAfterSm_(parent);
       }
     }
-    prCycleMarkC4NeedsD1_(parent);
+    if (prWashShouldRunC4_(parent)) prCycleMarkC4NeedsD1_(parent);
     var fullDetail = detail;
-    if (prCycleC4Enabled_() && parent) {
+    if (prWashShouldRunC4_(parent)) {
       var c4After = prScheduleCycleC4Trigger_(PR_CYCLE_C4_TRIGGER_AFTER_DEFAULT_, {
         runId: runId,
         parent: parent,
@@ -11087,12 +13827,38 @@ function prRunMakerWashFullBody_(opt) {
     if (!parent) throw new Error('parent 空');
     var jitta = prJittaForMaker_(parent);
     if (jitta === PR_JITTAI_EXCLUDE_) {
-      prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, '非仕入先');
+      prSetMakerWashStatus_(parent, prWashOutStatus_(), '非仕入先');
+      if (armTrigger) {
+        prWashAutoRecoverAfterJittaSkip_(runId, parent, jitta, tag || 'wash_full');
+      }
       return done_(true, true, '実態=非仕入先 parent=' + parent);
     }
     if (prMakerJittaWashBlocked_(jitta)) {
-      prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, jitta);
+      // FLOW §5.6: Keepa中のまま残すと選定に戻り線が切れる → 自動リカバリー
+      if (prWashAutoRecoverEnabled_()) {
+        if (armTrigger) {
+          prWashAutoRecoverAfterJittaSkip_(runId, parent, jitta, tag || 'wash_full');
+        } else {
+          prWashAutoRecoverParkJittaBlocked_(parent, jitta, runId);
+        }
+      } else if (!prWashStSplitEnabled_()) {
+        // 切戻し時のみ旧: 保留へ
+        prSetMakerWashStatus_(parent, PR_WASH_ST_HOLD_, jitta);
+      }
       return done_(true, true, '実態=' + jitta + ' parent=' + parent);
+    }
+    if (prMakerMarkSurveyRootOutIfBlocked_(parent)) {
+      if (armTrigger && prWashAutoRecoverEnabled_()) {
+        try {
+          prWashAutoRecoverArmNext_(runId, String(tag || 'wash_full') + '_survey_root_out');
+        } catch (eArmSr) {
+          Logger.log(
+            '[仕入れ検討①] WARN survey_root_out arm %s',
+            String((eArmSr && eArmSr.message) || eArmSr).slice(0, 120)
+          );
+        }
+      }
+      return done_(true, true, 'survey_root_out parent=' + parent);
     }
     if (prWashTitleZeroBlockedForParent_(parent)) {
       return done_(true, true, 'title0_skip blocked parent=' + parent);
@@ -11131,9 +13897,25 @@ function prRunMakerWashFullBody_(opt) {
       needEnum = false;
       if (st !== PR_WASH_ST_KEEPA_ && st !== PR_WASH_ST_DONE_) {
         prSetMakerWashStatus_(parent, PR_WASH_ST_KEEPA_, 'queue_pending=' + pending);
+        // サマリに書いた新状態を手元にも反映する。しないと下の isKeepaCont が古い st で
+        // false になり、洗える相手なのに catalog_first_other で1サイクル譲ってしまう
+        // （2026-09-10 実測: 1社洗うたびに1回・11.4時間で25回・約44分）。
+        if (prWashStSyncEnabled_()) st = PR_WASH_ST_KEEPA_;
       }
     } else if (st === PR_WASH_ST_NEED_Q2_ || st === PR_WASH_ST_INFER_) {
       needEnum = true;
+    }
+    if (needEnum && !enumOnly && prWashQueueXlAppendBlocked_(parent)) {
+      needEnum = false;
+      Logger.log(
+        '[仕入れ検討①] xl_cap skip_enum parent=%s queue=%s pending=%s',
+        parent,
+        queueN,
+        pending
+      );
+      if (!(pending > 0)) {
+        return done_(true, false, 'xl_cap_skip parent=' + parent + ' queue=' + queueN);
+      }
     }
     if (needEnum && st !== PR_WASH_ST_DONE_) {
       var er = prEnumerateMakerToQueue_({
@@ -11196,6 +13978,34 @@ function prRunMakerWashFullBody_(opt) {
     // Catalog見積が自社・他社で未了なら Keepa に入らない（Keepa中の続きは可）
     var pendingNow = prWashQueuePendingCount_(parent);
     var isKeepaCont = st === PR_WASH_ST_KEEPA_ && pendingNow > 0;
+    // 洗い状態=Keepa中 なのに未処理0＝幽霊の続き相手。毎回ここまで選ばれては他レーンへ譲るだけで、
+    // 心拍の列挙レーンに永久に順番が回らない。連続 PR_WASH_PHANTOM_STRIKES_ 回で強制解消する。
+    if (prWashPhantomFixEnabled_()) {
+      if (st === PR_WASH_ST_KEEPA_ && !(pendingNow > 0)) {
+        var ph = prWashPhantomStrike_(parent);
+        Logger.log(
+          '[仕入れ検討①] runId=%s phantom_keepa parent=%s pending=0 strike=%s/%s',
+          runId,
+          parent,
+          ph,
+          PR_WASH_PHANTOM_STRIKES_
+        );
+        if (ph >= PR_WASH_PHANTOM_STRIKES_) {
+          prWashPhantomClear_();
+          var cnPh = prCandGatePassCountForMaker_(parent);
+          // 完了として書けば prSetMakerWashStatus_ が候補0のときだけ保留へ振り分ける
+          prSetMakerWashStatus_(parent, PR_WASH_ST_DONE_, 'phantom_keepa_resolved cand=' + cnPh);
+          var dPh = 'phantom_keepa_resolved parent=' + parent + ' cand=' + cnPh;
+          if (armTrigger) {
+            var aPh = prCycleArmHeartbeatAfterIdle_(runId, 'phantom_keepa');
+            dPh += ' heartbeat_armed afterMin=' + aPh;
+          }
+          return done_(true, false, dPh);
+        }
+      } else {
+        prWashPhantomClearIf_(parent);
+      }
+    }
     if (!isKeepaCont) {
       if (!prMakerCatalogEstCellOk_(parent)) {
         var finCat = prFinalizeEnumOnlySize_(parent);
@@ -11507,6 +14317,27 @@ function prWashTriggerTagNoShorten_(tag) {
   return false;
 }
 
+/** サマリに書いた洗い状態を実行内の st にも反映する（未設定=ON）。 */
+function prWashStSyncEnabled_() {
+  return prCkEnabled_(PR_WASH_ST_SYNC_PROP_);
+}
+
+/** 心拍譲りの予約を短縮しない（未設定=ON）。 */
+function prHbYieldArmNoShortenEnabled_() {
+  return prCkEnabled_(PR_HB_YIELD_ARM_NO_SHORTEN_PROP_);
+}
+
+/**
+ * 心拍／店の作業待ちの予約か。トークン待ちではなく「前の仕事が終わるまで」なので
+ * 満タン短縮（2分）を掛けると心拍の途中で発火して空振りする。
+ */
+function prWashTriggerTagIsHbYield_(tag) {
+  var t = String(tag || '');
+  if (t.indexOf('hb_yield') === 0) return true;
+  if (t === 'shop_busy_wait') return true;
+  return false;
+}
+
 /** ckpt（同一実行の安全ネット）の予約か。満タン2分上限の除外に使う。 */
 function prWashTriggerTagIsCkpt_(tag) {
   return String(tag || '').indexOf('_ckpt') >= 0;
@@ -11691,7 +14522,10 @@ function prWashYieldToHeartbeat_(runId, tag) {
   prWashInflightClear_('yield_hb:' + t + ':' + rid);
   prShopHbBusySet_(rid);
   if (!prWashFullTriggerEnabled_()) return 0;
-  var mins = prScheduleWashFullTrigger_(PR_SHOP_YIELD_ARM_MIN_, {
+  var armMin = prHbYieldArmNoShortenEnabled_()
+    ? PR_HB_YIELD_ARM_MIN_
+    : PR_SHOP_YIELD_ARM_MIN_;
+  var mins = prScheduleWashFullTrigger_(armMin, {
     runId: rid,
     parent: '',
     tag: t,
@@ -11882,6 +14716,14 @@ function prEffJudgeAfterArm_(runId, tag, afterMin, liveLeft, calcLeft, parent) {
     cause = 'arm_very_long';
     fixHint = 'check_waitMin_formula';
   }
+  // 予約そのものが正常でも、切片が出ていなければ回っていない。
+  // 間隔合否は切片が出たときしか動かないので、ここで空転を拾う。
+  var stallMin = prEffMinSinceLastSlice_();
+  if (prEffStallGuardEnabled_() && stallMin >= PR_EFF_STALL_FAIL_MIN_) {
+    verdict = 'FAIL';
+    cause = 'no_slice_stall';
+    fixHint = 'check_phantom_or_pool';
+  }
   prAppendEffJudge_(runId, 'arm', verdict, cause, {
     parent: parent || '',
     tag: tagS.slice(0, 40),
@@ -11891,8 +14733,259 @@ function prEffJudgeAfterArm_(runId, tag, afterMin, liveLeft, calcLeft, parent) {
     isCkpt: isCkpt ? 'Y' : 'N',
     isOverlap: isOverlap ? 'Y' : 'N',
     ckptMax: isCkpt ? ckptMax : '',
+    stallMin: stallMin != null ? stallMin : '',
     fixHint: fixHint,
   });
+}
+
+/** Property PR_EFF_STALL_GUARD。未設定=ON。false で空転を拾わない旧判定。 */
+function prEffStallGuardEnabled_() {
+  return prCkEnabled_(PR_EFF_STALL_GUARD_PROP_);
+}
+
+/** Property PR_WASH_AUTO_RECOVER。未設定=ON。false で §5.6 自動リカバリーオフ。 */
+function prWashAutoRecoverEnabled_() {
+  return prCkEnabled_(PR_WASH_AUTO_RECOVER_PROP_);
+}
+
+/** 実態AI優先キューへメーカーを先頭追加（最大20）。 */
+function prWashAutoRecoverPushJittaPriority_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return;
+  var props = PropertiesService.getScriptProperties();
+  var raw = String(props.getProperty(PR_JITTA_PRIORITY_MAKERS_PROP_) || '');
+  var list = raw ? raw.split('|') : [];
+  var out = [parent];
+  var i;
+  for (i = 0; i < list.length; i++) {
+    var m = String(list[i] || '').trim();
+    if (m && m !== parent) out.push(m);
+    if (out.length >= 20) break;
+  }
+  props.setProperty(PR_JITTA_PRIORITY_MAKERS_PROP_, out.join('|'));
+}
+
+/**
+ * 実態ブロック社の Keepa中等を外す（選定の続きから落とす）。
+ * 非仕入先は調査対象外／保留へ。未調査・要確認は未着手＋jitta_wait。
+ */
+function prWashAutoRecoverParkJittaBlocked_(parent, jitta, runId) {
+  parent = String(parent || '').trim();
+  if (!parent) return;
+  var j = String(jitta || '').trim();
+  var was = '';
+  try {
+    var loc = prFindMakerSumRow_(parent);
+    if (loc && loc.idxSt >= 0) {
+      was = String(loc.sh.getRange(loc.sheetRow, loc.idxSt + 1).getValue() || '').trim();
+    }
+  } catch (eWas) {}
+  if (j === PR_JITTAI_EXCLUDE_) {
+    prSetMakerWashStatus_(parent, prWashOutStatus_(), '非仕入先 auto_recover');
+  } else {
+    prSetMakerWashStatus_(
+      parent,
+      PR_WASH_ST_NONE_,
+      'auto_recover jitta_wait was=' + (was || '') + ' jitta=' + j
+    );
+    prWashAutoRecoverPushJittaPriority_(parent);
+  }
+  prAppendLog_([
+    runId || '',
+    'auto_recover park',
+    'DONE',
+    new Date(),
+    '',
+    parent,
+    '',
+    ('jitta=' + j + ' was=' + was).slice(0, 200),
+  ]);
+}
+
+/** 洗いトリガーを張り直す（死んだ washN を更新）。心拍のみのときは心拍予約。 */
+function prWashAutoRecoverArmNext_(runId, tag) {
+  var rid =
+    runId || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var t = String(tag || 'auto_recover_rearm');
+  if (!prWashFullTriggerEnabled_()) {
+    var afterHb = prCycleArmHeartbeatAfterIdle_(rid, t);
+    prAppendLog_([
+      rid,
+      'auto_recover arm',
+      'DONE',
+      new Date(),
+      afterHb,
+      '',
+      '',
+      'heartbeat_armed tag=' + t,
+    ]);
+    return;
+  }
+  prClearWashFullTriggers_({ reason: t, runId: rid, log: true });
+  PropertiesService.getScriptProperties().setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
+  var afterMin = prScheduleWashFullTrigger_(2, {
+    runId: rid,
+    parent: '',
+    tag: t,
+  });
+  prAppendLog_([
+    rid,
+    'auto_recover arm',
+    'DONE',
+    new Date(),
+    afterMin,
+    '',
+    '',
+    'wash_armed tag=' + t + ' afterMin=' + afterMin,
+  ]);
+}
+
+/**
+ * 層A: 実態スキップ直後。Keepa中解除＋優先キュー＋次予約。
+ * @return {boolean} 実行したか
+ */
+function prWashAutoRecoverAfterJittaSkip_(runId, parent, jitta, tag) {
+  if (!prWashAutoRecoverEnabled_()) return false;
+  try {
+    prWashAutoRecoverParkJittaBlocked_(parent, jitta, runId);
+  } catch (ePark) {
+    Logger.log(
+      '[仕入れ検討①] WARN auto_recover park %s',
+      String((ePark && ePark.message) || ePark).slice(0, 120)
+    );
+  }
+  try {
+    prWashAutoRecoverArmNext_(runId, String(tag || 'wash') + '_jitta_skip');
+  } catch (eArm) {
+    Logger.log(
+      '[仕入れ検討①] WARN auto_recover arm %s',
+      String((eArm && eArm.message) || eArm).slice(0, 120)
+    );
+  }
+  return true;
+}
+
+/** 選定から落とす実態（未調査／要確認／非仕入先）。 */
+function prWashAutoRecoverJittaBlockedForPick_(jitta) {
+  var j = String(jitta || '').trim();
+  return (
+    j === PR_JITTAI_EXCLUDE_ ||
+    j === PR_JITTAI_CHECK_ ||
+    j === PR_JITTAI_UNCHECKED_ ||
+    !j
+  );
+}
+
+/**
+ * 層C: Keepa中かつ実態ブロックの社を未着手へ（1回最大40社）。
+ * @return {number} 直した件数
+ */
+function prWashAutoRecoverParkStuckKeepaJitta_(runId) {
+  if (!prWashAutoRecoverEnabled_()) return 0;
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxJ = prHeaderIndex_(hdr, '実態');
+  if (idxM < 0 || idxSt < 0 || idxJ < 0) return 0;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var n = 0;
+  var r;
+  for (r = 0; r < vals.length && n < 40; r++) {
+    var st = String(vals[r][idxSt] || '').trim();
+    if (st !== PR_WASH_ST_KEEPA_) continue;
+    var jitta = String(vals[r][idxJ] || '').trim();
+    if (!prWashAutoRecoverJittaBlockedForPick_(jitta)) continue;
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    prWashAutoRecoverParkJittaBlocked_(parent, jitta || PR_JITTAI_UNCHECKED_, runId);
+    n++;
+  }
+  return n;
+}
+
+/**
+ * 層C 番犬: 切片長時間ゼロが続いたらトリガー掃除＋再武装＋滞留パーク。
+ * @return {{acted:boolean, reason:string, strikes?:number, parked?:number}}
+ */
+function prWashAutoRecoverMaybeStall_(runId, via) {
+  if (!prWashAutoRecoverEnabled_()) return { acted: false, reason: 'recover_off' };
+  var stallMin = prEffMinSinceLastSlice_();
+  var props = PropertiesService.getScriptProperties();
+  if (stallMin == null || stallMin < PR_EFF_STALL_FAIL_MIN_) {
+    props.deleteProperty(PR_WASH_STALL_STRIKE_PROP_);
+    return { acted: false, reason: 'no_stall' };
+  }
+  var expectMs = prCycleNextExpectedFireMs_();
+  var now = new Date().getTime();
+  // 予約時刻が無い／5分以上過ぎている＝ゾンビ候補。未来のトークン待ちは strike だけ積む。
+  var expectDead = !(expectMs > 0) || now >= expectMs + 5 * 60 * 1000;
+  var strikes = Number(props.getProperty(PR_WASH_STALL_STRIKE_PROP_) || 0) + 1;
+  props.setProperty(PR_WASH_STALL_STRIKE_PROP_, String(strikes));
+  if (!expectDead && strikes < PR_WASH_STALL_STRIKE_NEED_) {
+    return {
+      acted: false,
+      reason: 'strike_wait',
+      strikes: strikes,
+      stallMin: stallMin,
+    };
+  }
+  var rid =
+    runId || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var parked = 0;
+  try {
+    parked = prWashAutoRecoverParkStuckKeepaJitta_(rid);
+  } catch (eParkAll) {
+    Logger.log(
+      '[仕入れ検討①] WARN stall park_all %s',
+      String((eParkAll && eParkAll.message) || eParkAll).slice(0, 120)
+    );
+  }
+  try {
+    prWashAutoRecoverArmNext_(rid, 'stall_watchdog');
+  } catch (eArm) {
+    Logger.log(
+      '[仕入れ検討①] WARN stall arm %s',
+      String((eArm && eArm.message) || eArm).slice(0, 120)
+    );
+  }
+  props.deleteProperty(PR_WASH_STALL_STRIKE_PROP_);
+  prAppendLog_([
+    rid,
+    'auto_recover stall',
+    'DONE',
+    new Date(),
+    strikes,
+    parked,
+    '',
+    ('via=' +
+      String(via || '') +
+      ' stallMin=' +
+      stallMin +
+      ' expectDead=' +
+      (expectDead ? 'Y' : 'N') +
+      ' parked=' +
+      parked).slice(0, 200),
+  ]);
+  return {
+    acted: true,
+    reason: 'stall_recover',
+    strikes: strikes,
+    parked: parked,
+    stallMin: stallMin,
+  };
+}
+
+/** 最後の切片からの経過（分）。未記録なら null。 */
+function prEffMinSinceLastSlice_() {
+  var prevMs = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_EFF_LAST_SLICE_MS_PROP_) || 0
+  );
+  if (!(prevMs > 0)) return null;
+  return Math.round((new Date().getTime() - prevMs) / 60000);
 }
 
 /** Property PR_EFF_CKPT_BUDGET_RULE。未設定=ON。false で固定15分の旧判定。 */
@@ -12150,8 +15243,11 @@ function prScheduleWashFullTrigger_(afterMin, logOpt) {
   var calcMissing =
     calcLeft === '' || calcLeft == null || !(calcN === calcN);
   var waitShortened = false;
+  // 心拍譲りは「前の仕事が終わるまで」の待ち。短縮すると心拍の途中で発火し空振りする。
+  var hbYieldNoShorten =
+    prHbYieldArmNoShortenEnabled_() && prWashTriggerTagIsHbYield_(tag);
   var shortenAllowed =
-    !(prWashCkptNoShorten_() && prWashTriggerTagNoShorten_(tag));
+    !(prWashCkptNoShorten_() && prWashTriggerTagNoShorten_(tag)) && !hbYieldNoShorten;
   if (
     shortenAllowed &&
     tokProbe.ok &&
@@ -12168,6 +15264,7 @@ function prScheduleWashFullTrigger_(afterMin, logOpt) {
   if (
     (prWashEffLoopEnabled_() || prWashArmFullCapEnabled_()) &&
     !prWashTriggerTagIsCkpt_(tag) &&
+    !hbYieldNoShorten &&
     tokProbe.ok &&
     liveN === liveN &&
     liveN >= PR_EFF_ARM_FULL_LEFT_ &&
@@ -12284,12 +15381,15 @@ function prRunWashFullFromTrigger() {
   }
   // 店/心拍作業中（yield 済み）→ 洗い本処理に入らず短再試行（二重 A-light 防止）
   if (prShopHbBusy_()) {
+    var busyRearmMin = prHbYieldArmNoShortenEnabled_()
+      ? PR_HB_YIELD_ARM_MIN_
+      : PR_SHOP_YIELD_ARM_MIN_;
     prAppendLog_([
       runId,
       'full_trigger shop_busy',
       'DONE',
       new Date(),
-      PR_SHOP_YIELD_ARM_MIN_,
+      busyRearmMin,
       '',
       '',
       'shop_hb_busy_skip owner=' +
@@ -12297,10 +15397,10 @@ function prRunWashFullFromTrigger() {
           PropertiesService.getScriptProperties().getProperty(PR_SHOP_HB_BUSY_RUN_PROP_) || ''
         ) +
         ' rearmMin=' +
-        PR_SHOP_YIELD_ARM_MIN_,
+        busyRearmMin,
     ]);
     if (prWashFullTriggerEnabled_()) {
-      prScheduleWashFullTrigger_(PR_SHOP_YIELD_ARM_MIN_, {
+      prScheduleWashFullTrigger_(busyRearmMin, {
         runId: runId,
         parent: '',
         tag: 'shop_busy_wait',
@@ -12954,6 +16054,14 @@ function prMenuCycleLivenessDiagnose() {
 function prPickWashContinueTarget_() {
   var deferred = [];
   var poolOnce = null;
+  var jittaPickCache = {};
+  function jittaCached_(p) {
+    var key = String(p || '');
+    if (!Object.prototype.hasOwnProperty.call(jittaPickCache, key)) {
+      jittaPickCache[key] = prJittaForMaker_(key);
+    }
+    return jittaPickCache[key];
+  }
   function poolCached_() {
     if (!poolOnce) poolOnce = prCyclePoolCounts_();
     return poolOnce;
@@ -12967,8 +16075,14 @@ function prPickWashContinueTarget_() {
     return true;
   }
   function deferredDetail_() {
+    // shopCacheHit= が社数ぶん出ていれば、店の件数読みが1回で済んでいる
     return deferred.length
-      ? 'deferred_skip n=' + deferred.length + ' ' + deferred.join('|').slice(0, 180)
+      ? 'deferred_skip n=' +
+          deferred.length +
+          ' shopCacheHit=' +
+          PR_SHOP_BEFORE_LARGE_CACHE_HIT_ +
+          ' ' +
+          deferred.join('|').slice(0, 180)
       : '';
   }
   try {
@@ -12989,6 +16103,8 @@ function prPickWashContinueTarget_() {
     var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
     var idxHit = prHeaderIndex_(hdr, '入口語ヒット');
     var idxPref = prHeaderIndex_(hdr, '入口推奨');
+    var idxJitta = prHeaderIndex_(hdr, '実態');
+    var idxRootCont = prHeaderIndex_(hdr, PR_MAKER_SUM_AMAZON_ROOT_HEADER_);
     if (idxM >= 0 && idxSt >= 0) {
       var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
       var r;
@@ -13005,6 +16121,20 @@ function prPickWashContinueTarget_() {
           if (pSum && progSum.indexOf('a1_park') >= 0) continue;
           if (pSum && prWashTitleZeroBlocked_(pSum, st, progSum)) continue;
           if (prWashEmptyResearchBlocked_(st, progSum)) continue;
+          // 層B: 実態ブロック社は続き候補にしない（Keepa中でも）
+          if (prWashAutoRecoverEnabled_() && idxJitta >= 0) {
+            var jSum = String(vals[r][idxJitta] || '').trim();
+            if (prWashAutoRecoverJittaBlockedForPick_(jSum)) continue;
+          }
+          // 調査カテゴリONと Amazonルートが無交差 → 調査対象外にして次へ
+          if (
+            pSum &&
+            idxRootCont >= 0 &&
+            prMakerBlockedBySurveyRootCell_(vals[r][idxRootCont])
+          ) {
+            prMakerMarkSurveyRootOutIfBlocked_(pSum);
+            continue;
+          }
           if (pSum && noteDefer_(pSum, 'sum')) continue;
           return {
             parent: pSum,
@@ -13033,30 +16163,47 @@ function prPickWashContinueTarget_() {
         if (!p2) continue;
         if (prWashA1Parked_(p2)) continue;
         if (prWashTitleZeroBlockedForParent_(p2)) continue;
+        if (
+          prWashAutoRecoverEnabled_() &&
+          prWashAutoRecoverJittaBlockedForPick_(jittaCached_(p2))
+        ) {
+          continue;
+        }
+        if (prMakerMarkSurveyRootOutIfBlocked_(p2)) continue;
         if (noteDefer_(p2, 'split')) continue;
         return { parent: p2, hit: '', pref: '', via: 'split', deferredDetail: deferredDetail_() };
       }
     }
   }
-  var qSh = prEnsureWashQueueSheet_();
-  if (qSh.getLastRow() >= 2) {
-    var lastCol3 = Math.max(qSh.getLastColumn(), 1);
-    var hdr3 = qSh.getRange(1, 1, 1, lastCol3).getValues()[0];
-    var idxM3 = prHeaderIndex_(hdr3, 'メーカー');
-    var idxK = prHeaderIndex_(hdr3, 'Keepa済');
-    if (idxM3 >= 0) {
-      var vals3 = qSh.getRange(2, 1, qSh.getLastRow() - 1, lastCol3).getValues();
-      var seenQ = {};
-      var r3;
-      for (r3 = 0; r3 < vals3.length; r3++) {
-        if (idxK >= 0 && prCkIsTrue_(vals3[r3][idxK])) continue;
-        var p3 = String(vals3[r3][idxM3] || '').trim();
-        if (!p3 || seenQ[p3]) continue;
-        seenQ[p3] = true;
-        if (prWashA1Parked_(p3)) continue;
-        if (prWashTitleZeroBlockedForParent_(p3)) continue;
-        if (noteDefer_(p3, 'queue')) continue;
-        return { parent: p3, hit: '', pref: '', via: 'queue', deferredDetail: deferredDetail_() };
+  // キュー未済は「次の洗い」であり途中ではない。続きにすると余り1軒／残り2補充が届かない。
+  if (!prCycleOneShopYieldEnabled_()) {
+    var qSh = prEnsureWashQueueSheet_();
+    if (qSh.getLastRow() >= 2) {
+      var lastCol3 = Math.max(qSh.getLastColumn(), 1);
+      var hdr3 = qSh.getRange(1, 1, 1, lastCol3).getValues()[0];
+      var idxM3 = prHeaderIndex_(hdr3, 'メーカー');
+      var idxK = prHeaderIndex_(hdr3, 'Keepa済');
+      if (idxM3 >= 0) {
+        var vals3 = qSh.getRange(2, 1, qSh.getLastRow() - 1, lastCol3).getValues();
+        var seenQ = {};
+        var r3;
+        for (r3 = 0; r3 < vals3.length; r3++) {
+          if (idxK >= 0 && prCkIsTrue_(vals3[r3][idxK])) continue;
+          var p3 = String(vals3[r3][idxM3] || '').trim();
+          if (!p3 || seenQ[p3]) continue;
+          seenQ[p3] = true;
+          if (prWashA1Parked_(p3)) continue;
+          if (prWashTitleZeroBlockedForParent_(p3)) continue;
+          if (
+            prWashAutoRecoverEnabled_() &&
+            prWashAutoRecoverJittaBlockedForPick_(jittaCached_(p3))
+          ) {
+            continue;
+          }
+          if (prMakerMarkSurveyRootOutIfBlocked_(p3)) continue;
+          if (noteDefer_(p3, 'queue')) continue;
+          return { parent: p3, hit: '', pref: '', via: 'queue', deferredDetail: deferredDetail_() };
+        }
       }
     }
   }
@@ -13130,6 +16277,7 @@ function prRunMakerWash_(opt) {
     if (!parent) throw new Error('parent 空');
     var jitta = prJittaForMaker_(parent);
     if (jitta === PR_JITTAI_EXCLUDE_) {
+      prWashAutoRecoverAfterJittaSkip_(runId, parent, jitta, tag || 'maker_wash');
       return done_(true, true, '実態=非仕入先のため洗わない parent=' + parent, tag + ' 拒否', 'DONE');
     }
     if (prMakerJittaWashBlocked_(jitta)) {
@@ -13138,7 +16286,17 @@ function prRunMakerWash_(opt) {
         jitta === PR_JITTAI_UNCHECKED_
           ? '実態=未調査のため洗わない parent=' + parent
           : '実態=要確認のため洗わない（メール下書きのみ・自動送信なし） parent=' + parent;
+      prWashAutoRecoverAfterJittaSkip_(runId, parent, jitta, tag || 'maker_wash');
       return done_(true, true, stopMsg, tag + ' ' + stopTag, 'DONE');
+    }
+    if (prMakerMarkSurveyRootOutIfBlocked_(parent)) {
+      return done_(
+        true,
+        true,
+        'survey_root_out parent=' + parent,
+        tag + ' 調査カテゴリ外',
+        'DONE'
+      );
     }
     var cat = prCatalogSearchPage0_(entry);
     var hits = prCatalogTitleHits_(cat.items, needles);
@@ -13149,6 +16307,28 @@ function prRunMakerWash_(opt) {
       hits.length,
       cat.nextToken ? 'Y' : 'N'
     );
+    if (!hits.length) {
+      // 法人格ゆれ。「(株)浜乙女」で0件でも「浜乙女」ならヒットする（1回だけ言い換え）
+      var altE = prMakerNeedleLegalEnabled_() ? prMakerLegalVariants_(parent)[0] || '' : '';
+      if (altE && altE !== entry) {
+        Logger.log(
+          '[仕入れ検討①] runId=%s legal_retry parent=%s entry=%s -> %s',
+          runId,
+          parent,
+          entry,
+          altE
+        );
+        entry = altE;
+        cat = prCatalogSearchPage0_(entry);
+        hits = prCatalogTitleHits_(cat.items, needles);
+        Logger.log(
+          '[仕入れ検討①] runId=%s catalog_retry http=%s title_hit=%s',
+          runId,
+          cat.code,
+          hits.length
+        );
+      }
+    }
     if (!hits.length) {
       throw new Error('タイトル含有0 entry=' + entry);
     }
@@ -13337,7 +16517,9 @@ function prCatalogSearchPage_(keywords, pageToken) {
     encodeURIComponent(mp) +
     '&keywords=' +
     encodeURIComponent(String(keywords || '')) +
-    '&includedData=summaries&pageSize=20';
+    '&includedData=' +
+    (prCatalogRankProbeEnabled_() ? 'summaries,salesRanks' : 'summaries') +
+    '&pageSize=20';
   var pt = String(pageToken || '').trim();
   if (pt) url += '&pageToken=' + encodeURIComponent(pt);
   var resp = UrlFetchApp.fetch(url, {
@@ -13378,7 +16560,14 @@ function prCatalogSearchPage_(keywords, pageToken) {
       title = String(sums[0].itemName || '').trim();
       brand = String(sums[0].brand || '').trim();
     }
-    if (asin) items.push({ asin: asin, title: title, brand: brand });
+    if (asin) {
+      items.push({
+        asin: asin,
+        title: title,
+        brand: brand,
+        rankN: prCatalogRankCount_(it),
+      });
+    }
   }
   var nextToken = '';
   if (data.pagination && data.pagination.nextToken) {
@@ -13470,6 +16659,51 @@ function prNotifyCatalogQuotaMail_(opt) {
 /** Catalog Items キーワード page0（pageSize≤20）。生はモールヒットに書かない。 */
 function prCatalogSearchPage0_(keywords) {
   return prCatalogSearchPage_(keywords, '');
+}
+
+/**
+ * Property PR_CATALOG_RANK_PROBE。未設定=ON。false で salesRanks を取らない。
+ * 1ページ20件ごとに呼ばれるので実行内キャッシュにする（Property 読みは遅い）。
+ */
+function prCatalogRankProbeEnabled_() {
+  if (PR_CATALOG_RANK_PROBE_CACHE_ === null) {
+    PR_CATALOG_RANK_PROBE_CACHE_ = prCkEnabled_(PR_CATALOG_RANK_PROBE_PROP_);
+  }
+  return PR_CATALOG_RANK_PROBE_CACHE_;
+}
+
+/** Property PR_CATALOG_RANK_CUT。未設定=OFF（記録だけ）。明示的に ON にしたときだけ切る。 */
+function prCatalogRankCutEnabled_() {
+  if (!prCatalogRankProbeEnabled_()) return false;
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_CATALOG_RANK_CUT_PROP_);
+  var s = String(raw == null ? '' : raw).trim().toUpperCase();
+  return s === 'TRUE' || s === '1' || s === 'ON' || s === 'はい';
+}
+
+/**
+ * Catalog の salesRanks に順位がいくつ付いているか。
+ * displayGroupRanks（例「食品・飲料・お酒 | 干菓子」）と classificationRanks の両方を数える。
+ * 0 なら Keepa でも stats空／順位欠測になる（実測 99%／96%）。
+ * @return {number} 順位の個数。probe OFF のときは判定不能を表す -1
+ */
+function prCatalogRankCount_(item) {
+  if (!prCatalogRankProbeEnabled_()) return -1;
+  var srs = (item && item.salesRanks) || [];
+  var n = 0;
+  var i;
+  for (i = 0; i < srs.length; i++) {
+    var sr = srs[i] || {};
+    var dg = sr.displayGroupRanks || [];
+    var cr = sr.classificationRanks || [];
+    var j;
+    for (j = 0; j < dg.length; j++) {
+      if (dg[j] && dg[j].rank != null) n++;
+    }
+    for (j = 0; j < cr.length; j++) {
+      if (cr[j] && cr[j].rank != null) n++;
+    }
+  }
+  return n;
 }
 
 function prCatalogTitleHits_(items, needles) {
@@ -13968,9 +17202,33 @@ function prRebuildKeepaFullIndex_(shFull) {
     }
   }
   idxSh.clear();
-  idxSh.getRange(1, 1, lines.length, 2).setValues(lines);
+  var idxChunk = prKeepaFullIndexChunk_();
+  if (!(idxChunk > 0) || lines.length <= idxChunk) {
+    idxSh.getRange(1, 1, lines.length, 2).setValues(lines);
+  } else {
+    // ヘッダ＋データ行を chunk ずつ（clear 後は空なので行を足しながら書く）
+    var wi = 0;
+    while (wi < lines.length) {
+      var takeIdx = Math.min(idxChunk, lines.length - wi);
+      var partIdx = lines.slice(wi, wi + takeIdx);
+      var startRow = wi + 1;
+      var needRows = startRow + takeIdx - 1;
+      if (idxSh.getMaxRows() < needRows) {
+        idxSh.insertRowsAfter(idxSh.getMaxRows(), needRows - idxSh.getMaxRows());
+      }
+      idxSh.getRange(startRow, 1, takeIdx, 2).setValues(partIdx);
+      try {
+        SpreadsheetApp.flush();
+      } catch (eFlushIdx) {}
+      wi += takeIdx;
+    }
+  }
   PR_KEEPA_FULL_INDEX_CACHE_ = cache;
-  Logger.log('[仕入れ検討①] Keepaフル索引再構築 n=%s', lines.length - 1);
+  Logger.log(
+    '[仕入れ検討①] Keepaフル索引再構築 n=%s chunk=%s',
+    lines.length - 1,
+    idxChunk
+  );
   return lines.length - 1;
 }
 
@@ -14010,51 +17268,31 @@ function prLoadKeepaFullIndexMap_() {
 }
 
 /**
- * 指定 ASIN だけ Keepaフルから読む（索引経由）。D1 用。
- * 索引OFF時は従来の全件 flat。
+ * rowList を小チャンクで flat 行化。ずれ時は mismatch 文字列。
+ * @return {{out:Object, mismatch:string}}
  */
-function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
-  opt = opt || {};
-  var retried = !!opt.retried;
-  var want = [];
-  var seen = {};
-  var i;
-  for (i = 0; i < (asins || []).length; i++) {
-    var a = String(asins[i] || '')
-      .trim()
-      .toUpperCase();
-    if (!a || seen[a]) continue;
-    seen[a] = true;
-    want.push(a);
-  }
-  if (!want.length) return {};
-  if (!prKeepaFullIndexEnabled_()) return prLoadKeepaFullFlatMap_();
+function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
   var out = {};
-  try {
-    var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
-    if (!sh || sh.getLastRow() < 2) return out;
-    var lastCol = Math.max(sh.getLastColumn(), 1);
-    var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
-    var idxMap = prLoadKeepaFullIndexMap_();
-    var rowList = [];
-    for (i = 0; i < want.length; i++) {
-      var row = idxMap[want[i]];
-      if (row >= 2) rowList.push({ asin: want[i], row: row });
+  var mismatch = '';
+  if (!rowList || !rowList.length) return { out: out, mismatch: mismatch };
+  var lastCol = hdr.length;
+  var chunk = prKeepaFullAsinReadChunk_();
+  var pos = 0;
+  while (pos < rowList.length) {
+    var startRow = rowList[pos].row;
+    var j = pos;
+    while (
+      j + 1 < rowList.length &&
+      rowList[j + 1].row === rowList[j].row + 1 &&
+      j + 1 - pos < chunk
+    ) {
+      j++;
     }
-    if (!rowList.length && Object.keys(idxMap).length === 0 && sh.getLastRow() >= 2) {
-      prRebuildKeepaFullIndex_(sh);
-      idxMap = prLoadKeepaFullIndexMap_();
-      rowList = [];
-      for (i = 0; i < want.length; i++) {
-        row = idxMap[want[i]];
-        if (row >= 2) rowList.push({ asin: want[i], row: row });
-      }
-    }
-    rowList.sort(function (x, y) {
-      return x.row - y.row;
-    });
-    for (i = 0; i < rowList.length; i++) {
-      var vals = sh.getRange(rowList[i].row, 1, 1, lastCol).getValues()[0];
+    var numRows = j - pos + 1;
+    var block = sh.getRange(startRow, 1, numRows, lastCol).getValues();
+    var b;
+    for (b = 0; b < block.length; b++) {
+      var vals = block[b];
       var rec = {};
       var h;
       for (h = 0; h < hdr.length; h++) {
@@ -14062,31 +17300,105 @@ function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
         if (!key || key === '生JSON') continue;
         rec[key] = vals[h];
       }
+      var expect = rowList[pos + b].asin;
       var got = String(rec['ASIN'] || '')
         .trim()
         .toUpperCase();
-      if (got && got !== rowList[i].asin) {
-        Logger.log(
-          '[仕入れ検討①] Keepaフル索引ずれ検知 want=%s got=%s row=%s retried=%s',
-          rowList[i].asin,
-          got,
-          rowList[i].row,
-          retried ? 'Y' : 'N'
-        );
-        if (!retried) {
-          prRebuildKeepaFullIndex_(sh);
-          return prLoadKeepaFullFlatMapForAsins_(want, { retried: true });
-        }
-        return prLoadKeepaFullFlatMap_();
+      if (got && got !== expect) {
+        mismatch = 'want=' + expect + ' got=' + got + ' row=' + rowList[pos + b].row;
+        return { out: out, mismatch: mismatch };
       }
-      out[rowList[i].asin] = rec;
+      out[expect] = rec;
     }
+    pos = j + 1;
+  }
+  return { out: out, mismatch: mismatch };
+}
+
+/**
+ * 指定 ASIN だけ Keepaフルから flat 行を読む（案A・D1用）。
+ * 全件 getValues へ落ちない。索引ずれ／OFF は ASIN列走査→行単位読取。
+ */
+function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
+  opt = opt || {};
+  var retried = !!opt.retried;
+  var want = prNormalizeAsinList_(asins);
+  if (!want.length) return {};
+  var out = {};
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return out;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxAsin = -1;
+  var h0;
+  for (h0 = 0; h0 < hdr.length; h0++) {
+    if (String(hdr[h0] || '').trim() === 'ASIN') idxAsin = h0;
+  }
+  if (idxAsin < 0) return out;
+
+  try {
+    var rowList = [];
+    var i;
+    var row;
+    if (prKeepaFullIndexEnabled_()) {
+      var idxMap = prLoadKeepaFullIndexMap_();
+      for (i = 0; i < want.length; i++) {
+        row = idxMap[want[i]];
+        if (row >= 2) rowList.push({ asin: want[i], row: row });
+      }
+      if (!rowList.length && Object.keys(idxMap).length === 0) {
+        prRebuildKeepaFullIndex_(sh);
+        idxMap = prLoadKeepaFullIndexMap_();
+        for (i = 0; i < want.length; i++) {
+          row = idxMap[want[i]];
+          if (row >= 2) rowList.push({ asin: want[i], row: row });
+        }
+      }
+    }
+    if (!rowList.length) {
+      rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want);
+      Logger.log(
+        '[仕入れ検討①] Keepaフル flat_asin via=asin_col n=%s want=%s',
+        rowList.length,
+        want.length
+      );
+    }
+    rowList.sort(function (x, y) {
+      return x.row - y.row;
+    });
+    var read = prKeepaFullReadRowsToFlat_(sh, hdr, rowList);
+    if (read.mismatch) {
+      Logger.log(
+        '[仕入れ検討①] Keepaフル flat_asin 索引ずれ %s retried=%s',
+        read.mismatch,
+        retried ? 'Y' : 'N'
+      );
+      if (!retried && prKeepaFullIndexEnabled_()) {
+        prRebuildKeepaFullIndex_(sh);
+        return prLoadKeepaFullFlatMapForAsins_(want, { retried: true });
+      }
+      rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want);
+      rowList.sort(function (x, y) {
+        return x.row - y.row;
+      });
+      read = prKeepaFullReadRowsToFlat_(sh, hdr, rowList);
+      if (read.mismatch) {
+        throw new Error('Keepaフル flat_asin ずれ解消不可 ' + read.mismatch);
+      }
+    }
+    out = read.out;
+    Logger.log(
+      '[仕入れ検討①] Keepaフル flat_asin stage=read ok=%s want=%s',
+      Object.keys(out).length,
+      want.length
+    );
   } catch (e) {
     Logger.log(
-      '[仕入れ検討①] Keepaフル部分読取失敗→全件 %s',
-      String((e && e.message) || e).slice(0, 160)
+      '[仕入れ検討①] Keepaフル flat_asin FAILED %s sizeLimit=%s',
+      String((e && e.message) || e).slice(0, 160),
+      prIsSheetsSizeLimitError_(e) ? 'Y' : 'N'
     );
-    return prLoadKeepaFullFlatMap_();
+    throw e;
   }
   return out;
 }
@@ -14163,9 +17475,24 @@ function prRegateCandidatesFromKeepaFull_(opt) {
   }
   PR_KEEPA_FULL_MAP_CACHE_ = null;
   PR_CAND_MEM_ = null;
-  prLoadKeepaFullMap_();
   var prof = prReadProfile_();
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var regateAsins = [];
+  var r0;
+  for (r0 = 0; r0 < vals.length; r0++) {
+    var a0 = String(vals[r0][idx['ASIN']] || '')
+      .trim()
+      .toUpperCase();
+    if (!a0) continue;
+    var g0 = String(vals[r0][idx['門結果']] || '').trim();
+    if (onlyBlank && g0) continue;
+    regateAsins.push(a0);
+  }
+  // 案A: 対象 ASIN だけ先読み（全件マップ禁止）
+  if (regateAsins.length) {
+    Logger.log('[仕入れ検討①] runId=%s regate map_asin n=%s', runId, regateAsins.length);
+    prLoadKeepaFullMapForAsins_(regateAsins);
+  }
   var updated = 0;
   var pass = 0;
   var drop = 0;
@@ -14238,6 +17565,10 @@ function prRegateCandidatesFromKeepaFull_(opt) {
   return { updated: updated, pass: pass, drop: drop, leftover: leftover, detail: detail };
 }
 
+/**
+ * 旧: Keepaフル全件 flat。案A本線では呼ばない（切戻し・診断用に残す）。
+ * サイズ上限あり。本番経路は prLoadKeepaFullFlatMapForAsins_。
+ */
 function prLoadKeepaFullFlatMap_() {
   var out = {};
   try {
@@ -14651,10 +17982,15 @@ function prMenuListAppendD1(opt) {
     var refreshAsins = [];
     var skipSame = 0;
     var missFull = 0;
+    var skipCat = 0;
     for (i = 0; i < passAsins.length; i++) {
       var asin = passAsins[i];
       if (!flatMap[asin]) {
         missFull++;
+        continue;
+      }
+      if (prSurveyRootGateEnabled_() && !prFullRecInSurveyRoot_(flatMap[asin])) {
+        skipCat++;
         continue;
       }
       var rec = prListBuildRec_(headers, flatMap[asin], candMap[asin]);
@@ -14688,6 +18024,8 @@ function prMenuListAppendD1(opt) {
         refreshAsins.length +
         ' skip_same=' +
         skipSame +
+        ' skip_cat=' +
+        skipCat +
         ' append=0 miss_full=' +
         missFull +
         ' ' +
@@ -14772,6 +18110,8 @@ function prMenuListAppendD1(opt) {
       refreshAsins.length +
       ' skip_same=' +
       skipSame +
+      ' skip_cat=' +
+      skipCat +
       ' append=' +
       appendNew +
       ' refresh_top=' +
@@ -15076,6 +18416,12 @@ function prD2Classify_(asin, maker, title, category, candRow, jitta, listExtra) 
   if (PR_D2_SELECT_RE_.test(t)) return { flag: '見送り', reason: '選択式' };
   if (PR_D2_USED_RE_.test(t)) return { flag: '見送り', reason: '中古' };
   if (prD2IsBookCategory_(category)) return { flag: '見送り', reason: '本系カテゴリ' };
+  if (prSurveyRootGateEnabled_() && !prCategoryNameInSurvey_(category)) {
+    return {
+      flag: '見送り',
+      reason: String(category || '').trim() ? '調査カテゴリ外' : '調査カテゴリ欠測',
+    };
+  }
   var profs = prReadAllProfiles_();
   var rowProf = prProfileForCategoryName_(category, profs);
   var qsTier = String(listExtra.qsTier || '');
@@ -15839,6 +19185,36 @@ function prSellerAccumSleepMs_() {
   return Math.floor(n);
 }
 
+/** 未設定=ON。false で http 時に全体停止する旧動作。 */
+function prC0SkipHttpEnabled_() {
+  return prCkEnabled_(PR_C0_SKIP_HTTP_PROP_);
+}
+
+/** ①ログ＋Logger に番号と相手メッセージを残す（後から原因を追う用）。 */
+function prC0NoteSkipHttp_(runId, asin, httpCodes, err) {
+  var codes = httpCodes && httpCodes.length ? String(httpCodes.join(',')) : '';
+  var errS = prRedactKey_(String(err || '')).slice(0, 200);
+  Logger.log('[仕入れ検討①] C0 skip_http asin=%s http=%s err=%s', asin, codes, errS);
+  if (runId) {
+    prAppendLog_([
+      runId,
+      'C0 skip_http',
+      'DONE',
+      new Date(),
+      asin,
+      codes,
+      '',
+      'asin=' +
+        asin +
+        ' http=' +
+        codes +
+        ' err=' +
+        errS +
+        ' skip=1 why=offers_non_200',
+    ]);
+  }
+}
+
 function prSellerAccumBatchEnabled_() {
   var raw = PropertiesService.getScriptProperties().getProperty(PR_SELLER_ACCUM_BATCH_PROP_);
   if (raw == null || String(raw).trim() === '') return false;
@@ -16235,6 +19611,10 @@ function prRunSellerAccum_(opt) {
   var newIds = [];
   var nApi = 0;
   var nMarked = 0;
+  var nSkipHttp = 0;
+  var lastSkipAsin = '';
+  var lastSkipHttp = '';
+  var lastSkipErr = '';
   var stopped = '';
   var lastA = '';
   var runId = String(opt.runId || '');
@@ -16316,6 +19696,27 @@ function prRunSellerAccum_(opt) {
         break;
       }
       if (r.stopped === 'http') {
+        prC0NoteSkipHttp_(runId, a, r.http, r.err);
+        lastSkipAsin = a;
+        lastSkipHttp = (r.http || []).join(',');
+        lastSkipErr = prRedactKey_(String(r.err || '')).slice(0, 120);
+        if (prC0SkipHttpEnabled_()) {
+          nSkipHttp++;
+          var hi;
+          for (hi = 0; hi < ids.length; hi++) {
+            var hs = ids[hi];
+            if (!prSellerAccumOkSid_(hs) || prSellerAccumHave_(have, hs)) continue;
+            prSellerAccumMark_(have, hs);
+            newIds.push(hs);
+            if (newIds.length >= cap) {
+              stopped = 'cap';
+              break;
+            }
+          }
+          if (prMarkCandSellerSpapiDone_(a)) nMarked++;
+          if (stopped === 'cap') break;
+          continue;
+        }
         stopped = 'http';
         Logger.log(
           '[仕入れ検討①] C0 STOP http asin=%s http=%s err=%s',
@@ -16371,6 +19772,11 @@ function prRunSellerAccum_(opt) {
     sleepMs +
     ' batch=' +
     (batchMode ? '1' : '0') +
+    ' skip_http=' +
+    nSkipHttp +
+    (lastSkipAsin
+      ? ' last_skip=' + lastSkipAsin + ' http=' + lastSkipHttp + ' err=' + lastSkipErr
+      : '') +
     ' KeepaGETなし';
   var ok = stopped !== 'http' && hit === newIds.length;
   return { ok: ok, newN: hit, api: nApi, stopped: stopped, lastAsin: lastA, detail: detail };
@@ -16508,12 +19914,49 @@ function prAlightNoMakerRoundsMax_() {
   return Math.floor(n);
 }
 
+function prSellerBandSMax_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_SELLER_BAND_S_MAX_PROP_) ||
+      PR_SELLER_BAND_S_MAX_
+  );
+  if (!(n > 0)) n = PR_SELLER_BAND_S_MAX_;
+  return Math.floor(n);
+}
+
+function prSellerBandMMax_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_SELLER_BAND_M_MAX_PROP_) ||
+      PR_SELLER_BAND_M_MAX_
+  );
+  if (!(n > 0)) n = PR_SELLER_BAND_M_MAX_;
+  return Math.floor(n);
+}
+
+function prSellerBandLMax_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_SELLER_BAND_L_MAX_PROP_) ||
+      PR_SELLER_BAND_L_MAX_
+  );
+  if (!(n > 0)) n = PR_SELLER_BAND_L_MAX_;
+  return Math.floor(n);
+}
+
+/** 特大 hold。未設定は大上限+1（いま 901）。 */
+function prQueryTotalHold_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_QUERY_TOTAL_HOLD_PROP_);
+  if (raw != null && String(raw).trim() !== '') {
+    var n = Number(raw);
+    if (n > 0) return Math.floor(n);
+  }
+  return prSellerBandLMax_() + 1;
+}
+
 function prSellerBandFromSkuN_(n) {
   n = Number(n) || 0;
   if (n <= 0) return PR_BAND_UNK_;
-  if (n <= PR_SELLER_BAND_S_MAX_) return PR_BAND_S_;
-  if (n <= PR_SELLER_BAND_M_MAX_) return PR_BAND_M_;
-  if (n <= PR_SELLER_BAND_L_MAX_) return PR_BAND_L_;
+  if (n <= prSellerBandSMax_()) return PR_BAND_S_;
+  if (n <= prSellerBandMMax_()) return PR_BAND_M_;
+  if (n <= prSellerBandLMax_()) return PR_BAND_L_;
   return PR_BAND_XL_;
 }
 
@@ -16524,6 +19967,26 @@ function prSellerBandRank_(band) {
   if (b === PR_BAND_L_) return 3;
   if (b === PR_BAND_XL_) return 4;
   return 0;
+}
+
+/** 自動レ点: 小→未知→中→大→特大。未調査店を先に規模付けする。 */
+function prAutoCkPickBandRank_(band) {
+  var b = String(band || '').trim();
+  if (b === PR_BAND_S_) return 1;
+  if (b === PR_BAND_M_) return 3;
+  if (b === PR_BAND_L_) return 4;
+  if (b === PR_BAND_XL_) return 5;
+  return 2;
+}
+
+/** 余り1軒の店選び: 小→中→未知→大→特大。特大浅いより中フルを先にする。 */
+function prAlightPickBandRank_(band) {
+  var b = String(band || '');
+  if (b === PR_BAND_S_) return 1;
+  if (b === PR_BAND_M_) return 2;
+  if (b === PR_BAND_L_) return 4;
+  if (b === PR_BAND_XL_) return 5;
+  return 3;
 }
 
 /**
@@ -16561,8 +20024,161 @@ function prSurveyRootCategoryIds_() {
   });
 }
 
+function prSurveyRootGateEnabled_() {
+  return prCkEnabled_(PR_SURVEY_ROOT_GATE_PROP_);
+}
+
+/** 特大の浅い名取り。未設定=しない。 */
+function prAlightXlExtractEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_ALIGHT_XL_EXTRACT_PROP_);
+  if (raw == null || String(raw).trim() === '') return false;
+  return prCkEnabled_(PR_ALIGHT_XL_EXTRACT_PROP_);
+}
+
+function prNormSurveyCatLabel_(s) {
+  return String(s || '')
+    .replace(/[＆&]/g, '・')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+function prSurveyRootMatchSets_() {
+  if (PR_SURVEY_ROOT_SETS_CACHE_) return PR_SURVEY_ROOT_SETS_CACHE_;
+  var roots = prSurveyRootCategories_();
+  var ids = {};
+  var labels = {};
+  var i;
+  for (i = 0; i < roots.length; i++) {
+    var id = String(roots[i].id || '')
+      .trim()
+      .replace(/\.0$/, '');
+    if (id) ids[id] = true;
+    var lab = prNormSurveyCatLabel_(roots[i].label);
+    if (lab) labels[lab] = true;
+  }
+  PR_SURVEY_ROOT_SETS_CACHE_ = { ids: ids, labels: labels };
+  return PR_SURVEY_ROOT_SETS_CACHE_;
+}
+
+function prSurveyRootIdMatches_(raw) {
+  var id = String(raw == null ? '' : raw)
+    .trim()
+    .replace(/\.0$/, '');
+  if (!id) return false;
+  return !!prSurveyRootMatchSets_().ids[id];
+}
+
+function prSurveyRootLabelMatches_(name) {
+  var lab = prNormSurveyCatLabel_(name);
+  if (!lab) return false;
+  return !!prSurveyRootMatchSets_().labels[lab];
+}
+
+function prKeepaRootCatId_(node) {
+  if (!node || typeof node !== 'object') return '';
+  var raw = node.catId != null ? node.catId : node.categoryId != null ? node.categoryId : node.id;
+  return String(raw == null ? '' : raw)
+    .trim()
+    .replace(/\.0$/, '');
+}
+
+/** Keepa商品のルートが調査カテゴリONか。欠測は false。 */
+function prProductInSurveyRoot_(p) {
+  if (!p) return false;
+  var sets = prSurveyRootMatchSets_();
+  var rc = p.rootCategory != null ? p.rootCategory : p.rootCat;
+  if (prSurveyRootIdMatches_(rc)) return true;
+  var tree = p.categoryTree || [];
+  if (tree.length && tree[0]) {
+    if (prSurveyRootIdMatches_(prKeepaRootCatId_(tree[0]))) return true;
+    if (prSurveyRootLabelMatches_(tree[0].name)) return true;
+  }
+  var root = prCatRootTree_(p);
+  return prSurveyRootLabelMatches_(root.root);
+}
+
+function prSurveyRootDropWhy_(p) {
+  if (!prSurveyRootGateEnabled_()) return '';
+  if (prProductInSurveyRoot_(p)) return '';
+  var root = prCatRootTree_(p);
+  if (!root.root) return '調査カテゴリ欠測';
+  return '調査カテゴリ外:' + String(root.root).slice(0, 40);
+}
+
+function prFullRecInSurveyRoot_(full) {
+  if (!full) return false;
+  if (prSurveyRootLabelMatches_(prCategoryNameFromFull_(full))) return true;
+  try {
+    var raw = String(full['生JSON'] || '');
+    if (!raw) return false;
+    return prProductInSurveyRoot_(JSON.parse(raw));
+  } catch (e1) {
+    return false;
+  }
+}
+
+function prCategoryNameInSurvey_(categoryStr) {
+  return prSurveyRootLabelMatches_(categoryStr);
+}
+
 /**
- * レ点カテゴリごとに query page0 → SKU見積・帯。代表帯=max。hold=いずれか≥501。
+ * メーカーサマリ Amazonルートカテゴリ（|区切り）が調査カテゴリONと1つでも重なるか。
+ * セル空は判定不能→重なる扱い（食品0%店除外などに任せる）。
+ * @param {string} rootCell
+ * @return {boolean}
+ */
+function prMakerAmazonRootOverlapsSurvey_(rootCell) {
+  var raw = String(rootCell || '').trim();
+  if (!raw) return true;
+  var parts = prSplitPipeValues_(raw);
+  var i;
+  for (i = 0; i < parts.length; i++) {
+    if (prSurveyRootLabelMatches_(parts[i])) return true;
+  }
+  return false;
+}
+
+/**
+ * 調査ルート門ONかつルート列が非空でONと無交差なら true（洗い選定・続き・本体を止める）。
+ * @param {string} rootCell
+ * @return {boolean}
+ */
+function prMakerBlockedBySurveyRootCell_(rootCell) {
+  if (!prSurveyRootGateEnabled_()) return false;
+  var raw = String(rootCell || '').trim();
+  if (!raw) return false;
+  return !prMakerAmazonRootOverlapsSurvey_(raw);
+}
+
+/** メーカー名からサマリの Amazonルートカテゴリを読む。 */
+function prMakerSumAmazonRootCell_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return '';
+  var loc = prFindMakerSumRow_(parent);
+  if (!loc) return '';
+  var lastCol = Math.max(loc.sh.getLastColumn(), 1);
+  var hdr = loc.sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idx = prHeaderIndex_(hdr, PR_MAKER_SUM_AMAZON_ROOT_HEADER_);
+  if (idx < 0) return '';
+  return String(loc.sh.getRange(loc.sheetRow, idx + 1).getValue() || '');
+}
+
+/**
+ * 調査カテゴリ外メーカーなら調査対象外にして CK を外す。
+ * @return {boolean} 外したら true
+ */
+function prMakerMarkSurveyRootOutIfBlocked_(parent) {
+  parent = String(parent || '').trim();
+  if (!parent) return false;
+  if (!prMakerBlockedBySurveyRootCell_(prMakerSumAmazonRootCell_(parent))) return false;
+  prSetMakerWashStatus_(parent, prWashOutStatus_(), 'survey_root_out');
+  prClearMakerSumCk_(parent);
+  Logger.log('[仕入れ検討①] survey_root_out parent=%s', parent);
+  return true;
+}
+
+/**
+ * レ点カテゴリごとに query page0 → SKU見積・帯。代表帯=max。hold=いずれか≥特大下限。
  * @return {{
  *   parts:Array, skuEst:number, band:string, hold:boolean,
  *   skuBreakdown:string, bandBreakdown:string, tokensConsumed:number,
@@ -16592,7 +20208,7 @@ function prMeasureSellerSkuByCategory_(sellerId) {
     });
     if (n > skuEst) skuEst = n;
     if (prSellerBandRank_(b) > prSellerBandRank_(band)) band = b;
-    if (n >= PR_QUERY_TOTAL_HOLD_) hold = true;
+    if (n >= prQueryTotalHold_()) hold = true;
   }
   var skuParts = [];
   var bandParts = [];
@@ -16704,15 +20320,157 @@ function prAlightHasContinue_() {
 }
 
 /**
- * 小中=0のとき大の前に店ラウンドがまだ必要か（A-light 日次／追加round）。
- * 自動レ点の可否はここでは見ない（prCycleShopBeforeLargeAction_ が先に評価）。
- * @return {boolean}
+ * 洗える小中がこの数未満なら店で補充する（既定3＝残り2で補充）。
+ * 切戻し: PR_SM_RESTOCK_BELOW=1（0 になってから店へ行く旧動作）。
  */
+function prSmRestockBelow_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_SM_RESTOCK_BELOW_PROP_) ||
+      PR_CYCLE_K_SMALL_MED_
+  );
+  if (!(n > 0)) n = PR_CYCLE_K_SMALL_MED_;
+  return Math.floor(n);
+}
+
+function prSmNeedShopRestock_(smN) {
+  return (Number(smN) || 0) < prSmRestockBelow_();
+}
+
+/** 未設定=ON。false でキュー続き＋余り1軒なしの旧動作。 */
+function prCycleOneShopYieldEnabled_() {
+  return prCkEnabled_(PR_CYCLE_ONE_SHOP_YIELD_PROP_);
+}
+
+function prCycleWashBeforeNextShop_() {
+  return prCkIsTrue_(
+    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_WASH_BEFORE_NEXT_SHOP_PROP_)
+  );
+}
+
+function prCycleMarkWashBeforeNextShop_(why) {
+  PropertiesService.getScriptProperties().setProperty(PR_CYCLE_WASH_BEFORE_NEXT_SHOP_PROP_, 'true');
+  Logger.log('[仕入れ検討①] wash_before_next_shop=Y why=%s', String(why || ''));
+}
+
+function prCycleClearWashBeforeNextShop_(why) {
+  PropertiesService.getScriptProperties().deleteProperty(PR_CYCLE_WASH_BEFORE_NEXT_SHOP_PROP_);
+  if (why) {
+    Logger.log('[仕入れ検討①] wash_before_next_shop=N why=%s', String(why || ''));
+  }
+}
+
+function prCycleShopAfterWash_() {
+  return prCkIsTrue_(
+    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_SHOP_AFTER_WASH_PROP_)
+  );
+}
+
+function prCycleMarkShopAfterWash_(why) {
+  PropertiesService.getScriptProperties().setProperty(PR_CYCLE_SHOP_AFTER_WASH_PROP_, 'true');
+  Logger.log('[仕入れ検討①] shop_after_wash=Y why=%s', String(why || ''));
+}
+
+function prCycleClearShopAfterWash_(why) {
+  PropertiesService.getScriptProperties().deleteProperty(PR_CYCLE_SHOP_AFTER_WASH_PROP_);
+  if (why) {
+    Logger.log('[仕入れ検討①] shop_after_wash=N why=%s', String(why || ''));
+  }
+}
+
+function prCycleSkipEnumOnce_() {
+  return prCkIsTrue_(
+    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_SKIP_ENUM_ONCE_PROP_)
+  );
+}
+
+function prCycleMarkSkipEnumOnce_(why) {
+  PropertiesService.getScriptProperties().setProperty(PR_CYCLE_SKIP_ENUM_ONCE_PROP_, 'true');
+  Logger.log('[仕入れ検討①] skip_enum_once=Y why=%s', String(why || ''));
+}
+
+function prCycleClearSkipEnumOnce_(why) {
+  PropertiesService.getScriptProperties().deleteProperty(PR_CYCLE_SKIP_ENUM_ONCE_PROP_);
+  if (why) {
+    Logger.log('[仕入れ検討①] skip_enum_once=N why=%s', String(why || ''));
+  }
+}
+
+/** トークン余裕がある間は日次10を超えて店を続ける。未設定=ON。 */
+function prShopWhileTokenEnabled_() {
+  return prCkEnabled_(PR_SHOP_WHILE_TOKEN_PROP_);
+}
+
+function prShopTokenReserve_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_SHOP_TOKEN_RESERVE_PROP_) ||
+      PR_SHOP_TOKEN_RESERVE_DEFAULT_
+  );
+  if (!(n >= 0)) n = PR_SHOP_TOKEN_RESERVE_DEFAULT_;
+  return Math.floor(n);
+}
+
+function prTokenAmple_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_TOKEN_AMPLE_PROP_) ||
+      PR_TOKEN_AMPLE_DEFAULT_
+  );
+  if (!(n > 0)) n = PR_TOKEN_AMPLE_DEFAULT_;
+  return Math.floor(n);
+}
+
+/**
+ * なし=予約以下 / 中=予約超〜あり未満 / あり=PR_TOKEN_AMPLE以上 / unknown=取得失敗。
+ * @return {string}
+ */
+function prKeepaTokenBand_() {
+  var left = prKeepaLiveLeftSnap_();
+  if (!(left >= 0)) return 'unknown';
+  var reserve = prShopTokenReserve_();
+  var ample = prTokenAmple_();
+  if (left <= reserve) return 'none';
+  if (left >= ample) return 'ample';
+  return 'mid';
+}
+
+function prWashHasTokenRoom_() {
+  var b = prKeepaTokenBand_();
+  return b === 'mid' || b === 'ample' || b === 'unknown';
+}
+
+/** 実行内1回の /token。失敗は -1（日次上限を緩めない）。 */
+function prKeepaLiveLeftSnap_() {
+  if (PR_KEEPA_LIVE_LEFT_SNAP_ != null) return PR_KEEPA_LIVE_LEFT_SNAP_;
+  var n = -1;
+  try {
+    var st = prKeepaTokenStatus_();
+    if (st && st.ok) {
+      var v = Number(st.tokensLeft);
+      if (isFinite(v)) n = v;
+    }
+  } catch (eTok) {}
+  PR_KEEPA_LIVE_LEFT_SNAP_ = n;
+  return n;
+}
+
+/**
+ * 洗い用に残す分よりトークンが多いか。小中が閾値以上あるときは呼ばない（店レーン専用）。
+ */
+function prShopHasTokenRoom_() {
+  if (!prShopWhileTokenEnabled_()) return false;
+  return prKeepaTokenBand_() === 'ample';
+}
+
+/** 余力なしの名取り開始を止める。未設定=ON。 */
+function prShopTokenGateEnabled_() {
+  return prCkEnabled_(PR_SHOP_TOKEN_GATE_PROP_);
+}
+
 function prAlightShouldShopBeforeLarge_() {
   if (prAlightHasContinue_()) return true;
   var done = prAlightDailyDoneCount_();
   var maxD = prAlightDailyMax_();
-  if (done >= maxD) return false;
+  var tokenRoom = prShopHasTokenRoom_();
+  if (done >= maxD && !tokenRoom) return false;
   var target = prAlightDailyTarget_();
   var rounds = prAlightRoundCount_();
   var roundMax = prAlightNoMakerRoundsMax_();
@@ -16720,12 +20478,24 @@ function prAlightShouldShopBeforeLarge_() {
   var lastNew = prAlightLastNewMakers_();
   if (lastNew < 0) lastNew = 0;
   if (done < target) return true;
+  // 新メーカーが出ても 実態=未調査／要確認 のままなら洗えない＝小中は増えていない。
+  // 「見つかった数」で閉じず、トークン余裕があれば店を回す（呼び出しは小中が閾値未満のとき）
+  if (prAlightShopRoundsUntilCapEnabled_()) {
+    if (tokenRoom) return true;
+    return rounds < roundMax;
+  }
+  if (tokenRoom) return true;
   if (lastNew === 0 && rounds < roundMax) return true;
   return false;
 }
 
+/** Property PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP。未設定=ON。false で新メーカー数で閉じる旧動作。 */
+function prAlightShopRoundsUntilCapEnabled_() {
+  return prCkEnabled_(PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP_PROP_);
+}
+
 /**
- * sm=0 のとき、大/特大 Keepa続きより店レーンを先に（§4.4・A-1再開）。
+ * 小中が閾値未満のとき、大/特大 Keepa続きより店レーンを先に（§4.4・A-1再開）。
  * 自動レ点候補が残っていれば必ず true（店ラウンド尽きた判定より優先）。
  * 進捗 left= は残す。
  * @param {string} parent
@@ -16739,7 +20509,7 @@ function prCycleDeferLargeContinueForShop_(parent) {
   try {
     var pools = prCycleMakerBandPools_();
     var smN = pools.byBand['小'].length + pools.byBand['中'].length;
-    if (smN > 0) return false;
+    if (!prSmNeedShopRestock_(smN)) return false;
   } catch (e) {
     return false;
   }
@@ -16910,6 +20680,17 @@ function prJittaOwnerIsComp_() {
   return prJittaOwner_() === PR_JITTA_OWNER_COMP_;
 }
 
+/** 当たり直しを競合へ出す。省略と comp は委譲。hb だけ①が数える。 */
+function prHitRecountOwnerIsComp_() {
+  var o = String(
+    PropertiesService.getScriptProperties().getProperty(PR_HIT_RECOUNT_OWNER_PROP_) || ''
+  )
+    .trim()
+    .toLowerCase();
+  if (o === PR_HIT_RECOUNT_OWNER_HB_) return false;
+  return true;
+}
+
 function prJittaResolveCap_() {
   var n = parseInt(
     PropertiesService.getScriptProperties().getProperty(PR_JITTA_RESOLVE_CAP_PROP_) ||
@@ -16927,6 +20708,45 @@ function prJittaHbLaneEnabled_() {
   var raw = PropertiesService.getScriptProperties().getProperty(PR_JITTA_HB_LANE_ENABLED_PROP_);
   if (raw == null || raw === '') return true;
   return String(raw).toLowerCase() !== 'false';
+}
+
+/** 実態AIレーンの1日あたり回数（安全弁・§6.9.3）。 */
+function prJittaHbDailyMax_() {
+  var n = parseInt(
+    PropertiesService.getScriptProperties().getProperty(PR_JITTA_HB_DAILY_MAX_PROP_) ||
+      PR_JITTA_HB_DAILY_MAX_DEFAULT_,
+    10
+  );
+  if (!(n > 0)) n = PR_JITTA_HB_DAILY_MAX_DEFAULT_;
+  return n;
+}
+
+function prJittaHbDailyCount_() {
+  var props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty(PR_JITTA_HB_DAY_PROP_) || '') !== prYmdTokyo_()) return 0;
+  return Number(props.getProperty(PR_JITTA_HB_COUNT_PROP_) || 0) || 0;
+}
+
+function prJittaHbDailyBump_() {
+  var props = PropertiesService.getScriptProperties();
+  var day = prYmdTokyo_();
+  if (String(props.getProperty(PR_JITTA_HB_DAY_PROP_) || '') !== day) {
+    props.setProperty(PR_JITTA_HB_DAY_PROP_, day);
+    props.setProperty(PR_JITTA_HB_COUNT_PROP_, '1');
+    return 1;
+  }
+  var cur = (Number(props.getProperty(PR_JITTA_HB_COUNT_PROP_) || 0) || 0) + 1;
+  props.setProperty(PR_JITTA_HB_COUNT_PROP_, String(cur));
+  return cur;
+}
+
+/**
+ * 実態AIレーンにまだ入れるか（安全弁）。
+ * 本体の空転止めは `実態再採取しない`。これはその書き込みが失敗しても
+ * 心拍が jitta に居座らないための保険（居座ると洗いが丸ごと止まる）。
+ */
+function prJittaHbDailyHasRoom_() {
+  return prJittaHbDailyCount_() < prJittaHbDailyMax_();
 }
 
 function prJittaHbCap_() {
@@ -16963,8 +20783,23 @@ function prJittaAfterAlightEnabled_() {
   return !prJittaHbLaneEnabled_();
 }
 
-/** メーカーサマリの未調査（AI前）件数。1回の読取。 */
+/** メーカーサマリの実態AI対象（再調査含む）。心拍 jitta 用。名前は歴史的。 */
 function prCountMakerJittaUninvestigated_() {
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var n = 0;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    if (prMakerSummaryRowJittaRetryable_(vals[r], hdr)) n++;
+  }
+  return n;
+}
+
+/** 実態AI前（信頼度空）。要確認＋medium/low は数えない。自動レ点ゲート専用。 */
+function prCountMakerJittaAiPendingUninvestigated_() {
   var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
   if (!sh || sh.getLastRow() < 2) return 0;
   var lastCol = Math.max(sh.getLastColumn(), 1);
@@ -16978,14 +20813,23 @@ function prCountMakerJittaUninvestigated_() {
   return n;
 }
 
-/** 未調査がゲート以上なら自動レ点を止める（山を増やさない）。OWNER=comp でも件数ゲートは維持。 */
+/** 未調査がゲート以上なら自動レ点を止める（山を増やさない）。OWNER=comp でも件数ゲートは維持。要確認山では止めない。 */
 function prJittaBacklogBlocksAutoCk_() {
+  var n = prCountMakerJittaAiPendingUninvestigated_();
+  var gate = prJittaBacklogGate_();
+  var blocked = false;
   if (prJittaOwnerIsComp_()) {
-    return prCountMakerJittaUninvestigated_() >= prJittaBacklogGate_();
+    blocked = n >= gate;
+  } else if (prJittaHbLaneEnabled_() && prJittaResolveEnabled_()) {
+    blocked = n >= gate;
   }
-  if (!prJittaHbLaneEnabled_()) return false;
-  if (!prJittaResolveEnabled_()) return false;
-  return prCountMakerJittaUninvestigated_() >= prJittaBacklogGate_();
+  Logger.log(
+    '[仕入れ検討①] auto_ck_gate uninvestigated=%s gate=%s blocked=%s',
+    n,
+    gate,
+    blocked ? 'Y' : 'N'
+  );
+  return blocked;
 }
 
 /** 自動レ点候補数。バックログ中は 0。 */
@@ -17060,7 +20904,7 @@ function prCollectJittaResolveTargets_(hits) {
     if (!name) continue;
     var hitN = hits[name] != null ? Number(hits[name]) || 0 : Number(vals[r][idxHit]) || 0;
     if (!prMakerNeedsJittaResolve_(name)) continue;
-    if (!prMakerSummaryRowUninvestigated_(vals[r], hdr)) continue;
+    if (!prMakerSummaryRowJittaRetryable_(vals[r], hdr)) continue;
     var key = prNormalizeMakerKey_(name) || name;
     var prev = byKey[key];
     if (
@@ -17399,6 +21243,54 @@ function prUpsertMakerMasterJitta_(maker, patch) {
   return sheetRow;
 }
 
+/** Property PR_JITTA_RETRY_EXHAUST。未設定=ON。false で打ち切らない（毎日再調査する旧動作）。 */
+function prJittaRetryExhaustEnabled_() {
+  return prCkEnabled_(PR_JITTA_RETRY_EXHAUST_PROP_);
+}
+
+/**
+ * 再調査しても 要確認／未調査 に戻る社を打ち切る（2026-09-13）。
+ *
+ * メーカーマスタ `実態再採取しない` を立てると `prMakerNeedsJittaResolve_` が false を返すので、
+ * 次からは実態AIの対象に入らない＝毎日 Gemini を呼び直す無駄が出ない。
+ * **AI が結果を返した／マスタに結果が入っているときだけ立てる。**
+ * `no_resolve`（429・タイムアウト）は呼び出し元が先に return するのでここには来ない。
+ * 解決した社（製造メーカー／入口ブランド／非仕入先）は立てない。
+ * 信頼度 high は人が判断する対象（`prMakerSummaryRowJittaRetryable_` の対象外）なので触らない。
+ * 復活させたいときは人がマスタの `実態再採取しない` を外す。
+ * ログの目印: jitta_retry_exhausted。
+ *
+ * @param {string} maker
+ * @param {string} appliedJitta ミラー後のサマリ.実態
+ * @param {string} conf 実態信頼度
+ * @param {string} via ログ用（ai／cache）
+ * @return {boolean} 立てたか
+ */
+function prJittaMarkRetryExhausted_(maker, appliedJitta, conf, via) {
+  if (!prJittaRetryExhaustEnabled_()) return false;
+  var j = String(appliedJitta || '').trim();
+  if (j !== PR_JITTAI_CHECK_ && !prMakerJittaIsUninvestigatedLabel_(j)) return false;
+  if (String(conf || '').trim() === 'high') return false;
+  try {
+    prUpsertMakerMasterJitta_(maker, { 実態再採取しない: true });
+  } catch (eEx) {
+    Logger.log(
+      '[仕入れ検討①] WARN jitta_retry_exhausted upsert maker=%s %s',
+      maker,
+      String((eEx && eEx.message) || eEx).slice(0, 80)
+    );
+    return false;
+  }
+  Logger.log(
+    '[仕入れ検討①] jitta_retry_exhausted maker=%s jitta=%s conf=%s via=%s',
+    maker,
+    j,
+    conf,
+    via
+  );
+  return true;
+}
+
 function prApplyJittaMirrorToSummaryRow_(sh, sheetRow, patch, resolved, opt) {
   opt = opt || {};
   var idxMirror = prEnsureMakerSumJittaMirrorCols_(sh);
@@ -17459,7 +21351,9 @@ function prApplyJittaMirrorToSummary_(maker, patch, resolved, opt) {
   var i;
   for (i = 0; i < rows.length; i++) {
     var rowVals = sh.getRange(rows[i].sheetRow, 1, rows[i].sheetRow, lastCol).getValues()[0];
-    if (!prMakerSummaryRowUninvestigated_(rowVals, hdr)) continue;
+    // 信頼度 medium/low の 要確認・未調査 もミラーする。
+    // 旧判定だと「マスタに 実態候補=製造メーカー があるのにサマリに書かれない」社ができていた
+    if (!prMakerSummaryRowJittaRetryable_(rowVals, hdr)) continue;
     last = prApplyJittaMirrorToSummaryRow_(sh, rows[i].sheetRow, patch, resolved, opt);
     n++;
   }
@@ -17545,6 +21439,13 @@ function prResolveMakerJitta_(maker, opt) {
       master['実態信頼度'],
       healed.mirrored || 1
     );
+    // マスタの結果を映してもなお 要確認／未調査 なら打ち切る（毎回同じ値を書き戻さない）
+    prJittaMarkRetryExhausted_(
+      maker,
+      healed.appliedJitta || String(master['実態候補'] || ''),
+      String(master['実態信頼度'] || ''),
+      'cache'
+    );
     return {
       skipped: false,
       fromCache: true,
@@ -17578,6 +21479,13 @@ function prResolveMakerJitta_(maker, opt) {
     applied.autoConfirm,
     applied.appliedJitta,
     applied.mirrored || 1
+  );
+  // AI が結果を返したうえで 要確認／未調査 なら打ち切る（no_resolve は上で return 済み）
+  prJittaMarkRetryExhausted_(
+    maker,
+    applied.appliedJitta,
+    String(patch['実態信頼度'] || ''),
+    'ai'
   );
   return {
     skipped: false,
@@ -17689,8 +21597,8 @@ function prMenuMigrateJittaUnchecked_() {
 
 /**
  * C1 単店 A-light。小中大は query ページ送り＋product スライス（続きあり）。
- * 特大(いずれかカテゴリ≥501)は浅い抽出のみ hold。門・①候補・Keepaフル upsert なし。
- * 規模＝カテゴリ別 query（CYCLE §4.1bis）。ASIN 取得＝レ点ルート OR。
+ * 特大は規模測定のみ hold（名取りしない。切戻し PR_ALIGHT_XL_EXTRACT=true）。
+ * 門・①候補・Keepaフル upsert なし。規模＝カテゴリ別 query（CYCLE §4.1bis）。
  * @param {string} sellerId
  * @param {string} runId
  * @param {string} shopName
@@ -17791,7 +21699,7 @@ function prRunAlightShop_(sellerId, runId, shopName, opt) {
     };
   }
 
-  // 初回: カテゴリ別規模測定。特大は浅いだけ
+  // 初回: カテゴリ別規模測定。特大は名取りしない（切戻しで浅い抽出）
   if (!cont) {
     var meas = prMeasureSellerSkuByCategory_(sid);
     qTok += Number(meas.tokensConsumed) || 0;
@@ -17804,6 +21712,16 @@ function prRunAlightShop_(sellerId, runId, shopName, opt) {
     asinOff = 0;
     processed = 0;
     if (meas.hold) {
+      total = meas.page0Total;
+      if (!prAlightXlExtractEnabled_()) {
+        return packOut_(
+          'hold',
+          { products: [], tokensLeft: '', refillIn: '' },
+          [],
+          oldExtract,
+          { detailSuffix: ' xl_no_extract' }
+        );
+      }
       var asinXl;
       if (meas.page0Asins) {
         asinXl = meas.page0Asins.slice(0, productCap);
@@ -17925,10 +21843,27 @@ function prEnsureSellerBandCols_(sh) {
   }
   return {
     idxBand: ensureCol_(PR_SELLER_BAND_COL_),
+    idxNameDay: ensureCol_(PR_SELLER_NAME_DAY_COL_),
     idxSku: ensureCol_(PR_SELLER_SKU_COL_),
     idxSkuBd: ensureCol_(PR_SELLER_SKU_BREAKDOWN_COL_),
     idxBandBd: ensureCol_(PR_SELLER_BAND_BREAKDOWN_COL_),
   };
+}
+
+/**
+ * 巡回日を書く。名取りしたときだけ名取り日も同じ日。
+ * opt.skipNameDay=true は特大（規模測定のみ）用。
+ */
+function prSellerWriteWalkDay_(sh, sheetRow, idxWalk, ymd, opt) {
+  if (!sh || !(sheetRow >= 2)) return;
+  opt = opt || {};
+  ymd = ymd || prYmdTokyo_();
+  if (idxWalk >= 0) sh.getRange(sheetRow, idxWalk + 1).setValue(ymd);
+  if (opt.skipNameDay) return;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxNameDay = prHeaderIndex_(hdr, PR_SELLER_NAME_DAY_COL_);
+  if (idxNameDay >= 0) sh.getRange(sheetRow, idxNameDay + 1).setValue(ymd);
 }
 
 function prMakerSumNameSet_() {
@@ -17946,6 +21881,21 @@ function prMakerSumNameSet_() {
     if (name) set[name] = true;
   }
   return set;
+}
+
+function prInsertNewMakersToSum_(makers, set) {
+  var sh = null;
+  var n = 0;
+  var i;
+  for (i = 0; i < (makers || []).length; i++) {
+    var m = makers[i];
+    if (!m || !prHitEligibleMaker_(m) || set[m]) continue;
+    if (!sh) sh = prEnsureLeadingCk_(PR_COMPETITOR_SS_, PR_MAKER_SUM_SHEET_);
+    prEnsureMakerSumRowTop_(sh, m, {});
+    set[m] = true;
+    n++;
+  }
+  return n;
 }
 
 function prCountNewMakersVsSet_(makers, set) {
@@ -18018,6 +21968,7 @@ function prRunAlightHit_(opt) {
       Logger.log('[仕入れ検討①] alight_cont orphan cleared sid=%s', cont.sid);
     }
   } else if (shopCap > 0) {
+    var cands = [];
     for (r = 0; r < vals.length; r++) {
       if (!prCkIsTrue_(vals[r][idxCk])) continue;
       // 調査済みなのにレ点が残っていたら外してスキップ（再調査しない）
@@ -18030,16 +21981,25 @@ function prRunAlightHit_(opt) {
       if (!sid) continue;
       var name = idxName >= 0 ? String(vals[r][idxName] || '').trim() : '';
       if (!name && idxName >= 0) name = prSellerNameFromSameId_(vals, idxId, idxName, sid);
-      targets.push({
+      var bandPick = idxBand >= 0 ? String(vals[r][idxBand] || '').trim() : '';
+      cands.push({
         sheetRow: r + 2,
         sellerId: sid,
         name: name,
         memo: idxMemo >= 0 ? vals[r][idxMemo] : '',
         oldExtract: idxExtract >= 0 ? String(vals[r][idxExtract] || '') : '',
         cont: null,
+        _rank: prAlightPickBandRank_(bandPick),
+        _row: r,
       });
-      if (targets.length >= shopCap) break;
     }
+    if (prCycleOneShopYieldEnabled_()) {
+      cands.sort(function (a, b) {
+        if (a._rank !== b._rank) return a._rank - b._rank;
+        return a._row - b._row;
+      });
+    }
+    targets = cands.slice(0, shopCap);
   }
 
   var doneN = 0;
@@ -18144,6 +22104,7 @@ function prRunAlightHit_(opt) {
         }
         if (g.status === 'hold' || g.status === 'done') {
           prAlightContSet_(null);
+          var xlNoExtract = g.status === 'hold' && /xl_no_extract/i.test(String(g.detail || ''));
           if (g.status === 'hold') {
             holdN++;
             if (idxMemo >= 0) {
@@ -18155,19 +22116,33 @@ function prRunAlightHit_(opt) {
             doneN++;
           }
           sh.getRange(t.sheetRow, idxCk + 1).setValue(false);
-          if (idxWalk >= 0) sh.getRange(t.sheetRow, idxWalk + 1).setValue(prYmdTokyo_());
+          prSellerWriteWalkDay_(sh, t.sheetRow, idxWalk, prYmdTokyo_(), {
+            skipNameDay: xlNoExtract,
+          });
           if (idxCnt >= 0 && g.total != null) sh.getRange(t.sheetRow, idxCnt + 1).setValue(g.total);
           if (idxSrc >= 0) {
             sh.getRange(t.sheetRow, idxSrc + 1).setValue(
-              g.status === 'hold' ? 'alight+xl_shallow' : 'alight+shop_full'
+              g.status === 'hold' ? (xlNoExtract ? 'alight+xl_hold' : 'alight+xl_shallow') : 'alight+shop_full'
             );
           }
-          var makersFinal = prMakersInCell_(g.merged || curExtract);
+          var makersFinal = xlNoExtract ? [] : prMakersInCell_(g.merged || curExtract);
+          var sumIns = 0;
+          if (g.status === 'done' && prShopTokenGateEnabled_() && makersFinal.length) {
+            sumIns = prInsertNewMakersToSum_(makersFinal, sumSet);
+          }
           var shopNew = prCountNewMakersVsSet_(makersFinal, sumSet);
-          newMakerN += shopNew;
+          if (sumIns) {
+            Logger.log(
+              '[仕入れ検討①] runId=%s maker_sum_insert n=%s seller=%s',
+              runId,
+              sumIns,
+              t.sellerId
+            );
+          }
+          newMakerN += sumIns || shopNew;
           prAlightDailyDoneBump_(1);
           prAlightRoundBump_();
-          prAlightSetLastNewMakers_(shopNew);
+          prAlightSetLastNewMakers_(sumIns || shopNew);
           lines.push(
             t.sellerId +
               ':' +
@@ -18175,7 +22150,8 @@ function prRunAlightHit_(opt) {
               ' makers=' +
               makersFinal.length +
               ' new=' +
-              shopNew
+              (sumIns || shopNew) +
+              (sumIns ? ' sum_ins=' + sumIns : '')
           );
           prAppendLog_([
             runId,
@@ -18211,8 +22187,19 @@ function prRunAlightHit_(opt) {
     lines.push('ck_true=' + trueN + ' targets=0');
   }
 
-  var hits = prRecomputeSellerHits_(sh);
-  var hitMakers = prSyncMakerSumHits_(hits);
+  if (!needContinue && prCycleOneShopYieldEnabled_()) {
+    prCycleMarkWashBeforeNextShop_('before_c2');
+  }
+  var hitMakers = 0;
+  var c2Note = '';
+  var hits = {};
+  if (prHitRecountOwnerIsComp_()) {
+    c2Note = ' C2=delegated';
+    Logger.log('[仕入れ検討①] runId=%s C2 delegated to competitor', runId);
+  } else {
+    hits = prRecomputeSellerHits_(sh);
+    hitMakers = prSyncMakerSumHits_(hits);
+  }
   var jittaN = 0;
   var jittaNote = '';
   try {
@@ -18246,6 +22233,7 @@ function prRunAlightHit_(opt) {
     prAlightRoundCount_() +
     ' C2 hit_makers=' +
     hitMakers +
+    c2Note +
     ' jitta=' +
     jittaN +
     jittaNote +
@@ -18299,8 +22287,12 @@ function prMenuAlightHit() {
   }
 }
 
-/** C2 のみ: 既存 セラー.抽出メーカー から セラーヒット バックフィル。 */
+/** C2 のみ: 既存 セラー.抽出メーカー から セラーヒット バックフィル。委譲中は①では数えない。 */
 function prMenuSellerHitBackfill() {
+  if (prHitRecountOwnerIsComp_()) {
+    prMenuToast_('C2 セラーヒット', '競合GAS側で数えます。競合メニュー「ヒット数え直し 今すぐ」');
+    return { ok: true, skipped: true, detail: 'C2=delegated' };
+  }
   prGasStart_();
   var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
   Logger.log('[仕入れ検討①] runId=%s step=C2 state=RUNNING functionName=prMenuSellerHitBackfill', runId);
