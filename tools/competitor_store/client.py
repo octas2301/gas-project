@@ -75,9 +75,12 @@ def sheets_service(write: bool = False, interactive: bool = False):
 
 
 def drive_service():
+    """Prefer token with drive.readonly; sheets-only RW token cannot list Drive folders."""
     from googleapiclient.discovery import build
 
-    creds = ensure_write_creds(interactive=False) or _creds(SECRETS / "token.json", READ_SCOPES)
+    creds = _creds(SECRETS / "token.json", READ_SCOPES)
+    if not creds:
+        creds = ensure_write_creds(interactive=False)
     if not creds:
         return None
     return build("drive", "v3", credentials=creds, cache_discovery=False)
