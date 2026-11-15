@@ -18,6 +18,7 @@ Drive フォルダは **2026-10-17 作成済**（My Drive 直下）。
 | `99.バックアップ` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` | https://drive.google.com/drive/folders/1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE |
 | `出品` | `14Cd0yoQ8BWrB-1SHbC3XyhV00A-mTxYh` | https://drive.google.com/drive/folders/14Cd0yoQ8BWrB-1SHbC3XyhV00A-mTxYh |
 | `仕入れ検討①` | `1Uz1Px-7UEFi2MmPylMS4ZNCPKwtGdPJe` | https://drive.google.com/drive/folders/1Uz1Px-7UEFi2MmPylMS4ZNCPKwtGdPJe |
+| `広告` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | https://drive.google.com/drive/folders/1CscA4rPU7J69gf8ANgOLttda2z36TmIR |
 
 報告メールを使うなら宛先を Property に入れる（未設定でも ▼ログ／①ログには残る）。
 
@@ -101,21 +102,57 @@ clasp push
 
 - 出品: `PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 - ①: `PR_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
+- 広告: `ADS_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 
 正本スプシは消えない（コピーと古いコピーのゴミ箱のみ）。
 
 ---
 
-## 4. 次段スプシ日次（実装時に埋める）
+## 4. 次段スプシ日次
 
 順: **広告 → 在庫 → 競合Jitta → 税務**。各 PJ でフォルダ作成 → Property → `ProjectDailyBackup.js` 相当 → clasp push → 8時トリガー → 強制コピー1回。
 
-| 順 | PJ | Drive フォルダ | clasp | 対象 SS ID（実装時記入） | PJ フォルダ ID（実装時記入） |
-|----|-----|----------------|-------|--------------------------|------------------------------|
-| 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/` | | |
+| 順 | PJ | Drive フォルダ | clasp | 対象 SS ID | PJ フォルダ ID |
+|----|-----|----------------|-------|------------|----------------|
+| 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/`（push は clone 経由） | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
 | 2 | 在庫 | `99.バックアップ/在庫` | `inventory-app/` | | |
 | 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | | |
 | 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | | |
+
+### 4.1 広告（2026-11-15 投入）
+
+コード: `広告運用GAS/ProjectDailyBackup.js`（`ADS_` 接頭 Property）。clasp push 済（clone 経由）。
+
+Drive:
+| 項目 | 値 |
+|------|-----|
+| 親 | `99.バックアップ` = `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
+| PJ | `広告` = `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
+| 正スプシ | [広告運用](https://docs.google.com/spreadsheets/d/17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo/edit) |
+| 検収コピー | `広告_backup_force_20261115_113226`（Drive API・2026-11-15） |
+
+**人間が1回だけ（トリガー／Property）**:
+
+1. 広告運用スプシを開く（新スコープ `script.scriptapp` の承認が出たら許可）
+2. `🚀 広告運用` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
+3. 任意: **1. 強制コピー（検収用）**（GAS 経路の確認）
+
+| Property | 推奨 |
+|----------|------|
+| `ADS_PROJECT_DAILY_BACKUP_ENABLED` | 省略=ON／`false` で切戻し |
+| `ADS_PROJECT_DAILY_BACKUP_ROOT_FOLDER_ID` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
+| `ADS_PROJECT_DAILY_BACKUP_PJ_FOLDER_ID` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
+| `ADS_PROJECT_DAILY_BACKUP_TARGET_SS_ID` | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` |
+| `ADS_PROJECT_DAILY_BACKUP_REQUIRED_SHEETS` | 省略=`元データ_Amazon\|履歴データ` |
+| `ADS_PROJECT_DAILY_BACKUP_MAIL_TO` | 任意 |
+
+push:
+
+```powershell
+Copy-Item -Path "C:\Users\takuy\Desktop\gas-project\広告運用GAS\*" -Destination "C:\Users\takuy\Desktop\広告運用GAS_clone\" -Force
+cd C:\Users\takuy\Desktop\広告運用GAS_clone
+clasp push
+```
 
 ---
 

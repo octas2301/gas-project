@@ -50,6 +50,13 @@ function onOpen() {
     .addSubMenu(ui.createMenu('99.テスト用')
       .addItem('99-① 操作マニュアルシートを作る', 'createManualSheet')
       .addItem('99-② 古いDriveファイルを削除する', 'runManualCleanup'))
+    .addSeparator()
+    .addSubMenu(ui.createMenu('99.日次バックアップ（Drive）')
+      .addItem('0. 初回セットアップ（Property＋毎朝8時）', 'menuAdsProjectDailyBackupSetup')
+      .addItem('1. 強制コピー（検収用）', 'menuAdsProjectDailyBackupForceCopy')
+      .addItem('2. 今すぐ実行（更新窓あり）', 'menuAdsProjectDailyBackupRunNow')
+      .addItem('3. 毎朝8時トリガー設置', 'menuAdsProjectDailyBackupInstallTrigger')
+      .addItem('4. トリガー削除', 'menuAdsProjectDailyBackupRemoveTrigger'))
     .addToUi();
 
   ui.createMenu('⏱ Amazonタイムセール・ポイント減衰設定')

@@ -11,7 +11,9 @@
 
 **Phase0 済**: `.gitignore` 強化。G1/G3 タスク登録。G3初回OK。GitHub baseline push 済。**Drive目視OK（2026-11-15）**: `出品_backup_2026-11-15`／`競合DB_backup_2026-11-15` あり（①調査は11/14が最新＝更新なしスキップ想定）。
 
-**次**: 次段スプシ日次は**広告**から横展開。
+**広告スプシ日次（投入中）**: フォルダ `99.バックアップ/広告`=`1CscA4rPU7J69gf8ANgOLttda2z36TmIR` 作成。`ProjectDailyBackup.js` clasp push 済。強制コピー（Drive API）済。**残り**: スプシメニュー「0. 初回セットアップ」で Property＋8時トリガー（Execution API 不可のため人手1回）。
+
+**次**: 広告のトリガー確認後 → **在庫** スプシ日次。
 
 ---
 
