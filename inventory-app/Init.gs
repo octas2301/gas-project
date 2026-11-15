@@ -9,6 +9,16 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('在庫管理アプリ')
     .addItem('スプレッドシートを初期化（シート作成・初期データ）', 'initializeSpreadsheet')
+    .addSeparator()
+    .addSubMenu(
+      SpreadsheetApp.getUi()
+        .createMenu('99.日次バックアップ（Drive）')
+        .addItem('0. 初回セットアップ（Property＋毎朝8時）', 'menuInvProjectDailyBackupSetup')
+        .addItem('1. 強制コピー（検収用）', 'menuInvProjectDailyBackupForceCopy')
+        .addItem('2. 今すぐ実行（更新窓あり）', 'menuInvProjectDailyBackupRunNow')
+        .addItem('3. 毎朝8時トリガー設置', 'menuInvProjectDailyBackupInstallTrigger')
+        .addItem('4. トリガー削除', 'menuInvProjectDailyBackupRemoveTrigger')
+    )
     .addToUi();
 }
 

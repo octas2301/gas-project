@@ -19,6 +19,7 @@ Drive フォルダは **2026-10-17 作成済**（My Drive 直下）。
 | `出品` | `14Cd0yoQ8BWrB-1SHbC3XyhV00A-mTxYh` | https://drive.google.com/drive/folders/14Cd0yoQ8BWrB-1SHbC3XyhV00A-mTxYh |
 | `仕入れ検討①` | `1Uz1Px-7UEFi2MmPylMS4ZNCPKwtGdPJe` | https://drive.google.com/drive/folders/1Uz1Px-7UEFi2MmPylMS4ZNCPKwtGdPJe |
 | `広告` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | https://drive.google.com/drive/folders/1CscA4rPU7J69gf8ANgOLttda2z36TmIR |
+| `在庫` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` | https://drive.google.com/drive/folders/1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe |
 
 報告メールを使うなら宛先を Property に入れる（未設定でも ▼ログ／①ログには残る）。
 
@@ -103,6 +104,7 @@ clasp push
 - 出品: `PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 - ①: `PR_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 - 広告: `ADS_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
+- 在庫: `INV_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 
 正本スプシは消えない（コピーと古いコピーのゴミ箱のみ）。
 
@@ -112,45 +114,50 @@ clasp push
 
 順: **広告 → 在庫 → 競合Jitta → 税務**。各 PJ でフォルダ作成 → Property → `ProjectDailyBackup.js` 相当 → clasp push → 8時トリガー → 強制コピー1回。
 
-| 順 | PJ | Drive フォルダ | clasp | 対象 SS ID | PJ フォルダ ID |
-|----|-----|----------------|-------|------------|----------------|
-| 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/`（push は clone 経由） | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
-| 2 | 在庫 | `99.バックアップ/在庫` | `inventory-app/` | | |
-| 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | | |
-| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | | |
+| 順 | PJ | Drive フォルダ | clasp | 対象 SS ID | PJ フォルダ ID | 状態 |
+|----|-----|----------------|-------|------------|----------------|------|
+| 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/`（push は clone 経由） | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | **済**（2026-11-15・人手セットアップ完了） |
+| 2 | 在庫 | `99.バックアップ/在庫` | `inventory-app/` | `1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` | コード・強制コピー済／**人手セットアップ待ち** |
+| 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | | | |
+| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | | | |
 
-### 4.1 広告（2026-11-15 投入）
+### 4.1 広告（2026-11-15・完了）
 
-コード: `広告運用GAS/ProjectDailyBackup.js`（`ADS_` 接頭 Property）。clasp push 済（clone 経由）。
+コード: `広告運用GAS/ProjectDailyBackup.js`（`ADS_`）。clasp push 済。人手でメニュー **0. 初回セットアップ** 完了。
 
-Drive:
 | 項目 | 値 |
 |------|-----|
-| 親 | `99.バックアップ` = `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
 | PJ | `広告` = `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
 | 正スプシ | [広告運用](https://docs.google.com/spreadsheets/d/17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo/edit) |
-| 検収コピー | `広告_backup_force_20261115_113226`（Drive API・2026-11-15） |
+| 検収コピー | `広告_backup_force_20261115_113226` |
 
-**人間が1回だけ（トリガー／Property）**:
+### 4.2 在庫（2026-11-15 投入）
 
-1. 広告運用スプシを開く（新スコープ `script.scriptapp` の承認が出たら許可）
-2. `🚀 広告運用` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
-3. 任意: **1. 強制コピー（検収用）**（GAS 経路の確認）
+コード: `inventory-app/ProjectDailyBackup.js`（`INV_`）。clasp push 済（`inventory-app/` 直下）。
+
+| 項目 | 値 |
+|------|-----|
+| PJ | `在庫` = `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` |
+| 正スプシ | [在庫管理](https://docs.google.com/spreadsheets/d/1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE/edit) |
+| 検収コピー | `在庫_backup_force_20261115_114746` |
+
+**人間が1回だけ**:
+
+1. 在庫スプシを開く（新スコープ承認が出たら許可）
+2. `在庫管理アプリ` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
+3. 任意: **1. 強制コピー（検収用）**
 
 | Property | 推奨 |
 |----------|------|
-| `ADS_PROJECT_DAILY_BACKUP_ENABLED` | 省略=ON／`false` で切戻し |
-| `ADS_PROJECT_DAILY_BACKUP_ROOT_FOLDER_ID` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
-| `ADS_PROJECT_DAILY_BACKUP_PJ_FOLDER_ID` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` |
-| `ADS_PROJECT_DAILY_BACKUP_TARGET_SS_ID` | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` |
-| `ADS_PROJECT_DAILY_BACKUP_REQUIRED_SHEETS` | 省略=`元データ_Amazon\|履歴データ` |
-| `ADS_PROJECT_DAILY_BACKUP_MAIL_TO` | 任意 |
-
-push:
+| `INV_PROJECT_DAILY_BACKUP_ENABLED` | 省略=ON／`false` で切戻し |
+| `INV_PROJECT_DAILY_BACKUP_ROOT_FOLDER_ID` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
+| `INV_PROJECT_DAILY_BACKUP_PJ_FOLDER_ID` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` |
+| `INV_PROJECT_DAILY_BACKUP_TARGET_SS_ID` | `1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE` |
+| `INV_PROJECT_DAILY_BACKUP_REQUIRED_SHEETS` | 省略=`商品マスタ\|在庫移動リスト` |
+| `INV_PROJECT_DAILY_BACKUP_MAIL_TO` | 任意 |
 
 ```powershell
-Copy-Item -Path "C:\Users\takuy\Desktop\gas-project\広告運用GAS\*" -Destination "C:\Users\takuy\Desktop\広告運用GAS_clone\" -Force
-cd C:\Users\takuy\Desktop\広告運用GAS_clone
+cd C:\Users\takuy\Desktop\gas-project\inventory-app
 clasp push
 ```
 
