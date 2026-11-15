@@ -10,6 +10,8 @@
 *タイムオーバー*.txt
 B実行タイムオーバー履歴.txt
 *.local_backup
+*.local_backup_*
+*local_backup*
 *.bak
 *.bak_*
 *.broken_bak*
