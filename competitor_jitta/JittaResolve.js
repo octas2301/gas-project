@@ -136,8 +136,8 @@ var CJ_FIXTURES_ = {
 
 function onOpen() {
   try {
-    SpreadsheetApp.getUi()
-      .createMenu('実態AI（競合）')
+    var ui = SpreadsheetApp.getUi();
+    ui.createMenu('実態AI（競合）')
       .addItem('1. 未調査を今すぐ（cap件）', 'cjMenuResolveNow')
       .addItem('2. トリガー開始', 'cjMenuArmTrigger')
       .addItem('3. トリガー停止', 'cjMenuDisarmTrigger')
@@ -148,6 +148,16 @@ function onOpen() {
       .addItem('7. Catalog列挙 今すぐ', 'cjMenuCatalogNow')
       .addItem('8. Catalog時計 開始', 'cjMenuArmCatalogTrigger')
       .addItem('9. Catalog時計 停止', 'cjMenuDisarmCatalogTrigger')
+      .addSeparator()
+      .addSubMenu(
+        ui
+          .createMenu('99.日次バックアップ（Drive）')
+          .addItem('0. 初回セットアップ（Property＋毎朝8時）', 'menuCjProjectDailyBackupSetup')
+          .addItem('1. 強制コピー（検収用）', 'menuCjProjectDailyBackupForceCopy')
+          .addItem('2. 今すぐ実行（更新窓あり）', 'menuCjProjectDailyBackupRunNow')
+          .addItem('3. 毎朝8時トリガー設置', 'menuCjProjectDailyBackupInstallTrigger')
+          .addItem('4. トリガー削除', 'menuCjProjectDailyBackupRemoveTrigger')
+      )
       .addToUi();
   } catch (e) {}
 }
