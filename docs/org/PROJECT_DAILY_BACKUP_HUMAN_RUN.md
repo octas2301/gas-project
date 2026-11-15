@@ -123,7 +123,7 @@ clasp push
 | 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/`（push は clone 経由） | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | **済** |
 | 2 | 在庫 | `99.バックアップ/在庫` | `inventory-app/` | `1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` | **済**（人手セットアップ完了） |
 | 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | `1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs` | `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` | **済** |
-| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | `1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM` | `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` | コード・強制コピー済／**人手セットアップ待ち** |
+| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | `1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM` | `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` | **済** |
 
 ### 4.1 広告（2026-11-15・完了）
 
@@ -157,9 +157,9 @@ clasp push
 | 正スプシ | [競合DB](https://docs.google.com/spreadsheets/d/1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs/edit) |
 | 検収コピー | `競合Jitta_backup_force_20261115_115617` |
 
-### 4.4 税務（2026-11-15 投入）
+### 4.4 税務（2026-11-15・完了）
 
-コード・GAS: **あり**（`export-tax-list/`＝`Code.gs`＋clasp）。  
+コード・GAS: **あり**（`export-tax-list/`）。人手セットアップ完了。  
 正スプシ名: **`260219【自動取り込み】消費税輸出免税不適格用連絡一覧表Octas`**
 
 | 項目 | 値 |
@@ -167,12 +167,6 @@ clasp push
 | PJ | `税務` = `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` |
 | 正スプシ | [税務一覧](https://docs.google.com/spreadsheets/d/1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM/edit) |
 | 検収コピー | `税務_backup_force_20261115_120131` |
-
-**人間が1回だけ**:
-
-1. 上記税務スプシを開く
-2. `フォルダからデータ取り込み` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
-3. 任意: **1. 強制コピー（検収用）**
 
 | Property | 推奨 |
 |----------|------|
@@ -187,6 +181,8 @@ clasp push
 cd C:\Users\takuy\Desktop\gas-project\export-tax-list
 clasp push
 ```
+
+**次段スプシ日次（広告→在庫→競合Jitta→税務）は 2026-11-15 に一通り完了。**
 
 ---
 
