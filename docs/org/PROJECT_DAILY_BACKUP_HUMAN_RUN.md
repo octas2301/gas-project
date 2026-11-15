@@ -21,6 +21,7 @@ Drive フォルダは **2026-10-17 作成済**（My Drive 直下）。
 | `広告` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | https://drive.google.com/drive/folders/1CscA4rPU7J69gf8ANgOLttda2z36TmIR |
 | `在庫` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` | https://drive.google.com/drive/folders/1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe |
 | `競合Jitta` | `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` | https://drive.google.com/drive/folders/1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6 |
+| `税務` | `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` | https://drive.google.com/drive/folders/1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw |
 
 報告メールを使うなら宛先を Property に入れる（未設定でも ▼ログ／①ログには残る）。
 
@@ -107,6 +108,7 @@ clasp push
 - 広告: `ADS_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 - 在庫: `INV_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 - 競合Jitta: `CJ_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
+- 税務: `TAX_PROJECT_DAILY_BACKUP_ENABLED=false` またはトリガー削除  
 
 正本スプシは消えない（コピーと古いコピーのゴミ箱のみ）。
 
@@ -120,8 +122,8 @@ clasp push
 |----|-----|----------------|-------|------------|----------------|------|
 | 1 | 広告 | `99.バックアップ/広告` | `広告運用GAS/`（push は clone 経由） | `17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo` | `1CscA4rPU7J69gf8ANgOLttda2z36TmIR` | **済** |
 | 2 | 在庫 | `99.バックアップ/在庫` | `inventory-app/` | `1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE` | `1Gu7Yr8Af493T45gBQjfHDxabF-8y9sxe` | **済**（人手セットアップ完了） |
-| 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | `1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs` | `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` | コード・強制コピー済／**人手セットアップ待ち** |
-| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | | | |
+| 3 | 競合Jitta | `99.バックアップ/競合Jitta` | `competitor_jitta/` | `1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs` | `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` | **済** |
+| 4 | 税務 | `99.バックアップ/税務` | `export-tax-list/` | `1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM` | `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` | コード・強制コピー済／**人手セットアップ待ち** |
 
 ### 4.1 広告（2026-11-15・完了）
 
@@ -144,34 +146,45 @@ clasp push
 | 正スプシ | [在庫管理](https://docs.google.com/spreadsheets/d/1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE/edit) |
 | 検収コピー | `在庫_backup_force_20261115_114746` |
 
-### 4.3 競合Jitta（2026-11-15 投入）
+### 4.3 競合Jitta（2026-11-15・完了）
 
-コード: `competitor_jitta/ProjectDailyBackup.js`（`CJ_PROJECT_DAILY_BACKUP_*`）。clasp push 済。  
-正本は①の競合DB控えと**同じスプシ**（フォルダは PJ 別 `競合Jitta`）。
+コード: `competitor_jitta/ProjectDailyBackup.js`（`CJ_PROJECT_DAILY_BACKUP_*`）。人手セットアップ完了。  
+正本は①の競合DB控えと**同じスプシ**（フォルダは PJ 別）。
 
 | 項目 | 値 |
 |------|-----|
 | PJ | `競合Jitta` = `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` |
-| 正スプシ | [競合DB](https://docs.google.com/spreadsheets/d/1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs/edit)（`統合情報DB260815_競合（amz/楽/Yah）`） |
+| 正スプシ | [競合DB](https://docs.google.com/spreadsheets/d/1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs/edit) |
 | 検収コピー | `競合Jitta_backup_force_20261115_115617` |
+
+### 4.4 税務（2026-11-15 投入）
+
+コード・GAS: **あり**（`export-tax-list/`＝`Code.gs`＋clasp）。  
+正スプシ名: **`260219【自動取り込み】消費税輸出免税不適格用連絡一覧表Octas`**
+
+| 項目 | 値 |
+|------|-----|
+| PJ | `税務` = `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` |
+| 正スプシ | [税務一覧](https://docs.google.com/spreadsheets/d/1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM/edit) |
+| 検収コピー | `税務_backup_force_20261115_120131` |
 
 **人間が1回だけ**:
 
-1. 競合DBスプシを開く（`drive` 等の新スコープ承認が出たら許可）
-2. `実態AI（競合）` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
-3. 任意: **1. 強制コピー（検収用）**（大きいので時間がかかることがある）
+1. 上記税務スプシを開く
+2. `フォルダからデータ取り込み` → `99.日次バックアップ（Drive）` → **0. 初回セットアップ（Property＋毎朝8時）**
+3. 任意: **1. 強制コピー（検収用）**
 
 | Property | 推奨 |
 |----------|------|
-| `CJ_PROJECT_DAILY_BACKUP_ENABLED` | 省略=ON／`false` で切戻し |
-| `CJ_PROJECT_DAILY_BACKUP_ROOT_FOLDER_ID` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
-| `CJ_PROJECT_DAILY_BACKUP_PJ_FOLDER_ID` | `1NiMkR7k-OhUZEFA2OBMv3ZLes3I9Hj_6` |
-| `CJ_PROJECT_DAILY_BACKUP_TARGET_SS_ID` | `1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs` |
-| `CJ_PROJECT_DAILY_BACKUP_REQUIRED_SHEETS` | 省略=`メーカーサマリ\|Keepaフル` |
-| `CJ_PROJECT_DAILY_BACKUP_MAIL_TO` | 任意 |
+| `TAX_PROJECT_DAILY_BACKUP_ENABLED` | 省略=ON／`false` で切戻し |
+| `TAX_PROJECT_DAILY_BACKUP_ROOT_FOLDER_ID` | `1K2OF1hpA5mfugJIAPZCR6VkZ0zzmYFZE` |
+| `TAX_PROJECT_DAILY_BACKUP_PJ_FOLDER_ID` | `1D2-qGjQ_kmq76UuzpuSriiFqZVFEqqiw` |
+| `TAX_PROJECT_DAILY_BACKUP_TARGET_SS_ID` | `1gCA0xK71arBrAy_vMJPETD20H2rvvoN0arGMG9t3GcM` |
+| `TAX_PROJECT_DAILY_BACKUP_REQUIRED_SHEETS` | 省略=`設定\|ログ` |
+| `TAX_PROJECT_DAILY_BACKUP_MAIL_TO` | 任意 |
 
 ```powershell
-cd C:\Users\takuy\Desktop\gas-project\competitor_jitta
+cd C:\Users\takuy\Desktop\gas-project\export-tax-list
 clasp push
 ```
 

@@ -156,6 +156,16 @@ function onOpen() {
         .addItem('自動で繰り返すタイマーを消す', 'menuDeleteTimeTriggers')
         .addItem('年のシートと見出しを作る', 'testSheetSetup')
     )
+    .addSeparator()
+    .addSubMenu(
+      ui
+        .createMenu('99.日次バックアップ（Drive）')
+        .addItem('0. 初回セットアップ（Property＋毎朝8時）', 'menuTaxProjectDailyBackupSetup')
+        .addItem('1. 強制コピー（検収用）', 'menuTaxProjectDailyBackupForceCopy')
+        .addItem('2. 今すぐ実行（更新窓あり）', 'menuTaxProjectDailyBackupRunNow')
+        .addItem('3. 毎朝8時トリガー設置', 'menuTaxProjectDailyBackupInstallTrigger')
+        .addItem('4. トリガー削除', 'menuTaxProjectDailyBackupRemoveTrigger')
+    )
     .addToUi();
 }
 
