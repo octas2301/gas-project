@@ -9,9 +9,9 @@
 
 **方針**: スプシ＝Drive日次。コード＝**G1（毎朝8:05 main push）＋G3（全claspローカル）**。次段スプシ順＝広告→在庫→競合Jitta→税務。[要件](org/PROJECT_DAILY_BACKUP_REQUIREMENTS.md)／[HUMAN_RUN](org/PROJECT_DAILY_BACKUP_HUMAN_RUN.md)
 
-**Phase0**: `.gitignore` 強化。`tools/git_daily_backup.ps1`／`backup_all_clasp_snapshots.ps1`／`register_backup_tasks.ps1`。タスク `gas-project-git-daily-backup`・`gas-project-clasp-all-snapshot` 登録済。G3初回OK（6 clasp）。
+**Phase0 済**: `.gitignore` 強化（secrets／local_backup除外）。`tools/git_daily_backup.ps1`／`backup_all_clasp_snapshots.ps1`／`register_backup_tasks.ps1`。タスク `gas-project-git-daily-backup`（8:05）・`gas-project-clasp-all-snapshot`（8:00）登録済。G3初回OK（6 clasp）。**GitHub baseline push 済**（`85e7d1c`）。
 
-**次**: baseline commit/push → Drive目視（出品・①）→ 次段スプシは広告から。
+**次**: Drive目視（出品・①の `99.バックアップ`）→ 次段スプシ日次は**広告**から横展開。
 
 ---
 
