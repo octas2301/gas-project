@@ -57,6 +57,19 @@
         "送料": { "role": "lookup", "head": 40 }
       },
       "notes": "発注書は日付タブ（発注書YYMMDD）。固定タブにしない。dump 時は --sheet で指定するか titles から最新を取る。"
+    },
+    "在庫管理アプリ_Octas": {
+      "id": "1_kqBcQTcL0Q5--KsAdxMYbPMsaToLEXxOMuDw_z-kwE",
+      "aliases": ["在庫", "inventory", "inventory-app", "1_kqB", "260223在庫"],
+      "tabs": {
+        "商品マスタ": { "role": "lookup", "head": 40 },
+        "棚卸セッション": { "role": "log", "tail": 20 },
+        "棚卸スキャンリスト": { "role": "log", "tail": 40 },
+        "入荷リスト": { "role": "log", "tail": 40 },
+        "出荷リスト": { "role": "log", "tail": 40 },
+        "在庫移動リスト": { "role": "log", "tail": 20 }
+      },
+      "notes": "領域4 F1〜 読取正本。書込は inventory-app UI／別承認のみ。Domain4ツールは読取専用。"
     }
   },
   "menus": {
@@ -72,6 +85,10 @@
     ],
     "見積・発注": [
       "見積発注_三協乾物"
+    ],
+    "在庫・領域4": [
+      "在庫管理アプリ_Octas",
+      "自動出品260221_セラセン出力"
     ]
   },
   "menu_aliases": {
@@ -90,7 +107,10 @@
     "見積": "見積・発注",
     "発注": "見積・発注",
     "見積もり": "見積・発注",
-    "三協": "見積・発注"
+    "三協": "見積・発注",
+    "在庫": "在庫・領域4",
+    "inventory": "在庫・領域4",
+    "領域4": "在庫・領域4"
   },
   "intents": {
     "judge": {

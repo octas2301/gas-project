@@ -22,7 +22,7 @@ Amazon・楽天・Yahoo! での売上高を、**利益の出る状態で早く�
 ├─ 領域2 出品            役割: マスタを三モールに載せる（gas-project 主戦場）
 │     楽天CSV聖域 / Yahoo API / Amazonバルク / B統合
 ├─ 領域3 販売拡大        広告・実績。一部実装（タイムセール等）
-├─ 領域4 商品管理        在庫・発注・物流。在庫AppSheetは別
+├─ 領域4 商品管理        モール在庫同期・適正在庫・発注アラート。実在庫正本は inventory-app
 ├─ 領域5 顧客対応        要件段階。送信禁止
 └─ 領域6 財務・経理      要件段階
 ```
@@ -32,7 +32,7 @@ Amazon・楽天・Yahoo! での売上高を、**利益の出る状態で早く�
 | **1. リサーチ・見積もり** | 問屋・メーカーリサーチ、商品リサーチ、見積依頼・見積取得 |
 | **2. 出品** | 商品出品情報の作成、Amazon/楽天/Yahoo! 出品・広告設定 |
 | **3. 販売拡大** | 広告運用の調整、販売実績の取得・分析 |
-| **4. 商品管理** | 適正発注数・発注アラート、在庫管理・入出荷・棚卸・物流 |
+| **4. 商品管理** | モール在庫同期・適正在庫・発注アラート、在庫管理・入出荷・棚卸・物流（正本: [org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)） |
 | **5. 顧客対応・レビュー** | 問い合わせ対応、返品・交換・クレーム、レビュー・Q&A返信 |
 | **6. 財務・経理** | 売上・仕入計上、振込・手数料管理、利益集計・税務 |
 
@@ -46,7 +46,7 @@ Amazon・楽天・Yahoo! での売上高を、**利益の出る状態で早く�
 | M2 | 出品が回る（領域2） | 進行中・別スレッド（B統合ハード死・Amazon Lv4 等） |
 | **M3** | **領域1: 外注なしリサーチ→見積下書き** | **領域1担当の本線**。[DOMAIN1](DOMAIN1_RESEARCH_PURCHASING.md)／[第1版要件](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md) |
 | M4 | 販売拡大 | 広告・タイムセールは一部。実績分析は薄い |
-| M5 | 在庫・発注 | 在庫AppSheetは別。発注本線は後 |
+| M5 | 在庫・発注 | 要件正本 [DOMAIN4](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)。実在庫＝inventory-app。実装はスライス承認後 |
 | M6 | CS・経理 | 要件段階 |
 
 ## 前提
@@ -73,6 +73,7 @@ Amazon・楽天・Yahoo! での売上高を、**利益の出る状態で早く�
 | [ROADMAP.md](ROADMAP.md) | 優先度・依存関係に基づくフェーズ案（ロードマップ） |
 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の要件整理 |
 | [DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md) | **領域1の範囲・優先・調査ファイル／マニュアルURL・見積は下書きまで** |
+| [org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md) | **領域4正本**（モール在庫同期・適正在庫・発注アラート／下書き） |
 | [org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md) | **①第1版要件**（品質CP＝Amazon検索の救い。Keepa件数キャップなし） |
 | [org/B_PURCHASE_RESEARCH_NOW.md](org/B_PURCHASE_RESEARCH_NOW.md) | **領域1① いまここ** |
 | [org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md) | **①の進捗つき構造（ツリー・他PJ共有）** |

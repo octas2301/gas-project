@@ -4,6 +4,7 @@
 種の優先は b5_piece_truth_rules.resolve_preferred_seed_kind:
   人間実物(PIECE_TRUTH_HUMAN) → WRAP → CANON仮想
 
+共通核ON時は SURFACE（深堀筋・面中央クロップ）も同送する。
 案件名・魚種・SKU固有の質感文をコードに焼かない。
 人間メモは --note で渡す（言語化へ反映）。
 
@@ -27,6 +28,8 @@ from b5_piece_truth_rules import (
     evaluate_piece_truth_gate,
     infer_shape_family_from_texts,
     resolve_preferred_seed_kind,
+    resolve_surface_ref_paths,
+    surface_attach_prompt_block,
     write_piece_set_source,
 )
 from _tmp_food_piece_set5_lang_scenes import (
@@ -51,6 +54,24 @@ _POSE = (
 def _theme(jan: str) -> Path:
     jan_d = "".join(ch for ch in str(jan) if ch.isdigit()) or str(jan).strip()
     return SCRIPT / "_out" / f"theme_new_run_{jan_d}"
+
+
+def _resolve_piece_surface_refs(theme: Path, *, max_n: int) -> List[Path]:
+    """深堀筋 SURFACE（マクロ除外）＋面中央クロップ。コアOFFなら空。"""
+    try:
+        from b5_generic_plating import (
+            generic_plating_core_enabled,
+            prefer_face_crop_surfaces,
+        )
+    except Exception:
+        return []
+    if not generic_plating_core_enabled():
+        return []
+    smeta = resolve_surface_ref_paths(theme, max_n=max(1, int(max_n or 3)))
+    surfs = [Path(p) for p in (smeta.get("paths") or []) if Path(p).is_file()]
+    if not surfs:
+        return []
+    return prefer_face_crop_surfaces(theme, surfs, max_n=max(1, int(max_n or 3)))
 
 
 def main(argv: List[str] | None = None) -> int:
@@ -95,6 +116,23 @@ def main(argv: List[str] | None = None) -> int:
         )
     policy = build_shape_policy_prompt_block(family)
 
+    surfs = _resolve_piece_surface_refs(theme, max_n=min(3, n))
+    print(
+        "surface refs",
+        [p.name for p in surfs] if surfs else "(none)",
+    )
+
+    quality = str(args.quality or QUALITY)
+    # 明示が既定のままなら note／筋系は recommend（C7）
+    if quality == QUALITY:
+        try:
+            from b5_generic_plating import recommend_quality
+
+            quality = recommend_quality(note or "一片見本")
+        except Exception:
+            quality = QUALITY
+    print(f"quality={quality}")
+
     out = theme / "food_piece_set5_virt"
     set_dir = out / "piece_set"
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -121,20 +159,41 @@ def main(argv: List[str] | None = None) -> int:
             policy.strip(),
             pose,
         ]
+        if surfs:
+            sb = surface_attach_prompt_block(max_n=len(surfs))
+            if sb:
+                prompt_lines.append(sb)
+            prompt_lines.append(
+                "【添付順】SURFACE（面の筋・質感）→ 種（外形・全体）。"
+                "面の正はSURFACE。種の縁ノイズで筋を代用するな。"
+            )
         if note:
             prompt_lines.append(f"【人間検収】{note}")
         prompt = "\n".join(prompt_lines)
+        try:
+            from b5_generic_plating import (
+                apply_core_to_prompt_text,
+                generic_plating_core_enabled,
+            )
+
+            if generic_plating_core_enabled():
+                prompt = apply_core_to_prompt_text(prompt, caller="piece")
+        except Exception as e:
+            print(f"(warn) piece generic core: {e}")
+
+        # SURFACE → 種（種は常に最後に1枚以上）
+        image_paths: List[Path] = list(surfs) + list(seeds)
         raw, used = generate_with_references(
             prompt=prompt,
-            image_paths=list(seeds),
+            image_paths=image_paths,
             model=model,
             size=SIZE,
-            quality=str(args.quality or QUALITY),
+            quality=quality,
         )
         dest.write_bytes(raw)
         dest.with_suffix(".txt").write_text(prompt, encoding="utf-8")
         set_files.append(dest)
-        print(f"set {dest.name} model={used}")
+        print(f"set {dest.name} model={used} nRef={len(image_paths)}")
 
     write_piece_set_source(
         theme,
@@ -146,6 +205,10 @@ def main(argv: List[str] | None = None) -> int:
             "family": family,
             "humanNote": note,
             "builtAt": datetime.now(timezone.utc).isoformat(),
+            "surfaceRefs": [str(p) for p in surfs],
+            "quality": quality,
+            # 今回解決した種を activeSeed に残す（01固定落下を防ぐ）
+            "activeSeed": seeds[0].name,
         },
     )
 
@@ -172,6 +235,20 @@ def main(argv: List[str] | None = None) -> int:
         pieces.append(one)
 
     block = build_set_lang_pack(pieces)
+    try:
+        from b5_generic_plating import (
+            apply_core_to_prompt_text,
+            generic_plating_core_enabled,
+            sanitize_danger_prompt,
+        )
+
+        if generic_plating_core_enabled():
+            block = apply_core_to_prompt_text(
+                sanitize_danger_prompt(block), caller="piece"
+            )
+    except Exception as e:
+        print(f"(warn) piece lang sanitize: {e}")
+
     pack = {
         "ok": True,
         "jan": "".join(ch for ch in str(args.jan) if ch.isdigit()),
@@ -183,6 +260,8 @@ def main(argv: List[str] | None = None) -> int:
         "promptBlock": block,
         "builtAt": datetime.now(timezone.utc).isoformat(),
         "truthRefs": [str(p) for p in seeds],
+        "surfaceRefs": [str(p) for p in surfs],
+        "quality": quality,
     }
     (out / "piece_set_lang.json").write_text(
         json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8"

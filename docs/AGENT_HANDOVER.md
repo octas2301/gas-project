@@ -41,6 +41,7 @@
 | 5 | [RUNBOOK_DAY_WEEK_MONTH.md](RUNBOOK_DAY_WEEK_MONTH.md) | 日次・週次・隔週・月次の定型タスク（Runbook） |
 | 6 | [AMAZON_REQUIREMENTS.md](AMAZON_REQUIREMENTS.md) | Amazon 出品の列メモ（参考）。**Lv4正本**は [org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md](org/LV4_AMAZON_ORCHESTRATION_REQUIREMENTS.md) |
 | 7 | [DOMAIN1_RESEARCH_PURCHASING.md](DOMAIN1_RESEARCH_PURCHASING.md) **§1 細分化図**／[RESEARCH_AND_ESTIMATE.md](RESEARCH_AND_ESTIMATE.md) | **領域1正本**（①はリサーチ見積もり agent。出品チャットは①のGASを書かない）／出品時 vs 仕入れ時 |
+| 7.01 | [org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md) | **領域4正本**（モール在庫同期・適正在庫・発注アラート／下書き）。実在庫＝inventory-app。出品PUT・楽天CSV・棚卸UIは聖域 |
 | 7.02 | [org/B_PURCHASE_RESEARCH_FLOW.md](org/B_PURCHASE_RESEARCH_FLOW.md) | **リサーチ完成形 A–J / A′**。状況を聞かれたら §3。旧 DOMAIN1 の A/B/C と混ぜない |
 | 7.03 | [org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md](org/B_PURCHASE_RESEARCH_CYCLE_REQUIREMENTS.md) | **3レーン日常サイクル**（A-light・セラー貯め・1社完走連鎖）。3者条件付きYES |
 | 7.04 | [org/B_MAKER_WASH_FULL_REQUIREMENTS.md](org/B_MAKER_WASH_FULL_REQUIREMENTS.md) | **メーカー洗い完走**。キュー列挙→Keepa完走。>500は分割B（タイトル推定）。P1b済・P2ドライ未 |
@@ -107,10 +108,14 @@
 
 ## 6. 更新履歴
 
-- 2026-11-15: **盛り共通核（MAIN/SUB・T4/T8）**: 危険文オフ・面中央クロップ優先・規則アーティファクト禁止。`b5_generic_plating.py`。切戻し `B5_GENERIC_PLATING_CORE=0`。[PLATING_AND_PIECE_GENERIC_LOGIC](org/PLATING_AND_PIECE_GENERIC_LOGIC.md)／[B45 T4追記](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
+- 2026-11-15: **C8効き確認ループを正本化**: 禁止・危険文オフは low 生成で絵に効いたか確認してから先へ（スキップ禁止）。`run_effect_verify_loop`。切戻し `B5_GENERIC_PLATING_CORE=0`。[PLATING §3.1](org/PLATING_AND_PIECE_GENERIC_LOGIC.md)
+- 2026-11-15: **盛り共通核・合否§3を正として確定**: 商品固有語で quality 上げない／一件禁止を共通に焼かない。できる限り low。`recommend_quality` 更新。切戻し `B5_GENERIC_PLATING_CORE=0`。[PLATING](org/PLATING_AND_PIECE_GENERIC_LOGIC.md)／[B45 T4](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)
 - 2026-11-13: **見積検品メイン画像**（clasp不要）: Q列に Keepaメインのみ。`tools/common_ss_view/estimate_inspection_main_images.py`。石原5行。[見積検品要件](org/B_ESTIMATE_INSPECTION_REQUIREMENTS.md)
 - 2026-11-13: **タジマヤ二重ロック**（要① clasp）: 並行 DONE を止める。`skip=busy`。飲み干し実機 PASS（leftover=0）。[FLOW §3 D](org/B_PURCHASE_RESEARCH_FLOW.md)
 - 2026-11-12: **タジマヤ失敗JAN印**（要① clasp）: miss再チェック防止・取得1回リトライ・続きトリガーログ。Property `PR_TAJIMAYA_MISS_JSON`。[V1 §10](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)
+- 2026-11-15: **領域4 P0三点レビュー反映**（コード未）: 条件付きYES→社長ロック。案A／B1／フェーズF0–F3。正本 [P0](org/DOMAIN4_P0_REQUIREMENTS.md)／[MAJORITY](org/DOMAIN4_P0_THREE_REVIEW_MAJORITY.md)。次＝F1実装承認。
+- 2026-11-15: **領域4要件ロック**（実装前）: モール在庫同期・適正在庫・発注アラート／下書き。正本 [DOMAIN4](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)。実在庫＝inventory-app。出品PUT・楽天CSV・棚卸UIは聖域。
+- 2026-11-15: **オリエンタル検品第1**（要① clasp）: メニュー「メーカー指定：再門→D1（門落ち込み）→D2」。食品のみリスト。`estimate_inspection_build_rows.py --makers … --include-skip --allow-no-cost`。[見積検品](org/B_ESTIMATE_INSPECTION_REQUIREMENTS.md)
 - 2026-11-15: **タジマヤ寸法の対象を保管空にも拡大**（要① clasp）。メニュー「タジマヤ寸法補完（FBA空・保管空）」。既存FBA非上書き。
 - 2026-11-12: **タジマヤ寸法補完**（要① clasp）: Keepa梱包三辺が空のときだけ JAN→タジマヤ。D1＋メニュー。切戻し `PR_TAJIMAYA_DIM_FILL_ENABLED=false`。[V1 §10](org/B_PURCHASE_RESEARCH_V1_REQUIREMENTS.md)／[FLOW §3 D](org/B_PURCHASE_RESEARCH_FLOW.md)
 

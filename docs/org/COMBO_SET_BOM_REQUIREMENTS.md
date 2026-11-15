@@ -3,7 +3,8 @@
 **日付**: 2026-08-16  
 **状態**: すり合わせ確定（未実装）  
 **対象**: 出品マスタ／AI情報取得data／将来の在庫  
-**親**: CURRENT_PHASE／本スレ（Keepa誤紐づけ、B上限3、構成表、価格・大きさ、列）
+**親**: CURRENT_PHASE／本スレ（Keepa誤紐づけ、B上限3、構成表、価格・大きさ、列）  
+**在庫本線（領域4）**: 分解消費・適正在庫の実装要件は [DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md](DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md) を正とする（本ファイルの在庫約束は維持）。
 
 ---
 

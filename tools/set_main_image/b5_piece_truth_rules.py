@@ -170,9 +170,21 @@ def write_piece_set_source(
     paths: Sequence[Path],
     extra: Optional[Dict[str, Any]] = None,
 ) -> Path:
-    """生成側が種の出自を残す（人間／WRAP／仮想）。"""
+    """生成側が種の出自を残す（人間／WRAP／仮想）。
+
+    既存の activeSeed（ゲートで選んだ元見本）は、extra で明示しない限り消さない。
+    """
     out_dir = Path(theme_dir) / "food_piece_set5_virt"
     out_dir.mkdir(parents=True, exist_ok=True)
+    dest = out_dir / SOURCE_NAME
+    prev_active = ""
+    if dest.is_file():
+        try:
+            prev = json.loads(dest.read_text(encoding="utf-8-sig"))
+            if isinstance(prev, dict):
+                prev_active = str(prev.get("activeSeed") or "").strip()
+        except Exception:
+            prev_active = ""
     payload: Dict[str, Any] = {
         "ok": True,
         "kind": str(kind or "").strip().lower() or "virt",
@@ -181,7 +193,11 @@ def write_piece_set_source(
     }
     if extra:
         payload.update(extra)
-    dest = out_dir / SOURCE_NAME
+    if not str(payload.get("activeSeed") or "").strip():
+        if prev_active:
+            payload["activeSeed"] = prev_active
+        elif len(list(paths)) == 1:
+            payload["activeSeed"] = Path(list(paths)[0]).name
     dest.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return dest
 
@@ -469,6 +485,20 @@ def resolve_surface_ref_paths(
         name_u = p.name.upper()
         if "CHIAI" in name_u or "血合" in p.name:
             return
+        # スマホマクロ／試験産物（reinhard等）は本線同送外
+        try:
+            from b5_generic_plating import is_excluded_surface_attach_name
+
+            if is_excluded_surface_attach_name(p.name):
+                return
+        except Exception:
+            name_l = p.name.lower()
+            if (
+                "phone" in name_l
+                or "ref_surface_cam" in name_l
+                or "reinhard" in name_l
+            ):
+                return
         try:
             sz = int(p.stat().st_size)
         except Exception:
@@ -496,21 +526,23 @@ def resolve_surface_ref_paths(
         active = ""
     if active and refs.is_dir():
         _add(1, refs / active, "active_seed")
-    # 3) 01_refs の面アップ／種
+    # 3) 01_refs の面アップのみ（他SKU試験の種一覧で枠を埋めない）
+    #    種フォールバックは activeSeed の1枚だけ（ゲート選定）。
     if refs.is_dir():
         patterns = (
             "*SURFACE*CLOSE*.*",
             "*surface*close*.*",
             "PIECE_SURFACE*.*",
             "ref_surface*.*",
-            "PIECE_SEED_HUMAN_0*.*",
-            "PIECE_SEED_HUMAN.*",
         )
         for pat in patterns:
             for p in refs.glob(pat):
                 name_u = p.name.upper()
                 pri = 2 if ("SURFACE" in name_u or "CLOSE" in name_u) else 3
                 _add(pri, p, "refs_surface_or_seed")
+        # activeSeed 以外の PIECE_SEED_HUMAN_* は SURFACE に使わない
+        if active:
+            _add(3, refs / active, "active_seed_surface_fallback")
 
     paths: List[Path] = []
     sources: List[str] = []

@@ -73,6 +73,11 @@ var PR_HB_YIELD_ARM_MIN_ = 5;
 var PR_REGATE_FROM_FULL_ENABLED_PROP_ = 'PR_REGATE_FROM_FULL_ENABLED';
 /** true=門結果空白行のみ。false=全行を新門で上書き（通過→落ちも可）。 */
 var PR_REGATE_ONLY_BLANK_PROP_ = 'PR_REGATE_ONLY_BLANK';
+/**
+ * D1 で門「落ち」も品番リストへ載せる（調査カテゴリONの行だけ。非食品は載せない）。
+ * 未設定=OFF（従来どおり通過のみ）。切戻し false。
+ */
+var PR_D1_INCLUDE_GATE_FAIL_PROP_ = 'PR_D1_INCLUDE_GATE_FAIL';
 var PR_LIST_APPEND_CAP_PROP_ = 'PR_LIST_APPEND_CAP';
 var PR_LIST_FILTER_ENABLED_PROP_ = 'PR_LIST_FILTER_ENABLED';
 var PR_LIST_FILTER_CAP_PROP_ = 'PR_LIST_FILTER_CAP';
@@ -1210,6 +1215,7 @@ function onOpen() {
       .addItem('D1だけ（門→品番リスト）', 'prMenuListAppendD1')
       .addItem('D2だけ（見積候補に絞る）', 'prMenuListFilterD2')
       .addItem('D1→D2 連続', 'prMenuListD1ThenD2')
+      .addItem('メーカー指定：再門→D1（門落ち込み）→D2', 'prMenuRegateD1FailD2ForMakers')
       .addItem('単品名だけAI充填', 'prMenuSingleNameFill')
       .addItem('タジマヤ寸法補完（FBA空・保管空）', 'prMenuTajimayaDimFillGaps')
       .addItem('転記チェック（週次・今すぐ）', 'prMenuListTransferWeeklyCheckNow')
@@ -1514,6 +1520,36 @@ function prGasStart_() {
 function prGasTimeUp_() {
   if (!PR_GAS_START_MS_) return false;
   return new Date().getTime() - PR_GAS_START_MS_ >= PR_GAS_BUDGET_MS_;
+}
+
+/** D1 切り分け用。GAS 開始からの経過 ms（未開始は -1）。 */
+function prGasElapsedMs_() {
+  if (!PR_GAS_START_MS_) return -1;
+  return new Date().getTime() - PR_GAS_START_MS_;
+}
+
+/**
+ * D1 段階ログ（①ログ＋Logger）。例外で落ちる前／タイムアウト前の最終 phase を残す。
+ * @param {string} runId
+ * @param {string} phase
+ * @param {string=} extra
+ */
+function prD1PhaseLog_(runId, phase, extra) {
+  var detail =
+    'phase=' +
+    String(phase || '') +
+    ' elapsedMs=' +
+    prGasElapsedMs_() +
+    (extra ? ' ' + String(extra) : '');
+  Logger.log('[仕入れ検討①] runId=%s step=D1 %s', runId, detail);
+  try {
+    prAppendLog_([runId, 'D1 品番リスト', 'RUNNING', new Date(), '', '', '', detail.slice(0, 200)]);
+  } catch (eLog) {
+    Logger.log(
+      '[仕入れ検討①] D1 phase log write FAILED %s',
+      String((eLog && eLog.message) || eLog).slice(0, 120)
+    );
+  }
 }
 
 function prMenuMoritaGate() {
@@ -19374,11 +19410,25 @@ function prListSetQtyAndSaleForm_(full) {
   return { qty: String(qty), form: prListSaleFormLabel_(title, qty), src: src };
 }
 
+/** Property PR_D1_INCLUDE_GATE_FAIL。未設定=OFF。 */
+function prD1IncludeGateFailEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_D1_INCLUDE_GATE_FAIL_PROP_);
+  if (raw == null || String(raw).trim() === '') return false;
+  var s = String(raw).trim().toUpperCase();
+  return s === 'TRUE' || s === '1' || s === 'ON' || s === 'はい';
+}
+
+/**
+ * ①候補から D1 対象 ASIN を集める。
+ * 既定は門「通過」のみ。opt.includeGateFail または Prop ON のとき「落ち」も含む。
+ * 門理由が調査カテゴリ外／欠測の落ちはここで除外（倉庫536件読込で固まるのを防ぐ）。
+ */
 function prLoadCandPassByAsin_(opt) {
   opt = opt || {};
   var makerSet = opt.makerSet;
   var discoveryTag = opt.discoveryTag;
   var asinSet = opt.asinSet;
+  var includeFail = !!opt.includeGateFail || prD1IncludeGateFailEnabled_();
   var sh = prSpreadsheet_().getSheetByName(PR_CAND_SHEET_);
   var out = {};
   if (!sh || sh.getLastRow() < 2) return out;
@@ -19390,10 +19440,12 @@ function prLoadCandPassByAsin_(opt) {
   if (idx['ASIN'] === undefined || idx['門結果'] === undefined) return out;
   var idxMaker = makerSet ? idx['メーカー'] : -1;
   var idxTag = discoveryTag ? idx['発見経路'] : -1;
+  var idxWhy = idx['門理由'];
   if (makerSet && idxMaker === undefined) return out;
   if (discoveryTag && idxTag === undefined) return out;
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
   var seen = {};
+  var skipSurveyDrop = 0;
   for (i = 0; i < vals.length; i++) {
     var asin = String(vals[i][idx['ASIN']] || '').trim().toUpperCase();
     if (!asin || seen[asin]) continue;
@@ -19406,7 +19458,19 @@ function prLoadCandPassByAsin_(opt) {
       var tag = String(vals[i][idxTag] || '').trim();
       if (tag !== discoveryTag) continue;
     }
-    if (String(vals[i][idx['門結果']] || '') !== '通過') continue;
+    var gate = String(vals[i][idx['門結果']] || '').trim();
+    if (gate === '通過') {
+      // ok
+    } else if (includeFail && gate === '落ち') {
+      // 倉庫読込前に調査カテゴリ落ちを切る（ファッション等で固まる対策）
+      var why = idxWhy !== undefined ? String(vals[i][idxWhy] || '') : '';
+      if (why.indexOf('調査カテゴリ') >= 0) {
+        skipSurveyDrop++;
+        continue;
+      }
+    } else {
+      continue;
+    }
     seen[asin] = true;
     var row = {};
     var k;
@@ -19414,6 +19478,14 @@ function prLoadCandPassByAsin_(opt) {
       if (Object.prototype.hasOwnProperty.call(idx, k)) row[k] = vals[i][idx[k]];
     }
     out[asin] = row;
+  }
+  if (skipSurveyDrop > 0) {
+    Logger.log(
+      '[仕入れ検討①] D1 cand skip_survey_drop=%s load=%s includeFail=%s',
+      skipSurveyDrop,
+      Object.keys(out).length,
+      includeFail ? 'Y' : 'N'
+    );
   }
   return out;
 }
@@ -19599,6 +19671,8 @@ function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
   var chunk = prKeepaFullAsinReadChunk_();
   if (!(chunk > 0)) chunk = 1;
   var pos = 0;
+  var chunkN = 0;
+  var t0 = new Date().getTime();
   while (pos < rowList.length) {
     var startRow = rowList[pos].row;
     var j = pos;
@@ -19634,6 +19708,18 @@ function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
       out[expect] = rec;
     }
     pos = j + 1;
+    chunkN++;
+    // 散在行×多列 getRange が遅い疑い。10チャンクごとに進捗（Loggerのみ）
+    if (chunkN === 1 || chunkN % 10 === 0 || pos >= rowList.length) {
+      Logger.log(
+        '[仕入れ検討①] Keepaフル flat_read progress doneAsin=%s/%s chunks=%s cols=%s elapsedMs=%s',
+        Object.keys(out).length,
+        rowList.length,
+        chunkN,
+        colIdx.length,
+        new Date().getTime() - t0
+      );
+    }
   }
   return { out: out, mismatch: mismatch };
 }
@@ -19645,6 +19731,7 @@ function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
 function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
   opt = opt || {};
   var retried = !!opt.retried;
+  var runId = opt.runId ? String(opt.runId).trim() : '';
   var want = prNormalizeAsinList_(asins);
   if (!want.length) return {};
   var out = {};
@@ -19660,26 +19747,39 @@ function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
   if (idxAsin < 0) return out;
 
   try {
+    if (runId) {
+      prD1PhaseLog_(
+        runId,
+        'flat_load_open',
+        'want=' + want.length + ' lastRow=' + sh.getLastRow() + ' cols=' + lastCol + ' retried=' + (retried ? 'Y' : 'N')
+      );
+    }
     var rowList = [];
     var i;
     var row;
+    var via = 'none';
     if (prKeepaFullIndexEnabled_()) {
       var idxMap = prLoadKeepaFullIndexMap_();
       for (i = 0; i < want.length; i++) {
         row = idxMap[want[i]];
         if (row >= 2) rowList.push({ asin: want[i], row: row });
       }
+      via = 'index';
       if (!rowList.length && Object.keys(idxMap).length === 0) {
+        if (runId) prD1PhaseLog_(runId, 'flat_index_rebuild', 'idxEmpty=Y');
         prRebuildKeepaFullIndex_(sh);
         idxMap = prLoadKeepaFullIndexMap_();
         for (i = 0; i < want.length; i++) {
           row = idxMap[want[i]];
           if (row >= 2) rowList.push({ asin: want[i], row: row });
         }
+        via = 'index_rebuild';
       }
     }
     if (!rowList.length) {
+      if (runId) prD1PhaseLog_(runId, 'flat_asin_col_scan', 'want=' + want.length);
       rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want);
+      via = 'asin_col';
       Logger.log(
         '[仕入れ検討①] Keepaフル flat_asin via=asin_col n=%s want=%s',
         rowList.length,
@@ -19689,6 +19789,13 @@ function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
     rowList.sort(function (x, y) {
       return x.row - y.row;
     });
+    if (runId) {
+      prD1PhaseLog_(
+        runId,
+        'flat_read_start',
+        'via=' + via + ' rows=' + rowList.length + ' want=' + want.length
+      );
+    }
     var read = prKeepaFullReadRowsToFlat_(sh, hdr, rowList);
     if (read.mismatch) {
       Logger.log(
@@ -19697,13 +19804,17 @@ function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
         retried ? 'Y' : 'N'
       );
       if (!retried && prKeepaFullIndexEnabled_()) {
+        if (runId) prD1PhaseLog_(runId, 'flat_mismatch_rebuild', String(read.mismatch).slice(0, 80));
         prRebuildKeepaFullIndex_(sh);
-        return prLoadKeepaFullFlatMapForAsins_(want, { retried: true });
+        return prLoadKeepaFullFlatMapForAsins_(want, { retried: true, runId: runId });
       }
       rowList = prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want);
       rowList.sort(function (x, y) {
         return x.row - y.row;
       });
+      if (runId) {
+        prD1PhaseLog_(runId, 'flat_read_retry_asin_col', 'rows=' + rowList.length);
+      }
       read = prKeepaFullReadRowsToFlat_(sh, hdr, rowList);
       if (read.mismatch) {
         throw new Error('Keepaフル flat_asin ずれ解消不可 ' + read.mismatch);
@@ -19715,12 +19826,41 @@ function prLoadKeepaFullFlatMapForAsins_(asins, opt) {
       Object.keys(out).length,
       want.length
     );
+    if (runId) {
+      prD1PhaseLog_(
+        runId,
+        'flat_read_done',
+        'ok=' + Object.keys(out).length + ' want=' + want.length + ' via=' + via
+      );
+    }
   } catch (e) {
     Logger.log(
-      '[仕入れ検討①] Keepaフル flat_asin FAILED %s sizeLimit=%s',
+      '[仕入れ検討①] Keepaフル flat_asin FAILED %s sizeLimit=%s elapsedMs=%s',
       String((e && e.message) || e).slice(0, 160),
-      prIsSheetsSizeLimitError_(e) ? 'Y' : 'N'
+      prIsSheetsSizeLimitError_(e) ? 'Y' : 'N',
+      prGasElapsedMs_()
     );
+    if (runId) {
+      try {
+        prAppendLog_([
+          runId,
+          'D1 品番リスト',
+          'RUNNING',
+          new Date(),
+          '',
+          '',
+          '',
+          (
+            'phase=flat_load_FAILED sizeLimit=' +
+            (prIsSheetsSizeLimitError_(e) ? 'Y' : 'N') +
+            ' elapsedMs=' +
+            prGasElapsedMs_() +
+            ' ' +
+            String((e && e.message) || e)
+          ).slice(0, 200),
+        ]);
+      } catch (e2) {}
+    }
     throw e;
   }
   return out;
@@ -20193,7 +20333,7 @@ function prMenuRegateFromKeepaFull() {
 }
 
 /**
- * @param {{runId?:string, onlyBlank?:boolean}} opt
+ * @param {{runId?:string, onlyBlank?:boolean, makerSet?:Object}} opt
  * @return {{updated:number, pass:number, drop:number, leftover:number, detail:string}}
  */
 function prRegateCandidatesFromKeepaFull_(opt) {
@@ -20204,6 +20344,7 @@ function prRegateCandidatesFromKeepaFull_(opt) {
   }
   var runId = opt.runId || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
   var onlyBlank = opt.onlyBlank !== false && prRegateOnlyBlankGate_();
+  var makerSet = opt.makerSet || null;
   var sh = prSpreadsheet_().getSheetByName(PR_CAND_SHEET_);
   if (!sh || sh.getLastRow() < 2) {
     return { updated: 0, pass: 0, drop: 0, leftover: 0, detail: '候補0 onlyBlank=' + (onlyBlank ? 'Y' : 'N') };
@@ -20216,6 +20357,9 @@ function prRegateCandidatesFromKeepaFull_(opt) {
   if (idx['ASIN'] === undefined || idx['門結果'] === undefined) {
     throw new Error('①候補に ASIN／門結果列なし');
   }
+  if (makerSet && idx['メーカー'] === undefined) {
+    throw new Error('①候補にメーカー列なし（makerSet指定時）');
+  }
   PR_KEEPA_FULL_MAP_CACHE_ = null;
   PR_CAND_MEM_ = null;
   var prof = prReadProfile_();
@@ -20227,6 +20371,10 @@ function prRegateCandidatesFromKeepaFull_(opt) {
       .trim()
       .toUpperCase();
     if (!a0) continue;
+    if (makerSet) {
+      var mk0 = String(vals[r0][idx['メーカー']] || '').trim();
+      if (!mk0 || !makerSet[mk0]) continue;
+    }
     var g0 = String(vals[r0][idx['門結果']] || '').trim();
     if (onlyBlank && g0) continue;
     regateAsins.push(a0);
@@ -20253,6 +20401,10 @@ function prRegateCandidatesFromKeepaFull_(opt) {
       .trim()
       .toUpperCase();
     if (!asin) continue;
+    if (makerSet) {
+      var mkR = String(vals[r][idx['メーカー']] || '').trim();
+      if (!mkR || !makerSet[mkR]) continue;
+    }
     var oldGate = String(vals[r][idx['門結果']] || '').trim();
     if (onlyBlank && oldGate) {
       skipGate++;
@@ -20296,6 +20448,7 @@ function prRegateCandidatesFromKeepaFull_(opt) {
     leftover +
     ' onlyBlank=' +
     (onlyBlank ? 'Y' : 'N') +
+    (makerSet ? ' makers=' + Object.keys(makerSet).length : '') +
     ' priceMin=' +
     prof.priceMin +
     ' priceMax=' +
@@ -20306,6 +20459,135 @@ function prRegateCandidatesFromKeepaFull_(opt) {
     prof.rankMax +
     ' GET=0';
   return { updated: updated, pass: pass, drop: drop, leftover: leftover, detail: detail };
+}
+
+/** メーカー指定ダイアログの既定文（1行1社）。 */
+function prDefaultMakersForGateFailD1_() {
+  return '株式会社オリエンタル\nオリエンタル\nオリエンタル洋行';
+}
+
+/**
+ * 複数行メーカー入力用 HTML（ui.prompt は1行しか入れないため）。
+ * @param {string} defText
+ * @return {string}
+ */
+function prMakerMultilinePromptHtml_(defText) {
+  var esc = String(defText || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return (
+    '<!DOCTYPE html><html><head><base target="_top">' +
+    '<style>' +
+    'body{font:13px/1.45 sans-serif;margin:12px;color:#222}' +
+    'textarea{width:100%;height:168px;box-sizing:border-box;font:13px/1.4 monospace;padding:8px}' +
+    '.hint{color:#555;margin:0 0 8px}' +
+    '.row{margin-top:12px;text-align:right}' +
+    'button{margin-left:8px;padding:6px 14px}' +
+    '</style></head><body>' +
+    '<p class="hint">メーカー名を1行に1つ。空のままOKでも既定のまま進みます。調査カテゴリ外はリストに載せません。</p>' +
+    '<textarea id="makers">' +
+    esc +
+    '</textarea>' +
+    '<p id="st" class="hint" style="display:none;color:#06c">実行を開始しています…</p>' +
+    '<div class="row">' +
+    '<button type="button" id="btnCancel" onclick="google.script.host.close()">キャンセル</button>' +
+    '<button type="button" id="btnOk" onclick="goOk()">OK</button>' +
+    '</div>' +
+    '<script>' +
+    // 末尾_の関数は google.script.run から呼べない（Apps Script の private 規約）
+    // 本体は数分かかるので、起動だけ待たず短時間でダイアログを閉じる
+    'function goOk(){' +
+    'var btn=document.getElementById("btnOk");' +
+    'if(btn.disabled)return;' +
+    'btn.disabled=true;' +
+    'document.getElementById("btnCancel").disabled=true;' +
+    'document.getElementById("st").style.display="block";' +
+    'var v=document.getElementById("makers").value;' +
+    'var closed=false;' +
+    'function closeSoon(){if(closed)return;closed=true;try{google.script.host.close();}catch(e1){}}' +
+    'google.script.run' +
+    '.withFailureHandler(function(e){' +
+    'btn.disabled=false;document.getElementById("btnCancel").disabled=false;' +
+    'document.getElementById("st").style.display="none";' +
+    'alert((e&&e.message)?e.message:String(e));' +
+    '})' +
+    '.prRunRegateD1FailD2WithMakers(v);' +
+    'setTimeout(closeSoon,1200);' +
+    '}' +
+    '</script></body></html>'
+  );
+}
+
+/**
+ * メーカー指定: 複数行ダイアログを開く（本体は prRunRegateD1FailD2WithMakers）。
+ */
+function prMenuRegateD1FailD2ForMakers() {
+  var html = HtmlService.createHtmlOutput(prMakerMultilinePromptHtml_(prDefaultMakersForGateFailD1_()))
+    .setWidth(460)
+    .setHeight(340);
+  SpreadsheetApp.getUi().showModalDialog(html, '再門→D1（門落ち込み）→D2');
+}
+
+/**
+ * ダイアログOK後: Keepaフル再門（GETなし）→ D1（門落ち込み）→ D2。
+ * ※HTMLから呼ぶため末尾_にしない（private禁止）。
+ * @param {string} rawMakers 1行1社（空なら既定3社）
+ */
+function prRunRegateD1FailD2WithMakers(rawMakers) {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=regate_d1fail_d2 state=RUNNING', runId);
+  try {
+    prRefuseOriginalSs_();
+    var raw = String(rawMakers || '').trim();
+    if (!raw) raw = prDefaultMakersForGateFailD1_();
+    var makerSet = {};
+    var lines = String(raw || '').split(/[\r\n|,]+/);
+    var li;
+    for (li = 0; li < lines.length; li++) {
+      var nm = String(lines[li] || '').trim();
+      if (nm) makerSet[nm] = true;
+    }
+    if (!Object.keys(makerSet).length) {
+      throw new Error('メーカー名が空です');
+    }
+    var rg = prRegateCandidatesFromKeepaFull_({ runId: runId, makerSet: makerSet });
+    prAppendLog_([
+      runId,
+      'メーカー指定再門',
+      rg.leftover ? 'PARTIAL' : 'DONE',
+      new Date(),
+      '',
+      rg.updated,
+      '',
+      rg.detail,
+    ]);
+    prMenuListAppendD1({
+      runId: runId,
+      makerSet: makerSet,
+      includeGateFail: true,
+      quiet: true,
+    });
+    prMenuListFilterD2();
+    var msg =
+      'makers=' +
+      Object.keys(makerSet).join('|') +
+      ' regate_updated=' +
+      rg.updated +
+      ' pass=' +
+      rg.pass +
+      ' drop=' +
+      rg.drop;
+    prAppendLog_([runId, 'メーカー指定再門D1D2', 'DONE', new Date(), '', '', '', msg]);
+    prMenuToast_('① メーカー指定再門D1D2', msg, 14);
+  } catch (e) {
+    var msg2 = prRedactKey_(String((e && e.message) || e));
+    Logger.log('[仕入れ検討①] runId=%s step=regate_d1fail_d2 state=FAILED %s', runId, msg2);
+    prAppendLog_([runId, 'メーカー指定再門D1D2', 'FAILED', new Date(), '', '', '', msg2.slice(0, 200)]);
+    prMenuFailAlert_(msg2);
+    throw e;
+  }
 }
 
 /**
@@ -21198,17 +21480,66 @@ function prMenuListAppendD1(opt) {
       makerSet: opt.makerSet,
       discoveryTag: opt.discoveryTag,
       asinSet: opt.asinSet,
+      includeGateFail: opt.includeGateFail,
     });
     var passAsins = Object.keys(candMap);
+    var nPassGate = 0;
+    var nFailGate = 0;
+    var gi0;
+    for (gi0 = 0; gi0 < passAsins.length; gi0++) {
+      if (String((candMap[passAsins[gi0]] && candMap[passAsins[gi0]]['門結果']) || '') === '通過') {
+        nPassGate++;
+      } else {
+        nFailGate++;
+      }
+    }
+    prAppendLog_([
+      runId,
+      'D1 品番リスト',
+      'RUNNING',
+      new Date(),
+      passAsins.length,
+      '',
+      '',
+      'cand_load=' +
+        passAsins.length +
+        ' pass=' +
+        nPassGate +
+        ' fail=' +
+        nFailGate +
+        ' includeFail=' +
+        (opt.includeGateFail || prD1IncludeGateFailEnabled_() ? 'Y' : 'N') +
+        ' elapsedMs=' +
+        prGasElapsedMs_(),
+    ]);
+    prD1PhaseLog_(runId, 'exist_scan_start', 'cand=' + passAsins.length);
     var existRows = prListExistingAsinRows_(sh, headers);
     var existCount = Object.keys(existRows).length;
     var cap = prListAppendCap_();
-    var flatMap = prLoadKeepaFullFlatMapForAsins_(passAsins);
+    prD1PhaseLog_(runId, 'exist_scan_done', 'exist=' + existCount + ' cap=' + cap);
+    var flatMap = prLoadKeepaFullFlatMapForAsins_(passAsins, { runId: runId });
+    // 通過のみ倉庫欠落を GET。門落ちは倉庫行が無ければ載せない（取り直ししない）
     var needFlat = [];
+    var enrichPass = [];
     var i;
     for (i = 0; i < passAsins.length; i++) {
-      if (!flatMap[passAsins[i]]) needFlat.push(passAsins[i]);
+      var a0 = passAsins[i];
+      var g0 = String((candMap[a0] && candMap[a0]['門結果']) || '').trim();
+      if (g0 === '通過') {
+        enrichPass.push(a0);
+        if (!flatMap[a0]) needFlat.push(a0);
+      }
     }
+    prD1PhaseLog_(
+      runId,
+      'keepa_get_decide',
+      'flatHit=' +
+        Object.keys(flatMap).length +
+        ' enrichPass=' +
+        enrichPass.length +
+        ' needFlat=' +
+        needFlat.length
+    );
     var pack = needFlat.length
       ? prKeepaProductStats90_(needFlat)
       : {
@@ -21222,16 +21553,33 @@ function prMenuListAppendD1(opt) {
           refillIn: '',
           waitMin: 1,
         };
+    prD1PhaseLog_(
+      runId,
+      'keepa_get_done',
+      'products=' +
+        (pack.products ? pack.products.length : 0) +
+        ' full+=' +
+        pack.fullPlus +
+        ' tokens=' +
+        pack.tokensConsumed
+    );
     var j;
     for (j = 0; j < pack.products.length; j++) {
       var fr = prFullRecFromProduct_(pack.products[j]);
       var a = String(fr.ASIN || '').trim().toUpperCase();
       if (a) flatMap[a] = fr;
     }
-    var enrich = prEnrichKeepaForPassAsins_(passAsins, flatMap);
+    prD1PhaseLog_(runId, 'enrich_start', 'enrichPass=' + enrichPass.length);
+    var enrich = prEnrichKeepaForPassAsins_(enrichPass, flatMap);
     if (enrich.enriched > 0) {
-      flatMap = prLoadKeepaFullFlatMapForAsins_(passAsins);
+      prD1PhaseLog_(runId, 'enrich_reload_flat', 'enriched=' + enrich.enriched);
+      flatMap = prLoadKeepaFullFlatMapForAsins_(passAsins, { runId: runId });
     }
+    prD1PhaseLog_(
+      runId,
+      'enrich_done',
+      (enrich && enrich.detail ? enrich.detail : 'enriched=0').slice(0, 120)
+    );
     var newAsins = [];
     var refreshAsins = [];
     var skipSame = 0;
@@ -21243,6 +21591,7 @@ function prMenuListAppendD1(opt) {
         missFull++;
         continue;
       }
+      // 通過・落ちとも調査カテゴリ外はリストに載せない（食品オンのとき非食品を増やさない）
       if (prSurveyRootGateEnabled_() && !prFullRecInSurveyRoot_(flatMap[asin])) {
         skipCat++;
         continue;
@@ -21261,6 +21610,22 @@ function prMenuListAppendD1(opt) {
       asin = passAsins[i];
       if (newAsins.indexOf(asin) >= 0 || refreshAsins.indexOf(asin) >= 0) topQueue.push(asin);
     }
+    prD1PhaseLog_(
+      runId,
+      'classify_done',
+      'new=' +
+        newAsins.length +
+        ' refresh=' +
+        refreshAsins.length +
+        ' skip_same=' +
+        skipSame +
+        ' skip_cat=' +
+        skipCat +
+        ' miss_full=' +
+        missFull +
+        ' queue=' +
+        topQueue.length
+    );
     var leftover = 0;
     if (topQueue.length > cap) {
       leftover = topQueue.length - cap;
@@ -21318,6 +21683,7 @@ function prMenuListAppendD1(opt) {
       if (refreshAsins.indexOf(topQueue[i]) >= 0) refreshInQueue.push(topQueue[i]);
     }
     if (refreshInQueue.length) {
+      prD1PhaseLog_(runId, 'write_delete_refresh', 'n=' + refreshInQueue.length);
       var deleteRows = [];
       for (i = 0; i < refreshInQueue.length; i++) {
         if (existRows[refreshInQueue[i]]) deleteRows.push(existRows[refreshInQueue[i]].rowNum);
@@ -21329,6 +21695,7 @@ function prMenuListAppendD1(opt) {
     }
     var startRow = PR_LIST_DATA_START_;
     var n = topQueue.length;
+    prD1PhaseLog_(runId, 'write_insert_start', 'n=' + n);
     sh.insertRowsBefore(startRow, n);
     var tpl = sh.getRange(PR_LIST_FORMULA_TEMPLATE_ROW_, 1, 1, headers.length);
     tpl.copyTo(sh.getRange(startRow, 1, n, headers.length), SpreadsheetApp.CopyPasteType.PASTE_FORMULA, false);
@@ -21336,7 +21703,9 @@ function prMenuListAppendD1(opt) {
     for (i = 0; i < n; i++) {
       recs.push(prListBuildRec_(headers, flatMap[topQueue[i]], candMap[topQueue[i]]));
     }
+    prD1PhaseLog_(runId, 'write_recs_start', 'n=' + n);
     prListWriteRecs_(sh, headers, startRow, recs, formulaCols, directMap, skipMap);
+    prD1PhaseLog_(runId, 'write_recs_done', 'n=' + n);
     var appendNew = 0;
     var refreshN = 0;
     for (i = 0; i < topQueue.length; i++) {
@@ -21386,8 +21755,15 @@ function prMenuListAppendD1(opt) {
     return { n: n, detail: detail };
   } catch (e) {
     var msg = prRedactKey_(String((e && e.message) || e));
-    Logger.log('[仕入れ検討①] runId=%s step=D1 state=FAILED %s', runId, msg);
-    prAppendLog_([runId, 'D1 品番リスト', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    var failDetail =
+      'elapsedMs=' +
+      prGasElapsedMs_() +
+      ' sizeLimit=' +
+      (prIsSheetsSizeLimitError_(e) ? 'Y' : 'N') +
+      ' ' +
+      msg;
+    Logger.log('[仕入れ検討①] runId=%s step=D1 state=FAILED %s', runId, failDetail);
+    prAppendLog_([runId, 'D1 品番リスト', 'FAILED', new Date(), '', '', '', failDetail.slice(0, 200)]);
     if (!quiet) prMenuFailAlert_(msg);
     throw e;
   }

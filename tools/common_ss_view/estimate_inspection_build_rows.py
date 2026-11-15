@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-"""見積検品へ、仕入付き見積候補を1商品1行で回収（汎用）。
+"""見積検品へ、品番リストから1商品1行で回収（汎用）。
 
 正: docs/org/B_ESTIMATE_INSPECTION_REQUIREMENTS.md
+- 既定: 見積候補かつ仕入あり
+- `--makers` + `--include-skip` + `--allow-no-cost` で門落ち見送り・仕入なしも載せる
 - 本線 FBA。利益線はセット利益 ≥100円
 - 同じ大カテ順位は販売数1つ。実月販が無ければ順位推計
 - 業務用・お徳用・kg・500g超を、より小さい単品キーへ流用しない
@@ -11,6 +13,7 @@
 使い方:
   python tools/common_ss_view/estimate_inspection_build_rows.py --dry
   python tools/common_ss_view/estimate_inspection_build_rows.py
+  python tools/common_ss_view/estimate_inspection_build_rows.py --makers オリエンタル,株式会社オリエンタル,オリエンタル洋行 --include-skip --allow-no-cost
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ import argparse
 import math
 import re
 import sys
+import unicodedata
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -25,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT.parent / "competitor_store"))
 from client import sheets_service  # noqa: E402
+import estimate_paste_match as pm  # noqa: E402
 
 RES = "1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE"
 SANK = "17nXSRjFp8xy-3EaBmp-LIu_tMc9ZOgfkhJoZjO3FLIc"
@@ -124,7 +129,7 @@ def exclude_bulk_for_key(key_name: str, title: str) -> bool:
     return False
 
 
-def load_paste_meta(svc) -> dict[str, dict]:
+def load_paste_rows(svc) -> list[dict]:
     rows = (
         svc.spreadsheets()
         .values()
@@ -137,21 +142,12 @@ def load_paste_meta(svc) -> dict[str, dict]:
         .get("values")
         or []
     )
-    out = {}
-    for r in rows[1:]:
-        while len(r) < 7:
-            r.append("")
-        j = jan_norm(r[2])
-        p = num(r[5])
-        if len(j) < 8 or not p:
-            continue
-        out[j] = {
-            "ex": p,
-            "cond": str(r[6] or "").strip(),
-            "maker": str(r[0] or "").strip(),
-            "name": str(r[3] or "").strip(),
-        }
-    return out
+    return pm.paste_rows_from_values(rows)
+
+
+def load_paste_meta(svc) -> dict[str, dict]:
+    """互換: JAN → 貼付メタ。"""
+    return pm.paste_by_jan(load_paste_rows(svc))
 
 
 def load_list(svc):
@@ -207,8 +203,7 @@ def load_list(svc):
     for r in rows:
         while len(r) <= last:
             r.append("")
-        if str(r[idx["見積候補"]]).strip() != "見積候補":
-            continue
+        flag = str(r[idx["見積候補"]]).strip()
         name = str(r[idx["単品商品名"]]).strip()
         cost = num(r[idx["1点仕入れ額（税込み）"]])
         j = jan_norm(r[idx["JANコード"]])
@@ -220,6 +215,7 @@ def load_list(svc):
                 "jan": j,
                 "name": name,
                 "yokakunin": (not name) or ("要確認" in name),
+                "flag": flag,
                 "q": int(num(r[idx["同商品のセット数量"]]) or 0),
                 "sold": num(r[idx["過去1か月販売数（表示あれば）"]]),
                 "sell": num(r[idx["最安値"]]),
@@ -262,23 +258,76 @@ def bag_label(title: str, q: int) -> str:
     return f"単品{q}袋"
 
 
-def collect_rows_for_product(catalog: list[dict], maker: str, name: str, cost: float) -> list[dict]:
-    """同一単品＋タイトル兄弟（要確認MIX含む）。"""
+def listing_core_name_(title: str) -> str:
+    """Amazon出品タイトルからセット枚数・装飾を除き、単品キー候補にする。"""
+    t = unicodedata.normalize("NFKC", str(title or ""))
+    t = re.sub(r"【[^】]*】", " ", t)
+    t = re.sub(r"★[^★]*★", " ", t)
+    t = re.sub(r"（[^）]*セット[^）]*）", " ", t)
+    t = re.sub(r"\([^)]*セット[^)]*\)", " ", t)
+    t = re.sub(r"\d+\s*箱セット", " ", t)
+    t = re.sub(r"[×xX]\s*\d+\s*(箱|袋|個|本|入)?", " ", t)
+    t = re.sub(r"まとめ買い", " ", t)
+    t = re.sub(r"お試しセット", " ", t)
+    t = re.sub(r"ゆうパケット.*$", " ", t)
+    t = re.sub(r"\[.*?\]", " ", t)
+    # 出品文言のゆれ（同じ単品なのに行が割れるのを防ぐ）
+    t = re.sub(r"チャツネ\s*付?", " ", t)
+    t = re.sub(r"粉末タイプ", " ", t)
+    t = re.sub(r"レトロカレー", " ", t)
+    t = re.sub(r"マースル[ウウー－ー]+", " ", t)
+    t = re.sub(r"ル[ウウー－ー]+", " ", t)
+    for prefix in ("オリエンタル洋行", "株式会社オリエンタル", "オリエンタル"):
+        if t.startswith(prefix):
+            t = t[len(prefix) :].strip()
+            break
+    t = re.sub(r"\s+", " ", t).strip(" 　/-")
+    return t[:48] if t else ""
+
+
+def collect_rows_for_product(
+    catalog: list[dict],
+    maker: str,
+    name: str,
+    cost: float,
+    makers_scope: list[str] | None = None,
+    paste_jan: str | None = None,
+) -> list[dict]:
+    """同一単品＋タイトル兄弟（要確認MIX含む）。
+
+    paste_jan あり（貼付で特定した単品）: 原則そのJANの行だけ。
+    「チャツネ付」など付属語で別単品へ巻き込まない。
+    """
     out = []
     seen = set()
+    scope = [m for m in (makers_scope or []) if m]
     nm = norm_name(maker)
+    pn = norm_name(name)
+    pj = jan_norm(paste_jan) if paste_jan else ""
     for r in catalog:
-        if not (nm in norm_name(r["maker"]) or norm_name(r["maker"]) in nm):
-            continue
+        rm = str(r.get("maker") or "").strip()
+        if scope:
+            if rm not in scope:
+                continue
+        else:
+            if not (nm in norm_name(rm) or norm_name(rm) in nm):
+                continue
+        rj = jan_norm(r.get("jan") or "")
         ok = False
-        if not r.get("yokakunin") and norm_name(r["name"]) == norm_name(name):
-            ok = True
-        elif not r.get("yokakunin") and (
-            norm_name(name) in norm_name(r["name"]) or norm_name(r["name"]) in norm_name(name)
-        ):
-            ok = True
-        elif title_matches_product(r["title"], name):
-            ok = True
+        if pj:
+            # 貼付特定商品: JAN一致のみ（タイトル部分一致は付属チャツネ等で誤結合する）
+            ok = bool(rj and rj == pj)
+        else:
+            if not r.get("yokakunin") and norm_name(r["name"]) == pn:
+                ok = True
+            elif not r.get("yokakunin") and (
+                pn in norm_name(r["name"]) or norm_name(r["name"]) in pn
+            ):
+                ok = True
+            elif title_matches_product(r["title"], name):
+                ok = True
+            elif pn and pn in norm_name(r.get("title") or ""):
+                ok = True
         if not ok:
             continue
         if exclude_bulk_for_key(name, r["title"]):
@@ -294,8 +343,64 @@ def collect_rows_for_product(catalog: list[dict], maker: str, name: str, cost: f
     return out
 
 
+def resolve_product_seed_(
+    r: dict,
+    paste_rows: list[dict],
+    paste_map: dict[str, dict],
+    makers_filter: list[str] | None,
+    allow_name_partial: bool,
+) -> dict:
+    """1カタログ行 → 1商品キー（ASINタイトルではなく単品／貼付名）。"""
+    name = str(r.get("name") or "").strip()
+    title = str(r.get("title") or "").strip()
+    match = pm.resolve_paste_match(
+        paste_rows=paste_rows,
+        paste_map=paste_map,
+        jan=r.get("jan") or "",
+        maker=r.get("maker") or "",
+        name=name if name and "要確認" not in name else (title[:40] if title else ""),
+        title=title,
+        makers_filter=makers_filter,
+        allow_name_partial=allow_name_partial,
+    )
+    cost = r.get("cost") if r.get("cost") else None
+    if match["kind"] in (pm.MATCH_JAN, pm.MATCH_NAME) and match.get("paste_name"):
+        prod = str(match["paste_name"]).strip()
+        maker = str(match.get("paste_maker") or r.get("maker") or "").strip()
+        # 同じ貼付JANは名前ゆれ（500ｇ付き等）でも1商品
+        pj = str(match.get("jan") or "").strip()
+        group = f"jan:{pj}" if pj else norm_name(prod)
+        return {
+            "maker": maker,
+            "name": prod,
+            "cost": cost,
+            "match_kind": match["kind"],
+            "group": group,
+        }
+    if name and not r.get("yokakunin") and "要確認" not in name:
+        return {
+            "maker": str(r.get("maker") or "").strip(),
+            "name": name,
+            "cost": cost,
+            "match_kind": match["kind"],
+            "group": norm_name(name),
+        }
+    core = listing_core_name_(title)
+    if not core:
+        core = title[:40] or str(r.get("asin") or "")
+    return {
+        "maker": str(r.get("maker") or "").strip(),
+        "name": core,
+        "cost": cost,
+        "match_kind": match["kind"],
+        "group": norm_name(core),
+    }
+
+
 def set_profit_of(row: dict) -> tuple[float | None, str]:
-    """戻り: (利益, メモ). 手数料不明は None。"""
+    """戻り: (利益, メモ). 手数料不明／見積なしは None。"""
+    if not row.get("cost"):
+        return None, "見積なし"
     if row["state"] == "手数料不明":
         return None, "手数料不明"
     sp = row["set_profit"]
@@ -305,10 +410,25 @@ def set_profit_of(row: dict) -> tuple[float | None, str]:
     return None, "利益空"
 
 
-def build_product(rows: list[dict], paste: dict[str, dict]) -> dict:
+def build_product(
+    rows: list[dict],
+    paste: dict[str, dict],
+    *,
+    paste_rows: list[dict] | None = None,
+    makers_filter: list[str] | None = None,
+    allow_name_partial: bool = True,
+) -> dict:
     maker = rows[0]["maker"]
     name = rows[0]["name"]
     cost = rows[0]["cost"]
+    prow = paste_rows if paste_rows is not None else list(paste.values())
+    match = pm.best_match_for_rows(
+        rows,
+        prow,
+        paste,
+        makers_filter=makers_filter,
+        allow_name_partial=allow_name_partial,
+    )
     sets = []
     for r in rows:
         if exclude_bulk_for_key(name, r["title"]):
@@ -365,6 +485,8 @@ def build_product(rows: list[dict], paste: dict[str, dict]) -> dict:
         elif fee_unk > 0:
             # 利益判定が未完 → 見送りにせず人間へアラート
             decision = "手数料不明"
+        elif any(s.get("note") == "見積なし" for s in picked) or not cost:
+            decision = "見積なし"
         else:
             decision = "見送り"
 
@@ -447,12 +569,15 @@ def build_product(rows: list[dict], paste: dict[str, dict]) -> dict:
     judgment = short_judgment_(decision, main, picked, sales, sales_src)
 
     # 条件（貼付の文だけ。増分は0）
-    jans = [r["jan"] for r in rows if r["jan"]]
     cond_txt = ""
-    for j in jans:
-        if j in paste and paste[j]["cond"]:
-            cond_txt = f"見積条件: {paste[j]['cond']}"
-            break
+    if match.get("cond"):
+        cond_txt = f"見積条件: {match['cond']}"
+    else:
+        jans = [r["jan"] for r in rows if r["jan"]]
+        for j in jans:
+            if j in paste and paste[j].get("cond"):
+                cond_txt = f"見積条件: {paste[j]['cond']}"
+                break
     if not cond_txt:
         cond_txt = "見積条件: （貼付の条件文なし）"
 
@@ -460,13 +585,32 @@ def build_product(rows: list[dict], paste: dict[str, dict]) -> dict:
     if len(picked) > 1:
         kind = f"単品＋拡張{len(picked)-1}"
 
-    memo = "同じ順位は販売数1つ。貼付単価→仕入済み行の回収。条件増分は石原特売以外は0"
+    memo = (
+        "同じ順位は販売数1つ。貼付単価→仕入済み行の回収。条件増分は石原特売以外は0｜"
+        + match["label"]
+    )
+    if match["kind"] == pm.MATCH_NAME and match.get("paste_name"):
+        memo += f"（貼付名:{match['paste_name']}）"
 
+    if cost is None:
+        cost_disp = None
+        key = f"{name}／仕入なし"
+    else:
+        cost_disp = int(round(cost)) if abs(cost - round(cost)) < 1e-6 else cost
+        key = f"{name}／仕入{cost_disp}"
+    if decision == "見積なし" and not judgment:
+        judgment = "問屋見積なし → 依頼候補"
+    # 一致度は判断の先頭（人が見落とさない）
+    if match["kind"] != pm.MATCH_NONE:
+        judgment = match["label"] + "｜" + (judgment or "")
+    elif decision == "見積なし":
+        judgment = match["label"] + "｜" + (judgment or "")
+    analysis.insert(1, match["label"])
     return {
         "maker": maker,
         "name": name,
-        "cost": int(round(cost)) if abs(cost - round(cost)) < 1e-6 else cost,
-        "key": f"{name}／仕入{int(round(cost)) if abs(cost - round(cost)) < 1e-6 else cost}",
+        "cost": cost_disp if cost_disp is not None else "",
+        "key": key,
         "kind": kind,
         "decision": decision,
         "judgment": judgment,
@@ -489,8 +633,11 @@ def build_product(rows: list[dict], paste: dict[str, dict]) -> dict:
         "units_cond": 0,
         "profit_cond": 0,
         "memo": memo,
-        "gray": decision == "見送り",
+        "gray": decision in ("見送り", "見積なし"),
         "alert_fee": decision == "手数料不明",
+        "alert_match": bool(match.get("alert")),
+        "match_kind": match["kind"],
+        "match_label": match["label"],
         "asins": [s["asin"] for s in picked],
         "target_asins": target_asins,
     }
@@ -521,6 +668,12 @@ def short_judgment_(
             lab = bag_label(fu.get("title") or "", fu["q"])
             return f"{lab}・売{yen(fu['sell'])}円・手数料欠落 → 判定不能（要確認）"
         return "手数料欠落 → 判定不能（要確認）"
+    if decision == "見積なし":
+        if picked:
+            s = picked[0]
+            lab = bag_label(s.get("title") or "", s["q"])
+            return f"{lab}・問屋見積なし → 依頼候補"
+        return "問屋見積なし → 依頼候補"
     # 見送り
     known = [s for s in picked if s.get("profit") is not None]
     if known:
@@ -627,7 +780,10 @@ def norm_name(s: str) -> str:
 
 def parse_key(key: str) -> tuple[str, float | None]:
     base = str(key or "").split("／")[0].strip()
-    m = re.search(r"仕入\s*([0-9.]+)", str(key or ""))
+    raw = str(key or "")
+    if "仕入なし" in raw:
+        return base, None
+    m = re.search(r"仕入\s*([0-9.]+)", raw)
     cost = float(m.group(1)) if m else None
     return base, cost
 
@@ -650,7 +806,28 @@ def main():
         action="store_true",
         help="行の追加なし。既存の見積検品L列（対象セット）にASINリンクだけ付け直す",
     )
+    ap.add_argument(
+        "--makers",
+        default="",
+        help="カンマ区切りメーカー名（部分一致）。指定時はJAN既定フィルタを使わない",
+    )
+    ap.add_argument(
+        "--include-skip",
+        action="store_true",
+        help="見送り行も種にする（門落ち込み検品用）",
+    )
+    ap.add_argument(
+        "--allow-no-cost",
+        action="store_true",
+        help="仕入なし行も種にする（見積なし判定）",
+    )
+    ap.add_argument(
+        "--no-name-partial",
+        action="store_true",
+        help="商品名部分一致を使わない（既定は使う）",
+    )
     args = ap.parse_args()
+    allow_name_partial = not bool(args.no_name_partial)
 
     # 第1弾（2026-11-14 貼付→仕入）の12 JAN
     DEFAULT_JANS = {
@@ -667,45 +844,235 @@ def main():
         "4582152498622",
         "4902388003207",
     }
-    jan_filter = {jan_norm(x) for x in args.jans.split(",") if x.strip()} or set(
-        DEFAULT_JANS
-    )
+    maker_filter = [m.strip() for m in args.makers.split(",") if m.strip()]
+    jan_filter = {jan_norm(x) for x in args.jans.split(",") if x.strip()}
+    if not jan_filter and not maker_filter:
+        jan_filter = set(DEFAULT_JANS)
 
     svc = sheets_service(write=not args.dry, interactive=False)
-    paste = load_paste_meta(svc)
+    paste_rows = load_paste_rows(svc)
+    paste = pm.paste_by_jan(paste_rows)
     catalog = load_list(svc)
 
     if args.relink:
         relink_existing_(svc, catalog, paste, dry=args.dry)
         return
-    seeds = []  # (maker, name, cost)
-    seen_seed = set()
+    # 種は「1商品」。ASINタイトルごとではなく貼付名／単品名でまとめる
+    seed_map: dict[str, dict] = {}
     for r in catalog:
+        if maker_filter:
+            # 完全一致（「オリエンタル」がエンタープライズ等を飲み込まない）
+            if r["maker"] not in maker_filter:
+                continue
+        flag = str(r.get("flag") or "").strip()
+        if flag == "見積候補":
+            pass
+        elif args.include_skip and flag == "見送り":
+            pass
+        else:
+            continue
+        name0 = str(r.get("name") or "").strip()
         if r.get("yokakunin"):
+            if maker_filter and args.allow_no_cost:
+                if not name0 and not str(r.get("title") or "").strip() and not r.get("asin"):
+                    continue
+            else:
+                continue
+        if not r.get("cost") and not args.allow_no_cost:
             continue
-        if not r.get("cost"):
+        if not args.include_ishihara and "石原" in r["maker"] and not maker_filter:
             continue
-        if not args.include_ishihara and "石原" in r["maker"]:
+        if jan_filter and r["jan"] not in jan_filter:
             continue
-        if r["jan"] not in jan_filter:
+        seed = resolve_product_seed_(
+            r,
+            paste_rows,
+            paste,
+            maker_filter or None,
+            allow_name_partial,
+        )
+        if not seed.get("name"):
             continue
-        k = (r["maker"], r["name"], r["cost"])
-        if k in seen_seed:
+        # メーカー指定時はメーカー表記ゆれを同一グループに（洋行／株式会社も同じ単品）
+        g_maker = "|".join(maker_filter) if maker_filter else seed["maker"]
+        gk = f"{g_maker}::{seed['group']}"
+        seed["members"] = [r]
+        prev = seed_map.get(gk)
+        if not prev:
+            seed_map[gk] = seed
             continue
-        seen_seed.add(k)
-        seeds.append(k)
+        prev["members"] = prev.get("members") or []
+        prev["members"].extend(seed["members"])
+        # 仕入ありを優先。同じなら JAN一致を優先
+        rank = {"jan": 2, "name_partial": 1, "ambiguous": 0, "none": 0}
+        better_cost = seed.get("cost") and not prev.get("cost")
+        better_match = rank.get(seed.get("match_kind") or "none", 0) > rank.get(
+            prev.get("match_kind") or "none", 0
+        )
+        if better_cost or (seed.get("cost") and better_match) or (
+            not prev.get("cost") and better_match
+        ):
+            if prev.get("cost") and not seed.get("cost"):
+                seed["cost"] = prev["cost"]
+            seed["members"] = prev["members"]
+            seed_map[gk] = seed
+        elif prev.get("cost") is None and seed.get("cost"):
+            prev["cost"] = seed["cost"]
+
+    # 兄弟ASINを拾ってから、同じASINを持つ種を1商品へ
+    def _seed_rank_(s: dict) -> tuple:
+        rk = {"jan": 2, "name_partial": 1, "ambiguous": 0, "none": 0}
+        return (
+            1 if s.get("cost") else 0,
+            rk.get(s.get("match_kind") or "none", 0),
+            1 if str(s.get("group") or "").startswith("jan:") else 0,
+        )
+
+    def _merge_seed_(keep: str, drop: str) -> None:
+        if keep == drop or keep not in seed_map or drop not in seed_map:
+            return
+        km, dm = seed_map[keep], seed_map[drop]
+        km["members"] = (km.get("members") or []) + (dm.get("members") or [])
+        if dm.get("cost") and not km.get("cost"):
+            km["cost"] = dm["cost"]
+        if _seed_rank_(dm) > _seed_rank_(km):
+            km["name"] = dm["name"]
+            km["maker"] = dm["maker"]
+            km["match_kind"] = dm["match_kind"]
+            km["group"] = dm["group"]
+            if dm.get("cost"):
+                km["cost"] = dm["cost"]
+        del seed_map[drop]
+
+    for gk, s in list(seed_map.items()):
+        paste_jan = None
+        if str(s.get("group") or "").startswith("jan:"):
+            paste_jan = str(s.get("group") or "").split(":", 1)[-1]
+        rows = collect_rows_for_product(
+            catalog,
+            s["maker"],
+            s["name"],
+            s.get("cost"),
+            makers_scope=maker_filter or None,
+            paste_jan=paste_jan,
+        )
+        if rows:
+            s["members"] = rows
+        else:
+            # 核名が変わり兄弟検索に落ちたとき、種になった行だけ
+            fixed = []
+            seen_a = set()
+            for r in s.get("members") or []:
+                a = r.get("asin")
+                if not a or a in seen_a:
+                    continue
+                seen_a.add(a)
+                rr = dict(r)
+                rr["name"] = s["name"]
+                rr["cost"] = s.get("cost")
+                fixed.append(rr)
+            s["members"] = fixed
+
+    def _prod_stem_(n: str) -> str:
+        """グラム・（大）（小）だけ除く。レトルト／辛口は別単品として残す。"""
+        t = norm_name(n)
+        t = re.sub(r"\d+g", "", t)
+        t = re.sub(r"[（(]?[大小][）)]?$", "", t)
+        t = re.sub(r"[大小]$", "", t)
+        return t
+
+    # タイトル核の種を、同じ貼付単品（jan:）へ吸収（セット違い出品のまとめ）
+    for gk, s in list(seed_map.items()):
+        g = str(s.get("group") or "")
+        if g.startswith("jan:") or gk not in seed_map:
+            continue
+        stem = _prod_stem_(s.get("name") or "")
+        if len(stem) < 4:
+            continue
+        s_bulk = is_bulk_title(s.get("name") or "")
+        best = None
+        best_gk = None
+        for jgk, js in seed_map.items():
+            jg = str(js.get("group") or "")
+            if not jg.startswith("jan:"):
+                continue
+            if is_bulk_title(js.get("name") or "") != s_bulk:
+                continue
+            jstem = _prod_stem_(js.get("name") or "")
+            if len(jstem) < 4:
+                continue
+            # 片方が他方を包含し、かつ長さ差が小さい（別商品の誤吸収を防ぐ）
+            if stem == jstem or (
+                (stem in jstem or jstem in stem)
+                and abs(len(stem) - len(jstem)) <= 4
+            ):
+                if best is None or _seed_rank_(js) > _seed_rank_(best):
+                    best = js
+                    best_gk = jgk
+        if best is not None and best_gk:
+            _merge_seed_(best_gk, gk)
+
+    changed = True
+    while changed:
+        changed = False
+        asin_owner: dict[str, str] = {}
+        for gk, s in list(seed_map.items()):
+            for r in s.get("members") or []:
+                a = str(r.get("asin") or "").strip().upper()
+                if not a:
+                    continue
+                other = asin_owner.get(a)
+                if not other:
+                    asin_owner[a] = gk
+                    continue
+                if other == gk or other not in seed_map or gk not in seed_map:
+                    continue
+                g1 = str(seed_map[other].get("group") or "")
+                g2 = str(seed_map[gk].get("group") or "")
+                # 別の貼付JAN同士はASINが被ってもマージしない
+                if g1.startswith("jan:") and g2.startswith("jan:") and g1 != g2:
+                    continue
+                keep, drop = other, gk
+                if _seed_rank_(seed_map[gk]) > _seed_rank_(seed_map[other]):
+                    keep, drop = gk, other
+                _merge_seed_(keep, drop)
+                changed = True
+                break
+            if changed:
+                break
 
     products = []
-    for maker, name, cost in sorted(seeds, key=lambda x: (x[0], x[1])):
-        rows = collect_rows_for_product(catalog, maker, name, cost)
+    seen_prod_key = set()
+    for s in sorted(seed_map.values(), key=lambda x: (x["maker"], x["name"])):
+        rows = s.get("members") or []
         if not rows:
             continue
-        products.append(build_product(rows, paste))
+        maker = s["maker"]
+        name = s["name"]
+        cost = s.get("cost")
+        makers_in = [str(x.get("maker") or "") for x in rows]
+        if makers_in:
+            maker = max(set(makers_in), key=makers_in.count)
+        for x in rows:
+            x["name"] = name
+            x["cost"] = cost
+            x["maker"] = maker
+        prod = build_product(
+            rows,
+            paste,
+            paste_rows=paste_rows,
+            makers_filter=maker_filter or None,
+            allow_name_partial=allow_name_partial,
+        )
+        if prod["key"] in seen_prod_key:
+            continue
+        seen_prod_key.add(prod["key"])
+        products.append(prod)
 
     print(f"products={len(products)}")
     for p in products:
         print(
-            f"  {p['decision']:4} {p['maker']} | {p['key']} | "
+            f"  {p['decision']:4} [{p.get('match_kind')}] {p['maker']} | {p['key']} | "
             f"袋={p['units']} 月利={p['month_profit']} asins={p['asins']}"
         )
 
@@ -731,6 +1098,8 @@ def main():
         maker = str(r[1])
         if key in new_keys:
             continue  # replace
+        if maker_filter and maker in maker_filter:
+            continue  # メーカー指定の再生成で当該メーカーの旧行は落とす
         if (not args.include_ishihara) and "石原" in maker:
             keep.append(r)
             continue
@@ -738,19 +1107,49 @@ def main():
             keep.append(r)
 
     today = date.today().isoformat()
-    new_rows = []
-    for p in products:
-        new_rows.append(
-            [
+    hidx = {str(h).strip(): i for i, h in enumerate(header)}
+
+    def cell_row_(p: dict) -> list:
+        # 現行ヘッダに合わせて埋める（判断＝接合一致度の先頭表示）
+        n = max(len(header), 20)
+        row = [""] * n
+        def put(col_name: str, val):
+            i = hidx.get(col_name)
+            if i is not None and i < n:
+                row[i] = val
+
+        put("提案日", today)
+        put("メーカー", p["maker"])
+        put("商品キー", p["key"])
+        put("種別", p["kind"])
+        put("仕入可否", p["decision"])
+        put("判断", p.get("judgment") or "")
+        put("分析結果", p["analysis"])
+        put("推奨", p["rec"])
+        put("対象セット", p["targets"])
+        # 旧名ゆれ
+        if "対象セット（順位・月販）" in hidx:
+            put("対象セット（順位・月販）", p["targets"])
+        put("月販想定", p["sales_block"])
+        put("仕入目安袋", p["units"])
+        put("月次利益", p["month_profit"])
+        put("条件", p["cond"])
+        put("条件時セット（利益差）", p["cond_diff"])
+        put("仕入目安袋_条件", p["units_cond"])
+        put("月次利益_条件", p["profit_cond"])
+        put("判断メモ", p["memo"])
+        # ヘッダが古い20列固定のとき用フォールバック
+        if "仕入可否" not in hidx:
+            return [
                 today,
                 p["maker"],
                 p["key"],
                 p["kind"],
                 p["decision"],
-                "",  # F 画像 → 別スクリプト
-                "",  # G 希望
-                "",  # H 提示
-                "",  # I 交渉
+                p.get("judgment") or "",
+                "",
+                "",
+                "",
                 p["analysis"],
                 p["rec"],
                 p["targets"],
@@ -763,7 +1162,9 @@ def main():
                 p["profit_cond"],
                 p["memo"],
             ]
-        )
+        return row
+
+    new_rows = [cell_row_(p) for p in products]
 
     out = [header] + keep + new_rows
     print(f"write rows: keep={len(keep)} new={len(new_rows)} total_data={len(keep)+len(new_rows)}")
@@ -823,8 +1224,12 @@ def main():
             }
         }
     )
+    alert_bg = {"red": 1.0, "green": 0.95, "blue": 0.6}
+    # new_rows は keep の後ろ。products[i] と new_rows[i] が対応
+    prod_by_key = {p["key"]: p for p in products}
     for i, row in enumerate(out[1:], start=1):
-        if len(row) > 4 and row[4] == "見送り":
+        dec = row[4] if len(row) > 4 else ""
+        if dec in ("見送り", "見積なし"):
             reqs.append(
                 {
                     "repeatCell": {
@@ -848,6 +1253,28 @@ def main():
                     }
                 }
             )
+        key = str(row[2]) if len(row) > 2 else ""
+        p = prod_by_key.get(key)
+        if p and (p.get("alert_match") or p.get("alert_fee")):
+            # 可否・判断（E/F）をアラート色。列ずれ時は E のみ
+            for c0 in (4, 5):
+                reqs.append(
+                    {
+                        "repeatCell": {
+                            "range": {
+                                "sheetId": sid,
+                                "startRowIndex": i,
+                                "endRowIndex": i + 1,
+                                "startColumnIndex": c0,
+                                "endColumnIndex": c0 + 1,
+                            },
+                            "cell": {
+                                "userEnteredFormat": {"backgroundColor": alert_bg}
+                            },
+                            "fields": "userEnteredFormat.backgroundColor",
+                        }
+                    }
+                )
     if reqs:
         svc.spreadsheets().batchUpdate(
             spreadsheetId=RES, body={"requests": reqs}

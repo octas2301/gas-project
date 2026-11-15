@@ -575,6 +575,21 @@ def _resolve_sub_piece_set(
             omit_own = bool(s1_omit_own_piece_enabled()) and bool(
                 surface_paths or shape_paths
             )
+            # §2: SURFACE＋一片本体があるとき SHAPE は付けない
+            try:
+                from b5_generic_plating import should_skip_shape_donors_for_plating
+
+                piece_n_for_skip = 0 if omit_own else len(pieces_all)
+                if should_skip_shape_donors_for_plating(
+                    surface_n=len(surface_paths), piece_n=piece_n_for_skip
+                ):
+                    LOG.info(
+                        "sub SHAPE skip (SURFACE+piece) was n=%s",
+                        len(shape_paths),
+                    )
+                    shape_paths = []
+            except Exception as se:
+                LOG.warning("sub shape skip decide: %s", se)
     except Exception as e:
         LOG.warning("sub surface/shape resolve fail: %s", e)
 

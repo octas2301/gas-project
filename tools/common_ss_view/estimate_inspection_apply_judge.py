@@ -109,7 +109,7 @@ def apply_row_colors(svc, sheet_id: int, rows_meta: list[dict], n_cols: int):
     for r in rows_meta:
         d = r["decision"]
         row0 = r["row0"]
-        if d == "見送り":
+        if d in ("見送り", "見積なし"):
             reqs.append(
                 {
                     "repeatCell": {
@@ -125,8 +125,8 @@ def apply_row_colors(svc, sheet_id: int, rows_meta: list[dict], n_cols: int):
                     }
                 }
             )
-        elif d == "手数料不明":
-            # 可否(E=4) と 判断(F=5) をアラート色
+        if d == "手数料不明" or r.get("alert_fee") or r.get("alert_match"):
+            # 可否(E=4) と 判断(F=5) をアラート色（手数料不明／接合が完全一致ではない）
             for c0 in (4, 5):
                 reqs.append(
                     {
@@ -195,7 +195,8 @@ def main():
     if i_target is not None:
         b.COL_L = i_target + 1
 
-    paste = b.load_paste_meta(svc)
+    paste_rows = b.load_paste_rows(svc)
+    paste = b.pm.paste_by_jan(paste_rows)
     catalog = b.load_list(svc)
 
     data_writes = []  # (A1range, values)
@@ -209,7 +210,7 @@ def main():
         maker = str(row[1]).strip()
         key = str(row[2]).strip()
         base, cost = b.parse_key(key)
-        if not base or not cost:
+        if not base:
             print("skip parse", i, key)
             continue
         rows = b.collect_rows_for_product(catalog, maker, base, cost)
@@ -217,10 +218,16 @@ def main():
             print("skip no catalog", i, key)
             # 判断だけ空でも可否は触らない
             continue
-        prod = b.build_product(rows, paste)
+        prod = b.build_product(
+            rows,
+            paste,
+            paste_rows=paste_rows,
+            makers_filter=None,
+            allow_name_partial=True,
+        )
         decision = prod["decision"]
         judgment = prod.get("judgment") or ""
-        report.append((i, key[:32], decision, judgment))
+        report.append((i, key[:32], decision, judgment, prod.get("match_kind")))
 
         # 値の更新（可否・判断・分析・推奨・対象・袋・月利・月販想定）
         row[i_dec] = decision
@@ -238,14 +245,21 @@ def main():
         if i_sales is not None:
             row[i_sales] = prod["sales_block"]
 
-        color_meta.append({"row0": i - 1, "decision": decision})
+        color_meta.append(
+            {
+                "row0": i - 1,
+                "decision": decision,
+                "alert_match": bool(prod.get("alert_match")),
+                "alert_fee": bool(prod.get("alert_fee")),
+            }
+        )
         if i_target is not None:
             link_items.append(
                 {
                     "row": i,
                     "text": prod["targets"],
                     "asins": prod.get("target_asins") or [],
-                    "gray": decision == "見送り",
+                    "gray": decision in ("見送り", "見積なし"),
                 }
             )
 

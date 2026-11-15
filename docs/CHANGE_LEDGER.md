@@ -2,6 +2,21 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
+| 2026-11-15 | `vision_judge`／`prompt_fix_from_vision`／PLATING §3.1 | **C8言語化強化**: 具体差・keep・nextFix必須。抽象「別物禁止」だけの回し禁止。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | 外側フロー／PLATING §3.1 | **②一片FAIL→③深堀で補完**（②で止めない）。1枚直列は維持。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | C8／外側フロー／PLATING §3.1 | **1枚直列**: 1枚→Vision→不合格理由+合格側言語化→1枚再生成。3並行禁止。`passedFiles`明示。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `vision_judge_piece_effect`／外側フロー／PLATING §3.1 | **C8合否=Visionで画像を見る**→FAILなら打ち消しlow再生成。数値のみ合否禁止。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `PLATING` §3.1／`effect_verify_max_attempts` | **C8上限既定10**/スロット（旧3）。env `B5_EFFECT_VERIFY_MAX`。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `PLATING` §3.1／`b5_generic_plating.run_effect_verify_loop`／外側フロー／PHASE | **C8効き確認ループ必須**: lowで禁止・危険文オフの効きを見てから先へ。スキップ禁止。上限 `B5_EFFECT_VERIFY_MAX`。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `PLATING_AND_PIECE_GENERIC_LOGIC`／`b5_generic_plating.recommend_quality`／PHASE／HANDOVER | **合否§3を正・確定**: 商品非依存の型のみ。筋・血合では medium に上げない。一件禁止を共通に焼かない。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `b5_generic_plating`／`b5_piece_truth_rules` | **SURFACE試験産物除外**: reinhard等を同送しない。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `estimate_paste_match`／`estimate_cost_from_paste`／検品 build・apply_judge／見積検品要件 | **貼付→仕入を見送り＋名前部分一致可**。接合一致度を判断列・アラート色。clasp不要 | Git revert／`--no-name-partial` |
+| 2026-11-15 | `estimate_inspection_build_rows.py` | **1商品1行**: 種を貼付名／単品名に集約。ASINタイトル分割をやめる。clasp不要 | Git revert |
+| 2026-11-15 | `PurchaseResearch.js` D1 | **D1段階ログ**: cand後の exist／Keepa flat／GET／enrich／classify／書込と flat_read 進捗。最終 phase で切断点特定。要① clasp | Git revert（prD1PhaseLog_ 等） |
+| 2026-11-15 | `PurchaseResearch.js` D1 cand | **門落ち込み固まり直し**: 調査カテゴリ外の落ちは倉庫読込前に除外。D1 RUNNINGログ追加。要① clasp | Git revert |
+| 2026-11-15 | `PurchaseResearch.js` D1／再門／見積検品 build_rows／FLOW・検品要件 | **オリエンタル第1**: メーカー指定再門→D1門落ち込み（調査カテゴリONのみ・落ちはGETしない）→D2。検品は `--makers --include-skip --allow-no-cost`。要① clasp | Prop OFF／メニュー使わない／Git |
+| 2026-11-15 | `b5_piece_truth_rules.write_piece_set_source`／`b5_piece_set_from_truth` | **activeSeed保持**: ゲート選定を一片生成で消さない。解決種を activeSeed に書く。切戻し Git。clasp不要 | Git revert |
+| 2026-11-15 | `b5_piece_set_from_truth`／`b5_generic_plating`／`b5_piece_truth_rules`／`dry_sub`／F3／docs | **抜け配線**: 一片へSURFACE+面クロップ+核。マクロ除外。SURFACE+一片でSHAPE省略。F3 quality=recommend。切戻し `B5_GENERIC_PLATING_CORE=0`。clasp不要 | env 0／Git revert |
 | 2026-11-15 | `b5_generic_plating.py`／`dry_sub`／`b5_main_base_compose`／`food_unit_canon`／F3／docs | **盛り共通核**: MAIN/SUB同じ型（危険文オフ・面クロップ・核プロンプト）。qualityは運用§3。切戻し `B5_GENERIC_PLATING_CORE=0`。clasp不要 | env 0／Git revert |
 | 2026-11-15 | `PurchaseResearch.js` タジマヤ寸法 | **対象拡大**: FBA空に加え保管空・サイズ空も。既存FBAは消さない。メニュー名「FBA空・保管空」。要① clasp | 旧FBA空のみ条件へ戻す |
 | 2026-11-15 | `estimate_list_fees_fill.py`／品番リスト BV・BW | **空の販手・保管を設定マスタ料率で補完**（カテゴリ空・寸法空は書かない。既存値非上書き）。販手1305／保管1155。寸法欠719はタジマヤ等。clasp不要 | 書いたBV/BWを消す |

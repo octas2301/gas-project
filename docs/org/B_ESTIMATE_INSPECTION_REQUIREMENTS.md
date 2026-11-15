@@ -69,13 +69,29 @@
 同じ商品キーは、書き直しのとき最新の1行だけ残す。
 
 回収:  
-- 判断行: `estimate_inspection_build_rows.py`（仕入付き見積候補→1商品1行。兄弟・要確認MIX込み。`--relink` で対象セット＋リンク）  
+- 判断行: `estimate_inspection_build_rows.py`（既定は仕入付き見積候補→1商品1行。兄弟・要確認MIX込み。`--relink` で対象セット＋リンク）  
+- **メーカー全載せ（2026-11-15）**: `--makers`＋`--include-skip`＋`--allow-no-cost` で門落ち見送り・仕入なしも載せる。仕入なしは可否「見積なし」（依頼候補）。調査カテゴリ外はリストに載せない前提（D1）  
+- **1商品1行（2026-11-15）**: 種は ASINタイトルごとではなく、貼付商品名→単品商品名→タイトルからセット装飾を除いた核。メーカー指定時は表記ゆれ（洋行等）も同一単品にまとめる。袋数違いASINは「対象セット」へ  
 - 判断列・手数料不明アラート・可否再計算: `estimate_inspection_apply_judge.py`  
 - 検討ASIN月販・順位: `estimate_inspection_kentou_asin.py`  
 - 問屋見積／差分: `estimate_inspection_cols_quote_diff.py`（H・K。差分＝希望−見積）  
 - 画像／希望／提示: `estimate_inspection_main_images.py`（Keepaフル索引。汎用はメーカー＋単品名）  
 仕入の種: 貼付sheet税抜→品番リスト「1点仕入れ額（税込み）」は `estimate_cost_from_paste.py`（FLOOR・上書きしない。2026-11-14 第1弾12件）。  
+- **見送り込み・メーカー限定（2026-11-15）**: `--makers`＋`--include-skip`。門落ち見送りでも JAN が貼付にあれば仕入を戻す  
+- **商品名部分一致（2026-11-15）**: `--allow-name-partial`。JAN不一致時のみ。複数候補は転記しない  
+接合の正: `estimate_paste_match.py`  
 空の販手・保管の補完: `estimate_list_fees_fill.py`（出品 `00_設定マスタ` 料率。カテゴリ空・寸法空は書かない）。寸法欠はタジマヤ寸法補完（①メニュー）のあと再実行。
+
+**接合一致度（人間アラート・2026-11-15）**:
+
+| 一致 | 意味 | 判断列 | 色 |
+|------|------|--------|----|
+| JAN一致 | 完全一致 | `接合=JAN一致（完全一致）` | 通常 |
+| 商品名部分一致 | 完全一致ではない | `接合=商品名部分一致（完全一致ではない・要確認）` | 可否・判断をアラート色 |
+| 複数候補 | 未転記 | `接合=商品名が複数候補（未転記・要確認）` | 同上 |
+| なし | 貼付に無い | `接合=なし` | 見積なしは行グレー |
+
+オリエンタル第1スライス（稲沢カレー）: メーカー `株式会社オリエンタル`／`オリエンタル`／`オリエンタル洋行`。食品ルートのみ（倉庫上約89）。手順: ①再門D1D2 → `estimate_cost_from_paste.py --makers … --include-skip --allow-name-partial` → `estimate_inspection_build_rows.py --makers … --include-skip --allow-no-cost` →（任意）`apply_judge`／画像。三協依頼リスト追記は第2。
 
 ### 1.1 希望価格（要望価格）の式と理由
 

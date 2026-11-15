@@ -173,6 +173,10 @@ clasp push
 
 **D1→D2（推奨）:** メニュー「D1→D2 門通過→品番リスト→見積候補」。D1のあとD2まで連続。単独の D1／D2 は切り分け・再実行用。
 
+**メーカー指定：再門→D1（門落ち込み）→D2（2026-11-15）:** 99→「3. D1・D2・完走」→同名メニュー。**複数行テキスト欄**（既定3社が入った状態）。Keepaフル再門（GETなし・当該メーカーのみ）→ D1で通過＋門落ち（**調査カテゴリONの食品のみ**。非食品は載せない。門落ちは倉庫行が無ければ載せない＝取り直ししない）→ D2。切戻し: 通常D1は Prop `PR_D1_INCLUDE_GATE_FAIL` 未設定=OFFのまま。要① clasp。
+
+**D1 切り分けログ（2026-11-15）:** `cand_load` のあとに DONE/FAILED が無いときは、①ログの `D1 品番リスト` RUNNING 行の `phase=`（exist_scan／flat_load／flat_read／keepa_get／enrich／classify／write_*）と `elapsedMs=` を見る。最後に残った phase が切断点。実行ログの `Keepaフル flat_read progress` も併用。要① clasp 後に同じメニューを1回再実行。
+
 **Keepaフル再門:** 99「Keepaフル再門（①候補・GETなし）」。競合DB `Keepaフル` の生JSONだけで門を再評価（`/product` 消費なし）。既定は **門結果空白行のみ**。全行を新門で上書きする場合は Property `PR_REGATE_ONLY_BLANK=false`。
 
 **Keepaフル用量プローブ（2026-10-21）:** 99→「4. Keepaフル」→「用量プローブ（読取のみ）」。`Keepaフル` へ書かない。ASIN列全行／薄い列×1・50／生JSON×1〜50／全列×1・5／案A相当1行を段階 `getValues` し、①ログにケースごと `DONE`（bytes〜）または `FAILED`（`SIZE_LIMIT`／`ERR`）。上限が分かるまで削減案を決めない。要① clasp。

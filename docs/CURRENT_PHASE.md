@@ -1,7 +1,19 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-11-15（バックアップ Phase0: G1＋G3 タスク登録／盛り共通核は並行）
+**最終更新**: 2026-11-15（領域4 P0三点レビュー反映・フェーズゲート提案）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
+
+---
+
+## 0domain4. 領域4 モール在庫同期・適正在庫・発注（2026-11-15）
+
+**状態**: F0済。**F1コード投入済**（読取スパイク）。人間突合（G1b）待ち。  
+**正本**: [DOMAIN4](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)／[P0要件](org/DOMAIN4_P0_REQUIREMENTS.md)／[MAJORITY](org/DOMAIN4_P0_THREE_REVIEW_MAJORITY.md)／[F1 HUMAN_RUN](org/DOMAIN4_P0_F1_HUMAN_RUN.md)  
+**ロック要約**: 案A／B1／単品=代表JAN／ミックス=構成品JAN（P6）／薄い台帳。  
+**コード**: `tools/domain4_inventory/`（`read_spike.py`／`stock_recalc.py`）。registry に在庫スプシ読取登録。  
+**開発ゲート**: F0済 → **F1突合中** → F2単品算出（別承認）→ F3検収。  
+**聖域**: inventory-app UI・出品PUT・楽天CSV。書込なし。  
+**本線フォーカス**: F1 HUMAN_RUN で G1a–c。出品／①は別スレ。
 
 ---
 
@@ -25,8 +37,8 @@
 
 ## 0plating_generic. 盛り共通核（2026-11-15）
 
-**採用**: 一片見本・MAIN盛り・SUB盛りで共通レイヤ（危険文オフ・面クロップ・スロット分離・qualityはできる限り low）。正本 [org/PLATING_AND_PIECE_GENERIC_LOGIC.md](org/PLATING_AND_PIECE_GENERIC_LOGIC.md)。コード `b5_generic_plating.py`。切戻し `B5_GENERIC_PLATING_CORE=0`。  
-**次**: ぶり等で MAIN/SUB 検収。high は既定オフ。
+**正・これで進める**: §3＋**C8 1枚直列**。1枚→Vision→FAILなら理由＋合格側言語化を積んでまた1枚。**3枚並行禁止**。**②一片だけでFAILなら③深堀（面）で補完**（②で止めない）。上限10。正本 [org/PLATING_AND_PIECE_GENERIC_LOGIC.md](org/PLATING_AND_PIECE_GENERIC_LOGIC.md) §3.1。  
+**次**: ②FAIL→③深堀補完の外側フロー再試験。種の1片クロップ。
 
 ---
 
