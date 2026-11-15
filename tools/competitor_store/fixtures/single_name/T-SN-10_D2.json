@@ -1,0 +1,23 @@
+{
+  "id": "T-SN-10",
+  "desc": "D2 存在不明",
+  "input": {
+    "draft_name": "たまごスープ",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "unknown",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000005",
+    "hit_asin": "",
+    "keepa_jans": [],
+    "search_jans": []
+  },
+  "expect": {
+    "pattern": "D2",
+    "single_trust": "保留",
+    "for_estimate": false,
+    "need_human": false,
+    "write_single_name": false
+  }
+}

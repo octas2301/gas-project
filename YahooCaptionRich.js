@@ -15,87 +15,228 @@ var YAHOO_CAPTION_RICH_P6C_PROP_ = 'YAHOO_CAPTION_RICH_P6C_THEMES_ENABLED';
 var YAHOO_CAPTION_RICH_RAKUTEN_CABINET_ = 'https://image.rakuten.co.jp/octas/cabinet';
 // P6C_PACK_BEGIN
 var YAHOO_CAPTION_P6C_PACK_ = {
-  "4906283045119": {
-    "slug": "katsuo",
+  "ishi-4906283045119-oya2": {
+    "slug": "5119_oya2",
+    "parentSku": "ishi-4906283045119-oya2",
+    "jan": "4906283045119",
     "ranked": [
       {
         "themeId": 3,
         "catch": "噛むほどに溢れる、濃厚なだしの旨味。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、しっとり柔らかな食感と深みのある飴色の輝きが特徴です。じゅわっと広がる醤油とだしの芳醇な香りと、噛むほどに溢れる濃厚なだしの旨味を味わえます。",
+        "overview": "焼津の石原水産が手掛ける、食べるおだしのかつおとぶりを一度に楽しめるセットです。しっとり柔らかな食感から噛むほどに濃厚なだしの旨味が溢れ、じゅわっと広がる芳醇な香りを堪能できます。",
         "subs": [
           "しっとり柔らかな食感と、深みのある飴色の輝き。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s02_t03_shizuru_sizzle.jpg",
-        "overviewSp": "しっとり柔らかな食感と、噛むほどに溢れる濃厚なだしの旨味。",
+        "libFile": "5119_oya2_s03_t03_shizuru_sizzle.jpg",
+        "overviewSp": "食べるおだしのかつおとぶりを楽しめるセット。噛むほどに濃厚なだしの旨味が溢れます。",
         "subsSp": [
-          "じゅわっと広がる醤油とだしの芳醇な香り。"
+          "しっとり柔らかな食感。"
         ]
       },
       {
         "themeId": 10,
         "catch": "炊きたてご飯が止まらない、至福の相性。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、お米の甘みを引き立て濃厚なだしの余韻をもたらします。おにぎりの具にすれば冷めても旨味が続き、炊きたてご飯が止まらない至福の相性を楽しめます。",
+        "overview": "かつおとぶりの濃厚なだしがお米の甘みを引き立て、炊きたてご飯との相性は抜群です。おにぎりの具にすれば冷めても旨味が続き、最後の一口まで至福の余韻を楽しめます。",
         "subs": [
           "お米の甘みを引き立てる、濃厚なだしの余韻。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s05_t10_tabekata_howto.jpg",
-        "overviewSp": "",
+        "libFile": "5119_oya2_s06_t10_tabekata_howto.jpg",
+        "overviewSp": "かつおとぶりの濃厚なだしがお米の甘みを引き立て、炊きたてご飯との相性は抜群です。おにぎりの具にすれば冷めても旨味が続き、最後の一口まで至福の余韻を楽しめます。",
         "subsSp": []
       },
       {
-        "themeId": 11,
-        "catch": "かけるだけで、いつもの料理がプロの味。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、冷奴やサラダ、パスタにも合う万能な旨味が魅力です。かけるだけでいつもの料理がプロの味になり、アレンジ自在で飽きのこない食卓を演出します。",
+        "themeId": 1,
+        "catch": "献立に迷う忙しい夜の救世主。",
+        "overview": "かつおもぶりも開けるだけで一品が完成し、味付け不要で手軽に本格的な味わいを用意できます。献立に迷う忙しい夜でも準備の手間を減らし、食卓に濃厚なだしの美味しさを届けられます。",
         "subs": [
-          "冷奴やサラダ、パスタにも合う万能な旨味。"
+          "開けるだけで一品完成、味付け不要の時短おだし。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s07_t11_arrange_recipe.jpg",
-        "overviewSp": "",
+        "libFile": "5119_oya2_s01_t01_nayami_kyokan.jpg",
+        "overviewSp": "かつおもぶりも開けるだけで一品が完成し、味付け不要で手軽に本格的な味わいを用意できます。献立に迷う忙しい夜でも準備の手間を減らし、食卓に濃厚なだしの美味しさを届けられます。",
         "subsSp": []
       }
     ]
   },
-  "katsuo": {
-    "slug": "katsuo",
+  "5119_oya2": {
+    "slug": "5119_oya2",
+    "parentSku": "ishi-4906283045119-oya2",
+    "jan": "4906283045119",
     "ranked": [
       {
         "themeId": 3,
         "catch": "噛むほどに溢れる、濃厚なだしの旨味。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、しっとり柔らかな食感と深みのある飴色の輝きが特徴です。じゅわっと広がる醤油とだしの芳醇な香りと、噛むほどに溢れる濃厚なだしの旨味を味わえます。",
+        "overview": "焼津の石原水産が手掛ける、食べるおだしのかつおとぶりを一度に楽しめるセットです。しっとり柔らかな食感から噛むほどに濃厚なだしの旨味が溢れ、じゅわっと広がる芳醇な香りを堪能できます。",
         "subs": [
           "しっとり柔らかな食感と、深みのある飴色の輝き。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s02_t03_shizuru_sizzle.jpg",
-        "overviewSp": "しっとり柔らかな食感と、噛むほどに溢れる濃厚なだしの旨味。",
+        "libFile": "5119_oya2_s03_t03_shizuru_sizzle.jpg",
+        "overviewSp": "食べるおだしのかつおとぶりを楽しめるセット。噛むほどに濃厚なだしの旨味が溢れます。",
         "subsSp": [
-          "じゅわっと広がる醤油とだしの芳醇な香り。"
+          "しっとり柔らかな食感。"
         ]
       },
       {
         "themeId": 10,
         "catch": "炊きたてご飯が止まらない、至福の相性。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、お米の甘みを引き立て濃厚なだしの余韻をもたらします。おにぎりの具にすれば冷めても旨味が続き、炊きたてご飯が止まらない至福の相性を楽しめます。",
+        "overview": "かつおとぶりの濃厚なだしがお米の甘みを引き立て、炊きたてご飯との相性は抜群です。おにぎりの具にすれば冷めても旨味が続き、最後の一口まで至福の余韻を楽しめます。",
         "subs": [
           "お米の甘みを引き立てる、濃厚なだしの余韻。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s05_t10_tabekata_howto.jpg",
-        "overviewSp": "",
+        "libFile": "5119_oya2_s06_t10_tabekata_howto.jpg",
+        "overviewSp": "かつおとぶりの濃厚なだしがお米の甘みを引き立て、炊きたてご飯との相性は抜群です。おにぎりの具にすれば冷めても旨味が続き、最後の一口まで至福の余韻を楽しめます。",
         "subsSp": []
       },
       {
-        "themeId": 11,
-        "catch": "かけるだけで、いつもの料理がプロの味。",
-        "overview": "主原料に国産かつおを使用した「食べるおだし（かつお）」は、冷奴やサラダ、パスタにも合う万能な旨味が魅力です。かけるだけでいつもの料理がプロの味になり、アレンジ自在で飽きのこない食卓を演出します。",
+        "themeId": 1,
+        "catch": "献立に迷う忙しい夜の救世主。",
+        "overview": "かつおもぶりも開けるだけで一品が完成し、味付け不要で手軽に本格的な味わいを用意できます。献立に迷う忙しい夜でも準備の手間を減らし、食卓に濃厚なだしの美味しさを届けられます。",
         "subs": [
-          "冷奴やサラダ、パスタにも合う万能な旨味。"
+          "開けるだけで一品完成、味付け不要の時短おだし。"
         ],
         "salesTalk": "",
-        "libFile": "katsuo_s07_t11_arrange_recipe.jpg",
+        "libFile": "5119_oya2_s01_t01_nayami_kyokan.jpg",
+        "overviewSp": "かつおもぶりも開けるだけで一品が完成し、味付け不要で手軽に本格的な味わいを用意できます。献立に迷う忙しい夜でも準備の手間を減らし、食卓に濃厚なだしの美味しさを届けられます。",
+        "subsSp": []
+      }
+    ]
+  },
+  "ishi-4906283045119-oya3": {
+    "slug": "5119_oya3",
+    "parentSku": "ishi-4906283045119-oya3",
+    "jan": "4906283045119",
+    "ranked": [
+      {
+        "themeId": 3,
+        "catch": "噛むほどに溢れる、濃厚なだしの旨味。",
+        "overview": "食べるおだしのかつお、まぐろ、ぶりという3種を一度に楽しめるセットです。じゅわっと広がる醤油とだしの芳醇な香りと、噛むほどにしっとり柔らかな食感から濃厚なだしの旨味が溢れます。",
+        "subs": [
+          "しっとり柔らかな食感と、深みのある飴色の輝き。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s03_t03_shizuru_sizzle.jpg",
+        "overviewSp": "かつお、まぐろ、ぶりの3種セット。濃厚なだしの旨味が溢れます。",
+        "subsSp": [
+          "しっとり柔らかな食感。"
+        ]
+      },
+      {
+        "themeId": 10,
+        "catch": "炊きたてご飯が止まらない、至福の相性。",
+        "overview": "かつお、まぐろ、ぶりの濃厚なだしの余韻が、炊きたてのお米の甘みを贅沢に引き立てます。おにぎりの具にすれば冷めても旨味がしっかりと続き、毎日の食卓でご飯が進む美味しさを届けます。",
+        "subs": [
+          "お米の甘みを引き立てる、濃厚なだしの余韻。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s08_t10_tabekata_howto.jpg",
+        "overviewSp": "濃厚なだしの余韻が、お米の甘みを引き立てます。",
+        "subsSp": []
+      },
+      {
+        "themeId": 1,
+        "catch": "献立に迷う忙しい夜の救世主。",
+        "overview": "開けるだけで味付け不要の一品が完成し、献立に迷う忙しい夜の準備を手軽に助けます。かつおやまぐろ、ぶりの本格的なだしの味わいがそのまま楽しめ、夕食の準備の焦りを笑顔に変えてくれます。",
+        "subs": [
+          "開けるだけで一品完成、味付け不要の時短おだし。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s01_t01_nayami_kyokan.jpg",
+        "overviewSp": "開けるだけで味付け不要の一品が完成し、献立に迷う忙しい夜の準備を手軽に助けます。かつおやまぐろ、ぶりの本格的なだしの味わいがそのまま楽しめ、夕食の準備の焦りを笑顔に変えてくれます。",
+        "subsSp": []
+      }
+    ]
+  },
+  "5119_oya3": {
+    "slug": "5119_oya3",
+    "parentSku": "ishi-4906283045119-oya3",
+    "jan": "4906283045119",
+    "ranked": [
+      {
+        "themeId": 3,
+        "catch": "噛むほどに溢れる、濃厚なだしの旨味。",
+        "overview": "食べるおだしのかつお、まぐろ、ぶりという3種を一度に楽しめるセットです。じゅわっと広がる醤油とだしの芳醇な香りと、噛むほどにしっとり柔らかな食感から濃厚なだしの旨味が溢れます。",
+        "subs": [
+          "しっとり柔らかな食感と、深みのある飴色の輝き。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s03_t03_shizuru_sizzle.jpg",
+        "overviewSp": "かつお、まぐろ、ぶりの3種セット。濃厚なだしの旨味が溢れます。",
+        "subsSp": [
+          "しっとり柔らかな食感。"
+        ]
+      },
+      {
+        "themeId": 10,
+        "catch": "炊きたてご飯が止まらない、至福の相性。",
+        "overview": "かつお、まぐろ、ぶりの濃厚なだしの余韻が、炊きたてのお米の甘みを贅沢に引き立てます。おにぎりの具にすれば冷めても旨味がしっかりと続き、毎日の食卓でご飯が進む美味しさを届けます。",
+        "subs": [
+          "お米の甘みを引き立てる、濃厚なだしの余韻。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s08_t10_tabekata_howto.jpg",
+        "overviewSp": "濃厚なだしの余韻が、お米の甘みを引き立てます。",
+        "subsSp": []
+      },
+      {
+        "themeId": 1,
+        "catch": "献立に迷う忙しい夜の救世主。",
+        "overview": "開けるだけで味付け不要の一品が完成し、献立に迷う忙しい夜の準備を手軽に助けます。かつおやまぐろ、ぶりの本格的なだしの味わいがそのまま楽しめ、夕食の準備の焦りを笑顔に変えてくれます。",
+        "subs": [
+          "開けるだけで一品完成、味付け不要の時短おだし。"
+        ],
+        "salesTalk": "",
+        "libFile": "5119_oya3_s01_t01_nayami_kyokan.jpg",
+        "overviewSp": "開けるだけで味付け不要の一品が完成し、献立に迷う忙しい夜の準備を手軽に助けます。かつおやまぐろ、ぶりの本格的なだしの味わいがそのまま楽しめ、夕食の準備の焦りを笑顔に変えてくれます。",
+        "subsSp": []
+      }
+    ]
+  },
+  "maguro": {
+    "slug": "maguro",
+    "parentSku": "",
+    "jan": "4906283045317",
+    "ranked": [
+      {
+        "themeId": 2,
+        "catch": "罪悪感ゼロで楽しむ夜の贅沢時間",
+        "overview": "国産まぐろを主原料とした食べるおだし（まぐろ）は、噛むたびに燻製の芳醇な香りが広がります。高タンパク・低糖質で体も喜ぶため、夜の贅沢時間にも罪悪感ゼロでお楽しみいただけます。",
+        "subs": [
+          "高タンパク・低糖質で体も喜ぶ"
+        ],
+        "salesTalk": "",
+        "libFile": "maguro_s02_t02_benefit_mirai.jpg",
+        "overviewSp": "国産まぐろを主原料とした食べるおだし。高タンパク・低糖質で、夜の贅沢時間にも罪悪感ゼロでお楽しみいただけます。",
+        "subsSp": [
+          "噛むたび広がる燻製の芳醇な香り"
+        ]
+      },
+      {
+        "themeId": 4,
+        "catch": "噛むほどに深まる旨塩の余韻",
+        "overview": "国産まぐろを使用した食べるおだし（まぐろ）は、燻製の香ばしさとまぐろの甘みが特長です。絶妙な塩加減が後を引く美味しさで、噛むほどに深まる旨塩の余韻を存分にご堪能いただけます。",
+        "subs": [
+          "燻製の香ばしさとまぐろの甘み"
+        ],
+        "salesTalk": "",
+        "libFile": "maguro_s03_t04_aji_kitai.jpg",
+        "overviewSp": "",
+        "subsSp": [
+          "燻製の香ばしさとまぐろの甘み"
+        ]
+      },
+      {
+        "themeId": 10,
+        "catch": "ほかほかご飯に乗せるだけの贅沢",
+        "overview": "主原料に国産まぐろを使用した食べるおだし（まぐろ）は、ひと振りで料理のコクを格上げします。ほかほかご飯に乗せるだけの贅沢はもちろん、お茶漬けで広がる燻製の香りもお楽しみいただけます。",
+        "subs": [
+          "お茶漬けで広がる燻製の香り"
+        ],
+        "salesTalk": "",
+        "libFile": "maguro_s07_t10_tabekata_howto.jpg",
         "overviewSp": "",
         "subsSp": []
       }
@@ -103,6 +244,8 @@ var YAHOO_CAPTION_P6C_PACK_ = {
   },
   "4906283045317": {
     "slug": "maguro",
+    "parentSku": "",
+    "jan": "4906283045317",
     "ranked": [
       {
         "themeId": 2,
@@ -146,53 +289,10 @@ var YAHOO_CAPTION_P6C_PACK_ = {
       }
     ]
   },
-  "maguro": {
-    "slug": "maguro",
-    "ranked": [
-      {
-        "themeId": 2,
-        "catch": "罪悪感ゼロで楽しむ夜の贅沢時間",
-        "overview": "国産まぐろを主原料とした食べるおだし（まぐろ）は、噛むたびに燻製の芳醇な香りが広がります。高タンパク・低糖質で体も喜ぶため、夜の贅沢時間にも罪悪感ゼロでお楽しみいただけます。",
-        "subs": [
-          "高タンパク・低糖質で体も喜ぶ"
-        ],
-        "salesTalk": "",
-        "libFile": "maguro_s02_t02_benefit_mirai.jpg",
-        "overviewSp": "国産まぐろを主原料とした食べるおだし。高タンパク・低糖質で、夜の贅沢時間にも罪悪感ゼロでお楽しみいただけます。",
-        "subsSp": [
-          "噛むたび広がる燻製の芳醇な香り"
-        ]
-      },
-      {
-        "themeId": 4,
-        "catch": "噛むほどに深まる旨塩の余韻",
-        "overview": "国産まぐろを使用した食べるおだし（まぐろ）は、燻製の香ばしさとまぐろの甘みが特長です。絶妙な塩加減が後を引く美味しさで、噛むほどに深まる旨塩の余韻を存分にご堪能いただけます。",
-        "subs": [
-          "燻製の香ばしさとまぐろの甘み"
-        ],
-        "salesTalk": "",
-        "libFile": "maguro_s03_t04_aji_kitai.jpg",
-        "overviewSp": "",
-        "subsSp": [
-          "燻製の香ばしさとまぐろの甘み"
-        ]
-      },
-      {
-        "themeId": 10,
-        "catch": "ほかほかご飯に乗せるだけの贅沢",
-        "overview": "主原料に国産まぐろを使用した食べるおだし（まぐろ）は、ひと振りで料理のコクを格上げします。ほかほかご飯に乗せるだけの贅沢はもちろん、お茶漬けで広がる燻製の香りもお楽しみいただけます。",
-        "subs": [
-          "お茶漬けで広がる燻製の香り"
-        ],
-        "salesTalk": "",
-        "libFile": "maguro_s07_t10_tabekata_howto.jpg",
-        "overviewSp": "",
-        "subsSp": []
-      }
-    ]
-  },
-  "4906283047410": {
+  "buri": {
     "slug": "buri",
+    "parentSku": "",
+    "jan": "4906283047410",
     "ranked": [
       {
         "themeId": 3,
@@ -234,8 +334,10 @@ var YAHOO_CAPTION_P6C_PACK_ = {
       }
     ]
   },
-  "buri": {
+  "4906283047410": {
     "slug": "buri",
+    "parentSku": "",
+    "jan": "4906283047410",
     "ranked": [
       {
         "themeId": 3,
@@ -317,12 +419,24 @@ function yahooCaptionRichBuildHtml_(templateId, vars) {
   out = yahooCaptionRichApplyOdashiVars_(out, vars);
   out = yahooCaptionRichApplyBodyImages_(out, vars, ['katsuo_body_t03_sizzle.jpg', 'katsuo_body_t04_aji.jpg', 'katsuo_body_t11_arrange.jpg']);
   if (yahooCaptionRichP6cEnabled_()) {
-    var ranked = vars.rankedThemes || yahooCaptionRichLookupP6cRanked_(vars.jan, vars.slug);
+    var ranked = vars.rankedThemes || yahooCaptionRichLookupP6cRanked_(vars.jan, vars.slug, vars.parentSku);
     if (ranked && ranked.length) {
       out = yahooCaptionRichApplyRankedThemes_(out, ranked);
       console.log('[YAHOO_CAPTION_RICH] p6c_themes n=' + ranked.length +
-        ' jan=' + String(vars.jan || '') + ' slug=' + String(vars.slug || ''));
+        ' jan=' + String(vars.jan || '') +
+        ' parent=' + String(vars.parentSku || '') +
+        ' slug=' + String(vars.slug || ''));
     }
+  }
+  // 案C: 【商品について】枠廃止。注記は残す。原料は caption のみ。
+  var stripKeys = ['caption', 'additional1', 'additional2', 'sp_additional'];
+  var matJa = String(vars.materialJa || '').trim();
+  var showMat = !!vars.showMaterial && !!matJa;
+  for (var si = 0; si < stripKeys.length; si++) {
+    var sk = stripKeys[si];
+    out[sk] = yahooCaptionRichStripContentQtyLines_(out[sk]);
+    out[sk] = yahooCaptionRichApplyProductAboutC_(
+      out[sk], matJa, showMat && sk === 'caption');
   }
   return out;
 }
@@ -334,9 +448,13 @@ function yahooCaptionRichP6cEnabled_() {
   return false;
 }
 
-function yahooCaptionRichLookupP6cRanked_(jan, slug) {
+/** 親SKU → slug → JAN（同一JAN複数親は親キー必須） */
+function yahooCaptionRichLookupP6cRanked_(jan, slug, parentSku) {
   var pack = (typeof YAHOO_CAPTION_P6C_PACK_ !== 'undefined' && YAHOO_CAPTION_P6C_PACK_) || {};
-  var rec = pack[String(jan || '')] || pack[String(slug || '')];
+  var rec =
+    pack[String(parentSku || '')] ||
+    pack[String(slug || '')] ||
+    pack[String(jan || '')];
   if (!rec) return [];
   return rec.ranked || [];
 }
@@ -368,6 +486,7 @@ function yahooCaptionRichThemeOverview_(r, isSp) {
   var raw = '';
   if (isSp && Object.prototype.hasOwnProperty.call(r, 'overviewSp')) {
     raw = r.overviewSp || '';
+    if (!String(raw).trim()) raw = r.overview || '';
   } else {
     raw = r.overview || '';
   }
@@ -437,13 +556,174 @@ function yahooCaptionRichApplyRankedThemes_(htmlParts, ranked) {
 }
 
 /**
- * おだし骨格へ魚種・内容量・セットリンクを埋める（P5）
+ * 内容量行を説明HTMLから除去（§0.1・ミス防止）
+ */
+function yahooCaptionRichStripContentQtyLines_(html) {
+  var s = String(html || '');
+  s = s.replace(/内容量：[^<]*(?:<br\s*\/?>)?\s*/g, '');
+  s = s.replace(/<b>Net weight:<\/b>[^<]*(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>Peso liquido:<\/b>[^<]*(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>Khoi luong tinh:<\/b>[^<]*(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>[^<]*<\/b>\s*1&#48393;\s*\d+\s*g(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>[^<]*<\/b>\s*&#27599;&#34955;\d+&#20811;(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>[^<]*<\/b>\s*\d+\s*&#3585;&#3619;&#3633;&#3617;[^<]*(?:<br\s*\/?>)?\s*/gi, '');
+  return s;
+}
+
+/**
+ * 原料1成分の表記ゆれを整える。
+ * 「かつお：かつお（国産）」→「かつお（国産）」。「【かつお】かつお（国産）」→「かつお（国産）」。
+ */
+function yahooCaptionRichNormalizeMaterialPart_(part) {
+  var p = String(part || '').trim();
+  if (!p) return '';
+  var mBr = p.match(/^【\s*([^】]+?)\s*】\s*(.*)$/);
+  if (mBr) {
+    var labB = String(mBr[1] || '').replace(/\s+/g, '');
+    var bodyB = String(mBr[2] || '').trim();
+    if (!bodyB) return labB;
+    var headB = bodyB.replace(/\s+/g, '');
+    if (labB && headB.indexOf(labB) === 0) return bodyB;
+    return bodyB;
+  }
+  var m = p.match(/^([^：:]+)\s*[：:]\s*(.+)$/);
+  if (m) {
+    var lab = String(m[1] || '').replace(/\s+/g, '');
+    var body = String(m[2] || '').trim();
+    if (!body) return lab;
+    var head = body.replace(/\s+/g, '');
+    if (lab && head.indexOf(lab) === 0) return body;
+    return body;
+  }
+  return p;
+}
+
+/**
+ * 複数成分を /・／ または 【ラベル】 で分割。1件なら空配列（呼び出し側で単一部として扱う）。
+ */
+function yahooCaptionRichSplitMaterialParts_(materialJa) {
+  var mat = String(materialJa || '').trim();
+  if (!mat) return [];
+  var parts = [];
+  if (/[\/／]/.test(mat)) {
+    var raw = mat.split(/\s*[\/／]\s*/);
+    for (var i = 0; i < raw.length; i++) {
+      var p = String(raw[i] || '').trim();
+      if (p) parts.push(p);
+    }
+  } else if (/【[^】]+】/.test(mat)) {
+    var re = /【[^】]+】[^【]*/g;
+    var m;
+    while ((m = re.exec(mat)) !== null) {
+      var chunk = String(m[0] || '').trim();
+      if (chunk) parts.push(chunk);
+    }
+  }
+  if (parts.length <= 1) return [];
+  return parts;
+}
+
+/**
+ * ミックス等の複数成分は改行＋1行空け。ラベル重複は除去。カテゴリ専用の決め文句は置かない。
+ */
+function yahooCaptionRichFormatMaterialHtml_(materialJa) {
+  var mat = String(materialJa || '').trim();
+  if (!mat) return '';
+  var parts = yahooCaptionRichSplitMaterialParts_(mat);
+  if (!parts.length) {
+    return yahooCaptionRichNormalizeMaterialPart_(mat) || mat;
+  }
+  var lines = [];
+  for (var i = 0; i < parts.length; i++) {
+    var line = yahooCaptionRichNormalizeMaterialPart_(parts[i]);
+    if (line) lines.push(line);
+  }
+  if (!lines.length) return mat;
+  if (lines.length === 1) return lines[0];
+  return lines.join('<br><br>');
+}
+
+/**
+ * 原料行（互換）。案Cでは yahooCaptionRichApplyProductAboutC_ を使う。
+ * 既存の原料ブロックを消してから、保存：または※の直前へ差し込む。
+ */
+function yahooCaptionRichApplyMaterialLine_(html, materialJa, showMaterial) {
+  var s = String(html || '');
+  var mat = String(materialJa || '').trim();
+  s = s.replace(/(?:主)?原料：(?:(?!保存：|※)[\s\S])*?(?=(?:保存：|※))/g, '');
+  if (showMaterial && mat) {
+    var matHtml = yahooCaptionRichFormatMaterialHtml_(mat);
+    var matBlock = matHtml.indexOf('<br>') >= 0
+      ? ('原料：<br>' + matHtml)
+      : ('原料：' + matHtml);
+    if (/保存：/.test(s)) {
+      s = s.replace(/保存：/, function () {
+        return matBlock + '<br>保存：';
+      });
+    } else if (/※/.test(s)) {
+      s = s.replace(/※/, function () {
+        return matBlock + '<br><br>※';
+      });
+    } else {
+      s = matBlock + '<br>' + s;
+    }
+  }
+  return s;
+}
+
+/**
+ * 案C（2026-10-27）: 【商品について】枠・名称・保存を除去。※注記は残す。
+ * 原料は showMaterial のときだけ（呼び出し側で caption のみ true）。
+ */
+function yahooCaptionRichApplyProductAboutC_(html, materialJa, showMaterial) {
+  var s = String(html || '');
+  s = s.replace(/<hr>\s*<b>【商品について】<\/b>(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/<b>【商品について】<\/b>(?:<br\s*\/?>)?\s*/gi, '');
+  s = s.replace(/名称：[^<]*(?:<br\s*\/?>)?\s*/g, '');
+  s = s.replace(/内容量：[^<]*(?:<br\s*\/?>)?\s*/g, '');
+  s = s.replace(/保存：[^<]*(?:<br\s*\/?>)?\s*/g, '');
+  // 既存の原料／主原料ブロックを除去（※注記の手前まで）
+  s = s.replace(/(?:主)?原料：(?:(?!※)[\s\S])*?(?=(?:※|<a\s|$))/g, '');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  var mat = String(materialJa || '').trim();
+  if (showMaterial && mat) {
+    var matHtml = yahooCaptionRichFormatMaterialHtml_(mat);
+    var matBlock = matHtml.indexOf('<br>') >= 0
+      ? ('原料：<br>' + matHtml)
+      : ('原料：' + matHtml);
+    if (/※/.test(s)) {
+      s = s.replace(/※/, function () {
+        return matBlock + '<br><br>※';
+      });
+    } else {
+      s = s + '<br>' + matBlock + '<br>';
+    }
+  }
+  return s;
+}
+
+/**
+ * マスタ行が食品か（カテゴリー見出しに「カテゴリー」と「食品」、セルに「食品」）。
+ */
+function yahooCaptionRichIsFoodFromRow_(row) {
+  if (!row) return false;
+  var keys = Object.keys(row);
+  for (var i = 0; i < keys.length; i++) {
+    var k = String(keys[i] || '');
+    if (k.indexOf('カテゴリー') >= 0 && k.indexOf('食品') >= 0) {
+      return String(row[k] || '').indexOf('食品') >= 0;
+    }
+  }
+  var cat = String(row['amazon カテゴリー'] || row['カテゴリー'] || '');
+  return cat.indexOf('食品') >= 0;
+}
+
+/**
+ * おだし骨格へ魚種・セットリンクを埋める（P5）。
+ * 原料／【商品について】は BuildHtml 末尾の案C（captionのみ原料）で処理。
  */
 function yahooCaptionRichApplyOdashiVars_(htmlParts, vars) {
   var fishJa = String(vars.fishJa || '').trim() || 'かつお';
-  var netWeight = String(vars.netWeight || '').trim() || '50g';
-  var netNum = String(vars.netWeightNum || '').trim() || String(netWeight).replace(/[^0-9]/g, '') || '50';
-  var materialJa = String(vars.materialJa || '').trim() || ('国産' + fishJa.replace(/[・･]/g, '・'));
   var fishEn = String(vars.fishEn || '').trim() || yahooCaptionRichFishEnFromJa_(fishJa);
   var keys = ['caption', 'additional1', 'additional2', 'sp_additional'];
   for (var ki = 0; ki < keys.length; ki++) {
@@ -451,22 +731,16 @@ function yahooCaptionRichApplyOdashiVars_(htmlParts, vars) {
     var s = htmlParts[k];
     s = s.split('食べるおだし（かつお）').join('食べるおだし（' + fishJa + '）');
     s = s.split('国産かつおを').join('国産' + fishJa + 'を');
-    s = s.split('主原料：国産かつお').join('主原料：' + materialJa);
-    s = s.split('1袋あたり50g').join('1袋あたり' + netWeight);
-    s = s.split('50 g per bag').join(netNum + ' g per bag');
-    s = s.split('50 g /').join(netNum + ' g /');
-    s = s.split('1&#48393; 50g').join('1&#48393; ' + netNum + 'g');
-    s = s.split('&#27599;&#34955;50&#20811;').join('&#27599;&#34955;' + netNum + '&#20811;');
-    s = s.split('50 &#3585;&#3619;&#3633;&#3617;').join(netNum + ' &#3585;&#3619;&#3633;&#3617;');
+    s = yahooCaptionRichStripContentQtyLines_(s);
     s = s.split('Seasoned Bonito').join('Seasoned ' + fishEn);
     s = s.split('bonito from Japan').join(fishEn.toLowerCase() + ' from Japan');
     s = s.split('Bonito japones').join(fishEn + ' japones');
     s = s.split('bonito do Japao').join(fishEn.toLowerCase() + ' do Japao');
     s = s.split('Tinimplahang bonito').join('Tinimplahang ' + fishEn.toLowerCase());
     s = s.split('bonito mula Japan').join(fishEn.toLowerCase() + ' mula Japan');
-    if (vars.setItems && vars.setItems.length) {
-      s = yahooCaptionRichReplaceSetsBlock_(s, vars.setItems, k === 'sp_additional' ? '100%' : '600');
-    }
+    // 兄弟が取れても取れなくても置換する（骨格の単品JANリンクを残さない）
+    s = yahooCaptionRichReplaceSetsBlock_(
+      s, vars.setItems || [], k === 'sp_additional' ? '100%' : '600');
     htmlParts[k] = s;
   }
   return htmlParts;
@@ -495,10 +769,11 @@ function yahooCaptionRichBuildSetsTable_(setItems, tableW) {
       if (j > 0) cells.push('<td width="2%">&nbsp;</td>');
       if (i + j < items.length) {
         var it = items[i + j];
+        var unitLabel = (it.unit === '個') ? '個セット' : '袋セット';
         cells.push(
           '<td width="32%" bgcolor="#f5efe4" align="center">' +
           '<a href="' + YAHOO_CAPTION_RICH_STORE_ITEM_BASE_ + '/' + it.code + '.html">' +
-          '<b><br>' + it.bags + '袋セット<br>　</b></a></td>'
+          '<b><br>' + it.bags + unitLabel + '<br>　</b></a></td>'
         );
       } else {
         cells.push('<td width="32%" align="center">&nbsp;</td>');
@@ -515,23 +790,44 @@ function yahooCaptionRichBuildSetsTable_(setItems, tableW) {
 }
 
 function yahooCaptionRichReplaceSetsBlock_(html, setItems, tableW) {
-  var table = yahooCaptionRichBuildSetsTable_(setItems, tableW);
-  var block =
-    '<a name="sets"></a>\n<hr>\n<b>【セットコーナー】</b><br>\n' +
-    '袋数を選ぶと、各セットの商品ページへ移動します。<br>\n<br>\n' +
-    table + '\n';
-  var re = /<a name="sets"><\/a>[\s\S]*?(?=<hr>\s*<b>【商品について】<\/b>)/;
+  var items = setItems || [];
+  var block;
+  if (!items.length) {
+    // 骨格の単品JANリンクを残さない（空のときはコーナー自体を外す）
+    block = '<a name="sets"></a>\n';
+  } else {
+    var table = yahooCaptionRichBuildSetsTable_(items, tableW);
+    block =
+      '<a name="sets"></a>\n<hr>\n<b>【セットコーナー】</b><br>\n' +
+      'セットを選ぶと、各セットの商品ページへ移動します。<br>\n<br>\n' +
+      table + '\n';
+  }
+  // 案C後も置換できるよう、【商品について】以外の終端も見る
+  var re = /<a name="sets"><\/a>[\s\S]*?(?=(?:<hr>\s*<b>【商品について】<\/b>)|(?:原料：)|(?:※原材料)|(?:<a name="international")|(?:<hr>\s*<b>【For international))/;
   if (!re.test(html)) return html;
   return html.replace(re, block);
 }
 
-function yahooCaptionRichParseBagCount_(text) {
+/**
+ * 袋／個のセット数。ミックスは「2個/2種」「3袋/3種」など。先頭の数量を取る。
+ * @return {{n:number, unit:string}}
+ */
+function yahooCaptionRichParseSetCount_(text) {
   var s = String(text || '');
   var m = s.match(/(\d+)\s*袋/);
-  if (m) return parseInt(m[1], 10);
+  if (m) return { n: parseInt(m[1], 10), unit: '袋' };
   m = s.match(/(\d+)\s*個で\s*1\s*セット/);
-  if (m) return parseInt(m[1], 10);
-  return 0;
+  if (m) return { n: parseInt(m[1], 10), unit: '個' };
+  m = s.match(/(\d+)\s*個\s*[\/／]/);
+  if (m) return { n: parseInt(m[1], 10), unit: '個' };
+  m = s.match(/(\d+)\s*個/);
+  if (m) return { n: parseInt(m[1], 10), unit: '個' };
+  return { n: 0, unit: '' };
+}
+
+/** @deprecated ParseSetCount_ を使う */
+function yahooCaptionRichParseBagCount_(text) {
+  return yahooCaptionRichParseSetCount_(text).n;
 }
 
 function yahooCaptionRichBuildSetItemsFromSiblings_(siblings) {
@@ -539,10 +835,12 @@ function yahooCaptionRichBuildSetItemsFromSiblings_(siblings) {
   (siblings || []).forEach(function (sib) {
     var code = String(sib && sib.code || '').trim();
     if (!code) return;
-    var bags = yahooCaptionRichParseBagCount_(sib.variation) ||
-      yahooCaptionRichParseBagCount_(sib.requestName);
-    if (bags < 2) return;
-    if (!byBags[bags]) byBags[bags] = { bags: bags, code: code };
+    var parsed = yahooCaptionRichParseSetCount_(sib.variation);
+    if (!parsed.n) parsed = yahooCaptionRichParseSetCount_(sib.requestName);
+    if (parsed.n < 2) return;
+    if (!byBags[parsed.n]) {
+      byBags[parsed.n] = { bags: parsed.n, code: code, unit: parsed.unit || '袋' };
+    }
   });
   return Object.keys(byBags).map(Number).sort(function (a, b) { return a - b; }).map(function (b) {
     return byBags[b];
@@ -789,23 +1087,38 @@ function yahooCaptionRichReadVarsFromProduct_(product) {
   var nameBlob = [cell('商品名ベース'), cell('依頼日'), cell('商品名Yahoo!'), cell('商品名'), product && product.name]
     .filter(Boolean).join(' ');
   var fishJa = yahooCaptionRichExtractOdashiFishJa_(nameBlob) || 'かつお';
-  var wt = yahooCaptionRichExtractNetWeight_(nameBlob, cell('1個当たり内容量'));
   var setItems = yahooCaptionRichBuildSetItemsFromSiblings_(product && product.captionSiblings);
-  var materialJa = '国産' + fishJa;
+  var isFood = yahooCaptionRichIsFoodFromRow_(row);
+  var materialJa = cell('原料');
+  var showMaterial = isFood && !!materialJa;
   var imgs = yahooCaptionRichResolveBodyImages_(cell, fishJa);
   var jan = cell('JANコード') || cell('JAN') || cell('jan') || '';
-  var slug = yahooCaptionRichFishSlugFromJa_(fishJa);
+  var parentSku = cell('親SKU') || '';
+  // P6cパックの親別slug（同一JANの誤当て防止）。未設定時は従来の魚種slug。
+  var slug = '';
+  if (parentSku.indexOf('-oya3') !== -1 && jan.indexOf('4906283045119') !== -1) {
+    slug = '5119_oya3';
+  } else if (parentSku.indexOf('-oya2') !== -1 && jan.indexOf('4906283045119') !== -1) {
+    slug = '5119_oya2';
+  } else {
+    slug = yahooCaptionRichFishSlugFromJa_(fishJa);
+  }
 
   console.log('[YAHOO_CAPTION_RICH] vars tmpl=' + templateId +
-    ' fish=' + fishJa + ' net=' + (wt.netWeight || '50g') +
+    ' fish=' + fishJa +
+    ' food=' + isFood +
+    ' material=' + (showMaterial ? materialJa : '(hidden)') +
+    ' net=stripped' +
     ' sets=' + setItems.length +
     ' imgSrc=' + imgs.imgSrc +
     ' p6c=' + yahooCaptionRichP6cEnabled_() +
+    ' parent=' + parentSku +
     ' item_code=' + String((product && product.code) || cell('子SKU') || ''));
 
   return {
     templateId: templateId,
     jan: jan,
+    parentSku: parentSku,
     slug: slug,
     img1: imgs.img1,
     img2: imgs.img2,
@@ -816,9 +1129,11 @@ function yahooCaptionRichReadVarsFromProduct_(product) {
     imgSrc: imgs.imgSrc,
     fishJa: fishJa,
     fishEn: yahooCaptionRichFishEnFromJa_(fishJa),
-    netWeight: wt.netWeight || '50g',
-    netWeightNum: wt.netWeightNum || '50',
+    netWeight: '',
+    netWeightNum: '',
     materialJa: materialJa,
+    showMaterial: showMaterial,
+    isFood: isFood,
     setItems: setItems
   };
 }

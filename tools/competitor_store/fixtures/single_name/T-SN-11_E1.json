@@ -1,0 +1,28 @@
+{
+  "id": "T-SN-11",
+  "desc": "E1 AI自信低・コーパス可",
+  "input": {
+    "draft_name": "うどん？",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "low",
+    "title_match": "high",
+    "row_asin": "B000000006",
+    "hit_asin": "B000000006",
+    "keepa_jans": [
+      "4909999999999"
+    ],
+    "search_jans": [
+      "4909999999999"
+    ]
+  },
+  "expect": {
+    "pattern": "E1",
+    "single_trust": "要確認",
+    "for_estimate": false,
+    "need_human": true,
+    "write_single_name": false,
+    "corpus_assist_ok": true
+  }
+}

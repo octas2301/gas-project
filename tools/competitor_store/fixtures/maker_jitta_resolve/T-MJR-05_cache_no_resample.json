@@ -1,0 +1,25 @@
+{
+  "maker": "味の素",
+  "summary": {},
+  "master": {
+    "実態再採取しない": "TRUE",
+    "実態候補": "入口ブランド",
+    "実態信頼度": "high",
+    "実態採取元": "official",
+    "実態根拠URL": "https://www.ajinomoto.co.jp/",
+    "業種": "調味料・加工食品",
+    "Amazonルートカテゴリ": "食品・飲料・お酒",
+    "AmazonBrowse棚": "調味料|コーヒー・紅茶",
+    "入口語候補": "AGF",
+    "判定メモ": "cached"
+  },
+  "expect": {
+    "skipped": true,
+    "jitta": "入口ブランド",
+    "auto_confirm": false,
+    "業種": "調味料・加工食品",
+    "Amazonルートカテゴリ": "食品・飲料・お酒",
+    "AmazonBrowse棚": "調味料|コーヒー・紅茶",
+    "実態信頼度": "high"
+  }
+}

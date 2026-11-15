@@ -18,6 +18,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUT_DIR = SCRIPT_DIR / "out"
+RAKUTEN_ICHIBA_API_VERSION = "20260701"
 HITS = 10
 
 CASES = [
@@ -89,38 +90,33 @@ def http_get(url: str, headers: dict | None = None, timeout: int = 60) -> tuple[
 def rakuten_search(app_id: str, access_key: str, keyword: str) -> tuple[str, list[dict]]:
     if not app_id:
         return "RAKUTEN_APP_ID missing", []
-    if access_key:
-        q = urllib.parse.urlencode(
-            {
-                "applicationId": app_id,
-                "accessKey": access_key,
-                "keyword": keyword,
-                "format": "json",
-                "formatVersion": "2",
-                "hits": str(HITS),
-                "page": "1",
-                "field": "0",
-                "availability": "0",
-            }
-        )
-        url = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?" + q
-        headers = {
-            "Authorization": "Bearer " + access_key,
-            "User-Agent": "Mozilla/5.0",
+    if not access_key:
+        return "RAKUTEN_ACCESS_KEY missing", []
+    q = urllib.parse.urlencode(
+        {
+            "applicationId": app_id,
+            "accessKey": access_key,
+            "keyword": keyword,
+            "format": "json",
+            "formatVersion": "2",
+            "hits": str(HITS),
+            "page": "1",
+            "field": "0",
+            "availability": "0",
         }
-    else:
-        q = urllib.parse.urlencode(
-            {
-                "applicationId": app_id,
-                "keyword": keyword,
-                "format": "json",
-                "formatVersion": "2",
-                "hits": str(HITS),
-                "availability": "0",
-            }
-        )
-        url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706?" + q
-        headers = {"User-Agent": "Mozilla/5.0"}
+    )
+    url = (
+        "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/"
+        + RAKUTEN_ICHIBA_API_VERSION
+        + "?"
+        + q
+    )
+    headers = {
+        "Authorization": "Bearer " + access_key,
+        "Origin": "https://script.google.com",
+        "Referer": "https://script.google.com/",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+    }
     code, text = http_get(url, headers)
     if code != 200:
         return "HTTP %s %s" % (code, text[:180]), []

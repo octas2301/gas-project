@@ -129,7 +129,7 @@ Amazon競合ASINの正解上限は**人間◎継続**（名前＋画像を見た
 |------|------|
 | 入口 | Z→15-⑰ `menuFbaTierCatalogDiagnoseP1aForCheckedParents` |
 | 対象 | レ点親（子SKU空）。最大 `B_FBA_P1A_MAX_PARENTS`（既定20） |
-| ASIN | `ASINコード` → なければ `競合店ASINコード` |
+| ASIN | `ASINコード` → なければ `競合店ASINコード`。ミックス親は親が空なら1袋子 |
 | Catalog | GET `/catalog/2022-04-01/items/{asin}` `includedData=summaries,attributes,identifiers` |
 | 抜出 | `item_package_dimensions`／`item_dimensions`／`item_package_weight` 等 |
 | 出力先 | シート **`FBAティア診断_P1a`** のみ（毎回クリア再書） |
@@ -146,10 +146,10 @@ Amazon競合ASINの正解上限は**人間◎継続**（名前＋画像を見た
 |------|------|
 | 入口 | Z→15-⑱ `menuFbaTierCatalogWriteP1bForCheckedParents` |
 | 対象 | レ点親。最大 `B_FBA_P1B_MAX_PARENTS`（未設定時は P1a と同じ既定） |
-| ASIN | N列`ASINコード`（＝競合ASINの相乗り先）→ なければ `競合店ASIN` |
-| 入力 | Catalog **梱包**寸法＋重量（AI寸法のみでは書かない） |
+| ASIN | N列`ASINコード`（＝競合ASINの相乗り先）→ なければ `競合店ASIN`。**ミックス親**は親が空なら **1袋子の競合店ASIN**（親列には書かない。`B_FBA_COMBO_CHILD_ASIN_ENABLED` 未設定=ON） |
+| 入力 | Catalog **梱包**寸法＋重量（単品は AI寸法のみでは書かない）。**ミックス親**は Catalog梱包が空なら `セット構成_幅/奥/高_cm`＋Catalog重量（あれば）。`B_FBA_P1B_COMBO_PACK_FALLBACK_ENABLED` 未設定=ON |
 | 判定 | 設定マスタ `FBA手数料` first-fit（`source=settings` のみ書込） |
-| 乖離 | Catalog↔AI 3辺和差 **>15%** → 書込スキップ |
+| 乖離 | Catalog↔AI 3辺和差 **>15%** → 書込スキップ。ミックスは Catalog↔`セット構成_幅/奥/高_cm` |
 | 書込列 | **`FBAティア`**／**`FBA手数料_円`**（`サイズ＆自己発/FBA` の右隣。自己発列は触らない） |
 | 空のみ | 既存値があるセルは上書きしない |
 | Property | `B_FBA_P1B_WRITE_ENABLED` 未設定=ON／`false`でOFF |
@@ -334,6 +334,8 @@ P1b: … 3.05 SP-API/3D寸法（3.1の前）… 6.7 SP-API品番（6.6の後）
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-19 | **ミックス親 FBA**: Catalog梱包空ならセット構成3辺で P1b 書込（`combo_bcbe`） |
+| 2026-08-19 | **ミックス親 FBA**: 1袋子ASINで Catalog。親競合ASIN非書。乖離はセット構成3辺 |
 | 2026-08-13 | **⑤競合空のみ本線**: 15-⑳ 実装。U7本線は当面不要（JAN汚染実機） |
 | 2026-08-13 | **U7診断**: Z 15-⑲ Catalog型番 vs Keepa →`メーカー品番診断_U7`。マスタ非書込。`B_U7_PART_DIAG_ENABLED` |
 | 2026-08-13 | **⑤競合列空のみ本線**: 承認包起草（実装前）。[LV4_B_COMPETITOR_ASIN_AUTOFILL_APPROVAL.md](LV4_B_COMPETITOR_ASIN_AUTOFILL_APPROVAL.md) |

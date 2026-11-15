@@ -1,0 +1,9 @@
+{
+  "id": "T-CTW-18",
+  "desc": "inflight5分・expect2分超過→deferred（trigger_missed 出さない）",
+  "kind": "inflight_defer_missed",
+  "expect": {
+    "wd.deferred_inflight": true,
+    "trigger_missed_logged": false
+  }
+}

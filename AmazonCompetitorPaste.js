@@ -812,15 +812,19 @@ function keepaFullPlanActions_(existingRows, products) {
     var fp = keepaFullFingerprint_(p);
     var latest = null;
     var j;
+    // 先頭挿入運用: 上側（配列先頭側）が最新
     for (j = 0; j < rows.length; j++) {
-      if (String((rows[j] && rows[j].ASIN) || '').trim().toUpperCase() === asin) latest = rows[j];
+      if (String((rows[j] && rows[j].ASIN) || '').trim().toUpperCase() === asin) {
+        latest = rows[j];
+        break;
+      }
     }
     if (latest && String(latest['価格指紋'] || '') === fp) {
       actions.push('skip_same_fp');
       continue;
     }
     actions.push('append');
-    rows.push({ ASIN: asin, '価格指紋': fp });
+    rows.unshift({ ASIN: asin, '価格指紋': fp });
   }
   return actions;
 }
@@ -897,15 +901,19 @@ function keepaFullUpsertImpl_(rawProducts, write, purpose) {
   var n = 0;
   if (write) {
     var now = Utilities.formatDate(new Date(), 'GMT', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+    var batch = [];
     for (i = 0; i < rawProducts.length; i++) {
       if (actions[i] !== 'append') continue;
       var recObj = keepaFullProductToRec_(rawProducts[i], now, purpose || '出品');
-      var padded = keepaFullRowForHeaders_(recObj, hdr);
-      dest.getRange(dest.getLastRow() + 1, 1, 1, hdr.length).setValues([padded]);
+      batch.push(keepaFullRowForHeaders_(recObj, hdr));
       n++;
     }
+    if (batch.length) {
+      dest.insertRowsBefore(2, batch.length);
+      dest.getRange(2, 1, batch.length, hdr.length).setValues(batch);
+    }
   }
-  var msg = 'write=' + !!write + ' append=' + n + ' plan=' + actions.join(',');
+  var msg = 'write=' + !!write + ' append=' + n + ' insert=top2 plan=' + actions.join(',');
   Logger.log('[KeepaFull] ' + msg);
   return { ok: true, msg: msg, n: n };
 }
@@ -1035,6 +1043,7 @@ function keepaFullClassifyNeedGet_(asins, existingRows, now) {
     for (j = 0; j < (existingRows || []).length; j++) {
       if (String((existingRows[j] && existingRows[j].ASIN) || '').trim().toUpperCase() === asin) {
         latest = existingRows[j];
+        break; // 先頭挿入運用: 上側が最新
       }
     }
     if (latest && !keepaFullWarehouseGetNeeded_(latest, now)) skip.push(asin);
@@ -1098,7 +1107,10 @@ function keepaFullPlanAFetch_(asins, existingRows, cacheMap, now) {
     var latest = null;
     var j;
     for (j = 0; j < (existingRows || []).length; j++) {
-      if (String((existingRows[j] && existingRows[j].ASIN) || '').trim().toUpperCase() === asin) latest = existingRows[j];
+      if (String((existingRows[j] && existingRows[j].ASIN) || '').trim().toUpperCase() === asin) {
+        latest = existingRows[j];
+        break; // 先頭挿入運用: 上側が最新
+      }
     }
     if (latest && !keepaFullWarehouseGetNeeded_(latest, now)) hydrate.push(asin);
     else fetch.push(asin);
@@ -1167,7 +1179,10 @@ function keepaFullMaybeHydrateCachedMap_(asins, cachedMap) {
     var latest = null;
     var j;
     for (j = 0; j < existing.length; j++) {
-      if (String((existing[j] && existing[j].ASIN) || '').trim().toUpperCase() === asin) latest = existing[j];
+      if (String((existing[j] && existing[j].ASIN) || '').trim().toUpperCase() === asin) {
+        latest = existing[j];
+        break; // 先頭挿入運用: 上側が最新
+      }
     }
     if (!latest) continue;
     cachedMap[asin] = keepaFullRowToCacheEntry_(latest);

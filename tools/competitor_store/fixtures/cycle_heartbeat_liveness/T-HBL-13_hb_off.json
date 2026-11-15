@@ -1,0 +1,1 @@
+{"id":"T-HBL-13","desc":"心拍OFFは時計不要（意図停止）","start":{"heartbeat_enabled":false},"steps":[{"action":"c4_d_fail","now_ms":1000,"legacy":true}],"expect":{"alive":true,"reason":"hb_off"}}

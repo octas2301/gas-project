@@ -1,0 +1,18 @@
+{
+  "id": "T-CHB-34",
+  "desc": "残り2でもレ点も名前取りも無いなら C0 せず残りの小中を洗う",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40},
+      {"メーカー": "中社", "実態": "製造メーカー", "セラーヒット": 1, "catalog_estimate": 120}
+    ],
+    "catalog_estimate": {"小社": 40, "中社": 120},
+    "unchecked_sellers": 0,
+    "auto_ck_candidates": 0,
+    "untagged_gate_asins": 1053,
+    "k": 3,
+    "token_room": true
+  },
+  "expect": {"action": "wash_small", "maker": "小社", "detail_has": "restock_wash"}
+}

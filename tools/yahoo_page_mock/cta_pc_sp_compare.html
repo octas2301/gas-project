@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTA比較｜PC / スマホ × 縦積み全幅 / 左右並び</title>
+  <style>
+    :root { --brown:#3b281d; --paper:#fdf8f0; --bg:#f0ebe3; --line:#e0d3c0; --gold:#b58a43; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", Meiryo, sans-serif; background: var(--bg); color: var(--brown); }
+    header { background: var(--brown); color: #fff; padding: 16px 20px; }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    header p { margin: 8px 0 0; font-size: 13px; opacity: .9; line-height: 1.5; }
+    .answer { max-width: 1100px; margin: 16px auto 0; padding: 0 16px; }
+    .answer .box { background: #fff8e8; border: 1px solid #e6d2a8; border-radius: 8px; padding: 12px 14px; font-size: 14px; line-height: 1.6; }
+    .grid { max-width: 1100px; margin: 16px auto 40px; padding: 0 16px; display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .card h2 { margin: 0; padding: 12px 14px; background: var(--brown); color: #fff; font-size: 14px; }
+    .card .hint { padding: 8px 14px; font-size: 12px; color: #74523b; background: #f7f0e6; border-bottom: 1px solid var(--line); }
+    .frame { padding: 14px; background: #fff; }
+    .sp { max-width: 390px; margin: 0 auto; }
+    .pc { max-width: 720px; margin: 0 auto; }
+    .stub { padding: 10px 12px; background: #faf6ef; border: 1px dashed #d9cbb8; margin-bottom: 10px; font-size: 12px; color: #74523b; }
+    .stack a, .row a { display: block; text-decoration: none; }
+    .stack img { width: 100%; height: auto; display: block; margin-bottom: 10px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row img { width: 100%; height: auto; display: block; }
+    footer { max-width: 1100px; margin: 0 auto 40px; padding: 0 16px; font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CTA比較｜PC / スマホ</h1>
+    <p>
+      文言：お得なセットを見る ／ 当店の売れ筋を見る（ストアTOP）<br>
+      競合の「横に伸びるバナー」＝ <b>A（全幅横長を縦に積む）</b>。Bは左右2分割。
+    </p>
+  </header>
+
+  <div class="answer">
+    <div class="box">
+      <b>①への答え：</b>競合は「横並び2ボタン」ではなく、<b>画面幅いっぱいに伸びる横長バナーを、上下に積む</b>形です。
+      Yahoo商品説明でも同じ見え方は <code>&lt;img width="100%"&gt;</code> の縦積みで再現できます（壊れにくい）。
+    </div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>A｜スマホ（縦積み・全幅）</h2>
+      <div class="hint">文字が大きく目立つ。競合に近い。</div>
+      <div class="frame">
+        <div class="sp">
+          <div class="stub">商品説明（抜粋）</div>
+          <div class="stack">
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_sets_short.jpg" alt="お得なセットを見る"></a>
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_bestsellers_short.jpg" alt="当店の売れ筋を見る"></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>A｜PC（縦積み・全幅）</h2>
+      <div class="hint">幅が広がってもバナーは横に伸びる（競合と同じ）。</div>
+      <div class="frame">
+        <div class="pc">
+          <div class="stub">商品説明（抜粋）</div>
+          <div class="stack">
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_sets_short.jpg" alt="お得なセットを見る"></a>
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_bestsellers_short.jpg" alt="当店の売れ筋を見る"></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>B｜スマホ（左右50%・改行版）</h2>
+      <div class="hint">半幅のため文字を2行に分割。</div>
+      <div class="frame">
+        <div class="sp">
+          <div class="stub">商品説明（抜粋）</div>
+          <div class="row">
+            <a href="#"><img src="banners/cta_sets_square_2line.jpg" alt="お得なセットを見る"></a>
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_bestsellers_square_2line.jpg" alt="当店の売れ筋を見る"></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>B｜PC（左右50%・改行版）</h2>
+      <div class="hint">PCでも左右並び。高さは短いが文字はAより小さめ。</div>
+      <div class="frame">
+        <div class="pc">
+          <div class="stub">商品説明（抜粋）</div>
+          <div class="row">
+            <a href="#"><img src="banners/cta_sets_square_2line.jpg" alt="お得なセットを見る"></a>
+            <a href="https://store.shopping.yahoo.co.jp/octas/"><img src="banners/cta_bestsellers_square_2line.jpg" alt="当店の売れ筋を見る"></a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <b>②：</b>ご指摘どおり縦積み全幅（A）の方が文字が大きく目立ちます。横並び（B）は改行版を用意済みです。<br>
+    <b>③：</b>ローカルサーバーを再起動しました →
+    <a href="http://127.0.0.1:8765/cta_pc_sp_compare.html">http://127.0.0.1:8765/cta_pc_sp_compare.html</a><br>
+    画像だけ見る場合：同フォルダの <code>cta_pc_sp_compare.jpg</code> / <code>cta_competitor_style_pc_sp.jpg</code>
+  </footer>
+</body>
+</html>

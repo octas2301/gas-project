@@ -1,0 +1,26 @@
+{
+  "id": "T-SN-09",
+  "desc": "D1 存在NG",
+  "input": {
+    "draft_name": "架空商品XYZ",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ng",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000004",
+    "hit_asin": "",
+    "keepa_jans": [
+      "4908888888888"
+    ],
+    "search_jans": []
+  },
+  "expect": {
+    "pattern": "D1",
+    "single_trust": "要確認",
+    "for_estimate": false,
+    "need_human": true,
+    "write_single_name": false,
+    "corpus_assist_ok": true
+  }
+}

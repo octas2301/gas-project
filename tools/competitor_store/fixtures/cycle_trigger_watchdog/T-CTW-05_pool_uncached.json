@@ -1,0 +1,1 @@
+{"id":"T-CTW-05","desc":"H4: pool未キャッシュは候補数回スキャン","kind":"fire","candidates":12,"pool_cached":false,"expect":{"outcome":"done","pool_scans":12}}

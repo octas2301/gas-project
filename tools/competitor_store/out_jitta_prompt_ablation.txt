@@ -1,0 +1,48 @@
+BASE 永谷園 ('製造メーカー', 'high', 'メーカー') chars=1234
+BASE 味の素 ('製造メーカー', 'high', 'メーカー') chars=1202
+BASE カゴメ ('製造メーカー', 'high', 'メーカー') chars=1206
+BASE モンテ物産 ('入口ブランド', 'high', 'ブランド') chars=1258
+BASE 不明社テストXYZ ('要確認', 'low', '要確認') chars=1113
+OK no_roots_list 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/1116
+OK no_roots_list 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/1117
+OK no_roots_list カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/1102
+OK no_roots_list モンテ物産 base=入口ブランド got=入口ブランド conf=high/high chars=1258/1083
+OK no_roots_list 不明社テストXYZ base=要確認 got=要確認 conf=low/low chars=1113/1025
+OK no_evidence 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/1125
+OK no_evidence 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/1146
+OK no_evidence カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/1148
+DIFF no_evidence モンテ物産 base=入口ブランド got=要確認 conf=high/high chars=1258/1144
+OK no_evidence 不明社テストXYZ base=要確認 got=要確認 conf=low/low chars=1113/1069
+OK no_browse 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/1133
+OK no_browse 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/1125
+OK no_browse カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/1109
+DIFF no_browse モンテ物産 base=入口ブランド got=要確認 conf=high/high chars=1258/1176
+DIFF no_browse 不明社テストXYZ base=要確認 got=非仕入先 conf=low/high chars=1113/1065
+OK no_gyoshu 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/1085
+OK no_gyoshu 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/1069
+OK no_gyoshu カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/1099
+OK no_gyoshu モンテ物産 base=入口ブランド got=入口ブランド conf=high/high chars=1258/1151
+OK no_gyoshu 不明社テストXYZ base=要確認 got=要確認 conf=low/low chars=1113/990
+OK no_reason 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/1063
+OK no_reason 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/1077
+OK no_reason カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/1078
+OK no_reason モンテ物産 base=入口ブランド got=入口ブランド conf=high/high chars=1258/1089
+OK no_reason 不明社テストXYZ base=要確認 got=要確認 conf=low/low chars=1113/1003
+DIFF max_out_512 永谷園 base=製造メーカー got=PARSE_FAIL conf=high/ chars=1234/974
+DIFF max_out_512 味の素 base=製造メーカー got=PARSE_FAIL conf=high/ chars=1202/811
+DIFF max_out_512 カゴメ base=製造メーカー got=PARSE_FAIL conf=high/ chars=1206/808
+DIFF max_out_512 モンテ物産 base=入口ブランド got=PARSE_FAIL conf=high/ chars=1258/810
+DIFF max_out_512 不明社テストXYZ base=要確認 got=PARSE_FAIL conf=low/ chars=1113/831
+OK thin_B 永谷園 base=製造メーカー got=製造メーカー conf=high/high chars=1234/404
+OK thin_B 味の素 base=製造メーカー got=製造メーカー conf=high/high chars=1202/412
+OK thin_B カゴメ base=製造メーカー got=製造メーカー conf=high/high chars=1206/404
+DIFF thin_B モンテ物産 base=入口ブランド got=PARSE_FAIL conf=high/ chars=1258/319
+OK thin_B 不明社テストXYZ base=要確認 got=要確認 conf=low/low chars=1113/400
+--- summary ---
+no_roots_list cand_match=5/5 char_save≈9% avg_chars=1088
+no_evidence cand_match=4/5 char_save≈6% avg_chars=1126
+no_browse cand_match=3/5 char_save≈7% avg_chars=1121
+no_gyoshu cand_match=5/5 char_save≈10% avg_chars=1078
+no_reason cand_match=5/5 char_save≈12% avg_chars=1062
+max_out_512 cand_match=0/5 char_save≈30% avg_chars=846
+thin_B cand_match=4/5 char_save≈68% avg_chars=387

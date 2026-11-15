@@ -1,0 +1,11 @@
+{
+  "id": "T-CTW-19",
+  "desc": "P-eff-1: ckpt0 は武装しない（legacy は長待ち）",
+  "kind": "eff_ckpt_skip",
+  "slice_n": 0,
+  "wait_min": 1,
+  "expect": {
+    "armed_min": 0,
+    "legacy_min": 22
+  }
+}

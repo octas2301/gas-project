@@ -1,0 +1,24 @@
+{
+  "id": "T-SN-15",
+  "desc": "P-MIX 詰め合わせは確定しない",
+  "input": {
+    "draft_name": "アソート",
+    "sale_form": "③別品番とセット売り",
+    "set_qty": 5,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "low",
+    "row_asin": "B000000010",
+    "hit_asin": "B000000010",
+    "keepa_jans": [],
+    "search_jans": []
+  },
+  "expect": {
+    "pattern": "P-MIX",
+    "single_trust": "要確認",
+    "for_estimate": false,
+    "need_human": true,
+    "write_single_name": false,
+    "corpus_assist_ok": false
+  }
+}

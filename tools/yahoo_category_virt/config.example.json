@@ -1,0 +1,4 @@
+{
+  "YAHOO_SHOPPING_CLIENT_ID": "",
+  "_note": "Yahoo Shopping Web Service の Client ID（appid）。GAS Script Properties と同値。"
+}

@@ -56,17 +56,19 @@
 | `Keepaフル` | ASIN1行＋生JSON | 倉庫。クロスウォーク ◎＋K。`csv[]` 非保存。**目的=リサーチ／定時**。P0スキーマ済 |
 | `運用メタ` | 1行運用 | マップ版、保存先ID |
 | `メーカーマスタ` | メーカー1行 | 第2クエリ語の正。語があれば公式／LLMを再走しない。カテゴリIDは載せない。90日削除の対象外 |
+| `メーカーサマリ` | メーカー1行 | 列`実態`=製造メーカー／入口ブランド／要確認／非仕入先。要確認はメール下書き |
 
 ---
 
 ## 3. 連携契約（領域1）
 
-- 調査複製スプシ `1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE` に **競合シートを作らない**。メーカー第2クエリ語の正は `メーカーマスタ`。
+- 調査複製スプシ `1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE` に **競合シートを作らない**。メーカー第2クエリ語の正は `メーカーマスタ`。**メーカーサマリの本拠は競合DB**（セラーと同じファイル。①サマリは種のみ）。
 - **Keepa 属性の正は `Keepaフル`。** 領域1①が product したらここに書く（`目的=リサーチ`。90日。`csv[]` 落とす）。門の作業面だけ調査複製 `①候補` へ転記（当面 dual-write 可）。
 - **Catalog 生は `モールヒット` に入れない。**
 - 出品 clasp の scriptId を領域1に差し替えない。
 - 領域1のモールヒット追記は `目的=リサーチ` のみ。`定時` は出品側。
-- 同一 JAN のモールヒット行を上書きしない（追記）。Keepaフルは ASIN 最新1行更新、指紋変化時のみ追記。
+- 同一 JAN のモールヒット行を上書きしない（**ヘッダ直下へ挿入**。上側が最新。指紋同一はスキップ）。Keepaフルは指紋変化時のみ**先頭挿入**（最新＝上。読取は先勝ち）。Keepaスナップショットは既存ASINはその場更新、新規は先頭挿入。**セラーは末尾追記のまま**。
+- **メーカーサマリ本線**: 新規メーカーのみ2行目へ挿入（同名禁止）＋調査CK枠。`dry_maker_sum --apply` の全消し再構築は**本線禁止**（緊急時のみ `--force-full-clear`）。
 - **2026-08-15 再ロック**: リサーチ Keepa と出品 Keepa は同じ倉庫。①候補は倉庫ではない。セラー台帳は後。進捗は [NOW](B_PURCHASE_RESEARCH_NOW.md)。範囲・開発順は [TASK_STRUCTURE](B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)（ストアが受けるのは W1 追記。Catalog 生はヒット禁止）。
 
 ---
@@ -80,8 +82,8 @@
 | 12-⑦ Keepaキャッシュ古い行削除 | `menuPurgeKeepaCacheOlderThanDays` | **マスタの `Keepa取得_キャッシュ` のみ**。専用は触らない |
 | 12-⑩ 定時対象JANログ | `menuLogCompetitorScheduledCandidates` | 読取のみ。再検索しない。トリガー非設置 |
 | 12-⑬ Amazon在庫1SKU | `menuReadAmazonInventoryOneSku` | Listings優先、なければFBA。マスタ非書。1 SKUのみ |
-| B Step2 モール横断 | 楽天Yahoo API | ENABLED 時、生ヒットを `モールヒット` 追記。**B統合**かつストアONならマスタ直書きスキップ→ **2.1＝12-⑭** |
-| 12-⑭ セット紐付け | 専用ヒット読→マスタ | レ点／当B行。Z単独は従来どおり手動。`COMPETITOR_MASTER_APPLY_ENABLED` 未設定=ON。B切戻し `B_COMPETITOR_STORE_APPLY_ENABLED=false` |
+| B Step2 モール横断 | 楽天Yahoo API | ENABLED 時、生ヒットを `モールヒット` 追記。**B統合**かつストアONならマスタ直書きスキップ→ **2.1＝12-⑭＋ミックス検索** |
+| 12-⑭ セット紐付け | 専用ヒット読→マスタ | レ点／当B行。**単品のみ**（ミックス親はJAN紐付けしない）。続けて `applyMixMallCompetitorSearchToMaster_`（メーカー＋N種検索→価格＋URL。0件は空）。選択・よりどりタイトルは不採用。`COMPETITOR_MASTER_APPLY_ENABLED` 未設定=ON。B切戻し `B_COMPETITOR_STORE_APPLY_ENABLED=false` |
 | B 6.55 FBA | 寸法 | マスタキャッシュ経由のまま |
 | 99-⑪ ベイクオフ | 診断シート | 専用へ自動連携しない |
 
@@ -143,7 +145,10 @@ GAS: Script Property `COMPETITOR_SS_ID` に同じ ID（dual-write 用。`COMPETI
 
 | 日付 | 内容 |
 |------|------|
-| 2026-08-16 | B 2.1＝12-⑭。B統合かつストアONで横断シート直書きスキップ。15〜23はB外 |
+| 2026-08-20 | Keepaフル／モールヒット／スナップショット新規は先頭挿入（最新=上）。セラーは末尾のまま。メーカーサマリは新規のみ先頭＋`dry_maker_sum`全消し非本線 |
+| 2026-08-20 | ミックス楽天／YahooはN種検索書込（0件は空）。12-⑭は単品のみ。選択・よりどり除外。[COMBO](COMBO_SET_BOM_REQUIREMENTS.md) §6.2 |
+| 2026-08-18 | 12-⑭はミックス親ブロック（構成SKUあり）を書かない。[COMBO](COMBO_SET_BOM_REQUIREMENTS.md) §6.2 |
+| 2026-08-17 | 実態4分類（製造メーカー／入口ブランド／要確認／非仕入先）。要確認メールは下書きのみ |
 | 2026-08-15 | Keepaの正はKeepaフル。①が書く。①候補は転記。90日再利用 |
 | 2026-08-15 | タブ「セラー」。第1版モリタ1行。Keepaフルからセラーは貯めない |
 | 2026-08-15 | P0: `Keepaフル` スキーマ＋`keepa_official.csv`。A書込は未配線 |

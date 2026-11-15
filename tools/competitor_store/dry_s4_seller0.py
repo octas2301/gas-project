@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT.parent / "purchase_research_path3"))
 
-from apply_keepa_full import COMPETITOR_SS, append_log, as_dicts, read_all, sheets_service
+from apply_keepa_full import COMPETITOR_SS, RESEARCH_SS, T_CAND, append_log, as_dicts, read_all, sheets_service
 from dry_offer_count import col_letter
 from init_store import ensure_seller_google
 from keepa_csv_vs_api import keepa_key
@@ -89,12 +89,132 @@ def parse_seller(body: dict, seller_id: str) -> dict:
     }
 
 
+def fill_cand_names(svc, cap: int, apply: bool) -> int:
+    """①候補の欠ける sellerId を /seller storefront=0 で名前付け、台帳へ残す。"""
+    _, cand = as_dicts(read_all(svc, RESEARCH_SS, T_CAND))
+    _, srows = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))
+    nmap = {}
+    for r in srows:
+        sid = str(r.get("sellerId") or "").strip().upper()
+        if not sid:
+            continue
+        nm = str(r.get("店名") or "").strip()
+        if nm:
+            nmap[sid] = nm
+    need = []
+    seen = set()
+    for r in cand:
+        for p in str(r.get("sellerId") or "").replace(",", "|").split("|"):
+            sid = p.strip().upper()
+            if len(sid) < 10 or sid in nmap or sid in seen:
+                continue
+            seen.add(sid)
+            need.append(sid)
+    leftover = max(0, len(need) - cap)
+    print("missing_ids", len(need), "cap", cap, "leftover", leftover)
+    print("sample", need[:8])
+    if not apply:
+        print("dry fill-cand-names (pass --apply)")
+        return 0
+    key = keepa_key()
+    if not key:
+        print("no_key")
+        return 2
+    got = {}
+    for sid in need[:cap]:
+        req = Request(seller_url(sid, key), method="GET")
+        with urlopen(req, timeout=60) as resp:
+            raw = resp.read()
+        if raw[:2] == b"\x1f\x8b":
+            raw = gzip.decompress(raw)
+        body = json.loads(raw.decode("utf-8"))
+        parsed = parse_seller(body, sid)
+        name = parsed["店名"]
+        print("GET", sid, "name=", name or "-", "consumed", body.get("tokensConsumed"), "asinList", parsed["_asin_n"])
+        if parsed["_has_asinlist"]:
+            print("WARN asinList unexpected", sid)
+        if name:
+            got[sid] = name
+            nmap[sid] = name
+    if got:
+        print("ensure", ensure_seller_google(COMPETITOR_SS))
+        h2, srows2 = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))
+        idx_nm = h2.index("店名") if "店名" in h2 else -1
+        live_ids = {str(r.get("sellerId") or "").strip().upper(): i for i, r in enumerate(srows2)}
+        new_rows = []
+        for sid, name in got.items():
+            if sid in live_ids:
+                i = live_ids[sid]
+                if not str(srows2[i].get("店名") or "").strip() and idx_nm >= 0:
+                    col = col_letter(idx_nm + 1)
+                    svc.spreadsheets().values().update(
+                        spreadsheetId=COMPETITOR_SS,
+                        range="'%s'!%s%d" % (SHEET_SELLER.replace("'", "''"), col, i + 2),
+                        valueInputOption="RAW",
+                        body={"values": [[name]]},
+                    ).execute()
+            else:
+                rec = {k: "" for k in h2}
+                rec["sellerId"] = sid
+                rec["店名"] = name
+                if "調査CK" in rec:
+                    rec["調査CK"] = False
+                new_rows.append([rec.get(k, "") for k in h2])
+        if new_rows:
+            svc.spreadsheets().values().append(
+                spreadsheetId=COMPETITOR_SS,
+                range="'" + SHEET_SELLER + "'!A1",
+                valueInputOption="USER_ENTERED",
+                insertDataOption="INSERT_ROWS",
+                body={"values": new_rows},
+            ).execute()
+    ch, crow = as_dicts(read_all(svc, RESEARCH_SS, T_CAND))
+    if "店名" not in ch:
+        print("no 店名 col")
+        return 1
+    ni = ch.index("店名")
+    col = col_letter(ni + 1)
+    filled = 0
+    for i, r in enumerate(crow):
+        ids = [p.strip().upper() for p in str(r.get("sellerId") or "").replace(",", "|").split("|") if p.strip()]
+        names = []
+        seen_n = set()
+        for sid in ids:
+            n = nmap.get(sid) or ""
+            if n and n not in seen_n:
+                seen_n.add(n)
+                names.append(n)
+        val = "|".join(names)
+        old = str(r.get("店名") or "").strip()
+        if not val or val == old:
+            continue
+        svc.spreadsheets().values().update(
+            spreadsheetId=RESEARCH_SS,
+            range="'%s'!%s%d" % (T_CAND.replace("'", "''"), col, i + 2),
+            valueInputOption="RAW",
+            body={"values": [[val]]},
+        ).execute()
+        filled += 1
+    line = "fill_names got=%d leftover=%d cand_upd=%d" % (len(got), leftover, filled)
+    append_log(svc, "S4", line)
+    print(line)
+    return 0
+
+
 def main() -> int:
     import argparse
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--fill-cand-names", action="store_true")
+    ap.add_argument("--cap", type=int, default=40)
     args = ap.parse_args()
+    if args.fill_cand_names:
+        svc = sheets_service(write=args.apply, interactive=args.apply)
+        if not svc:
+            print("no_sheets")
+            return 2
+        return fill_cand_names(svc, max(1, min(args.cap, 80)), apply=args.apply)
     svc = sheets_service(write=True)
     h, rows = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))
     sid = str(rows[0].get("sellerId") or "").strip() if rows else ""

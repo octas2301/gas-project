@@ -1,0 +1,18 @@
+{
+  "id": "T-CCC-05",
+  "desc": "洗い未完走→Dもarmもしない",
+  "parent": "アサヒ飲料",
+  "wash_complete": false,
+  "maker_sum": [
+    {"メーカー": "アサヒ飲料", "実態": "製造メーカー", "洗い状態": "Keepa中", "洗い進捗": "left=489", "セラーヒット": 3},
+    {"メーカー": "永谷園", "実態": "製造メーカー", "セラーヒット": 3}
+  ],
+  "d1": {"state": "DONE", "pass": 0},
+  "d2": {"state": "DONE", "leftover": 0},
+  "expect": {
+    "chain_state": "skipped_incomplete",
+    "ran_d": false,
+    "arm_next": false,
+    "d_ok": false
+  }
+}

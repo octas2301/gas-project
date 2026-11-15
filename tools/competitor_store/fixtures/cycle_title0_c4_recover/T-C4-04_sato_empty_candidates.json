@@ -1,0 +1,18 @@
+{
+  "id": "T-C4-04",
+  "desc": "①候補ゼロの完了メーカーは D1 append=0",
+  "mode": "script",
+  "start": {
+    "maker_sum": [{"メーカー": "サトウ食品", "洗い状態": "完了", "洗い進捗": "done"}],
+    "candidates": [{"メーカー": "ハウス食品", "ASIN": "B001", "門結果": "通過"}],
+    "list_asins": []
+  },
+  "steps": [
+    {"op": "d1", "parent": "サトウ食品"}
+  ],
+  "expect": {
+    "last_d1.append": 0,
+    "last_d1.pass": 0
+  },
+  "note": "サトウ偽完了：C4を回しても品番リストは増えない"
+}

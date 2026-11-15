@@ -1,0 +1,27 @@
+---
+description: 人間がログ・スプシ・実行結果の確認や合否を求めたときの参照範囲と回答先頭
+alwaysApply: true
+---
+
+# 共通スプシ参照（実データ確認）
+
+人間がログ・スプシ・実行結果を見て合否や原因を求めたら、手製の要約だけで済ませず **先に** [docs/org/COMMON_SS_VIEW_REQUIREMENTS.md](docs/org/COMMON_SS_VIEW_REQUIREMENTS.md) を読む。文言の完全一致は不要（「ログ見て判定」「通った？」「空振りか」も含む）。
+
+## 正
+
+- スプシ本体とログの両方を見る。コードだけで合否しない
+- 先に `python tools/common_ss_view/dump.py dump --menu （仕入れ検討①|出品|広告・タイムセール|見積・発注） --intent （judge|maker|keepa|listing_fail|ads|estimate|order|estimate_profit）` を実行し、`tools/common_ss_view/out/seen.txt` と出した TSV だけ読む
+- IDは `tools/common_ss_view/registry.json`（正本 §3 と同内容）。プロジェクトごとに差し替えない
+- メニュー単位の最小ファイルセット（§4）＋指示に関係するタブだけ（§5）。全タブは `--all-tabs`（人間が明示したときだけ）
+- 回答の**先頭**に見た場所を書く（見ていないものは書かない）。`seen.txt` をそのまま使ってよい:
+
+```
+見た場所:
+- ファイル: （省略名）／タブ: （タブ名）
+- ログ: （①ログ の pr_… と内容）
+```
+
+## 禁止
+
+- 関係ないスプシ・全タブを常時読むこと（トークン浪費）
+- 見た場所を書かずに合否だけ返すこと

@@ -1,0 +1,27 @@
+{
+  "id": "T-SN-18",
+  "desc": "B2はauto_pick_jan常にfalse",
+  "input": {
+    "draft_name": "みそ汁",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000013",
+    "hit_asin": "B000000013",
+    "keepa_jans": [],
+    "search_jans": [
+      "4911111111111",
+      "4922222222222",
+      "4933333333333"
+    ]
+  },
+  "expect": {
+    "pattern": "B2",
+    "auto_pick_jan": false,
+    "need_human": true,
+    "for_estimate": true,
+    "jan_trust": "複数"
+  }
+}

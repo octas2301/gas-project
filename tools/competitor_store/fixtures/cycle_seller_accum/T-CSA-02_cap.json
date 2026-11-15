@@ -1,0 +1,33 @@
+{
+  "id": "T-CSA-02",
+  "desc": "上限: cap=2 で新規2店のみ。stop=cap",
+  "sellers_before": [],
+  "cand": [
+    { "ASIN": "B0CSA00010", "門結果": "通過" },
+    { "ASIN": "B0CSA00011", "門結果": "通過" },
+    { "ASIN": "B0CSA00012", "門結果": "通過" }
+  ],
+  "keepa_full": [],
+  "side_effect": { "cand_rows": 5, "keepa_full_rows": 20 },
+  "run": {
+    "cap": 2,
+    "offers_by_asin": {
+      "B0CSA00010": ["AYCAPSELL01", "AYCAPSELL02"],
+      "B0CSA00011": ["AYCAPSELL03"],
+      "B0CSA00012": ["AYCAPSELL04"]
+    }
+  },
+  "expect": {
+    "new_seller_ids": ["AYCAPSELL01", "AYCAPSELL02"],
+    "seller_row_delta": 2,
+    "stopped": "cap",
+    "after_asin": "",
+    "api_calls": 1,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00010"],
+    "remain_asin": 2,
+    "must_stay_unmarked": ["B0CSA00011", "B0CSA00012"],
+    "must_not_add": ["AYCAPSELL03", "AYCAPSELL04"],
+    "side_effect_unchanged": true
+  }
+}

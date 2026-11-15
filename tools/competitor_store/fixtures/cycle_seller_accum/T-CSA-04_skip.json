@@ -1,0 +1,49 @@
+{
+  "id": "T-CSA-04",
+  "desc": "除外: Amazon直販・既存店・短IDは追加しない",
+  "sellers_before": [
+    {
+      "sellerId": "AYEXIST00002",
+      "調査CK": false,
+      "採取元": "bb+spapi_new"
+    }
+  ],
+  "cand": [
+    { "ASIN": "B0CSA00030", "門結果": "通過" }
+  ],
+  "keepa_full": [
+    { "ASIN": "B0CSA00030", "BuyBoxセラー": "ATVPDKIKX0DER" }
+  ],
+  "side_effect": { "cand_rows": 6, "keepa_full_rows": 30 },
+  "run": {
+    "cap": 100,
+    "offers_by_asin": {
+      "B0CSA00030": [
+        "ATVPDKIKX0DER",
+        "A1VC38T7YXB528",
+        "AYEXIST00002",
+        "SHORT",
+        "AYSKIPNEW01"
+      ]
+    }
+  },
+  "expect": {
+    "new_seller_ids": ["AYSKIPNEW01"],
+    "seller_row_delta": 1,
+    "stopped": "ok",
+    "after_asin": "",
+    "api_calls": 1,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00030"],
+    "remain_asin": 0,
+    "must_not_add": ["ATVPDKIKX0DER", "A1VC38T7YXB528", "AYEXIST00002"],
+    "new_rows": {
+      "AYSKIPNEW01": {
+        "調査CK": false,
+        "採取元": "bb+spapi_new",
+        "メモ_contains": "構成比は店洗い時"
+      }
+    },
+    "side_effect_unchanged": true
+  }
+}

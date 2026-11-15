@@ -1,0 +1,1 @@
+{"id":"T-CTW-09","desc":"H7: 心拍OFFで対象なし→再武装しない（意図停止）","kind":"fire","heartbeat_on":false,"expect":{"outcome":"done","state.trigger_n":0,"state.prop_on":false,"log_has":["branch=no_target"]}}

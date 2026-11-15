@@ -1,0 +1,21 @@
+{
+  "maker": "味の素",
+  "summary": {},
+  "master": {},
+  "expect": {
+    "skipped": false,
+    "jitta": "入口ブランド",
+    "entry_preferred": "ブランド",
+    "auto_confirm": true,
+    "gyoshu": "調味料・加工食品",
+    "amazon_root_categories": "食品・飲料・お酒",
+    "amazon_browse_shelves": "調味料|コーヒー・紅茶|冷凍食品|スープ・みそ汁",
+    "entry_needle": "AGF",
+    "confidence": "high",
+    "業種": "調味料・加工食品",
+    "Amazonルートカテゴリ": "食品・飲料・お酒",
+    "AmazonBrowse棚": "調味料|コーヒー・紅茶|冷凍食品|スープ・みそ汁",
+    "実態信頼度": "high",
+    "evidence_contains": ["ajinomoto.co.jp"]
+  }
+}

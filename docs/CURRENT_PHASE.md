@@ -1,9 +1,78 @@
 # プロジェクト全体の位置づけと現在の開発フォーカス
 
-**最終更新**: 2026-08-16（組み合わせセット要件正本化。実装は列追加・Keepa対応が先）
+**最終更新**: 2026-11-15（バックアップ Phase0: G1＋G3 タスク登録／盛り共通核は並行）
 **読み方**: 次の Agent は `docs/AGENT_HANDOVER.md` の **§1.5・§2** に従い、**本ファイルを最初に読み**、続けて §2 の必読一覧でプロジェクト全体をインプットする。
 
 ---
+
+## 0backup. 全PJバックアップ（2026-11-15）
+
+**方針**: スプシ＝Drive日次。コード＝**G1（毎朝8:05 main push）＋G3（全claspローカル）**。次段スプシ順＝広告→在庫→競合Jitta→税務。[要件](org/PROJECT_DAILY_BACKUP_REQUIREMENTS.md)／[HUMAN_RUN](org/PROJECT_DAILY_BACKUP_HUMAN_RUN.md)
+
+**Phase0**: `.gitignore` 強化。`tools/git_daily_backup.ps1`／`backup_all_clasp_snapshots.ps1`／`register_backup_tasks.ps1`。タスク `gas-project-git-daily-backup`・`gas-project-clasp-all-snapshot` 登録済。G3初回OK（6 clasp）。
+
+**次**: baseline commit/push → Drive目視（出品・①）→ 次段スプシは広告から。
+
+---
+
+## 0plating_generic. 盛り共通核（2026-11-15）
+
+**採用**: 一片見本・MAIN盛り・SUB盛りで共通レイヤ（危険文オフ・面クロップ・スロット分離・qualityはできる限り low）。正本 [org/PLATING_AND_PIECE_GENERIC_LOGIC.md](org/PLATING_AND_PIECE_GENERIC_LOGIC.md)。コード `b5_generic_plating.py`。切戻し `B5_GENERIC_PLATING_CORE=0`。  
+**次**: ぶり等で MAIN/SUB 検収。high は既定オフ。
+
+---
+
+## 0session. 全体要件確認セッション終了（2026-10-30）
+
+**このセッションでやったこと**: プロジェクト全体像の再確認、進捗整理、エージェント引き継ぎ方針の確認。プロジェクト全体の要件定義・前提は **gas-project の docs が正本**。他エージェントはフローごとに実装要件を詰め、新要件・前提は docs に戻す（[AGENT_HANDOVER.md](AGENT_HANDOVER.md)）。
+
+**いまの位置づけ**
+
+| 項目 | 状態 |
+|------|------|
+| M1 基盤 | ほぼ済 |
+| M2 出品（領域2） | 進行中・主戦場（下記 0yahoo_caption / C→D→E 等） |
+| M3 領域1 | 進行中・別本線 |
+| M4〜M6 | 後続 |
+
+**次にやること（新Agent）**: **フローごとの実装要件定義**を詰める。起動時は AGENT_HANDOVER §2 をすべてインプットし、担当フローを明示する。新たに決めた要件・前提は該当 docs に追記する。
+
+**このセッションの区切り**: 全体要件の確認はここまで。実装の要件定義は**別エージェント**で進める。
+
+---
+
+## 0yahoo_caption. Yahoo商品説明テンプレ＋LOCK（2026-09-14）
+
+**セッション入口（新Agent）**: [SESSION_HANDOVER_YAHOO_CAPTION_20260915.md](SESSION_HANDOVER_YAHOO_CAPTION_20260915.md)
+
+**本線は案A'（自動化）**: P6b lib API UP済。本採用候補へ差し替え再UP済（`sub_image_ai_compose`）。Proで魚種画像目視待ち。
+
+**完成形（P6c-1 当選限定・紹介組立）**: P5固定文は仮本線。本文＝マスタ **`楽天サブ画像1〜10`** の当選サブ。紹介は catch＋salesTalk／subs＋魚種・主原料から機械組立。内容量の数字は紹介に使わない（大容量は残す）。写真用overviewと商品説明文AIは種にしない。画と文は同一 themeId。上位3。PC・スマホは同じ仕様で枠内。ONは `YAHOO_CAPTION_RICH_P6C_THEMES_ENABLED=true`。[要件 §0.1](org/YAHOO_CAPTION_TEMPLATE_LOCK_REQUIREMENTS.md)／[P6c](../tools/yahoo_page_mock/paste/HUMAN_RUN_YAHOO_CAPTION_P6C_THEMES.md)。
+
+**今の人間手順**: マッピング `point-immediate`＝1 済。かつお・まぐろ・ぶりは説明API反映を **1回**（昨夜は 0 のまま `updateItem`）。**駐車**: 出品済みの任意項目だけ直す器（`getItem`→現行値同送→`editItem`）。大きいので未着手。[SESSION §5 YAHOO-PARTIAL-UPDATE](SESSION_HANDOVER_YAHOO_CAPTION_20260915.md)。
+
+**AI-DESC-FISH-MIX（2026-09-17 コード済）**: Yahoo商品情報（explanation）の複合魚種は caption テンプレではなく AI→マスタJOIN。一意ASIN→一意商品名ベース＝AI商品名→一意JAN。メーカー両方非空なら一致必須。ブランドはJOINしない。生成プロンプトは1SKU固定。未設定=ON。切戻し `AI_DESC_FISH_MIX_JOIN_ENABLED=false`。要出品 clasp→おだしAI再生成→マスタ同期→説明API。[要件 §6.1](org/YAHOO_CAPTION_TEMPLATE_LOCK_REQUIREMENTS.md)。
+
+---
+
+**C**＝楽天画像マッチング（02→シート／金丸やり直しまれ）。**D**＝楽天・Yahoo出品のみ（Amazonラジオ削除）。**E**＝Amazon（07マッチング→R2→出品ファイル）。**E①**は楽天未整理を読まない（一致=楽天欄保持／レ点差分=重なりSKUだけ引継ぎ）。切戻し `AMAZON_E1_KEEP_RAKUTEN_ENABLED=false`。**E②/U4**は未充足SKUを全件キューし、E②開始から22分で切って機械再開（人が同じメニューを件数分割で押さない）。**D補助.旧E**はトップ廃止→Z「E段階・互換」。日常: `C→D→E`。正本: [org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md](org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md)。要 clasp。
+
+**Cレイアウト拡張（同日）**: メイン2〜10＝他セット昇順、サブ＝全子共通、親＝最少セット子。青枠へ直接 IMAGE。[org/D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md](org/D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md)。戻し `RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED=false`。
+
+---
+
+## 0b45. MAIN／サブ整合（2026-09-05）
+
+**表示**: **B-④＝楽天MAIN基礎**／**B-⑤＝サブ画像**／**B-⑥＝Amazon MAIN**（関数名互換）。推奨順: A→B（**B一括＋B-③は起動確認・未設定OFF・案1コード済**）→正本→競合→**個品見本**→**B-④／B-⑤順不同**（文字色・正本・見本は親共有）→待ちに **B-⑥**→**C→D→E**（楽天マッチング→楽天Yahooアップ→Amazon）。正本: [ALIGN §1／§1.2](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[CDE分割](org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md)／[B6要件](org/D_MENU_B6_AMAZON_MAIN_REQUIREMENTS.md)。**§7.14** 個品共有継続。**文字色共有コード済**（Prop＋Drive JSON・要 clasp）。
+
+**MAIN→サブ寄せ（2026-11-02）**: [ALIGN §4.5](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。**P1人間検収OK**。**P2閉じた**。**P3第1配線**（§4.5.10 G7/G6/G1→`dry_sub`。切戻し `B4_SUB_PICTURE_GATE=0`）。**P3-W第1**（§4.5.11 WRAP→個包装訴求 themeId=21 +1。hasWrapは親SKU→商品名ベース→JAN。切戻し `B4_WRAP_APPEAL_THEME=false`。要 clasp）。**P3-W第2**（手持ち候補UI。切戻し `B4_WRAP_ASSET_LANE=0`。clasp不要）。次＝④MAIN左下Pillow。
+
+**薄い一片あり（2026-11-10）**: [ALIGN §4.5.10bis-T](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[T2](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[T3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)／[T4](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。F0〜F2済＋IDENTITY≠一片。**T4配線済**（深堀UI・スタック・形状ドナー自動。仮想B/C合格）。切戻し --piece-set-max 0／B5_PIECE_TRUTH_GATE=0／B5_PIECE_GATE_UI=0／B5_SURFACE_SHAPE_SPLIT=0。**いま＝F3ぶり人間検収**（P3 MAIN2+SUB1生成済・3_review.html）。ミックスはF4。
+---
+
+## 0b5rak. 楽天MAIN基礎（表示B-④／旧B-⑤・2026-08-28）
+
+**P0・案F本線ロック**（2026-08-29）。**P1〜P3b コード済**。**§0.2 役割定義ロック**（2026-10-10。入口ゲート廃止・大＋小焼成）。**案A親キュー＋公式URLキャッシュ**（2026-10-11。1窓・親ごと完了→次・先読み。TTL30日。要出品 clasp）。**S15〜S19 virt揃え GAS済**（ペルソナ詳細・場面Gemini・公式料理。要出品 clasp）。**後載せは不合格で既定オフ**（2026-09-20。袋はAI配置・縦横比固定。個品は見本を貼らない。短冊許可は削除）。ブラウザで複数採用＋レ点子SKU割当→`_単体__{adoptKey}.png`＋`set_base_map.json`（**textColor**）。Cは子ごとに土台＋親ごと文字色。Yahoo同エンジン／Amazon対象外。既存再利用（`--list-latest`）。拡大・再生成世代保持。要 clasp＋人間検収。正本: [org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md) §0.2・§3.6.1〜3.6.3／[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)／[ALIGN](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。
 
 ---
 
@@ -23,7 +92,21 @@
 | R9 | キュー3→4 | **しない**（R3/R5の実測後に別承認） |
 | R10 | 楽天CSV／Yahoo.js／B順 | 触らない |
 | R11 | 処理時間 | 済。シート `▼実行時間`。配線は B Step と Step5 の geminiSearch／geminiVision／openaiVision のみ。共通 `logOpTiming_`。切戻し `OP_TIMING_ENABLED=false`。**全関数 `console.time` 禁止**（再指示時は `.cursor/rules/op-timing-scope.mdc` で止める） |
-| R12 | 異種組み合わせセット | R12-0〜4 コード済。[org/COMBO_SET_BOM_REQUIREMENTS.md](org/COMBO_SET_BOM_REQUIREMENTS.md)。上限3維持。次＝R12-5 人がチーズかつお＋だしでB検収。要 clasp |
+| R12 | 異種組み合わせセット | Keepa◎がある袋はAmazonその値段。寸法は長辺・短辺最大、最短のみ数量倍。ミックス親FBAは1袋子ASIN＋Catalog梱包空ならBC〜BE。[org/COMBO_SET_BOM_REQUIREMENTS.md](org/COMBO_SET_BOM_REQUIREMENTS.md) §6–§7。要 clasp |
+
+---
+
+## 0props. Script Properties 上限（2026-09-17）
+
+1件9KB・合計500KB。未使用フラグより **B5正本／文字色／Amazon PT指紋の巨大JSON** が主因。秘密（APIキー）はシートに出さない・消さない。
+
+**人間**: 出品 clasp → Z「15. 共通・検証」→「15f. Script Properties」→ ㉓使用量 → ㉔巨大JSON退避。任意で㉕個別フラグ削除。シート名 `▼ScriptPropertiesメモ`。Drive フォルダ `ScriptProps退避`。A〜Eの読み取りは退避後も Drive を見る。
+
+---
+
+## 0ss. 共通スプシ参照（2026-08-19）
+
+人間がログ・スプシ・実行結果の確認や合否を求めたときの正本: [org/COMMON_SS_VIEW_REQUIREMENTS.md](org/COMMON_SS_VIEW_REQUIREMENTS.md)。手元は `tools/common_ss_view/`（`dump.py` → `out/`）。IDは全PJ固定。メニュー単位の最小ファイル＋関係タブだけ。回答先頭に見た場所。ルール `.cursor/rules/common-ss-view.mdc`。
 
 ---
 
@@ -35,6 +118,22 @@
 
 ---
 
+## 0ab. A→B検収メモ（2026-08-22・実データ確認済）
+
+runId `314f7d23-…`／7.6 `AI8_20260822_005631_717319`。AL「販売価格」は未使用（正は `販売価格amazon`）。
+
+| 状態 | 内容 |
+|------|------|
+| 許容 | チーズ系ミックスの寸法3辺・FBA空／楽天Yahooセット欠け（競合未出品） |
+| **保留（G7）** | **ミックス楽天 7207／同一URL複数親**（例 `lifucoco-shop/0764-012590`）— **楽天に当該セットの正しい競合が無いとき**に広い検索が汎用ヒットを拾う程度。**クリティカルではない**。問題が大きくならない限りコード改修しない。再検討条件＝正しいセット競合があるのに誤URLが載る／複数親汚染が価格提案を壊す。詳細 [B_RERUN_CLEAR_AND_JUDGE](org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md) §4.3 |
+| 正常 | `timeBudgetStop`（約24.6分・Step7後→7.6手前）→再開で完了 |
+| コード済・要clasp | **水色／sanky**: Step1後 `[SKU監査] ANOMALY`（接頭辞・親SKUずれ）で原因追跡可 |
+| コード済・要clasp | **ミックスYahoo空**: `[ミックス競合] COMPARE` で楽天∥Yahoo並列＋Gemini byMall。`DUP_URL`で同一URL複数親 |
+| コード済・要clasp | **Yahooカテゴリ**: 複数qマージ＋-score＋門点数制。仮想9PASS。要 clasp |
+| **スプシ数式済** | **GB〜GD赤**: 原因＝最終名の「・」を重複語扱い。数式を `SUBSTITUTE(・)` 後にSPLITするよう全行更新済（29/58は「重複なし出品OK」確認） |
+| 単品CQ空 | かつお／まぐろ／ぶり親の寸法なし（未着手） |
+| **次（人間）** | **マスタ消去→再B**: 列チェックリスト＋合否判定 → [org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md](org/B_RERUN_CLEAR_AND_JUDGE_HUMAN_RUN.md) |
+
 ---
 
 ## 0amz. Amazon 競合貼付（2026-08-15・**保留**）
@@ -43,7 +142,9 @@
 
 **残課題（着手しない）**: キャッシュ時 Keepaフル「目的=出品」／CAP／定時トリガー／空ASIN Catalog。`KEEPA_FULL_WRITE_ENABLED` は **false**。
 
-**後続・検証（未着手）**: AのGemini画像照合を外してよいか。仮説=Catalog(SP-API)→Keepa商品名で精度足りる。コスト削減。切替は `KEEPA_SKIP_REF_IMAGE_AND_MATCH=true`（今は付けない）。見るもの=◎の過不足・P5評点・袋数。商品名掃除 `KEEPA_CLEAN_TITLE_BY_AI` は別。  
+**保留メモ（2026-08-21）**: キャッシュ時 Keepaフル「目的=出品」書込（`KEEPA_FULL_WRITE_ENABLED`）は、**リサーチPJが完了またはほぼ完了したタイミングで再提案**。書き先は競合DBの `Keepaフル`。いまは OFF のまま触らない。12-⑩定時対象JANログは在庫／競合価格リサーチ側で開発予定のため出品チャットでは保留。AのGemini画像照合OFFは**コストが上がり過ぎたとき再検討**（今は現行のまま）。
+
+**後続・検証（保留）**: AのGemini画像照合を外すか。仮説=Catalog→Keepa商品名で足りる。切替 `KEEPA_SKIP_REF_IMAGE_AND_MATCH=true`。見るもの=◎の過不足・P5評点・袋数。**コスト過大時に再検討**（2026-08-21）。商品名掃除 `KEEPA_CLEAN_TITLE_BY_AI` は別。  
 **済**: 12-⑭楽天Yahoo、P3 Amazon◎、P0–P5、W4読、P5 A末尾並べ替え。
 
 **コードはフェーズ順・別承認。** 正本: [org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md](org/B_AMAZON_COMPETITOR_PASTE_REQUIREMENTS.md)
@@ -65,7 +166,7 @@
 
 **P5 実機合格 2026-08-15**: `pasteP5-028e317c` DONE ok=true。P2 `pasteP2-554ce90d` write=true。シート tagged 全ASIN・stack_ok。A api=0。WRITE は false のまま。
 
-**貼付P0–P5完了。** 案Bしない。次の出品コードはキャッシュ時フル出品（別承認）または定時12-⑩（読取。トリガー禁止）。①の次L1はリサーチ agent。
+**貼付P0–P5完了。** 案Bしない。次の出品コードはキャッシュ時フル出品（**リサーチ完了後に再提案**／別承認）または定時12-⑩（**在庫／競合価格側・保留**）。①の次L1はリサーチ agent。
 
 **P1計画 dry 合格（Catalog GETなし）**: t18 ok。貼付10ブロックはすべて `skip_no_empty`（空ASINの埋め対象0）。12-⑮はクォータ不要。実Catalogは空欄が出てから。
 
@@ -117,9 +218,9 @@
 **他PJ**: [TASK_STRUCTURE](org/B_PURCHASE_RESEARCH_TASK_STRUCTURE.md)。Catalog 生は `モールヒット` 禁止。**Keepaフルへ①が書く（W1）**。90日内は貼付が読む（W4）。出品 clasp 非差し替え。
 
 ### 次にやること
-1. 完成形は [FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)（契約 §5。3者は §6＝E/F/G/J 実装前）。A′ と E 以降のコードは後。K1–K8は止。週次トリガー（G5）は後
-2. W4 本線は出品（`KEEPA_FULL_READ_ENABLED`）
-3. 楽天CSVは触らない
+1. 完成形は [FLOW](org/B_PURCHASE_RESEARCH_FLOW.md)。心拍 A–D は継続。
+2. **見積の今（2026-10-03）**: 本線は **メールから単価→利益が正しいか**（FLOW §5.3.2・チャット通し可）。G 常駐コードは3者のあと。**FBA最安／FBM最安は見積付与後だけ追加取得**（洗い・門では取らない）。利益列の nn 左レイアウト／自己発送は §5.3.2bis **仮**（本線より後）。
+3. W4 本線は出品（`KEEPA_FULL_READ_ENABLED`）。楽天CSVは触らない
 
 原本（不可侵）: https://docs.google.com/spreadsheets/d/1Uk-DEfoSTVqb5N8XsfSqciaZcIjzbbPpGvg4hQYgDl4/edit?gid=1060574934#gid=1060574934  
 自動化用複製: https://docs.google.com/spreadsheets/d/1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE/edit?gid=685859874#gid=685859874  
@@ -296,13 +397,13 @@ WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要な
 | `APPROVAL_AMAZON_LV4_SC_SUMMARY_FOLDER_ID` | 監視フォルダID（必須） |
 | `APPROVAL_AMAZON_LV4_TRACK` | **B**（新規GENERATED） |
 | `APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_ATTRS` | **true／未設定** |
+| ~~`APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY`~~ | **廃止**（2026-10-24。マスタ在庫は Property 不要。キーが残っていても読まない） |
 | `AMAZON_SHELF_REGISTRY_FILE_ID` | Drive の `shelf_registry.json` ファイルID |
 | `AMAZON_IMAGE_CANDIDATE_FOLDER_ID` | Drive 07（C本線） |
 
 **常時OFFのまま（毎回ONにしない）**
 | Property | 推奨 | 理由 |
 |----------|------|------|
-| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY` | **false／未設定** | マスタ在庫で数量送信（承認②） |
 | `APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED` | **false／未設定** | PT空の新規だけ一時 true |
 | `AMAZON_IMAGE_U2_ENABLED` | **false／未設定** | Cコースが実行時だけ一時ON |
 | `AMAZON_U4_URL_EMBED_ENABLED` | **false／未設定** | 同上（C-2／自動U4経路） |
@@ -314,7 +415,7 @@ WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要な
 | `YAHOO_OAUTH_WARN_DAYS` | 既定7 |
 | `RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED` | 未設定＝**true**。旧運用に戻すときだけ `false` |
 | `AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED` | 未設定＝**true** |
-| `YAHOO_OAUTH_REDIRECT_URI` | アプリ登録と一致する戻り先URL |
+| `YAHOO_OAUTH_REDIRECT_URI` | **店の正=`http://localhost/`**（Yahooアプリコールバックと一致。B14トークンと混ぜない）。[再認証HUMAN_RUN §0](org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md) |
 
 ### SEASONINGで確定した必須・落とし穴（再発防止）
 | 項目 | 対応 |
@@ -348,7 +449,7 @@ WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要な
 - [org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md](org/LV4_P2_DC_123_INVESTIGATION_APPROVAL.md)／[org/D_MENU_P2_DC_HUMAN_RUN.md](org/D_MENU_P2_DC_HUMAN_RUN.md)（**P2調査完了＋§7.4方針ロック**・③は低優先）
 - [org/LV4_P1_FILE_MIN_APPROVAL.md](org/LV4_P1_FILE_MIN_APPROVAL.md)／[org/D_MENU_P1_HUMAN_RUN.md](org/D_MENU_P1_HUMAN_RUN.md)（**P1 File最少・検収OK**）
 - [org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md](org/LV4_AMAZON_CATEGORY_PT_POC_APPROVAL.md)／[org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md](org/LV4_AMAZON_CATEGORY_PT_POC_HUMAN_RUN.md)（**P4a読取PoC・実機合格**）
-- [org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)（**P4b-a／b合格。P4b-c＝D新規ゲート方針**）
+- [org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md](org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md)／[org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md](org/D_MENU_P4B_CATEGORY_PT_HUMAN_RUN.md)（**P4b-a／b合格。2026-09-17 貼付◎本線**）
 - [org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](org/LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)／[org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md](org/D_MENU_D_NEW_PT_SHELF_GATE_HUMAN_RUN.md)（**D新規ゲート＋Cursor手渡し・実装済**）
 - [org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md](org/LV4_SHELF_BROWSE_CATALOG_APPROVAL.md)／[org/D_MENU_SHELF_BROWSE_CATALOG_HUMAN_RUN.md](org/D_MENU_SHELF_BROWSE_CATALOG_HUMAN_RUN.md)（**SHELF Browse 網羅・Node ルーティング**）
 - [org/LV4_MAP_SHEET_JSON_SYNC_APPROVAL.md](org/LV4_MAP_SHEET_JSON_SYNC_APPROVAL.md)／[org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md](org/D_MENU_MAP_SHEET_JSON_SYNC_HUMAN_RUN.md)／[org/MAP_SC_ERROR_LEDGER.md](org/MAP_SC_ERROR_LEDGER.md)（**正本=sheet／派生=MD／実行=JSON**）
@@ -393,6 +494,7 @@ WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要な
   - HPC／FOOD／T2／U3／**U2**／**U4（楽天サブ流用）**: 実装済・運用合格。  
   - C1 SEASONING: 七味 **出品中**。  
   - C1 GROCERY: 缶飯 **出品中**（100521待ち解消・人間確認済）。  
+  - C1 SOUP: 食べるおだし PACKAGED。**必須だけ常時埋め**。寸法・重量は必須から除外。新PTは 09＋E③のあと B-T1 auto-onboard。  
   - 本線UX: [org/D_MENU_U2_HUMAN_RUN.md](org/D_MENU_U2_HUMAN_RUN.md)／[org/D_MENU_U4_HUMAN_RUN.md](org/D_MENU_U4_HUMAN_RUN.md)／[org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md](org/D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)。  
 - **楽天Nav Stage1**: 実機PASS。Propertyはfalse。  
 - **Lv3（Yahoo）**: 2026-07-20 人間検収完了。  
@@ -451,7 +553,33 @@ WRAP＋セル内改行で約60pxに伸びる。折り返しは運用上必要な
 
 | 日付 | 内容 |
 |------|------|
-| 2026-08-12 | **B P1実装**: シリーズID／メーカー辞書A181／カタログスラッグ13。要 clasp push。[要件](org/B_P1_SERIES_MAKER_CATALOG_REQUIREMENTS.md)。 |
+| 2026-11-03 | **P3-W第2**: WRAP確定後手持ち候補UI。`B4_WRAP_ASSET_LANE=0`切戻し。clasp不要。[ALIGN §4.5.11](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-03 | **P3-W hasWrap鍵**: 親SKU→商品名ベース→JAN。export全件 bool。[ALIGN §4.5.11](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-03 | **P3-W第1**: WRAP→個包装訴求 themeId=21 +1（最大11）。切戻し `B4_WRAP_APPEAL_THEME=false`。要 clasp。[ALIGN §4.5.11](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-02 | **MAIN→サブ寄せ P3第1配線**（G7/G6/G1→dry_sub）。切戻し `B4_SUB_PICTURE_GATE=0`。[ALIGN §4.5.10](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-02 | **MAIN→サブ寄せ P2第2 人間検収OK**（訴求軸・つなぎ）。次＝P3。[ALIGN §4.5.9](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-02 | **MAIN→サブ寄せ P1 人間検収OK**（再利用・レ点外し・U1高速化）。次＝P2。[ALIGN §4.5.7](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-11-02 | **MAIN→サブ寄せ P0**: [ALIGN §4.5](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。 |
+| 2026-09-18 | **バルクごと必須埋め**: 純正「データ定義」の必須／条件付き必須を読み、値がある列だけ書く。GROCERY黒セルomitは缶飯専用。[T2](org/D_MENU_LANE_B_BULK_T2_HUMAN_RUN.md) |
+| 2026-09-18 | **PACKAGED auto-onboard**: 新バルクは 09+E③のあと B-T1 が指紋＋列マップを自動登録して 03 へ。[T1 PROD](org/D_MENU_LANE_B_BULK_T1_PROD_HUMAN_RUN.md) |
+| 2026-09-16 | **Yahoo説明 P6c**: pool＝マスタ `楽天サブ画像1〜10` の入っている枠。落選・空欄は売れそう順に入れない。[要件 §0.1](org/YAHOO_CAPTION_TEMPLATE_LOCK_REQUIREMENTS.md) |
+| 2026-09-15 | **Yahoo説明 §0.1**: 完成形＝採用テーマからAI売れそう順の上位3。人手型禁止。実装未。[要件](org/YAHOO_CAPTION_TEMPLATE_LOCK_REQUIREMENTS.md) |
+| 2026-09-04 | **文字色共有 実装**: Prop＋Drive JSON。要 clasp。[ALIGN §3](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。 |
+| 2026-09-05 | **B-⑥ Amazon MAIN**: メニュー本線化。CからAmazon量産を外し補助化。要 clasp。[B6](org/D_MENU_B6_AMAZON_MAIN_REQUIREMENTS.md)／[ALIGN §1.2](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-09-04 | **B一括＋B-③ 案1**: メニュー増なし。B起動確認→`B_INTEGRATED_INCLUDE_B3_IMAGES`。全パック後に約1分で B-③（Amazon自動）。要 clasp。[ALIGN §1.1](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-09-01 | **§7.14 個品見本共有**: MAIN／サブで同一 IDENTITY。構図は別。P-align-3 要件ロック・実装未。[ALIGN](org/B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。 |
+| 2026-08-29 | **B-⑤ 画像本線=OpenAI**（仮想v12人間ロック）。次は P1 メニュー。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-29 | **B-⑤ 仮想v12**: ③b/c主婦向け IMAGE_STYLE_TYPO。T3新規30（既存・退避除外）。①は abc11 流用。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v11**: ③b/cスマホ主役サイズ（金丸半分）。Gemini/OpenAI再比較。`…213826_abc11`。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v10**: ③に写真実写＋キャッチ必須1本。Gemini/OpenAI再比較。`…200941_abc10`。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v9**: Gemini/OpenAI同じ指示比較。右上空け→Pillow金丸。gpt-image-2。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v8**: ③b/c=スプシ材料・IMAGE_GOLDをAI配置・文字20%超は再作成。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v7**: ③b/cに虚偽禁止・金丸固定・白背景不可・文字20%・材料内売り。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v6**: ③a添付構図固定。③b/c短い売れる指示。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v5**: ①流用。②見出しルマ切替。③トンマナ＝人間ベスト。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-28 | **B-⑤ 仮想v4**: ①シズル+袋左下+Octas。②③空金丸。`4906283045119_20260828_004133_abc4`。[HUMAN_RUN](org/D_MENU_B5_RAKUTEN_MAIN_BASE_HUMAN_RUN.md)。 |
+| 2026-08-27 | **B-⑤ 見出しAI**: 金丸は98後貼り。文字≤20%。色はCの textColors。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)。 |
+| 2026-08-26 | **B-⑤ 案Aロック**: テーマ対最大4→人1枚。Pillowアピール。[要件](org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md)。実装は別承認。 |
 | 2026-08-12 | **B番犬P0実装**: ハード死後自動再開・Step5行CP・プルダウンTIME_SLICE・サマリ・進捗メニュー。要 clasp push。[要件](org/B_WATCHDOG_RESUME_REQUIREMENTS.md)。 |
 | 2026-08-12 | **販促2層減衰**: カレンダー減衰中%＋B中1%オーバーレイ。restore=減衰中%。`減衰開始日`。fetchは現在%のみ。要 clasp push／`--schema-only`。 |
 | 2026-08-10 | **本番常時ONセット**: PUT／ALLOW_PROD／LV4／SCサマリの未設定既定=true。MASTER_QTY・P4B・U2・U4は常時OFF。A1〜B2・A3合格反映。要 clasp push。 |

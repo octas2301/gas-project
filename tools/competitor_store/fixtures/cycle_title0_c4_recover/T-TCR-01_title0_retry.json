@@ -1,0 +1,15 @@
+{
+  "id": "T-TCR-01",
+  "desc": "title0 1-2回は retry（skip しない）",
+  "mode": "unit_title0",
+  "parent": "株式会社山清",
+  "fail_times": 2,
+  "arm_trigger": true,
+  "maker_sum": [{"メーカー": "株式会社山清", "洗い状態": "列挙中"}],
+  "expect": {
+    "skipped": false,
+    "count": 2,
+    "wash_armed": true,
+    "title0_map.株式会社山清": 2
+  }
+}

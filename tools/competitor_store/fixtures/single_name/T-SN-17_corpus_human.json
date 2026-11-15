@@ -1,0 +1,26 @@
+{
+  "id": "T-SN-17",
+  "desc": "人手コーパス再実行は補助可",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000012",
+    "hit_asin": "B000000012",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ],
+    "human_corpus": true
+  },
+  "expect": {
+    "pattern": "A1",
+    "corpus_assist_ok": true,
+    "for_estimate": true
+  }
+}

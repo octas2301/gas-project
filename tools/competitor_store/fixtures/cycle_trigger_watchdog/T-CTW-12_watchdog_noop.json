@@ -1,0 +1,1 @@
+{"id":"T-CTW-12","desc":"H10: 正常完走直後の番犬は再武装しない（誤検知しない）","kind":"fire_then_watchdog","watchdog_after_ms":120000,"expect":{"outcome":"done","wd.hint":"","wd.rearmed":false}}

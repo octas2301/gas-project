@@ -1,0 +1,18 @@
+{
+  "id": "series_maker_gate",
+  "note": "他社メーカーは衝突でゆるいシリーズにも入れない。FB pathも無関係→ガード空",
+  "productName": "食べるおだし（ かつお ）",
+  "makerName": "石原水産",
+  "expectedCategoryId": "",
+  "topN": 15,
+  "hits": [
+    {"title": "食べるおだし かつお 激安 他社", "maker": "別メーカー商事", "genreCategoryId": "4823", "path": "ペット用品、生き物:猫用品:キャットフード:ドライフード"},
+    {"title": "食べるおだし風 スナック", "maker": "スナック社", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"},
+    {"title": "コーヒーギフト", "maker": "某コーヒー", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"}
+  ],
+  "fallback": {
+    "source": "rakuten_mapped",
+    "yahooCategoryId": "996",
+    "path": "食品:魚介類、海産物:その他魚介類、海鮮類"
+  }
+}

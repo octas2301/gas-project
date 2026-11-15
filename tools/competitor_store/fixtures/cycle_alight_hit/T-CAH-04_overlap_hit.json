@@ -1,0 +1,37 @@
+{
+  "id": "T-CAH-04",
+  "desc": "累計ヒット: 2店が同メーカー→hit=2",
+  "sellers_before": [
+    {
+      "sellerId": "SHOP_A",
+      "店名": "店A",
+      "調査CK": false,
+      "抽出メーカー": "永谷園",
+      "食品比率": "80.0"
+    },
+    {
+      "sellerId": "SHOP_B",
+      "店名": "店B",
+      "調査CK": true,
+      "抽出メーカー": "",
+      "食品比率": "60.0"
+    }
+  ],
+  "maker_sum_before": [{ "メーカー": "永谷園", "セラーヒット": 1 }],
+  "side_effect": { "cand_rows": 8, "keepa_full_rows": 30 },
+  "batch": {
+    "shop_seller_ids": ["SHOP_B"],
+    "product_cap": 20,
+    "shop_cap": 3,
+    "mocks": {
+      "SHOP_B": {
+        "total": 15,
+        "products": [{ "asin": "B020", "manufacturer": "永谷園", "brand": "永谷園" }]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "永谷園": 2 },
+    "side_effect_unchanged": true
+  }
+}

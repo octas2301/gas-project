@@ -37,6 +37,8 @@
 2. **Yahoo! は楽天と分離**して管理する（`Yahoo.js`）。責務を混ぜない。
 3. **B統合実行の Step 境界は `コード.js` の `B_INTEGRATED_STEP_FUNCTIONS` を正**とする（`docs/AGENT_HANDOVER.md §8` / `HANDOVER.md §8.7`）。勝手に順序・境界を変えない。
 4. **シークレットをコード/コミットに入れない**。APIキーは **Script Properties**（`OPENAI_API_KEY` / `GEMINI_API_KEY` / `RAKUTEN_LICENSE_KEY` / `RAKUTEN_SERVICE_SECRET` など）から参照のみ。`HANDOVER.md §7` 参照。
+5. **全自動**。人間に型・文案を発明させない。同じメニューを件数分割で何度も押させない。正: `.cursor/rules/full-auto-no-human-type.mdc` / `.cursor/rules/full-auto-no-repeat-menu.mdc`。
+6. **汎用・原因先・短い返答**。一件専用のロジック禁止。原因が証拠付きで分かるまで直し案を出さない。分かったら根拠を短く記し、対策まで書く。人間へは短い普通の文。正: `.cursor/rules/dev-generic-cause-plain.mdc`。
 
 ---
 

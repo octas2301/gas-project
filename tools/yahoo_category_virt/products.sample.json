@@ -1,0 +1,32 @@
+[
+  {
+    "id": "row20_combo_maguro_buri",
+    "sheetRow": 20,
+    "maker": "石原水産",
+    "name": "食べるおだし（ まぐろ ・ ぶり ）",
+    "jan": "4906283045317",
+    "kindN": 2,
+    "seriesCore": "食べるおだし",
+    "mainKw": ""
+  },
+  {
+    "id": "row47_combo_cheese_odashi",
+    "sheetRow": 47,
+    "maker": "石原水産",
+    "name": "まぐろチーズ 190g 食べるおだし（ まぐろ ） 35ｇ",
+    "jan": "4906283045614",
+    "kindN": 2,
+    "seriesCore": "食べるおだし",
+    "mainKw": ""
+  },
+  {
+    "id": "row110_buri",
+    "sheetRow": 110,
+    "maker": "石原水産",
+    "name": "食べるおだし（ ぶり ） 40ｇ",
+    "jan": "4906283047410",
+    "kindN": 0,
+    "seriesCore": "食べるおだし",
+    "mainKw": "おつまみ"
+  }
+]

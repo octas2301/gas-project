@@ -1,0 +1,17 @@
+{
+  "id": "T-CCC-03",
+  "desc": "D2 FAILED→armしない",
+  "parent": "石原水産",
+  "wash_complete": true,
+  "maker_sum": [
+    {"メーカー": "石原水産", "実態": "製造メーカー", "セラーヒット": 1},
+    {"メーカー": "永谷園", "実態": "製造メーカー", "セラーヒット": 3}
+  ],
+  "d1": {"state": "DONE", "pass": 5},
+  "d2": {"state": "FAILED", "leftover": 0},
+  "expect": {
+    "chain_state": "stopped",
+    "arm_next": false,
+    "d_ok": false
+  }
+}

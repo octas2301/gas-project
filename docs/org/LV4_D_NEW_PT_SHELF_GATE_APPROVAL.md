@@ -78,7 +78,8 @@ D Amazon かつ includeNew
 | Property | `APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED` 等は **自動 ON しない**。未設定なら停止メッセージで ON を指示 |
 | 棚判定（GAS v1） | GAS 可読な `shelf_registry.json` 相当を参照し、解決済み PT が `entries[].productType` に無い → 停止。Browse Node が `browseIndex` に無い → 停止。**指紋再検証は PACKAGED（Python）側**（GAS では指紋まで見ない） |
 | registry 同期 | **Drive ファイル ID**（Property `AMAZON_SHELF_REGISTRY_FILE_ID`）。リポジトリの `tools/c1_hpc_packaged/shelf_registry.json` と同内容を Drive に置き GAS が読む |
-| 停止時 UI | PT 名、Browse、想定ファイル名（registry にあれば）、**SC から該当テンプレ DL → 06 配置 → 棚登録**（未登録系統は B-T2）を日本語で明示 |
+| 09取込（E③） | ゲート直前に Drive `09.SC純正バルク*` の未取込 `.xlsm` を unzip。「データを閲覧する」を browseIndex へマージ。未知テンプレの PT＝ファイル名stem。`entries` に無ければ追加。06 に同名が無ければコピー。指紋・列マップは作らない（B-T2）。未設定=ON。切戻し `AMAZON_SHELF_INGEST_09_ENABLED=false` |
+| 停止時 UI | **専用案内**（汎用 Error ではない）。SC DL → **09へ保存** → 案内を閉じ **E③をもう一度** → 取込後は **選択画面**（自動実行しない）。チャット「置いた」は不要 |
 | C末尾 | **本包スコープ外**。後追いで予告のみ可。**フル P4b の C＋D 二重実行は禁止** |
 
 ### 4.3 既存ゲートとの関係
@@ -96,11 +97,11 @@ D Amazon かつ includeNew
 | 対象ダイアログ | `showBatchExportAmazonDaDialog_`（新規 GENERATED 成功時・HtmlService） |
 | 冒頭 | **「次の枠を一字残さずコピーし、Cursor の Agent モードに貼れ」** を明示 |
 | 枠内 | **自己完結の長い依頼文**（人間が中身を理解しなくてもよい） |
-| 埋め込み必須 | 親SKU／subBatchId／GENERATED 手がかり／PT／「SC UP しない」「未対応 PT は止めて報告」／`D_MENU_LANE_B_BULK_T1_PROD_HUMAN_RUN`（または T1）・`CURRENT_PHASE` を読め |
+| 埋め込み必須 | 親SKU／subBatchId／GENERATED 手がかり／PT／「SC UP しない」「09/06 に xlsm が無い／必須列 MISS のときだけ止めて報告。新PTは auto-onboard」／`D_MENU_LANE_B_BULK_T1_PROD_HUMAN_RUN`（または T1）・`CURRENT_PHASE` を読め |
 | 相乗りのみ | 当該枠を出さない（または「PACKAGED 不要」1行） |
 | `UPLOADED_OK` | **SC サマリ自動（21-⑮系）を本線**。21-③／E-5 は逃げ道。ダイアログの「必ず Z から 21-③」は削除または「自動失敗時のみ」 |
 
-依頼文の趣旨（実装時に変数埋め）: Agent が B-T1（必要なら dry_run→prod）で PACKAGED を Drive 03 に出し、SC は人間、未対応 PT／棚なしは止めて報告、コミットは指示までしない。
+依頼文の趣旨（実装時に変数埋め）: Agent が B-T1 prod（`--product-type ALL`・auto-onboard）で PACKAGED を Drive 03 に出す。SC は人間。止まるのは 09/06 に純正 xlsm が無い／必須列が項目名で解決できないときだけ。コミットは指示までしない。
 
 ---
 
@@ -156,6 +157,8 @@ D Amazon かつ includeNew
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **PACKAGED auto-onboard**: Cursor 手渡しは 09 の `{PT}.xlsm` から指紋＋列マップを自動登録して 03 まで出す。止まるのは xlsm 無し／必須列 MISS。要 clasp。 |
+| 2026-09-17 | **E③ 09取込**: 棚なしは専用案内。09保存後に E③再実行で browseIndex 取込→選択画面。自動実行しない。切戻し `AMAZON_SHELF_INGEST_09_ENABLED=false`。要 clasp。 |
 | 2026-08-05 | **Browse 必須**: P4b対象=PT空またはBrowse空。ゲートでBrowse空ハード停止。browseIndex未登録は従来どおりDL指示。 |
 | 2026-08-02 | **実装**: Drive棚＋D先頭ゲート＋Cursor手渡し。3者スキップ。 |
 | 2026-08-01 | §2.1: 相乗りのみでも N列ASIN空は soft skip（実装反映）。 |

@@ -2,10 +2,179 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
+| 2026-11-15 | `b5_generic_plating.py`／`dry_sub`／`b5_main_base_compose`／`food_unit_canon`／F3／docs | **盛り共通核**: MAIN/SUB同じ型（危険文オフ・面クロップ・核プロンプト）。qualityは運用§3。切戻し `B5_GENERIC_PLATING_CORE=0`。clasp不要 | env 0／Git revert |
+| 2026-11-15 | `PurchaseResearch.js` タジマヤ寸法 | **対象拡大**: FBA空に加え保管空・サイズ空も。既存FBAは消さない。メニュー名「FBA空・保管空」。要① clasp | 旧FBA空のみ条件へ戻す |
+| 2026-11-15 | `estimate_list_fees_fill.py`／品番リスト BV・BW | **空の販手・保管を設定マスタ料率で補完**（カテゴリ空・寸法空は書かない。既存値非上書き）。販手1305／保管1155。寸法欠719はタジマヤ等。clasp不要 | 書いたBV/BWを消す |
+| 2026-11-15 | ①/出品セット数量・品番リスト希望式／FLOW・見積検品要件 | **袋×ケース**（①＋出品同式）。希望＝販手+FBA+保管+目標利益込み（欠ける行は空）。Q3件修正。要①・出品 clasp | Q戻し／AQ旧式 `AO-AP-AN` |
+| 2026-11-15 | 見積検品／`apply_judge`／`kentou_asin`／build_rows／要件 | **F判断列**・手数料不明は見送りせずアラート色・検討ASINの月販/順位をKeepa転記（空「-」固定を廃止）。clasp不要 | 判断列削除／可否を旧見送りへ |
+| 2026-11-15 | 見積検品列／`estimate_inspection_cols_quote_diff`／build_rows／要件 | **G問屋見積・J差分（希望−見積・▲赤字・注意印）**。対象セットをNへ。石原MIX複数ASIN＋リンク復活。検討の別ASIN追記。clasp不要 | 列削除／N列戻し |
+| 2026-11-15 | `estimate_inspection_build_rows.py`／見積検品 L | **対象セットにASINリンク**: 行末にASIN表示＋textFormatRuns。`--relink`で既存12行更新。石原MIX行は未（壊さない）。clasp不要 | L列を旧文に戻す |
+| 2026-11-14 | `estimate_inspection_build_rows.py`／`estimate_inspection_main_images.py`／見積検品／FLOW | **他メーカー12行を見積検品へ回収**: 判断行＋画像／希望／提示。可=くらこん2。石原5は維持。clasp不要 | 追加12行削除 |
+| 2026-11-14 | `estimate_cost_from_paste.py`／品番リスト AW／FLOW §3 | **貼付→1点仕入れ額（税込み）第1弾**: 見積候補×JAN接合×仕入空の12件。税込=floor(税抜×(1+税率))。上書きしない。clasp不要 | 当該12セルを空に戻す |
+| 2026-11-14 | `b5_slot_lang.py`／`dry_sub`／`b5_main_base_compose`／F3 | **スロット言語化セット**: SURFACE Vision言語化保存／SHAPEはドナー形fields／S1合成の正／WRAP×一片相対サイズ。MAIN+SUB。切戻し `B5_SLOT_LANG=0`／`B5_S1_OMIT_OWN_PIECE=0`。clasp不要 | env／Git revert |
+| 2026-11-14 | `b5_piece_deepen`／`b5_piece_truth_rules`／`dry_sub`／F3 | **S1添付＝仮想C**: SURFACE真の面のみ（face_crop埋め既定OFF）＋SHAPE＋IDENTITY＋袋。自SKU一片本体・一片言語化は同送しない。切戻し `B5_S1_OMIT_OWN_PIECE=0`／`B5_SURFACE_FACE_CROP=1`／`B5_SURFACE_SHAPE_SPLIT=0`。clasp不要 | env／Git revert |
+| 2026-11-14 | `food_unit_canon.py`／F3 | **IDENTITY配置のみ**: fields優先同送。`sourcePromptBlock`の個品縁・表面節は除去。一片もfields優先。切戻し `B5_IDENTITY_PLATING_FIELDS_ONLY=0`。clasp不要 | env 0／Git revert |
+| 2026-11-14 | `b5_piece_truth_rules`／`dry_sub`／F3 | **SURFACE本線同送（切り分け）**: 面アップ必須／無ければ一片面クロップ。SHAPEは形だけ（縁質感は借りない）。IDENTITYは別行で掃除。clasp不要 | `B5_SURFACE_SHAPE_SPLIT=0` |
+| 2026-11-13 | ぶり `piece_set_source`／F3 `_tmp_piece_lock_prod_compare` | **F3ぶり着手**: HUMANへ同期で truth gate PASS。F3 SUBへ形状ドナー同送。人間検収待ち（MAIN2+SUB1）。clasp不要 | Git／virtfit退避 |
+| 2026-11-13 | `b5_piece_truth_rules.py`／`b5_piece_deepen.py`／`dry_sub_overview_copy_test.py`／`b5_piece_gate.py`／B45 T4 | **形状ドナー自動**: 同ファミリー別 theme の piece_set を機械選択→深堀参考／SUB／1枚作り直しへ SHAPE_*。切戻し `B5_SURFACE_SHAPE_SPLIT=0`。clasp不要 | env 0／Git revert |
+| 2026-11-13 | `b5_piece_deepen.py`／`sub_image_food_canon_gate.py`／B45 T4 | **深堀スタック自動**: タグONで参考・前回を自動構成。remakeは下段のみ・本線は前回のまま。下段採用API。切戻し `B5_PIECE_DEEPEN_UI=0`。clasp不要 | env 0／Git revert |
+| 2026-11-13 | `b5_piece_deepen.py`／`sub_image_food_canon_gate.py`／`food_unit_canon.py`／B45 T4 | **深堀パネル第1**: 不合格タグで作業付近に大きめ手順。API `/api/piece-deepen`。役割分離文を lock 同送。切戻し `B5_PIECE_DEEPEN_UI=0`／`B5_SURFACE_SHAPE_SPLIT=0`。clasp不要 | env 0／Git revert |
+| 2026-11-13 | 見積検品 F–I／要件 | **画像・価格を仕入可否直後へ移動**: F画像 G希望 H提示 I交渉。旧Q–T廃止。clasp不要 | 列順戻し |
+| 2026-11-13 | 見積検品／`estimate_inspection_main_images.py`／FLOW／見積検品要件 | **提示価格二段**: 問屋提示。セット利益率≥30%なら上乗せ（着地29.9%）。200円下限優先。単品は提示=希望。列はF–I。clasp不要 | 列クリア／Git revert |
+| 2026-11-13 | FLOW §5.3.2／見積検品要件／`見積検品` R | **希望価格の理由を正本化＋再算出**: セット `max(最安×15%,200円)`。200円＝発送梱包≈80円の上、15%＝定期5%＋広告8%。R列を品番リスト税抜から再取得。clasp不要 | docs戻し／再実行 |
+| 2026-11-13 | ① `見積検品` Q–S／`estimate_inspection_main_images.py`／見積検品要件 | **判断表画像をKeepaフル正メインへ修正＋希望価格・値下げ交渉列**: 品番リスト画像は使わない。R=目標仕入額税抜、S=人記入。clasp不要 | 列Q–Sクリア／Git revert |
+| 2026-11-13 | `purchase_research/PurchaseResearch.js`／FLOW §3 D | **タジマヤ二重実行ロック**: `PR_TAJIMAYA_DIM_LOCK_*`。busyは `skip=busy` で終了・続きは持っている実行だけ予約。要① clasp | Prop削除／Git revert |
+| 2026-11-12 | `purchase_research/PurchaseResearch.js`／V1 §10／HUMAN_RUN | **タジマヤ失敗JAN印＋取得リトライ**: `PR_TAJIMAYA_MISS_JSON` で再チェック浪費を止める。HTTP等は6hクールダウン。続きは `prRunTajimayaDimFillFromTrigger`＋①ログに arm。要① clasp | Prop削除／Git revert |
+| 2026-11-12 | `purchase_research/PurchaseResearch.js`／V1 §10／FLOW §3 D | **タジマヤ寸法補完**: 梱包三辺空＋JANのみ。ピース／ケース／格子→FBA。既存サイズ非上書き。メニュー＋D1。切戻し `PR_TAJIMAYA_DIM_FILL_ENABLED=false`。要① clasp | Prop false／Git revert |
+| 2026-11-11 | `purchase_research/PurchaseResearch.js`／CYCLE §7.5／HUMAN_RUN／`_tmp_virtual_liveness_arm_order.py` | **沈黙復帰で洗い先武装**: `hard_reset` 後に洗い→C4。C4 例外は握りつぶす。旧順は C4 重走査で洗い未武装の無限沈黙（実測 11/06〜）。要① clasp | Git revert |
+| 2026-11-10 | `sub_image_food_canon_gate.py` | **一片表示一本化**: ③は piece_set のみ（③b二重廃止）。HUMANは未反映貼付時だけ。clasp不要 | Git revert |
+| 2026-11-10 | `b5_piece_gate.py`／`sub_image_food_canon_gate.py` | **一片作り直し・現行ロック切替**: 既定オンで現行写真を1枚目ロック／オフで種ベース。要望は差分。clasp不要 | Git revert |
+| 2026-11-10 | `sub_image_food_canon_gate.py`／`food_unit_canon.py`／B45 | **IDENTITY盛り二段言語化**: ①元画像言語化＝本線正／②生成後＝生成指示。機械言語化API。clasp不要 | Git revert |
+| 2026-11-11 | `competitor_jitta/CatalogEnum.js`／JITTA／README／`_tmp_virtual_queue_purge_cap.py` | **Catalog空転止め**: 未済≥上限なら API前に `batch_skip`（キューあり途中列挙のみ続行）。時計は間隔維持。仮想 PASS。要競合 clasp | Git revert |
+| 2026-11-10 | `competitor_jitta/CatalogEnum.js`／JITTA／CYCLE／`_tmp_virtual_queue_purge_cap.py` | **幽霊規模帯禁止**: 追記0で band 非書・`catalog_pending_cap`／既存 via=comp＋キュー0を `catalog_phantom_heal`。仮想 PASS。要競合 clasp | Git revert |
+| 2026-11-10 | `purchase_research/PurchaseResearch.js`／`competitor_jitta/CatalogEnum.js`／CYCLE §6.7.4bis／HUMAN §10.3non／FULL／`_tmp_virtual_queue_purge_cap.py` | **洗いキュー Keepa済即削除＋未済5万蛇口**: 完走時親パージ／メニューは終わり状態＋日数／新規列挙は未済≥50kで停止（途中社は続行）。選定は既存1回読み。仮想 ALL PASS。要①＋競合 clasp。初回一括は心拍停止→メニュー削除 | Prop `PR_WASH_QUEUE_PURGE_DONE=false`／`PR_WASH_QUEUE_PENDING_ROWS_MAX=0`／Git revert／backup `_local_backup/pre_queue_purge_cap_20261110_084822` |
+| 2026-11-10 | `sub_image_food_canon_gate.py` | **見本下に言語化表示＋人間保存**: 一片／IDENTITY盛りの textarea・`/api/piece-lang-save`・`/api/identity-plating-lang-save`。すり合わせ用。clasp不要 | Git revert |
+| 2026-11-10 | `food_unit_canon.py`／`dry_sub_overview_copy_test.py`／`_tmp_food_piece_plate_identity_lang_virt.py`／B45 | **IDENTITY盛り言語強化＋SUB移植ロック**: 観測項目追加・`identity_plating_lock_prompt_block`・SUB本線同送。ぶりで再言語化＋T06再生成。clasp不要 | Git revert／旧 `identity_plating_lang_prev_*` |
+| 2026-11-10 | B45 §4.5.10bis-T2 | **不合格後言語化**: 個品／個包装ずれ→活性枚再読→ずれた面だけ作り直し。袋・文言・構図のみは不触。clasp不要 | docs revert |
+| 2026-11-09 | `b5_piece_truth_rules.py`／`dry_b5_piece_truth_virt.py`／`food_unit_canon.py`／`sub_image_food_canon_gate.py`／B45 §4.5.10bis-T2 | **IDENTITY≠一片**: 同一バイト不合格・一片ロック場面は配置のみ＋料理具サイズ強制。切戻し `B5_PIECE_TRUTH_GATE=0`。clasp不要 | env 0／Git revert |
+| 2026-11-08 | `b5_piece_gate.py`／`sub_image_food_canon_gate.py`／`b5_food_canon_status.py`／`food_unit_canon.py`／B45 §4.5.10bis-T3 | **見本ゲート一片レーン**: 有無・貼付・レ点→PIECE_TRUTH_HUMAN／piece_set。切戻し `B5_PIECE_GATE_UI=0`。clasp不要 | env 0／Git revert |
+| 2026-11-08 | `b5_piece_truth_rules.py`／`dry_b5_piece_truth_virt.py`／`b5_piece_set_from_truth.py`／`b5_main_base_compose.py`／B45 §4.5.10bis-T2 | **実物由来F2**: human>wrap>virt・cube暴走禁止・source記録。切戻し `B5_PIECE_TRUTH_GATE=0`。clasp不要 | env 0／Git revert |
+| 2026-11-08 | `food_unit_canon.py`／`b5_main_base_compose.py`／`b5_virt_abc.py`／B45 §4.5.10bis-T／CURRENT_PHASE／AGENT_HANDOVER | **薄い一片あり F0+F1**: 言語＝`max_n`一致／`has_piece_set`でIDENTITY盛り一本化／SUB単一片禁止文。切戻し `--piece-set-max 0`。clasp不要 | Git revert／flag 0 |
+| 2026-11-03 | `b4_wrap_hand_hold.py`／`sub_image_food_canon_gate.py`／`b5_food_canon_status.py`／B45 §4.5.11 | **P3-W第2**: WRAP確定後手持ち候補UI。切戻し `B4_WRAP_ASSET_LANE=0`。clasp不要 | env 0／Git revert |
+| 2026-11-03 | `b5_food_canon_status.py`／`コード.js`／`food_unit_canon.py`／gate／B45 §4.5.11 | **hasWrap鍵**: 親SKU→商品名ベース→JAN。export全件に `hasWrap` bool＋`byParentSku`。要出品 clasp | Git revert |
+| 2026-11-03 | `b4_wrap_asset_rules.py`／`dry_b4_wrap_asset_virt.py`／`コード.js`／`b5_food_canon_status.py`／B45 §4.5.11 | **P3-W第1**: WRAPあり→themeId=21個包装訴求+1（最大11）。切戻し `B4_WRAP_APPEAL_THEME=false`。要出品 clasp | Prop false／Git revert |
+| 2026-11-02 | `b4_sub_picture_rules.py`／`dry_b4_sub_picture_virt.py`／`dry_sub_overview_copy_test.py`／B45 §4.5.10 | **P3第1**: サブへ WRAP scrub・look・frontOk合否・袋判定寄せ。切戻し `B4_SUB_PICTURE_GATE=0` | env 0／Git revert |
+| 2026-11-02 | B45 §4.5.9／CURRENT_PHASE／AGENT_HANDOVER／CHANGE_LEDGER | **P2第2人間検収OK（閉じた）**: かつお／まぐろ新規。次＝P3 | docs revert |
+| 2026-11-02 | `コード.js`／`b4_theme_draft_rules.py`／`dry_b4_theme_draft_virt.py`／B45 §4.5.7 | **B-⑤下書き一致検証**: 親SKU・商品名ベース不一致はreuseしない。MAIN参考も親SKU優先。仮想16PASS。要出品 clasp | Prop／Git revert |
+| 2026-11-02 | `コード.js`／B45 §4.5.9 | **P2第2GAS**: appealAxis＋つなぎ門。切戻し `B4_THEME_COHESION_GATE=false` | Prop false／Git revert |
+| 2026-11-02 | `b4_theme_cohesion_rules.py`／`dry_b4_theme_cohesion_virt.py`／B45 §4.5.9 | **P2第2仮想**: T6/T7/T13。第1閉じた | 仮想のみ削除可 |
+| 2026-11-02 | `b4_theme_text_rules.py`／`コード.js`／B45 §4.5.8 | **T4緩和**: 表記ゆれ同一視＋overview含め片寄り判定。仮想12/12 PASS | Git revert |
+| 2026-11-02 | `コード.js`／B45 §4.5.8 | **P2第1スライスGAS**: `b4RefineProposalsWithTextGate_`。切戻し `B4_THEME_TEXT_GATE=false` | Prop false／Git revert |
+| 2026-11-02 | `b4_theme_text_rules.py`／`dry_b4_theme_text_virt.py`／B45 §4.5.8 | **P2第1スライス仮想**: 門T2/T3/T4/T5/T8/T15。11/11 PASS | 仮想のみ削除可 |
+| 2026-11-02 | `コード.js`／B45 §4.5.7 U1 | **再利用時スキップ**: MAIN走査・マスタ／B3を省略。`reusedCount`/`freshCount`を画面表示 | Git revert |
+| 2026-11-02 | `コード.js`／`b4_theme_draft_rules.py`／`dry_b4_theme_draft_virt.py`／B45 §4.5.7 | **B-⑤ P1案UI**: 下書き再利用・レ点外し再作成・0.8s裏保存。切戻し `B4_THEME_DRAFT_REUSE=false` | Prop false／Git revert |
+| 2026-11-02 | `B45_MAIN_SUB_ALIGN` §4.5／`CURRENT_PHASE`／SUB HUMAN_RUN／AGENT_HANDOVER | **MAIN→サブ寄せ一覧 P0**: 入れない以外は寄せ検討。U/T/G表＋P1〜P4 | docs revert |
+| 2026-11-02 | `b5_main_base_compose.py`／`b5_virt_abc.py`／`b5_review_feedback_templates.py`／`コード.js` | **ミックス料理混入防止＋レビュー定型2本**: dishPartをcomposeへ残す。料理上／個包装を見本どおりボタン。要出品 clasp（定型GAS） | Git revert |
+| 2026-11-01 | `b5_virt_abc.py`／`b5_food_look_read.py`／`コード.js` | **旧WRAP混ぜ文の除去＋手前判定を厳しく**: 保存案の『小皿に少し混ぜて出せ』をscrub。frontOk欠落は不合格。要出品 clasp（場面） | Git revert |
+| 2026-11-01 | `コード.js`（B-④再作成） | **再作成後レ点ONの下書き残し**: 遅延保存がオフを上書きしない。再作成成功時は全案 selected=true で保存。要出品 clasp | Git revert |
+| 2026-11-01 | `food_unit_canon.py`／`b5_virt_abc.py`／`b5_food_look_read.py`／`コード.js`／B5・ALIGN要件 | **WRAP置きA＋B**: 皿の横／後ろのみ（小皿混ぜ廃止）。カメラ最近傍は開封後の個品。要出品 clasp（場面） | Git revert |
+| 2026-11-01 | `コード.js`（B-④正本） | **紐付け確定が無反応対策**: 成功後は先に画面切替／inline onclick＋準備完了表示／サーバ失敗をボタン下に出す。他親候補除外も継続。要出品 clasp | Git revert |
+| 2026-11-01 | `コード.js`（B-④正本） | **スクリプト未準備の原因**: 訴求軸ラベル行の引用符ミスでダイアログJS全体が構文エラー→`b5ClickGoBind`未定義。要出品 clasp | Git revert |
+| 2026-11-01 | `コード.js`／B5要件・HUMAN_RUN | **再作成＝訴求軸選択**: 候補ラジオ＋自由入力→ペルソナ〜場面をセット再生成。他案軸は除外。要出品 clasp | Git revert |
+| 2026-11-01 | `コード.js`（`b5AlignSavedProposalsToChildCount_`）／B5要件 | **案不足は追加生成のみ**: 保存案は触らず、子レ点より少ない件数だけ足す。多いときは切るだけ。要出品 clasp | Git revert |
+| 2026-11-01 | `b5_reuse_decide.py`／`.cursor/rules/b5-main-reuse-auto.mdc`／B5要件・HUMAN_RUN／`コード.js`指示 | **B-④再利用自動**: reuse／missing_only／full を Agent が判定。三択をチャットで聞かない。全部作り直しは人の明示のみ。要出品 clasp（指示文） | Git revert／規則オフ |
+| 2026-11-01 | `competitor_jitta/CatalogEnum.js`／`JittaResolve.js`／JITTA／README | **Catalog落ちあと拾い強化**: 起動先頭で次予約／実態AI・ヒットから`catalog_rearm`／`updated`古ロック掃除／inflight重複抑止。仮想 rearm PASS。要競合 clasp | Prop OFF／時計停止／backup `pre_catalog_rearm_20261101_151621` |
+| 2026-11-01 | `b5_bag_aspect.py`／`b5_main_base_compose.py`／`food_unit_canon.py`／`b5_virt_abc.py`／`dry_b5_bag_wrap_virt.py`／`コード.js`／B5要件 | **B5袋・個品ロック**: SCALEから袋切って測る／WRAP1〜2／料理上もIDENTITY／food_piece優先採用／printLightOk／窓内正本指示／案で場面をキャッチ場へ1回合わせ。要出品 clasp（案） | Git revert |
+| 2026-11-01 | `competitor_jitta/CatalogEnum.js`／README | **Catalogキュー全読み撤去**: 1実行1回マップ＋追記継ぎ足し。失敗で`comp_enum`残さず`catalog_skip`。stuck heal。仮想 queue_fix PASS。要競合 clasp | 旧全読みに戻すなら Git／backup |
+| 2026-10-31 | `competitor_jitta/CatalogEnum.js`／`JittaResolve.js`／`PurchaseResearch.js`／JITTA要件／README | **改訂P2 Catalog増員**: 競合列挙＋共有シート`Catalog親ロック`＋落ちあと再予約。未設定=`CJ_CATALOG_ENABLED`OFF。要競合＆① clasp・SP-API鍵 | Prop OFF／時計停止／`PR_SHARED_CATALOG_LOCK=false`／local_backup `pre_p2_catalog_20261031_224712` |
+| 2026-11-01 | `b5_food_look_read.py`／`b5_main_base_compose.py`／`b5_virt_abc.py`／`food_unit_canon.py`／`dry_b5_bag_wrap_virt.py`／B5要件 | **WRAP look**: 個包装見本を機械読み（密着・空気・材質・縁等）→指示へ。案件固定の真空禁止にしない。clasp不要 | Git revert |
+| 2026-10-31 | `food_unit_canon.py`／`b5_virt_abc.py` | **WRAP≠大袋**: WRAP写真の大袋・背景・手は無視。PACKAGEのみ大袋正。場面文の「個包装描くな」はWRAPあり時に除去。clasp不要 | Git revert |
+| 2026-10-31 | `b5_bag_color.py`／`b5_bag_aspect.py`／`b5_main_base_compose.py`／`b5_virt_abc.py`／B5要件 | **包材印刷色**: 正本ベタ面を画素で彩度・明度・RGB数値化→指示。合否は袋判定の printHueOk（黒潰れ再生成）。細部は数値化しない。clasp不要 | Git revert |
+| 2026-10-31 | `food_unit_canon.py`／`b5_main_base_compose.py`／`b5_virt_abc.py`／B5要件 | **袋解決＝JAN+oya枝**（ベンダー接頭辞違い吸収）／試し採用でOCR同群内は袋・個片・顔優先／個品明度はIDENTITY優先。clasp不要 | Git revert |
+| 2026-10-31 | `コード.js` | **B-④案レ点初期ON**: 表示時は常にチェック。下書きの selected=false 残りを消す。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js`／B5要件 | **ミックス料理ラジオ欠落対策**: 再作成・再利用後も dishCandidates を付け直し。候補空でも構成列ラジオ枠を出す。要出品 clasp | Git revert |
+| 2026-10-31 | `b5_bag_aspect.py`／`b5_main_base_compose.py`／`food_unit_canon.py`／`b5_virt_abc.py`／`コード.js`／B5・B45 | **袋判定の結果書き出し**（両袋必須＋対比）／**WRAPありは皿横or少し混ぜて必須表示**。要出品 clasp（場面文） | Git revert |
+| 2026-10-31 | `コード.js`／B5要件／HUMAN_RUN | **B-④引き継ぎ一本化**: catch／salesだけの overlay 廃止。正は下書き／compose丸ごと再利用。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④再作成後レ点自動復帰**: 外した案の `selected=false` を作り直し後 true に戻す（指示漏れ防止）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④文字色**: 正本確定の成功時にドロップダウンを再読込してから案作成（切替待ち中の青選択を拾う）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④コピー紐付け＝スロット**: themeId＋#sellRank（管理番号）。ペルソナ単独廃止。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④レ点なし再作成＝対象だけ**: remakeIndexes＋keep。料理プール省略。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④コピー紐付け＝ペルソナ**: （撤回）スロットキーへ置換。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④下書きA+B**: 作成直後Drive保存＋入力0.8秒デバウンス裏保存。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④キャッチ≠セールス**: 梯子／Gemini同文を検知し差し替え（S2）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js` | **B-④料理ラジオ変更→場面文追従**（料理名差し替え・載せる構成。Geminiなし）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js`／B5要件 | **ミックス料理ラジオ＝構成列**＋選択で `dishPart*`。食べ方検索はマスタ→公式の不足時のみ（アレンジ／レシピ）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js`／B5要件 | **B-④案数＝子レ点＋下書き保持**: 画面・指示は子数に切る。下書きはマージで残す（子増後も前回案可）。要出品 clasp | Git revert |
+| 2026-10-31 | `コード.js`／B5要件／HUMAN_RUN | **B-④前回案丸ごと再利用**: あれば生成スキップ（draft→compose）。戻るは保持。作り直し＝レ点なしのみ。要出品 clasp | Git revert |
+| 2026-10-31 | `food_canon_manual_ingest.py`／gate／B45 | **手動見本最大6枚**（旧3）。競合削除は無し。clasp不要 | `MANUAL_MAX=3`／Git |
+| 2026-10-31 | 競合JITTA要件／CYCLE／FLOW／README／HUMAN_RUN／AGENT_HANDOVER | **改訂P2要件ロック**: Catalog増員並走・①沈黙禁止。コード未。仮想 `_tmp_virtual_p2_revised.py` | docs revert |
+| 2026-10-31 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／FLOW／AGENT_HANDOVER | **案P1 案E落ちあと拾い**: 心拍liveness＋洗い終わりで再武装。幽霊解消。実行中リース。finally。新番犬なし。要① clasp | `PR_ENUM_RESET_RUN_ENUM=false`／Git |
+| 2026-10-31 | `food_unit_canon.py`／`sub_image_food_canon_gate.py`／`b5_main_base_compose.py`／`b5_virt_abc.py`／ALIGN | **WRAP最小**: 個包装見本（任意）確定・添付。無いときは創作禁止。clasp不要 | Git revert |
+| 2026-10-31 | `コード.js`／`food_unit_canon.py`／`b5_virt_abc.py`／B5要件 | **ミックス①②③**: 構成別食べ方プール＋`dishPart*`（料理に載せる構成）＋個包装創作禁止。要出品 clasp | Git revert |
+| 2026-10-31 | `food_unit_canon.py`／`b5_main_base_compose.py`／`sub_image_food_canon_launch.py`／`dry_sub_overview_copy_test.py`／`コード.js`／B45 | **ミックス個品紐付け＝マスタセット構成1〜5**（名前中黒廃止）。B-④ JSON に comboParts。①′は `--parent-sku` で組み合わせ。要出品 clasp | Git revert |
+| 2026-10-30 | `広告運用GAS/UnadvertisedAsin.js`／HUMAN_RUN §4.1 | **3-②原因ログ**: `id_probe`／`bulk_resolve`（path・Hit・Near）。挙動は変えず観測のみ。要広告 clasp | Git revert |
+| 2026-10-30 | `コード.js`／B5要件 | **B-④案再作成**: ボタン「レ点を外した案を再作成する」。レ点なしだけ差し替え（残す案はレ点したまま）。要出品 clasp | Git revert |
+| 2026-10-30 | `コード.js`／B3確認docs | **B-③連続実行**: 楽天Yahoo/Amazon確認ダイアログを既定OFF。Amazon込み・Keepa全件なし。切戻し `B3_IMAGE_ASK_MALL_MODE=true`。要出品 clasp | Prop true／Git |
+| 2026-10-30 | `コード.js`／B3確認docs | **B-③内モール横断自動**: 不足JAN（構成展開含む）を `menuTestCrossMallSetCountJudge(jans)` で自動実行。別メニュー不要。要出品 clasp | `askConfirm:true`／Git |
+| 2026-10-29 | `コード.js` | **途中欠け復旧**: `_local_backup/gas/20261027_080002` を正に戻し、B-③ミックス連動のみ再適用。Git10/5復元版は `コード.js.before_restore_from_g27`。要出品 clasp | 同 before ファイル／Prop `B3_EXPAND_COMBO_PARENT_JANS=false` |
+| 2026-10-29 | `コード.js`／B3確認docs | **B-③ミックス連動**: レ点時にセット構成1〜5の単品親JANも画像取得。要出品 clasp。切戻し `B3_EXPAND_COMBO_PARENT_JANS=false` | Prop false／Git |
+| 2026-10-29 | `c1_packaged.py`／列マップ／FOOD列マップdocs | **ハイライト100473**: 「抜群」等を「良い」へ置換してからPACKAGED。oya3再PACKAGED済 | Git revert／phrases空 |
+| 2026-10-29 | `c1_bulk_fill_by_name.py`／C1要件／T1 HUMAN_RUN | **dry_run xlsm 廃止**: B-T1 dry_run は `_DRYRUN.xlsm` を 03 に出さない（05のみ）。prod のみ PACKAGED | `write_dryrun_xlsm: true` に戻す／Git |
+| 2026-10-29 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／FLOW | **N3 親分割並行**: 列挙＝メーカー名ロックのみ／洗い＝全体＋親。案E自己再予約＋洗い終了再武装。番犬増なし。要① clasp | `PR_WASH_PARENT_PARTITION=false`／Git |
+| 2026-10-28 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN | **案E enumリセット＋その場列挙**: 空振りをリセットしメニューで既存列挙。切れは自動再開。心拍分岐なし。要① clasp | `PR_ENUM_RESET_RUN_ENUM=false`／Git |
+| 2026-10-28 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **title0_skip 再オープン**: メニューで列挙待ち＋Prop FAIL/SKIPクリア。要① clasp | メニュー使わない／Git |
+| 2026-10-28 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **enum_empty_out 再オープン**: メニューで調査対象外→列挙待ち。要① clasp | メニュー使わない／Git |
+| 2026-10-28 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **Catalog親辿り**: classifications の `parent` で調査ルート照合（食品が下位IDで落ちない）。要① clasp | Prop `PR_CATALOG_CLASSIF_WALK_PARENT=false`／Git |
+| 2026-10-27 | `AmazonSpapiPut.js`／D_ENTRY HUMAN_RUN | **相乗りASIN**: 子行N列のみ（親フォールバック廃止）＋実行内ユニーク（先勝ちスキップ）。要出品 clasp | Git revert |
+| 2026-10-27 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN | **survey_diag**: Amazon大分類 vs ロジック許可を①ログへ（`allow=` `dropTop=`）。要① clasp | Prop `PR_SURVEY_DROP_DIAG=false`／Git |
+| 2026-10-27 | `purchase_research/PurchaseResearch.js`／FULL／CYCLE／V1／HUMAN_RUN | **Catalog OR**: 検索ヒットを調査カテゴリ後にキュー（タイトル必須やめる）。切戻し `PR_CATALOG_TITLE_GATE=true`。要① clasp | Prop true／Git |
+| 2026-10-27 | `YahooCaptionRich.js`／YAHOO_CAPTION | **セットリンク**: 親SKU兄弟＋袋/個パース。骨格単品JANリンクを残さない。要出品 clasp＋説明API | Git revert |
+| 2026-10-27 | `YahooCaptionRich.js`／YAHOO_CAPTION | **案C**: 【商品について】枠廃止・注記残す・原料はcaptionのみ。要出品 clasp＋説明API | Git revert |
+| 2026-10-27 | `YahooCaptionRich.js`／`build_yahoo_caption_themes.py`／YAHOO_CAPTION | **セット訴求は先頭1枠／原料重複ラベル除去／紹介種から原料除外**。要fit-only＋出品 clasp＋説明API | Git revert |
+| 2026-10-27 | `コード.js`／BATCH_EXPORT_IMAGE_GATE | **D画像スキップ初期レ点**: 出品CKの楽天メイン画像1そろい時ON。再送は人間が外す。要出品 clasp | Git revert |
+| 2026-10-27 | `YahooCaptionRich.js`／`build_yahoo_caption_themes.py`／YAHOO_CAPTION | **ミックス訴求（種数・品名）＋原料複数成分の改行**。要フィット再生成＋出品 clasp＋説明API | Git revert |
+| 2026-10-27 | `YahooCaptionRich.js`／`build_yahoo_caption_themes.py`／YAHOO_CAPTION | **原料＝列`原料`・食品のみ／内容量行排除**。要出品 clasp＋説明API | Git revert |
+| 2026-10-26 | `build_yahoo_caption_themes.py`／YAHOO_CAPTION | **Yahoo説明P6cミックス**: 構成品商品名→マスタ安全欄まとめ。カテゴリ非限定。要パック再生成＋出品 clasp＋説明API | Git revert |
+| 2026-10-26 | `build_yahoo_caption_themes.py`／`YahooCaptionRich.js`／P6C HUMAN_RUN | **Yahoo説明P6c**: 同一JANを親SKU別に再組立（oya2/oya3）。旧oyaパック廃止。要 clasp＋lib UP＋Property ON＋説明API | Git revert／Property false |
+| 2026-10-26 | `sub_image_mix_review_loop.py`／`sub_image_review_loop.py`／`b5_skip_generate_finish.py`／AUTOBIND HUMAN_RUN | **サブ出口=親1セット**: 採用分を子SKU名1件だけ出す。JAN／全子複製をやめ枠外候補を防ぐ。clasp不要 | Git revert |
+| 2026-10-27 | `competitor_jitta/JittaResolve.js`／競合JITTA要件／README | **P1ブースト既定1000**（旧500）。要競合 clasp | Prop `CJ_DAILY_CAP_BOOST=500`／Git |
+| 2026-10-26 | `purchase_research/PurchaseResearch.js`／CYCLE／HUMAN_RUN | **列挙原因の特定**: quiet title0 でも `why=title0`＋`pages/titles/surveyDrop`。要① clasp | Prop `PR_ENUM_DIAG_LOG=false`／Git |
+| 2026-10-26 | `purchase_research/PurchaseResearch.js`／CYCLE／HUMAN_RUN | **列挙原因ログ**: ①ログ `enum_diag`／`enum_diag_sum`（`why=`）。条件見直し前の観測。要① clasp | Prop `PR_ENUM_DIAG_LOG=false`／Git |
+| 2026-10-26 | `purchase_research/PurchaseResearch.js`／CYCLE／HUMAN_RUN | **案A強化**: 店続きより列挙優先。列挙後 sm=0 で skip_enum 剥がし。要① clasp | Prop `PR_CYCLE_ENUM_WHEN_SM0=false`／Git |
+| 2026-10-25 | `purchase_research/PurchaseResearch.js`／CYCLE／HUMAN_RUN | **案A 小中=0で余力あり列挙**: `PR_CYCLE_ENUM_WHEN_SM0`。ログ `enum_when_sm0`。3回で店譲り。要① clasp | Prop `false`／Git revert |
+| 2026-10-25 | `competitor_jitta/JittaResolve.js`／競合JITTA要件／CYCLE §4.5bis／README | **P1 未調査山ブースト**: U≥31で `CJ_DAILY_CAP_BOOST`（既定500）。ログ `U=` `mode=`。C係交代なし。要競合 clasp | Prop BOOST削除／Git revert |
+| 2026-10-25 | `コード.js`／`dry_sub_overview_copy_test.py`／ALIGN§7.6bis | **サブ文字色**: 指示に `--parent-sku`。truth-hint からも補完。単品・ミックス同じ。要出品 clasp | Git revert |
+| 2026-10-25 | `sub_image_mix_review_*.py` | **混在レビュー**: 同じJAN別商品でマニフェスト上書きしない。手順「いまやること」表示。clasp不要 | Git revert |
+| 2026-10-25 | `コード.js`／ALIGN | **B-⑤正本プルダウン高速化**: 親SKU優先・最大12・サムネ表示分だけ（B-④と同型）。要出品 clasp | Git revert |
+| 2026-10-25 | `コード.js`／B45 ALIGN §7.2.1 | **B-⑤テーマ1件再提案**: ▼指示欄＋再提案。他レ点維持。単品・ミックス同じ。要出品 clasp | Git revert |
+| 2026-10-25 | `master_sets.py`／SET_MAIN_LAYOUT_RULES | **ミックス金丸**: 売る数量×構成数量×種。`バリエーション値`先頭（3袋/3種）の二重掛けを廃止。clasp不要 | Git revert |
+| 2026-10-25 | `b5_main_base_review_loop.py`／`b5_main_base_compose.py` | **再作成①②**: ミックスは nameBase＋PART部品を渡す（単体 theme_new_run 落ち禁止）。案はファイル見出し固定・同テーマ先頭フォールバック禁止。焼成不一致は `__r2` に載せない。clasp不要 | Git revert |
+| 2026-10-25 | `b5_main_base_review_launch.py`／rules／skill | **レビュー --fresh**: 開き直しは旧プロセス停止＋最新compose。古いURL渡し禁止。clasp不要 | Git revert |
+| 2026-10-25 | `b5_main_base_review_loop.py` | **MAINレビュー文言**: 欄は焼成（catchBurn／sales）優先。再生成はファイル見出しで案特定＋新キャッチでファイル名。clasp不要 | Git revert |
+| 2026-10-25 | `コード.js`／マスタHW | **バリエーション値**: 空欄時は GR 表示の直書き禁止→`=GRn`。2種ミックス該当行の直値を式に復旧。要出品 clasp | Git revert／HW式を戻す |
+| 2026-10-25 | `b5_main_base_compose.py` | **試し採用キー**: 指定キャッチOCR合格を袋縦横より先に残す（袋印字の別文言が残るのを止める）。clasp不要 | Git revert |
+| 2026-10-25 | `広告運用GAS/UnadvertisedAsin.js` | **再UL already exists削減**: 既存キャンペーン昇格強化、PA/除外の既存スキップ、括弧NFKC廃止。v1.13。要広告 clasp＋一括DL取り直し | Git revert |
+| 2026-10-25 | `広告運用GAS/UnadvertisedAsin.js` | **ID抽出でAG取りこぼし修正**: 一括DLのAG行はキャンペーン名が空でもキャンペーンID＋AG名で取る。v1.12。要広告 clasp | Git revert |
+| 2026-10-25 | `広告運用GAS/UnadvertisedAsin.js` | **バルクalready exists／×文字**: ID参照で既存昇格、AGをキャンペーンIDでも照合、新規名の`×`除去。v1.11。要広告 clasp | Git revert |
+| 2026-10-25 | `広告運用GAS/UnadvertisedAsin.js` | **バルク親IDエラー修正**: 既存キャンペーンでAG数値ID無しのとき仮ID＋AG作成行（名前だけID禁止）。v1.10。要広告 clasp | Git revert |
+| 2026-10-25 | `広告運用GAS/UnadvertisedAsin.js`／`コード.js`／HUMAN_RUN／第1スライス要件 | **ID参照用自動更新**: `📥一括キャンペーンDL`→一覧・3-②で書込。切戻し Prop `UNADVERTISED_ASIN_ID_AUTO_FROM_BULK=false`。要広告 clasp＋3-③でマニュアル再生成 | Prop false／Git revert |
+| 2026-10-25 | `b5_main_base_review_loop.py` | **子SKUレ点**: 選択時にfamily奪取しない。1画像1子＋同じSKUだけ他カードから移す。clasp不要 | Git revert |
+| 2026-10-25 | `food_unit_canon.py`／`b5_virt_abc.py`／ALIGN §7.15 | **ミックスMAIN**: 袋PART順と個品IDENTITY順を連動（小皿も同じ並び）。「左右自由／種類が分かればよい」を廃止。clasp不要 | Git revert |
+| 2026-10-25 | `b5_main_base_auto_assign.py`／`b5_main_base_review_loop.py` | **MAINレビュー子割当**: 画像1子・見出し単位（themeId潰し廃止）。claimもfamilyのみ（上下まとめて外れ修正）。clasp不要 | Git revert |
+| 2026-10-25 | `b5_main_base_auto_assign.py` | **review起動**: note文字列の括弧未閉じで SyntaxError。閉じ復旧。clasp不要 | Git revert |
+| 2026-10-24 | `b5_virt_abc.py` | **MAIN compose**: `_prompt_p3_free` で `accent_text_block` 未代入→NameError。代入を復旧。clasp不要 | Git revert |
+| 2026-10-24 | `コード.js`／ALIGN | **B-④①対象親**: JAN重複排除を廃止し親SKU単位（oya2／oya3同JANでも両行列）。要出品 clasp | Git revert。要 clasp |
+| 2026-10-24 | `コード.js`／ALIGN §7.12.3 | **B-④①正本高速化**: シードは共有空のときだけ。一覧は01直下＋親SKU／保存rel。サムネ小・最大12。要出品 clasp | Git revert。要 clasp |
+| 2026-10-24 | `コード.js` | **相乗りASIN無し**: soft skip＋次手順メッセージ（新規だけ／ASIN入れて相乗り）。要出品 clasp | Git revert。要 clasp |
+| 2026-10-24 | `コード.js`／`AmazonApprovalExport.js`／`AmazonSpapiPut.js`／P0／D_ENTRY | **ALLOW_MASTER_QTY ゲート廃止**: マスタ在庫は Property 不要。開始前確認は残す。要出品 clasp | Git revert。要 clasp |
+| 2026-10-24 | `mix_column_layout.py`／SET_MAIN §1.3 | **ミックス Octas**: 基準を表示後1袋×0.075に（列合算で過大だった）。clasp不要 | Git revert |
+| 2026-10-24 | `mix_column_layout.py`／SET_MAIN §1.3 | **ミックス列積み Octas**: 単品と同じ不透明×0.075。幅×0.10廃止。clasp不要 | Git revert |
+| 2026-10-24 | `set_main_image` mix分岐 | **ミックス each**: 1=正本N1／2–4=列積み／≥5=正本×単品。塗り順・SKU区切り一致。clasp不要 | Git revert |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **門中も自動レ点可**: 大特大禁止と分離。旧レ点止めは `PR_JITTA_BACKLOG_BLOCK_AUTO_CK=true`。要① clasp | Prop true／`PR_JITTA_BACKLOG_IDLE=false`／Git |
+| 2026-10-24 | `competitor_jitta/JittaResolve.js` | **実態AIプロンプト案B**: 4キーのみ・出力768。業種URL棚reasonは取らない。要競合 clasp | `local_backup_thinB_*`／Git revert |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **門中全面idle廃止**: 大特大だけ禁止（`jitta_backlog_xl_block`）。自動レ点抑制は維持。要① clasp | `PR_JITTA_BACKLOG_IDLE=false`／Git revert |
+| 2026-10-24 | `competitor_jitta/JittaResolve.js` | **実態AI対象集めの過剰読取を削除**: サマリ1回＋マスタ1回で未調査を優先。起動上限切れ対策。要競合 clasp | 手元 `JittaResolve.js.local_backup_20261024_161152`／Git revert |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE／FLOW／HUMAN_RUN | **幽霊社=調査対象外＋未調査ゲート中は仕分け待ち**: `enum_empty_out`／`jitta_backlog_gate`。要① clasp | `PR_ENUM_EMPTY_OUT=false`／`PR_JITTA_BACKLOG_IDLE=false` |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE／HUMAN_RUN／FLOW | **C0→大特大譲りを撤回**: 未設定=OFF。本線は小中補充。要① clasp | Prop 消す／false |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE §4.4／HUMAN_RUN／FLOW | **（誤）余力ありC0→大特大**: 同日撤回。残さない | 撤回済み |
+| 2026-10-24 | `purchase_research/PurchaseResearch.js`／CYCLE §4.1bis／FULL／HUMAN_RUN／FLOW | **Catalogで調査ルート以外を切る**: classifications取得→ルート照合→キュー投入前に落とす。欠測も落とす。ログ `surveyDrop`／`surveyMiss`。切戻し `PR_CATALOG_SURVEY_ROOT_GATE=false`。要① clasp | Prop false。Git revert |
+| 2026-10-23 | `YAHOO_OAUTH_REAUTH_HUMAN_RUN`／rules／HANDOVER | **Yahoo戻り先の店正本**: `YAHOO_OAUTH_REDIRECT_URI`=`http://localhost/`。50件超は setProperty。エージェントは §0 先読み | docs／rule を戻す |
+| 2026-10-23 | `コード.js`／CABINET_AUTO_FOLDER要件 | **R-Cabinet fileId後はsearchのみ再試行**: insert_only／search_only分離。Search失敗時 search_only_resume。容量系のみ縮小再insert。要出品 clasp | Prop retry false／Git revert。要 clasp |
+| 2026-10-23 | `コード.js`／CABINET_AUTO_FOLDER要件 | **R-Cabinet UrlFetch切り分けを一括出品ログへ**: transient／recovered／final_fail／host_probe＋folderId・newUpStreak等。再試行自体は同日実装。要出品 clasp | Prop retry false／Git revert。要 clasp |
+| 2026-10-23 | `コード.js`／CABINET_AUTO_FOLDER要件 | **R-Cabinet UrlFetch限定再試行**: insert／search の「使用できないアドレス」・429・5xx を最大3回（1s→2s）。attempt／ms／host_probe をログ。未設定=ON。要出品 clasp | Prop `RAKUTEN_CABINET_URLFETCH_RETRY_ENABLED=false`／Git revert。要 clasp |
+| 2026-10-22 | `コード.js`／MATRIX_LAYOUT／SKU_AUTOBIND要件 | **マトリクスサブ全子同一**: `_subN`は親のみ。L2上書き共有＋L3後再配。子別Drive ID増殖止め。要出品 clasp | Prop LAYOUT false／Git revert。要 clasp |
+| 2026-10-21 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／HANDOVER | **ASIN列走査を25000分割**: 索引・空行掃除・ずれ時。Prop `PR_KEEPA_FULL_ASIN_COL_CHUNK`（0=旧一括）。要① clasp | Prop=0／Git revert |
+| 2026-10-21 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／HANDOVER | **ASIN列チャンク比較プローブ**: 99→4。幅5千〜4万の通否＋全行カバー totalMs。書込なし。要① clasp | メニュー削除／Git revert |
+| 2026-10-21 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN | **99メニュー階層化**: 1止める・診断／2洗い／3 D1D2／4 Keepaフル／5セラー／6メーカー／7サイクル／8バックアップ。画面はみ出し対策。要① clasp | Git revert |
+| 2026-10-21 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／HANDOVER | **Keepaフル用量プローブ（読取のみ）**: 99→4 Keepaフル。段階 getValues の通否を①ログへ。書込なし。要① clasp | メニュー削除／Git revert |
+| 2026-10-21 | `コード.js`／CABINET_AUTO_FOLDER要件 | **R-Cabinet フォルダ自動切替**: 上限／予防でルート直下に新フォルダ→B9更新→同じD続き。診断ログ。未設定=OFF。要出品 clasp＋`RAKUTEN_CABINET_AUTO_FOLDER_ENABLED=true` | Prop false。Git revert。要 clasp |
+| 2026-10-21 | `docs/org/D_MENU_RAKUTEN_CABINET_AUTO_FOLDER_REQUIREMENTS.md` | **R-Cabinet フォルダ自動切替要件ロック**: ルート直下・同じD続き・停止時原因ログ。切戻し `RAKUTEN_CABINET_AUTO_FOLDER_ENABLED` | docs Git revert |
+| 2026-10-21 | `コード.js` | **D診断ログ**: 一括出品ログへ予約／トリガー開始終了／親ごとの画像UP／心拍／失敗分類（URLFETCH等）。鍵は出さない。要出品 clasp | Git revert。要 clasp |
 | 2026-10-20 | `glyph_assets.py`／`master_sets.py`／`rakuten_layer.py`／`compose_set_main.py`／レイアウト要件 | **金丸**: 一桁は1の高さで下辺を単位に揃える。ミックスは合計と「各」。単品はセット。切戻し `mixEach.enabled=false`。商品写真は未生成。clasp 不要 | `mixEach.enabled=false`。Git revert |
 | 2026-10-19 | `コード.js` | **抜け2件を再掲**: AI同期は同名でもメーカー違いを混ぜない。E③前に09の未取込xlsmを棚registryへ。棚が無ければ案内して止める。戻し各 Prop false。要出品 clasp | Prop false。Git revert。要 clasp |
 | 2026-10-19 | `コード.js`／CDE要件 | **C／D／Eメニュー再掲**: 9月18日の控えから入口だけ戻した。Cは楽天仕分け、Dは楽天・Yahoo、EはAmazon3項目。日次バックアップと右並びは残す。要出品 clasp | Git revert。要 clasp |
 | 2026-10-19 | `コード.js`／MATRIX_LAYOUT要件 | **楽天マトリクス L1〜L3 再掲**: 関数がファイルに無かった。他セットのメインを右の空きへ、親は最少セットの子と同じ。Driveは増やさない。戻し `RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED=false`。要出品 clasp | Prop false。Git revert。要 clasp |
+| 2026-10-20 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN | **Keepaフル読取・書込の生JSON分離**: マップ／flatは必要列のみ（chunk既定1）。追記は生JSON単独setValue。B4はサイズ上限で要修復＋再予約停止。要① clasp | Git revert／chunk Prop |
 | 2026-10-20 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／HANDOVER | **Keepaフル案A（ASIN限定読取）**: マップ／flat／再門／追記前マップは要求ASINのみ。空キャッシュ握りつぶし禁止。段階ログ。切戻し `PR_KEEPA_FULL_ASIN_MAP=false`。要① clasp | Prop false。Git revert |
 | 2026-10-20 | `purchase_research/PurchaseResearch.js`／HUMAN_RUN／FLOW | **B4 レ点メーカー実態→洗い**: 自動一時停止→レ点だけ実態AI→洗い→専用トリガーで飲み干し→自動再開。切戻し `PR_B4_ENABLED=false`。要① clasp | Prop false。Git revert |
 | 2026-10-19 | `purchase_research/PurchaseResearch.js`／CYCLE §4.1bis／FLOW | **調査カテゴリ外メーカーは洗わない**: サマリ `Amazonルートカテゴリ` が①プロファイルONと無交差なら選定・続き・洗い本体を止め調査対象外。切戻し `PR_SURVEY_ROOT_GATE=false`。要① clasp | Prop false。Git revert |

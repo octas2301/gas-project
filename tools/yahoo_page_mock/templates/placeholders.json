@@ -1,0 +1,27 @@
+{
+  "store": "octas",
+  "product_sample": "食べるおだし かつお",
+  "target_trial": {
+    "code": "ishi-4906283045119-32s14-2",
+    "url": "https://store.shopping.yahoo.co.jp/octas/ishi-4906283045119-32s14-2.html",
+    "paste_file": "paste/katsuo_1bag_caption_PASTE.html"
+  },
+  "layout": "sets_button_to_corner_then_main_images",
+  "flow": [
+    "上部セットボタン（cta_gourmet_sets.jpg）→ #sets",
+    "セットコーナーでセット数2以上のMAINを全件・昇順",
+    "各MAIN → そのセットのYahoo商品ページ",
+    "売れ筋ボタン → ストアTOP"
+  ],
+  "replace_keys": {
+    "CTA_SETS_IMG": "https://shopping.c.yimg.jp/lib/octas/cta_gourmet_sets.jpg",
+    "CTA_BESTSELLERS_IMG": "https://shopping.c.yimg.jp/lib/octas/cta_gourmet_bestsellers.jpg",
+    "STORE_TOP_URL": "https://store.shopping.yahoo.co.jp/octas/",
+    "SETS_BLOCK": "セットコーナー用。MAIN×全セットのリンクHTML"
+  },
+  "notes": [
+    "CTA追加画像URLは2026-09-13反映済み",
+    "仮貼付はHUMAN_RUN_KATSUO_CAPTION.mdに従う",
+    "戻しはBACKUP_BEFORE_PASTE.html"
+  ]
+}

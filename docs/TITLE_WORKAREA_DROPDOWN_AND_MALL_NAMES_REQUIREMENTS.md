@@ -74,7 +74,7 @@
 
 | 項目 | ファイル・箇所 | 内容 |
 |------|-----------------|------|
-| AI→マスタ同期 | コード.js `syncAiDataToMaster` | `masterNameIdx`＝商品名または商品名amazon。行の突合は **ASIN → JAN → 上記名前 → 商品名ベース**（`商品名ベース`列がある場合のみ最後を試行）。実装は `resolveAiRowFromMasterRow_` |
+| AI→マスタ同期 | コード.js `syncAiDataToMaster` | `masterNameIdx`＝商品名または商品名amazon。**既定（2026-09-17）**: 一意ASIN（マスタ親・AIとも1件）→ 一意商品名ベース＝AI商品名 → 一意JAN（マスタ親・AIとも1件）。メーカーは両方非空のときだけ一致必須。ブランドはJOINキーにしない。旧順（ASIN→JAN後勝ち→名前→商品名ベース）は `AI_DESC_FISH_MIX_JOIN_ENABLED=false`。実装は `resolveAiRowFromMasterRow_` |
 | 商品名案生成 | コード.js `menuGenerateProductNameProposals`（1577、1593行付近） | colProductName = 商品名 または 商品名amazon。無い場合はアラート |
 | 検索KW・CTR参照 | コード.js 商品名案生成（1590〜1591行付近） | 「選んだ1つ」を使うため**作業エリア列を優先**。colSearchKw=商品名検索キーワードamazon等、colCtrCopy=[CTR,CVRを上げるコピー] を優先 |
 | メーカー品番取得 | コード.js メーカー品番関連（5327、5501行付近） | colProductName = 商品名 または 商品名amazon。アラート文を「商品名」「商品名amazon」に対応 |
@@ -96,6 +96,29 @@
 2. **後方互換**: **`商品名ベース` 列が無い**ブックでは、従来どおり **ASIN / JAN /（商品名 or 商品名amazon）** のみで突合する（`masterNameBaseIdx` が未定義のためフォールバック行に入らない）。
 3. **子SKU行**: 従来どおり **同期対象外**（`子SKU` が非空の行はスキップ）。
 4. **リスク**: 別SKUで **`商品名ベース` の文字列が偶然一致**すると、意図しない行に AI 結果が流れる可能性がある。運用上は **JAN/ASIN を埋める**、またはベース名の **ユニーク性**を意識することが望ましい。重複が疑われる場合はログやスプシ上で突合結果を確認する。
+
+---
+
+## AI→マスタ同期の一意キーJOIN（AI-DESC-FISH-MIX・2026-09-17）
+
+Yahoo商品情報（explanation）が単品なのに複合魚種になるのは caption テンプレではなく、**JAN後勝ちJOIN**と**検索結果を商品の正体に使うプロンプト**が原因だった。
+
+### 既定（Property 未設定＝ON）
+
+`AI_DESC_FISH_MIX_JOIN_ENABLED` 未設定または true。`syncAiDataToMaster` の `resolveAiRowFromMasterRow_`:
+
+1. **一意ASIN**: マスタ親行でも AI情報取得data でもそのASINが1件だけなら採用
+2. **一意商品名ベース＝AI商品名**: マスタ親の `商品名ベース` が1件、かつ AIの `商品名` が1件で一致
+3. **一意JAN**: マスタ親でも AIでもそのJANが1件だけなら採用
+4. **メーカー**: マスタ（メーカー名、空ならメーカー名ベース）と AIメーカー名が**両方非空**のときだけ一致必須。片方空はスキップしない
+5. **ブランドはJOINキーにしない**（生成プロンプトの事実として渡すだけ）
+6. 一意キーが無い／メーカー不一致は **書かない**（後勝ちで姉妹SKUへ流さない）。ログ `JOIN skip` / `JOIN unresolved`（最大30件）と完了時 `JOIN summary`
+
+生成（`generateListingDataComparison`）: `createSearchPrompt` は当該1SKUの範囲。`createFullPrompt` は商品名・メーカー・ブランドを渡し、調査結果はスペック専用。魚種・セットの正体は商品名が正。
+
+### 切戻し
+
+`AI_DESC_FISH_MIX_JOIN_ENABLED=false` → 旧順（ASIN→JAN後勝ち→名前→商品名ベース）と「調査結果の数値最優先」。Git revert でも可。要出品 clasp。
 
 ---
 

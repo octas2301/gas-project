@@ -1,0 +1,1 @@
+{"id":"T-CHB-18","desc":"日次メールに完走と門通過と停止","kind":"mail","input":{"day":"2026-08-26","paused":true,"completed_makers":["尾西","永谷園"],"top_categories":["調味料","飲料"],"gate_pass_n":42,"enum_n":3,"alight_shops":2,"c0_new":5,"sm_pool":1},"expect_contains":["一時停止","尾西","永谷園","調味料","門通過数: 42","小中プール=1"]}

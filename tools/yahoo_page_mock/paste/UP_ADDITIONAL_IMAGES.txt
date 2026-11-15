@@ -1,0 +1,8 @@
+Yahoo追加画像へUPするファイル（本採用サブ圧縮）:
+
+1. katsuo_body_t03_sizzle.jpg  → https://shopping.c.yimg.jp/lib/octas/katsuo_body_t03_sizzle.jpg
+2. katsuo_body_t04_aji.jpg     → https://shopping.c.yimg.jp/lib/octas/katsuo_body_t04_aji.jpg
+3. katsuo_body_t11_arrange.jpg → https://shopping.c.yimg.jp/lib/octas/katsuo_body_t11_arrange.jpg
+
+出力元: tools/yahoo_page_mock/out/lib_ready/
+旧 texture/rice/arrange は採用落ち候補のため使わない。

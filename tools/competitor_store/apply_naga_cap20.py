@@ -14,13 +14,14 @@ from apply_keepa_full import (
     append_log,
     append_rows,
     as_dicts,
+    prepend_rows,
     fetch_stats90,
     keepa_key,
     read_all,
     sheets_service,
     utc_now,
 )
-from dry_w3_gate import gate, read_profile
+from dry_w3_gate import gate_product, load_profiles
 from keepa_full import keepa_get_needed, latest_row_for_asin, product_to_full_row
 from schema import KEEPA_FULL_HEADERS, PURPOSE_RESEARCH, SHEET_HITS, SHEET_KEEPA_FULL
 
@@ -106,7 +107,7 @@ def main() -> int:
         full.append(rec)
     if recs:
         live_h = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_KEEPA_FULL))[0] or list(KEEPA_FULL_HEADERS)
-        append_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, live_h, recs)
+        prepend_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, live_h, recs)
     # skip_fresh products from existing json
     _, full2 = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_KEEPA_FULL))
     for a in skip:
@@ -117,7 +118,7 @@ def main() -> int:
             products_by[a] = json.loads(row.get("生JSON") or "{}")
         except json.JSONDecodeError:
             pass
-    price_min, rank_max = read_profile(svc)
+    profs = load_profiles(svc)
     ch, crow = as_dicts(read_all(svc, RESEARCH_SS, T_CAND))
     idx = {h: i for i, h in enumerate(ch)}
     by = cand_map(crow)
@@ -125,7 +126,7 @@ def main() -> int:
     pass_n = drop_n = 0
     for a in want:
         p = products_by.get(a) or {}
-        st, why = gate(p, price_min, rank_max)
+        st, why = gate_product(p, profs) if profs else ("落ち", "プロファイルなし")
         if st == "通過":
             pass_n += 1
         else:

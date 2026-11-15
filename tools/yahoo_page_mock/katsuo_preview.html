@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yahoo商品情報モック｜食べるおだし かつお</title>
+  <style>
+    :root {
+      --brown: #3b281d;
+      --brown-light: #74523b;
+      --gold: #b58a43;
+      --cream: #f8f3e9;
+      --paper: #fffdf9;
+      --line: #ded2c0;
+      --text: #2d2925;
+      --muted: #746d66;
+      --white: #fff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #eeeae4;
+      font-family: -apple-system, BlinkMacSystemFont, "Yu Gothic", "Hiragino Kaku Gothic ProN",
+        "Meiryo", sans-serif;
+      font-size: 17px;
+      line-height: 1.8;
+    }
+
+    button { font: inherit; }
+
+    .mock-notice {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 8px 16px;
+      color: var(--white);
+      background: var(--brown);
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: .04em;
+    }
+
+    .page {
+      width: min(760px, 100%);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: var(--paper);
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero-title {
+      padding: 28px 24px 25px;
+      text-align: center;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--gold);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .16em;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      margin-bottom: 7px;
+      color: var(--brown);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: clamp(25px, 5vw, 38px);
+      letter-spacing: .08em;
+    }
+
+    .hero-title p:last-child {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .full-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+    }
+
+    .image-note {
+      margin: 0;
+      padding: 8px 18px 9px;
+      color: var(--muted);
+      background: var(--paper);
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .proposal-bar {
+      padding: 14px 18px;
+      background: #f3eee4;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--brown);
+    }
+
+    .proposal-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .proposal-tab {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      background: var(--white);
+      color: var(--brown);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .proposal-tab.active {
+      background: var(--brown);
+      border-color: var(--brown);
+      color: var(--white);
+    }
+
+    .cta-proposal { display: none; padding: 18px 18px 8px; }
+    .cta-proposal.active { display: block; }
+
+    .cta-banner-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin-bottom: 12px;
+    }
+
+    .set-main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 0 0 14px;
+    }
+    .set-main-grid a {
+      display: block;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      position: relative;
+    }
+    .set-main-grid img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .set-main-grid .set-cap {
+      display: block;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: var(--brown);
+      text-align: center;
+      background: var(--cream);
+    }
+    .set-main-grid a.claimed {
+      outline: 3px solid var(--gold);
+      outline-offset: -3px;
+    }
+
+    .cta-gourmet-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .cta-gourmet-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .cta-hotspot {
+      position: absolute;
+      top: 18%;
+      bottom: 18%;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .cta-hotspot:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: -3px;
+    }
+
+    .cta-hotspot.left { left: 4%; width: 44%; }
+    .cta-hotspot.right { right: 4%; width: 44%; }
+
+    .coupon-grid a {
+      display: block;
+      text-decoration: none;
+    }
+
+    .cta-html-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .cta-html-btn {
+      display: block;
+      text-decoration: none;
+      text-align: center;
+      padding: 18px 12px;
+      border: 1px solid var(--brown);
+      color: var(--brown);
+      background: var(--cream);
+    }
+
+    .cta-html-btn.primary {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--white);
+    }
+
+    .cta-html-btn .en {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      letter-spacing: .14em;
+      font-weight: 800;
+      opacity: .9;
+    }
+
+    .cta-html-btn .jp {
+      display: block;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .cta-html-stack .cta-html-btn {
+      margin-bottom: 10px;
+      padding: 20px 16px;
+    }
+
+    .coupon-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .coupon-grid img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .copy-block {
+      padding: 46px 34px;
+      text-align: center;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .copy-block h2,
+    .section h2 {
+      margin-bottom: 16px;
+      color: var(--brown);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: clamp(22px, 4vw, 30px);
+      letter-spacing: .06em;
+    }
+
+    .copy-block p {
+      max-width: 580px;
+      margin: 0 auto;
+      font-size: 18px;
+    }
+
+    .section {
+      padding: 42px 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section.soft { background: var(--cream); }
+
+    .points {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .point {
+      padding: 20px 12px 8px;
+      border-top: 2px solid var(--gold);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .ways {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 22px;
+      counter-reset: ways;
+    }
+
+    .way {
+      counter-increment: ways;
+      padding-top: 13px;
+      border-top: 2px solid var(--gold);
+    }
+
+    .way::before {
+      content: "0" counter(ways);
+      display: block;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+    }
+
+    .specs {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      margin-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .specs dt,
+    .specs dd {
+      margin: 0;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .specs dt {
+      color: var(--brown);
+      font-weight: 700;
+    }
+
+    .cta-area {
+      display: grid;
+      gap: 12px;
+      padding: 30px 34px 42px;
+    }
+
+    .cta {
+      display: inline-block;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 17px 22px;
+      border: 1px solid var(--brown);
+      color: var(--brown);
+      background: var(--cream);
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: .05em;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .cta.primary {
+      color: var(--white);
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+
+    .cta:hover,
+    .back:hover,
+    .coupon-button:hover { filter: brightness(.96); }
+
+    .sub-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sub-header h2 { margin: 0; color: var(--brown); }
+
+    .back {
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      color: var(--brown);
+      background: var(--white);
+      cursor: pointer;
+    }
+
+    .info {
+      margin: 24px 28px 0;
+      padding: 14px 16px;
+      background: var(--cream);
+      border-left: 4px solid var(--gold);
+      font-size: 14px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      padding: 24px 28px 38px;
+    }
+
+    .card {
+      padding: 20px;
+      background: var(--white);
+      border: 1px solid var(--line);
+    }
+
+    .card h3 {
+      margin-bottom: 6px;
+      color: var(--brown);
+      font-size: 22px;
+    }
+
+    .card p {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: 12px;
+      padding: 3px 9px;
+      color: var(--brown);
+      background: var(--cream);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .coupon-button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--gold);
+      color: var(--white);
+      background: var(--gold);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .coupon-button.claimed {
+      color: var(--brown);
+      background: var(--cream);
+    }
+
+    .footnote {
+      padding: 0 28px 38px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .language-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+      margin: 26px 0 28px;
+    }
+
+    .language-tab {
+      padding: 7px 0 4px;
+      border-bottom: 2px solid var(--gold);
+      color: var(--brown-light);
+      cursor: pointer;
+      font-size: 17px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .language-panel {
+      padding: 30px 0;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 48px;
+    }
+
+    .language-panel h3 {
+      margin-bottom: 16px;
+      color: var(--brown);
+      font-size: 24px;
+      line-height: 1.5;
+    }
+    .language-panel strong { color: var(--brown); }
+    .language-panel p:last-child { margin-bottom: 0; }
+
+    .image-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, .88);
+      cursor: zoom-out;
+    }
+
+    .image-modal.open { display: flex; }
+    .image-modal img {
+      max-width: min(100%, 1000px);
+      max-height: 94vh;
+      object-fit: contain;
+    }
+
+    @media (max-width: 600px) {
+      body { font-size: 18px; line-height: 1.9; }
+      .copy-block, .section { padding: 34px 22px; }
+      .copy-block p, .section p { font-size: 18px; }
+      .copy-block h2, .section h2 { font-size: 28px; line-height: 1.45; }
+      .eyebrow { font-size: 16px; }
+      .points, .ways, .cards { grid-template-columns: 1fr; }
+      .point, .way { font-size: 18px; }
+      .cards { padding: 20px 18px 30px; }
+      .card p { font-size: 16px; }
+      .cta, .coupon-button { min-height: 54px; font-size: 17px; }
+      .cta-area { padding: 24px 20px 34px; }
+      .sub-header { align-items: flex-start; padding: 22px 18px 16px; }
+      .specs { grid-template-columns: 92px 1fr; font-size: 16px; }
+      .info { margin: 18px 18px 0; }
+      .language-tab { flex: 1 1 calc(50% - 20px); min-height: 48px; font-size: 17px; }
+      .language-panel { padding: 28px 0; font-size: 18px; }
+      .language-panel h3 { font-size: 24px; }
+      .image-note { font-size: 15px; }
+      .cta-html-pair { grid-template-columns: 1fr; }
+      .cta-html-btn .jp { font-size: 17px; }
+      .coupon-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-notice">画面確認用モック｜Yahoo本番には接続していません（売れ筋＝ストアTOP）</div>
+
+  <main class="page">
+    <section id="product-view" class="view active">
+      <header class="hero-title">
+        <p class="eyebrow">商品情報</p>
+        <h1>食べるおだし かつお</h1>
+        <p>国産かつお使用・だし香る醤油仕立て・1袋50g</p>
+      </header>
+
+      <div class="proposal-bar">
+        <strong>導線：</strong>セットボタン → セットコーナー（MAIN全件）→ 各セットページ ／ 売れ筋 → ストアTOP
+      </div>
+
+      <div id="cta-a" class="cta-proposal active">
+        <a href="#bulk-anchor" onclick="showView('bulk-view'); return false;">
+          <img class="cta-banner-img" src="banners/cta_gourmet_sets.jpg" alt="お得なセットを見る">
+        </a>
+        <a href="https://store.shopping.yahoo.co.jp/octas/" target="_blank" rel="noopener">
+          <img class="cta-banner-img" src="banners/cta_gourmet_bestsellers.jpg" alt="当店の売れ筋を見る">
+        </a>
+        <p class="image-note">上＝セットコーナーへ／下＝当店の売れ筋（ストアTOP）</p>
+      </div>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200371.jpg"
+        alt="食べるおだし かつお 1袋セット">
+      <p class="image-note">画像をタップすると拡大できます</p>
+
+      <div class="copy-block">
+        <p class="eyebrow">忙しい日のもう一品に</p>
+        <h2>袋を開けて、そのまま食卓へ。</h2>
+        <p>ご飯、おつまみ、サラダなど幅広く楽しめます。画像だけでなく、検索や比較にも読み取れる文章で魅力を伝えます。</p>
+      </div>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200385.jpg"
+        alt="忙しい夜の食卓で食べるおだしを楽しむイメージ">
+
+      <section class="section soft">
+        <p class="eyebrow">FEATURES</p>
+        <h2>おいしさのポイント</h2>
+        <div class="points">
+          <div class="point">国産かつおを使用</div>
+          <div class="point">だし香る<br>醤油仕立て</div>
+          <div class="point">ふわりとほどける<br>食感</div>
+        </div>
+      </section>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200386.jpg"
+        alt="だし香る醤油仕立ての食べるおだし">
+
+      <section class="copy-block">
+        <p class="eyebrow">QUALITY</p>
+        <h2>国産かつおの、確かな旨味。</h2>
+        <p>商品の特徴を画像で直感的に伝え、同じ内容を短い文章でも補足します。</p>
+      </section>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200388.jpg"
+        alt="国産かつおを使用した商品の特徴">
+
+      <section class="copy-block">
+        <p class="eyebrow">WITH RICE</p>
+        <h2>炊きたてご飯に、のせるだけ。</h2>
+        <p>お米の甘みとかつおの旨味を、手軽に一緒に楽しめます。</p>
+      </section>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200389.jpg"
+        alt="炊きたてご飯と食べるおだし">
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200390.jpg"
+        alt="ご飯やおにぎりに合わせる食べるおだし">
+
+      <section class="section">
+        <p class="eyebrow">HOW TO ENJOY</p>
+        <h2>おすすめの食べ方</h2>
+        <div class="ways">
+          <div class="way">そのまま、おつまみに</div>
+          <div class="way">温かいご飯や卵かけご飯に</div>
+          <div class="way">お茶漬け、サラダ、冷奴に</div>
+        </div>
+      </section>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200387.jpg"
+        alt="食べるおだしの食べ方">
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200391.jpg"
+        alt="冷奴、サラダ、パスタへのアレンジ">
+
+      <section class="copy-block">
+        <p class="eyebrow">RELAXING TIME</p>
+        <h2>晩酌のおともにも。</h2>
+        <p>常温でストックでき、食べたいときにすぐ楽しめます。</p>
+      </section>
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200392.jpg"
+        alt="晩酌のおともに食べるおだし">
+
+      <img class="full-image"
+        src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200393.jpg"
+        alt="食べるおだしの贈り物イメージ">
+
+      <section class="section soft">
+        <p class="eyebrow">PRODUCT DETAILS</p>
+        <h2>商品について</h2>
+        <p>石原水産の「食べるおだし（かつお）」です。国産かつおを使用し、だし香る醤油味に仕上げています。袋から出してそのまま食べられます。</p>
+        <dl class="specs">
+          <dt>名称</dt><dd>食べるおだし（かつお）</dd>
+          <dt>内容量</dt><dd>1袋／50g</dd>
+          <dt>主原料</dt><dd>国産かつお</dd>
+          <dt>保存方法</dt><dd>直射日光・高温多湿を避けて常温保存</dd>
+        </dl>
+      </section>
+
+      <section class="section" id="international">
+        <p class="eyebrow">FOR INTERNATIONAL CUSTOMERS</p>
+        <h2>海外のお客様へ</h2>
+        <p>商品のおいしさ、食べ方、保存上の注意を7つの言語でご案内します。言語名を押すと、該当する説明へ移動します。</p>
+        <div class="language-tabs" aria-label="言語別の商品説明">
+          <a class="language-tab" href="#lang-en">English</a>
+          <a class="language-tab" href="#lang-zh">简体中文</a>
+          <a class="language-tab" href="#lang-ko">한국어</a>
+          <a class="language-tab" href="#lang-th">ภาษาไทย</a>
+          <a class="language-tab" href="#lang-vi">Tiếng Việt</a>
+          <a class="language-tab" href="#lang-pt">Português</a>
+          <a class="language-tab" href="#lang-tl">Filipino</a>
+        </div>
+
+        <div id="lang-en" class="language-panel" lang="en">
+          <h3>English｜Seasoned Bonito, Ready to Enjoy</h3>
+          <p>This Japanese food product is made with bonito from Japan and finished with a savory soy sauce and dashi-style flavor. Its tender, flaky texture and rich umami make it easy to enjoy as part of an everyday meal.</p>
+          <p>Open the package and enjoy it as it is, or serve it over warm rice. It also works well with ochazuke, rice balls, salads, chilled tofu, pasta, or as a savory snack with drinks. No complicated preparation is required.</p>
+          <p><strong>Net weight:</strong> 50 g per package<br><strong>Storage:</strong> Keep at room temperature away from direct sunlight, high temperatures, and humidity. After opening, seal well and consume as soon as possible.</p>
+          <p><strong>Important:</strong> Please check the Japanese label on the actual package for the complete ingredients, allergens, best-before date, and manufacturer information. The Japanese package label is the official product information.</p>
+        </div>
+
+        <div id="lang-zh" class="language-panel" lang="zh-CN">
+          <h3>简体中文｜开袋即食的日式调味鲣鱼</h3>
+          <p>本产品使用日本国产鲣鱼，搭配酱油和日式高汤风味调制而成。口感松软易入口，鲣鱼的鲜味浓郁，适合日常用餐或作为方便的小菜。</p>
+          <p>开袋后可直接食用，也可铺在热米饭上。还适合搭配茶泡饭、饭团、沙拉、冷豆腐、意大利面，或作为佐酒小食，无需复杂烹调。</p>
+          <p><strong>净含量：</strong>每袋50克<br><strong>保存方法：</strong>请置于常温环境，避免阳光直射、高温及潮湿。开封后请密封保存并尽快食用。</p>
+          <p><strong>重要提示：</strong>完整的配料、过敏原、保质期及制造商信息，请以实际商品包装上的日文标签为准。日文包装标签为正式商品信息。</p>
+        </div>
+
+        <div id="lang-ko" class="language-panel" lang="ko">
+          <h3>한국어｜바로 즐기는 일본식 가다랑어 조미식품</h3>
+          <p>일본산 가다랑어를 사용하고 간장과 일본식 다시의 풍미를 더한 제품입니다. 부드럽게 풀리는 식감과 풍부한 감칠맛으로 일상 식사에 간편하게 곁들일 수 있습니다.</p>
+          <p>포장을 열어 그대로 드시거나 따뜻한 밥 위에 올려 드세요. 오차즈케, 주먹밥, 샐러드, 냉두부, 파스타와도 잘 어울리며 술안주로도 즐길 수 있습니다. 복잡한 조리가 필요하지 않습니다.</p>
+          <p><strong>내용량:</strong> 1봉 50g<br><strong>보관 방법:</strong> 직사광선과 고온다습한 곳을 피해 실온에 보관하십시오. 개봉 후에는 밀봉하여 가능한 한 빨리 드십시오.</p>
+          <p><strong>중요 안내:</strong> 전체 원재료, 알레르기, 소비기한 및 제조사 정보는 실제 포장의 일본어 표시를 확인해 주십시오. 일본어 포장 표시가 공식 상품 정보입니다.</p>
+        </div>
+
+        <div id="lang-th" class="language-panel" lang="th">
+          <h3>ภาษาไทย｜ปลาโอญี่ปุ่นปรุงรส พร้อมรับประทาน</h3>
+          <p>ผลิตภัณฑ์อาหารญี่ปุ่นนี้ทำจากปลาโอจากญี่ปุ่น ปรุงด้วยรสโชยุและน้ำซุปดาชิ เนื้อปลานุ่มเป็นชิ้น รับประทานง่าย และมีรสอูมามิเข้มข้น เหมาะสำหรับเพิ่มรสชาติให้มื้ออาหารประจำวัน</p>
+          <p>เปิดซองแล้วรับประทานได้ทันที หรือวางบนข้าวร้อน ๆ นอกจากนี้ยังเข้ากันได้ดีกับโอฉะสึเกะ ข้าวปั้น สลัด เต้าหู้เย็น พาสต้า และใช้เป็นของทานเล่นคู่กับเครื่องดื่มได้ โดยไม่ต้องปรุงให้ยุ่งยาก</p>
+          <p><strong>น้ำหนักสุทธิ:</strong> 50 กรัมต่อซอง<br><strong>การเก็บรักษา:</strong> เก็บที่อุณหภูมิห้อง หลีกเลี่ยงแสงแดดโดยตรง อุณหภูมิสูง และความชื้น หลังเปิดซองควรปิดให้สนิทและรับประทานโดยเร็ว</p>
+          <p><strong>ข้อมูลสำคัญ:</strong> โปรดตรวจสอบฉลากภาษาญี่ปุ่นบนบรรจุภัณฑ์จริงสำหรับส่วนประกอบ สารก่อภูมิแพ้ วันควรบริโภคก่อน และข้อมูลผู้ผลิต ฉลากภาษาญี่ปุ่นถือเป็นข้อมูลทางการของสินค้า</p>
+        </div>
+
+        <div id="lang-vi" class="language-panel" lang="vi">
+          <h3>Tiếng Việt｜Cá ngừ vằn Nhật Bản tẩm vị, dùng ngay</h3>
+          <p>Sản phẩm thực phẩm Nhật Bản này được làm từ cá ngừ vằn của Nhật, tẩm vị nước tương và nước dùng dashi. Thịt cá mềm, dễ tách và có vị umami đậm đà, phù hợp để dùng kèm trong bữa ăn hằng ngày.</p>
+          <p>Có thể dùng ngay sau khi mở gói hoặc ăn cùng cơm nóng. Sản phẩm cũng thích hợp với ochazuke, cơm nắm, salad, đậu phụ lạnh, mì Ý hoặc dùng làm món nhắm. Không cần chế biến cầu kỳ.</p>
+          <p><strong>Khối lượng tịnh:</strong> 50 g mỗi gói<br><strong>Bảo quản:</strong> Để ở nhiệt độ phòng, tránh ánh nắng trực tiếp, nhiệt độ cao và độ ẩm. Sau khi mở, đóng kín và dùng càng sớm càng tốt.</p>
+          <p><strong>Lưu ý quan trọng:</strong> Vui lòng kiểm tra nhãn tiếng Nhật trên bao bì thực tế để biết đầy đủ thành phần, chất gây dị ứng, hạn sử dụng và thông tin nhà sản xuất. Nhãn tiếng Nhật là thông tin chính thức của sản phẩm.</p>
+        </div>
+
+        <div id="lang-pt" class="language-panel" lang="pt">
+          <h3>Português｜Bonito japonês temperado, pronto para consumir</h3>
+          <p>Este alimento japonês é produzido com bonito do Japão e temperado com molho de soja e sabor de caldo dashi. A textura macia e desfiada e o sabor umami intenso tornam o produto prático para as refeições do dia a dia.</p>
+          <p>Pode ser consumido diretamente da embalagem ou servido sobre arroz quente. Também combina com ochazuke, bolinhos de arroz, saladas, tofu frio, massa ou como petisco para acompanhar bebidas. Não exige preparo complicado.</p>
+          <p><strong>Peso líquido:</strong> 50 g por embalagem<br><strong>Conservação:</strong> Manter à temperatura ambiente, longe da luz solar direta, de temperaturas elevadas e da umidade. Após abrir, fechar bem e consumir o quanto antes.</p>
+          <p><strong>Importante:</strong> Consulte o rótulo em japonês da embalagem real para verificar a lista completa de ingredientes, alergênicos, data de validade e fabricante. O rótulo japonês contém as informações oficiais do produto.</p>
+        </div>
+
+        <div id="lang-tl" class="language-panel" lang="fil">
+          <h3>Filipino｜Tinimplahang bonito mula Japan, handa nang kainin</h3>
+          <p>Ang Japanese food product na ito ay gawa sa bonito mula Japan at may malasang timpla ng toyo at dashi broth. Malambot at madaling himayin ang isda, at mayaman ang umami flavor na bagay sa pang-araw-araw na pagkain.</p>
+          <p>Maaaring kainin agad mula sa pakete o ilagay sa mainit na kanin. Masarap din kasama ng ochazuke, rice ball, salad, malamig na tofu, pasta, o bilang pulutan. Hindi kailangan ng komplikadong paghahanda.</p>
+          <p><strong>Net weight:</strong> 50 g bawat pakete<br><strong>Pag-iimbak:</strong> Itago sa room temperature at ilayo sa direktang araw, mataas na temperatura, at halumigmig. Pagkabukas, isarang mabuti at ubusin agad.</p>
+          <p><strong>Mahalagang paalala:</strong> Tingnan ang Japanese label sa aktuwal na pakete para sa kumpletong ingredients, allergens, best-before date, at impormasyon ng manufacturer. Ang Japanese package label ang opisyal na impormasyon ng produkto.</p>
+        </div>
+      </section>
+
+      <div class="cta-area" id="bulk-anchor">
+        <button class="cta" type="button" onclick="showView('bulk-view')">お得なセットを見る　→</button>
+        <a class="cta primary" href="https://store.shopping.yahoo.co.jp/octas/" target="_blank" rel="noopener">当店の売れ筋を見る　→</a>
+      </div>
+      <p class="image-note">※クーポンはカート画面で確認（商品説明への埋め込みなし）</p>
+    </section>
+
+    <section id="bulk-view" class="view">
+      <header class="sub-header">
+        <div>
+          <p class="eyebrow">SET CORNER</p>
+          <h2>セットコーナー</h2>
+        </div>
+        <button class="back" type="button" onclick="showView('product-view')">商品情報へ戻る</button>
+      </header>
+      <div class="info">セットボタンからここに来ます。同一親のセット数2以上を全件・昇順で並べ、各メイン画像からそのセットの商品ページへ飛びます（モックのため画像は代表流用）。</div>
+      <div id="sets-grid-top" class="set-main-grid large">
+        <a href="#" onclick="selectCard(this); return false;"><img src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200372.jpg" alt="2セット MAIN"><span class="set-cap">2（モック）</span></a>
+        <a href="#" onclick="selectCard(this); return false;"><img src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200372.jpg" alt="3セット MAIN"><span class="set-cap">3（モック）</span></a>
+        <a href="#" onclick="selectCard(this); return false;"><img src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200372.jpg" alt="5セット MAIN"><span class="set-cap">5（モック）</span></a>
+        <a href="#" onclick="selectCard(this); return false;"><img src="https://image.rakuten.co.jp/octas/cabinet/12644827/imgrc0114200372.jpg" alt="8セット MAIN"><span class="set-cap">8+（モック）</span></a>
+      </div>
+      <p class="footnote">単位はメイン画像側（金丸等）。表示はモックです。</p>
+    </section>
+
+    <section id="coupon-view" class="view">
+      <header class="sub-header">
+        <div>
+          <p class="eyebrow">COUPONS</p>
+          <h2>利用できるクーポン</h2>
+        </div>
+        <button class="back" type="button" onclick="showView('product-view')">商品情報へ戻る</button>
+      </header>
+      <div class="info" id="coupon-anchor">期限なし版の実画像です。獲得ボタンはモック表示のみで、実際のクーポンは発行しません。</div>
+      <div class="coupon-grid">
+        <a id="coupon-50" href="#coupon-50" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_50yen_under999.jpg" alt="999円以下 50円OFF"></a>
+        <a id="coupon-100" href="#coupon-100" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_100yen_over1000.jpg" alt="1000円以上 100円OFF"></a>
+        <a id="coupon-2" href="#coupon-2" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_2items_2off.jpg" alt="2点購入で2%OFF"></a>
+        <a id="coupon-3" href="#coupon-3" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_3items_3off.jpg" alt="3点購入で3%OFF"></a>
+        <a id="coupon-5" href="#coupon-5" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_5items_5off.jpg" alt="5点購入で5%OFF"></a>
+        <a id="coupon-first" href="#coupon-first" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_first_visit_3off.jpg" alt="初来店で3%OFF"></a>
+        <a id="coupon-next" href="#coupon-next" onclick="highlightCoupon(this); return false;"><img src="https://shopping.c.yimg.jp/lib/octas/coupon_next_visit_3off.jpg" alt="次回来店で3%OFF"></a>
+      </div>
+      <p class="info">本番では各画像を「クーポン獲得URL」にリンクします。モックでは選択表示のみです。</p>
+      <div class="cards">
+        <article class="card"><span class="tag">全員対象</span><h3>50円OFF</h3><p>999円以下のお買い物。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">全員対象</span><h3>100円OFF</h3><p>1,000円以上のお買い物。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">複数購入</span><h3>2点で2％OFF</h3><p>対象商品を合計2点以上。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">複数購入</span><h3>3点で3％OFF</h3><p>対象商品を合計3点以上。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">複数購入</span><h3>5点で5％OFF</h3><p>対象商品を合計5点以上。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">初来店</span><h3>3％OFF</h3><p>初来店クーポン。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+        <article class="card"><span class="tag">次回来店</span><h3>3％OFF</h3><p>次回来店クーポン。</p><button class="coupon-button" onclick="claimCoupon(this)">クーポンを獲得</button></article>
+      </div>
+      <p class="footnote">Yahooの標準条件は異なる商品数ではなく、対象商品の合計個数です。同じ単品を複数購入した場合も条件を満たす可能性があります。</p>
+    </section>
+  </main>
+
+  <div id="image-modal" class="image-modal" role="dialog" aria-modal="true" aria-label="商品画像の拡大表示" onclick="closeImage()">
+    <img id="modal-image" src="" alt="">
+  </div>
+
+  <script>
+    function showView(id) {
+      document.querySelectorAll(".view").forEach(function (view) {
+        view.classList.toggle("active", view.id === id);
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function showProposal(id, button) {
+      document.querySelectorAll(".cta-proposal").forEach(function (panel) {
+        panel.classList.toggle("active", panel.id === id);
+      });
+      document.querySelectorAll(".proposal-tab").forEach(function (tab) {
+        tab.classList.toggle("active", tab === button);
+      });
+    }
+
+    function highlightCoupon(link) {
+      document.querySelectorAll(".coupon-grid a").forEach(function (item) {
+        item.style.outline = "";
+      });
+      link.style.outline = "3px solid #b58a43";
+      link.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function claimCoupon(button) {
+      var claimed = button.classList.toggle("claimed");
+      button.textContent = claimed ? "獲得済み（もう一度押すと解除）" : "クーポンを獲得";
+    }
+
+    function selectCard(el) {
+      document.querySelectorAll("#bulk-view .set-main-grid a").forEach(function (item) {
+        item.classList.remove("claimed");
+      });
+      el.classList.add("claimed");
+    }
+
+    function openImage(image) {
+      var modal = document.getElementById("image-modal");
+      var modalImage = document.getElementById("modal-image");
+      modalImage.src = image.src;
+      modalImage.alt = image.alt;
+      modal.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeImage() {
+      document.getElementById("image-modal").classList.remove("open");
+      document.body.style.overflow = "";
+    }
+
+    document.querySelectorAll(".full-image").forEach(function (image) {
+      image.addEventListener("click", function () { openImage(image); });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeImage();
+    });
+  </script>
+</body>
+</html>

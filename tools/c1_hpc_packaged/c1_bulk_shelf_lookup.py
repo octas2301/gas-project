@@ -63,11 +63,26 @@ def _pick_sheet(wb: Any) -> Tuple[str, Any]:
     raise RuntimeError("テンプレートシートが見つかりません: %s" % (wb.sheetnames,))
 
 
+# 単体 HERB.xlsm は本線外。PT=HERB は複合 SEASONING 棚で充填する。
+PT_SHELF_ALIASES = {"HERB": "SEASONING"}
+
+
 def _entry_for_pt(registry: dict, product_type: str) -> Optional[dict]:
     pt = (product_type or "").strip().upper()
-    for e in registry.get("entries") or []:
+    entries = registry.get("entries") or []
+    for e in entries:
         if str(e.get("productType") or "").strip().upper() == pt:
             return e
+    alias = PT_SHELF_ALIASES.get(pt)
+    if not alias:
+        return None
+    for e in entries:
+        if str(e.get("productType") or "").strip().upper() != alias:
+            continue
+        out = dict(e)
+        out["productType"] = pt
+        out["notes"] = (str(e.get("notes") or "") + " alias_of=" + alias).strip()
+        return out
     return None
 
 

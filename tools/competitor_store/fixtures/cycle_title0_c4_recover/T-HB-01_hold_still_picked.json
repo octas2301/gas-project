@@ -1,0 +1,29 @@
+{
+  "id": "T-HB-01",
+  "desc": "title0_skip済み山清は wash_small に出ない",
+  "mode": "unit_hb",
+  "props": {"PR_WASH_TITLE0_SKIP_SET": "株式会社山清"},
+  "maker_sum": [
+    {
+      "メーカー": "株式会社山清",
+      "洗い状態": "保留",
+      "洗い進捗": "title0_skip n=3",
+      "規模帯": "小",
+      "Catalog見積": 0,
+      "セラーヒット": 1,
+      "実態": "製造メーカー"
+    },
+    {
+      "メーカー": "三井農林",
+      "洗い状態": "未着手",
+      "規模帯": "小",
+      "Catalog見積": 403,
+      "セラーヒット": 1,
+      "実態": "製造メーカー"
+    }
+  ],
+  "expect": {
+    "current.action": "wash_small",
+    "current.maker": "三井農林"
+  }
+}

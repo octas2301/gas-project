@@ -1,0 +1,1 @@
+{"id":"T-HBL-16","desc":"予定超過（Keepa最大回復+α）の洗い時計は沈黙→リセット","start":{"wash_n":1,"expect_ms":1000,"inflight_run_id":"pr_old","inflight_ms":1000},"steps":[{"action":"liveness_tick","now_ms":4000000}],"expect":{"alive":true,"reason":"wash_trigger","log_has":["liveness_reset"]}}

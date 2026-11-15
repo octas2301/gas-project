@@ -1,0 +1,19 @@
+{
+  "id": "T-TCR-02",
+  "desc": "title0 3回目で保留＋心拍へ",
+  "mode": "unit_title0",
+  "parent": "株式会社山清",
+  "fail_times": 3,
+  "maker_sum": [{"メーカー": "株式会社山清", "洗い状態": "列挙中"}],
+  "expect": {
+    "skipped": true,
+    "count": 3,
+    "status": "保留",
+    "heartbeat_armed": true,
+    "wash_armed": false,
+    "maker_status": {
+      "株式会社山清": {"洗い状態": "保留", "洗い進捗": "title0_skip n=3"}
+    },
+    "title0_map.株式会社山清": 3
+  }
+}

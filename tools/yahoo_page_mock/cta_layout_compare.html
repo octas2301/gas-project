@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTA配置比較｜縦型低め vs 横並び</title>
+  <style>
+    body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; background: #f5f0e8; color: #3b281d; }
+    header { background: #3b281d; color: #fff; padding: 14px 18px; }
+    header p { margin: 6px 0 0; opacity: .85; font-size: 13px; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 20px; display: grid; gap: 24px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 800px) { .wrap { grid-template-columns: 1fr; } }
+    .card { background: #fdf8f0; border: 1px solid #e4d6c2; border-radius: 8px; overflow: hidden; }
+    .card h2 { margin: 0; padding: 12px 14px; background: #3b281d; color: #fff; font-size: 15px; }
+    .phone { padding: 14px; }
+    .phone img { display: block; width: 100%; height: auto; }
+    .stack img + img { margin-top: 10px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .note { max-width: 920px; margin: 0 auto 28px; padding: 0 20px; font-size: 14px; line-height: 1.6; }
+    .note strong { color: #8a5a1a; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>CTA配置比較（スマホ幅想定）</strong>
+    <p>文言共通：お得なセットを見る ／ 当店の売れ筋を見る（ストアTOP）</p>
+  </header>
+  <div class="wrap">
+    <section class="card">
+      <h2>A. 縦型・低め（壊れにくい）</h2>
+      <div class="phone stack">
+        <img src="banners/cta_sets_short.jpg" alt="お得なセットを見る">
+        <img src="banners/cta_bestsellers_short.jpg" alt="当店の売れ筋を見る">
+      </div>
+    </section>
+    <section class="card">
+      <h2>B. 横並び（table 50%/50%）</h2>
+      <div class="phone row">
+        <img src="banners/cta_sets_square.jpg" alt="お得なセットを見る">
+        <img src="banners/cta_bestsellers_square.jpg" alt="当店の売れ筋を見る">
+      </div>
+    </section>
+  </div>
+  <p class="note">
+    <strong>見方：</strong>Aは全幅タップ・文字が読みやすい。Bは占有高さが低く当初デザインに近いが、半幅なので文字はやや小さめ。<br>
+    採用する方（A / B）を指定してください。テンプレへ反映します。
+  </p>
+</body>
+</html>

@@ -11,8 +11,8 @@
 
 P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタログ（レーンB＝C1）と将来の選定補助**に接続する。  
 現場の「カテゴリ／PT決めが作業先頭」を、**楽天ジャンル必須依存なし**で進める。  
-参考ASINは **マスタの耐久列（競合店ASIN／競合URL）** を集め、**一致チェック合格分だけ** Catalog し、browseNode で多数決する。競合が無い／全滅したら **JAN即決 → SHELF／楽天／Yahoo／名称の重み付き投票**。  
-**Browse 未確定のとき PT だけ書かない**（FOOD＋Browse空の半端状態を禁止）。
+参考ASINは **貼付シートの評価◎を本線**にし、一致チェック合格分だけ Amazon の分類を数える。◎が無い／全滅したら **ログ◎ → マスタ他店ASIN → JAN複数ヒット → 楽天／Yahoo／商品名**。同点でも空欄にしない。  
+**Browse 未確定のとき PT だけ書かない**（手がかりが1つも無いときだけ）。
 
 | 段階 | 内容 | 成功定義 |
 |------|------|----------|
@@ -31,14 +31,14 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 | 1 | 対象の分離 | **P4b＝SP-API Product Type＋推奨ブラウズ**。手数料キー `amazon カテゴリー`（Gemini 15-⑫）は **触らない** |
 | 2 | 書込列 | **`Amazon Product Type`**／**`Amazon Browse Node`**。無ければ人間が列追加 |
 | 3 | 上書き | **空セルのみ書込**。既存値・手入力は尊重 |
-| 4 | 候補の決め方（競合あり） | **マスタ耐久列の複数ASIN（最大5）**: 親＋レ点子の `競合店ASINコード`・競合URL抽出ASIN・自 `ASINコード` を重複除去して収集。（a）各ASINを Catalog（上限内）。（b）**一致チェック合格**したものだけ browseNodeId を投票。（c）最多得票の Node＋SHELF preferred PT を採用。（d）**作業台ASIN貼付の◎多数決はしない**（揮発のため）。（e）特定PT名の優先はしない（SHELF Node→preferred は可） |
+| 4 | 候補の決め方 | **貼付◎が本線**（単品と詰め合わせは名前でブロックを分ける。JANだけでは混ぜない）。評価◎かつ機械非候補を最大10。全滅ならそのブロックの◎全部。次段: Keepa取得_ログの同一JAN・同一ブロック（または期待名）の◎。次段: マスタ `競合店ASINコード`／競合URL。次段: JAN検索のヒットを複数件投票（items[0]即決はしない）。最後: 楽天ジャンル／Yahoo／商品名。自 `ASINコード` は単品では数えない（ミックス親＝`セット構成2_親SKU` があるときだけ可）。特定PT名の優先はしない（確定Node→preferred は可） |
 | 4b | 正しさチェック | **不合格ASINは採用しない**（書込に使わない）: Catalog≠200、タイトル非類似、JAN不一致（マスタJANあり時）、Browse語と商品名のカテゴリ衝突（例: 肉×魚介）。ログに `REJECT`／`WARN` |
-| 4c | 競合無し／競合全滅 | **Stage A**: JAN→Catalog identifiers 検索→①相当チェック→即決。**Stage B**: SHELF browsePath×商品名（重み3）／楽天ジャンル・要確認（2）／Yahooカテゴリ・要確認（2）／メーカー・商品名ベース（1）の**重み付き投票**。閾値未満は Browse 未確定のまま停止誘導 |
-| 4d | 書込契約 | **Browse 文字列が確定しない限り PT を書かない**（Definitions単独の PT 埋め禁止） |
+| 4c | 同点・空欄禁止 | 最多が1つならそれを採用。同点は楽天／Yahooの語が片方だけ乗る方。どちらも／どちらでもなければ商品名。まだなら名称投票。それでもダメなら同点の先頭。**空欄で止めない** |
+| 4d | 書込契約 | **Browse 文字列が確定しない限り PT を書かない**。手がかり0のときだけ非書込 |
 | 5 | PTとC1 | Catalog／投票で Node 確定後、**SHELF**で preferredProductType を優先。C1はマップ実装済PT |
 | 6 | C1接続 | マスタ PT／browse **両方必須**（grocery／seasoning の require）。空なら親除外。**json既定browseで埋めない** |
 | 7 | D接続 | **P4b-c** 維持。D失敗はモーダル内表示に加え **alert ポップアップ** |
-| 8 | 件数 | 1回あたり親 **最大3**。ASIN試行 **最大5／親**（Property可） |
+| 8 | 件数 | 1回あたり親 **最大3**。ASIN試行 **最大10／親**（貼付◎ON時。Property可） |
 | 9 | Keepa | **新規取得しない** |
 | 10 | xlsm自動DL | **しない** |
 | 11 | 実装順 | §2 P4b-d → コード → HUMAN_RUN／LEDGER |
@@ -59,7 +59,7 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 
 | 状態 | パス | 内容 |
 |------|------|------|
-| **済** | `AmazonCategoryPt.js` | 競合店ASIN／URL／自ASIN → Catalog1回＋WARN。多数決削除 |
+| **済** | `AmazonCategoryPt.js` | 貼付◎本線。ログ◎→マスタ他店→JAN複数→名称。自ASINは単品除外 |
 | 済 | `コード.js`／`AmazonSpapiPut.js`／C1 | メニュー・GET共有・マスタPT優先 |
 
 **戻し**: Property OFF。git revert。
@@ -68,7 +68,6 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 
 - 手数料列 `amazon カテゴリー` の Gemini 置換・削除  
 - Keepa の新規取得・メニューAの D 埋め込み  
-- **作業台**ASIN貼付◎多数決の復活（マスタ耐久列の複数ASIN投票は P4b-d で可）  
 - FISH 等の C1本線（マップ未）以外の拡大  
 - レーンC／P2-③／P3・楽天聖域・Yahoo・B統合  
 
@@ -83,9 +82,9 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 | `amazon カテゴリー` | 手数料 VLOOKUP キー | **非対象** |
 | `Amazon Product Type` | Listings／C1 の商品タイプ | **対象（提案）** |
 | `Amazon Browse Node` | 推奨ブラウズ | **対象（提案）** |
-| `競合店ASINコード` | マスタの競合代表ASIN | **参考ASIN正本（優先）** |
+| `競合店ASINコード` | マスタの競合代表ASIN | **貼付◎が空のときの段** |
 | `競合AmazonページURL` | 人間調査の競合URL | **ASIN抽出・信頼メモ** |
-| `ASINコード` | 自社／相乗り等 | **競合が空のときのフォールバック** |
+| `ASINコード` | 自社／相乗り等 | **単品では票に入れない。ミックス親だけ可** |
 | `Amazon PT URL` | 画像 | **非対象** |
 
 ### 4.2 トグル（実装時）
@@ -94,14 +93,16 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 |----------|------|------|
 | `APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED` | **false** | マスタへの書込を許可 |
 | `APPROVAL_AMAZON_P4B_PT_MAX_PARENTS` | 3 | 1実行の親上限 |
+| `APPROVAL_AMAZON_P4B_PT_MAX_ASINS` | 10（貼付◎ON） | 親あたり試行上限 |
+| `APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_ENABLED` | **未設定=true** | false で旧マスタ多数決に戻す |
 
 ### 4.3 fail-closed／警告
 
-- LWA／403／候補0 → **書込しない**  
+- LWA／403 → **書込しない**  
 - 既存セル非空 → スキップ  
-- 競合正しさチェック不合格 → **そのASIN不採用**（他候補へ）  
-- Browse 未確定 → **PTも書かない**  
-- Keepa 新規取得はしない  
+- 正しさチェック不合格 → **そのASIN不採用**（他候補へ）  
+- 同点でも空欄にしない。手がかりが1つも無いときだけ Browse 未確定→PT非書  
+- Keepa 新規取得はしない（貼付／ログの既存◎は読む）  
 - C1 FOODマップ: マスタ空または本線非許可 PT → **除外（fail-closed）**。HPCマップ: 空／非許可 → 現行 defaults  
 
 ### 4.4 P4a からの引き継ぎ
@@ -109,7 +110,7 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 | # | P4a結論 | P4bでの扱い |
 |---|---------|-------------|
 | 1〜3 | Definitions／Catalog 可 | マスタ競合ASIN（または自ASIN）の Catalog／Definitions |
-| 4 | Keepa | P4b本線では使わない（新規も既存貼付も依存しない） |
+| 4 | Keepa | **新規取得しない**。貼付◎と Keepa取得_ログの既存◎は読む |
 | 5 | xlsm自動DL不可 | 追わない |
 
 ---
@@ -161,6 +162,7 @@ P4a で確認した SP-API 読取（Definitions／Catalog）を、**新規カタ
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-17 | **貼付◎本線**: ブロックは商品名＋JAN。自ASINは単品除外。同点は空欄にしない。切戻し `APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_ENABLED=false`。 |
 | 2026-08-08 | **P4b-d**: 複数ASIN＋一致チェック＋browse多数決。競合無しはJAN→重み付きSHELF投票。Browse無しPT禁止。Dエラーalert。 |
 | 2026-08-01 | **P4b-c** を D新規ゲート承認へスコープイン（方針のみ）。 |
 | 2026-08-01 | 起草〜マスタ競合コード。 |

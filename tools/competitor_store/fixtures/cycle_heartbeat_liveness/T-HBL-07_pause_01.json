@@ -1,0 +1,1 @@
+{"id":"T-HBL-07","desc":"正: pause は 01:00 を残す","steps":[{"action":"pause_other","now_ms":1000}],"expect":{"alive":true,"reason":"paused_01","resume01_n":1}}

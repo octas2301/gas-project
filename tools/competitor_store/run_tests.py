@@ -46,10 +46,17 @@ def t0(store: LocalStore) -> str:
     assert "メーカー" in store.headers(SHEET_MAKER)
     assert "第2クエリ語" in store.headers(SHEET_MAKER)
     assert SHEET_KEEPA_FULL in SHEETS
+    from schema import SHEET_MAKER_SUM
+
+    assert SHEET_MAKER_SUM in SHEETS
+    from schema import MAKER_SUM_HEADERS
+
+    assert MAKER_SUM_HEADERS[0] == "調査CK"
     from schema import SHEET_SELLER, SELLER_HEADERS
 
     assert SHEET_SELLER in SHEETS
     assert "sellerId" in SELLER_HEADERS
+    assert SELLER_HEADERS[0] == "調査CK"
     assert "カテゴリ構成" in SELLER_HEADERS
     assert "卸仮説" in SELLER_HEADERS
     assert "メインカテゴリ" in SELLER_HEADERS
@@ -778,9 +785,12 @@ def t21(store: LocalStore) -> str:
     }
     assert upsert_keepa_full(s, p2, "t3") == "append"
     assert s.row_count(SHEET_KEEPA_FULL) == 2
+    # 先頭挿入: row0=最新(p2), row1=旧(p1)
     row0 = s.rows(SHEET_KEEPA_FULL)[0]
+    row1 = s.rows(SHEET_KEEPA_FULL)[1]
     assert row0.get("目的") == PURPOSE_RESEARCH
-    assert row0.get("Amazon: 90 日平均") == "150"
+    assert row0.get("Amazon: 現在価格") == "999"
+    assert row1.get("Amazon: 90 日平均") == "150"
     assert upsert_keepa_full(s, {"title": "x"}, "t4") == "skip_no_asin"
     return "ok rows=2"
 

@@ -16,7 +16,7 @@ B-T1 dry_run と同じ経路で、**本番向け PACKAGED xlsm**（`_DRYRUN` な
 | 段階 | 内容 | 状態 |
 |------|------|------|
 | B-T0 | 指紋／差分 | **済** |
-| B-T1 dry_run | 棚引き＋項目名＋`*_DRYRUN.xlsm` | **済** |
+| B-T1 dry_run | 棚引き＋項目名＋05レポート（`*_DRYRUN.xlsm` は **2026-10-29以降出さない**） | **済** |
 | **B-T1 prod（本包）** | 同経路で **prod xlsm** | **実装済／スモークOK** |
 | B-T2 | 新PT／別複合／単体 | **方針ロック済・実装は実需後** — [T2承認](LV4_LANE_B_BULK_TEMPLATE_T2_APPROVAL.md) |
 
@@ -35,7 +35,7 @@ B-T1 継承。根 `04`。06読取専用／03新規のみ／05ログ／SC ULは�
 | 1 | スコープ | B-T1 入口の prod 出力のみ |
 | 2 | PT／テンプレ | 当面 **SEASONING＋複合** |
 | 3 | 入口 | `c1_bulk_fill_by_name.py --mode prod`（既定 dry_run） |
-| 4 | 棚 | prod は **`DL_NOT_NEEDED` 必須**。`--allow-dl-required` は prod 拒否 |
+| 4 | 棚 | prod は **`DL_NOT_NEEDED` 必須**。無いときは **09/06 の `{PT}.xlsm` から auto-onboard** してから再判定。`--allow-dl-required` は prod 拒否 |
 | 5 | 指紋 | **一致必須**（不一致→非作成） |
 | 6 | 項目名 | 必須 MISS → 中止 |
 | 7 | accepted=0 | prod 中止 |
@@ -90,5 +90,6 @@ B-T1 継承。根 `04`。06読取専用／03新規のみ／05ログ／SC ULは�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **auto-onboard**: 棚なしでも 09/06 `{PT}.xlsm` から指紋＋列マップを載せて prod。 |
 | 2026-08-01 | 起草。 |
 | 2026-08-01 | **§4ロック／三点スキップ／実装＋スモーク**。 |

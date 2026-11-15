@@ -1,0 +1,32 @@
+{
+  "id": "T-CAH-07",
+  "desc": "副作用なし: A-light後も①候補・Keepaフル行数不変",
+  "sellers_before": [
+    {
+      "sellerId": "SAFE",
+      "店名": "安全店",
+      "調査CK": true,
+      "抽出メーカー": "",
+      "食品比率": "65.0"
+    }
+  ],
+  "maker_sum_before": [],
+  "side_effect": { "cand_rows": 43, "keepa_full_rows": 151 },
+  "batch": {
+    "shop_seller_ids": ["SAFE"],
+    "product_cap": 20,
+    "shop_cap": 3,
+    "mocks": {
+      "SAFE": {
+        "total": 22,
+        "products": [{ "asin": "B050", "manufacturer": "石原水産", "brand": "石原水産" }]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "石原水産": 1 },
+    "side_effect_unchanged": true,
+    "gate_called": false,
+    "keepa_full_append": 0
+  }
+}

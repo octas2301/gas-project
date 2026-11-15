@@ -19,41 +19,34 @@ from apply_keepa_full import (
     read_all,
     sheets_service,
 )
+from dry_cycle_seller_accum import (
+    ACCUM_MEMO,
+    ACCUM_SRC,
+    CAP_NEW_DEFAULT,
+    bb_map_for_pass,
+    ok_sid,
+    pass_asin_list,
+)
 from dry_o2_offers import seller_id_of, spapi_item_offers_cap, spapi_session
 from dry_t1_list_paste import ORIG_SS
 from schema import SELLER_HEADERS, SHEET_KEEPA_FULL, SHEET_SELLER
 
-CAP_NEW = 100
+CAP_NEW = CAP_NEW_DEFAULT
 SKIP_IDS = {"ATVPDKIKX0DER", "A1VC38T7YXB528"}
 
 
-def ok_sid(s: str) -> bool:
-    s = (s or "").strip()
-    if len(s) < 10 or s in SKIP_IDS:
-        return False
-    return True
-
-
 def pass_asins(cand: list[dict]) -> list[str]:
-    out, seen = [], set()
-    for r in cand:
-        if str(r.get("門結果") or "") != "通過":
-            continue
-        a = str(r.get("ASIN") or "").strip().upper()
-        if len(a) == 10 and a not in seen:
-            seen.add(a)
-            out.append(a)
-    return out
+    return pass_asin_list(cand)
 
 
-def bb_map(full: list[dict]) -> dict[str, str]:
-    m = {}
-    for r in full:
-        a = str(r.get("ASIN") or "").strip().upper()
-        s = str(r.get("BuyBoxセラー") or "").strip()
-        if a and ok_sid(s):
-            m[a] = s
-    return m
+def bb_map(full: list[dict], pass_asins: list[str] | None = None) -> dict[str, str]:
+    if pass_asins is None:
+        pass_asins = []
+        for r in full:
+            a = str(r.get("ASIN") or "").strip().upper()
+            if len(a) == 10:
+                pass_asins.append(a)
+    return bb_map_for_pass(full, pass_asins)
 
 
 def spapi_item_offers_batch(asins: list[str], sess: dict) -> dict:
@@ -132,7 +125,8 @@ def main() -> int:
             print("after not in pass list", after)
             return 2
     existing = {str(r.get("sellerId") or "").strip() for r in srows if str(r.get("sellerId") or "").strip()}
-    bb = bb_map(full)
+    pass_list = pass_asins(cand)
+    bb = bb_map(full, pass_list)
     bb_new = [s for s in set(bb.values()) if s not in existing]
     cap = args.max_new if args.max_new > 0 else CAP_NEW
     line = (
@@ -235,8 +229,8 @@ def main() -> int:
     for s in new_ids:
         rec = {k: "" for k in SELLER_HEADERS}
         rec["sellerId"] = s
-        rec["採取元"] = "bb+spapi_new"
-        rec["メモ"] = "A1貯め 構成比は店洗い時"
+        rec["採取元"] = ACCUM_SRC
+        rec["メモ"] = ACCUM_MEMO
         recs.append(rec)
     live_h = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))[0] or list(SELLER_HEADERS)
     if recs:

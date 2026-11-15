@@ -118,9 +118,15 @@ var PR_KEEPA_FULL_BLANK_READ_CHUNK_PROP_ = 'PR_KEEPA_FULL_BLANK_READ_CHUNK';
  * 未設定=ON。false で旧: 全行×全列一括（サイズ上限再発・切戻し専用）。
  */
 var PR_KEEPA_FULL_ASIN_MAP_PROP_ = 'PR_KEEPA_FULL_ASIN_MAP';
-/** ASIN限定読取で1回にまとめて読む最大行（連続行をまとめる上限）。省略=10。 */
-var PR_KEEPA_FULL_ASIN_READ_CHUNK_DEFAULT_ = 10;
+/** ASIN限定読取で1回にまとめて読む最大行（連続行をまとめる上限）。省略=1（生JSON込み全列は禁止）。 */
+var PR_KEEPA_FULL_ASIN_READ_CHUNK_DEFAULT_ = 1;
 var PR_KEEPA_FULL_ASIN_READ_CHUNK_PROP_ = 'PR_KEEPA_FULL_ASIN_READ_CHUNK';
+/**
+ * Keepaフル ASIN列の全行走査を分割する行数（索引・空行掃除・ずれ時走査）。
+ * 省略=25000（2026-10-21 チャンク比較で最短）。0=旧一括（サイズ上限再発あり）。
+ */
+var PR_KEEPA_FULL_ASIN_COL_CHUNK_DEFAULT_ = 25000;
+var PR_KEEPA_FULL_ASIN_COL_CHUNK_PROP_ = 'PR_KEEPA_FULL_ASIN_COL_CHUNK';
 var PR_MAKER_SUM_SHEET_ = 'メーカーサマリ';
 var PR_SELLER_SHEET_ = 'セラー';
 var PR_CK_HEADER_ = '調査CK';
@@ -135,6 +141,28 @@ var PR_ALIGHT_XL_EXTRACT_PROP_ = 'PR_ALIGHT_XL_EXTRACT';
  * 未設定=ON。
  */
 var PR_SURVEY_ROOT_GATE_PROP_ = 'PR_SURVEY_ROOT_GATE';
+/**
+ * Catalog 列挙で調査カテゴリONのルート以外をキューに入れない（Keepa前）。
+ * 分類欠測も入れない（門の調査カテゴリ欠測と同じ）。未設定=ON。
+ * 切戻し false＝旧（社名キーワード＋タイトル含有のみ。ルートは門で落とす）。
+ */
+var PR_CATALOG_SURVEY_ROOT_GATE_PROP_ = 'PR_CATALOG_SURVEY_ROOT_GATE';
+/**
+ * Catalog 列挙でタイトル含有を必須にするか（2026-10-27）。
+ * 未設定=OFF＝OR（メーカー名検索ヒットを調査カテゴリ後にキュー。商品名ヒットは包含。ノーブランド可）。
+ * true＝旧AND（検索ヒットのうち商品名／ブランドにメーカー名があるものだけ）。
+ */
+var PR_CATALOG_TITLE_GATE_PROP_ = 'PR_CATALOG_TITLE_GATE';
+/**
+ * 調査ルート落としの内訳を①ログへ（2026-10-27）。
+ * Amazon大分類（rootId:name）とロジック許可一覧の差を見る。未設定=ON。
+ */
+var PR_SURVEY_DROP_DIAG_PROP_ = 'PR_SURVEY_DROP_DIAG';
+/**
+ * Catalog classifications の parent を辿って調査ルートと照合（2026-10-28）。
+ * 未設定=ON。切戻し false＝旧（配列先頭ノードだけをルート扱い。食品が落ちる）。
+ */
+var PR_CATALOG_CLASSIF_WALK_PARENT_PROP_ = 'PR_CATALOG_CLASSIF_WALK_PARENT';
 /** メーカーサマリの Amazon ルート列（実態AI／ミラーと同名）。 */
 var PR_MAKER_SUM_AMAZON_ROOT_HEADER_ = 'Amazonルートカテゴリ';
 /** メーカーサマリから消す列（旧Python集計。見出し名で探す）。 */
@@ -240,6 +268,56 @@ var PR_KEEPA_LIVE_LEFT_SNAP_ = null;
  * 切戻し: Property PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP=false（新メーカー数で閉じる旧動作）。
  */
 var PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP_PROP_ = 'PR_ALIGHT_SHOP_ROUNDS_UNTIL_CAP';
+/**
+ * 【撤回・未設定=OFF】2026-10-24 に入れた「余力ありで C0→大特大」は本線ではない。
+ * 正本は小中を店補充で常に残し、大特大はイレギュラーのみ。push 済みなら Prop を false
+ * のまま／未設定のままでよい（prCkEnabled_ ではなく明示 ON のときだけ旧の譲りを許可）。
+ */
+var PR_C0_YIELD_WASH_WHEN_AMPLE_PROP_ = 'PR_C0_YIELD_WASH_WHEN_AMPLE';
+/**
+ * 列挙完了でキュー0（Catalog見積0）の社を調査対象外にする（2026-10-24）。
+ * 旧: 状態を空のまま残し unk に居座らせ特大を止めた。未設定=ON。切戻し false。
+ */
+var PR_ENUM_EMPTY_OUT_PROP_ = 'PR_ENUM_EMPTY_OUT';
+/** 心拍 sanitize 1回あたりの enum_empty 確定上限。 */
+var PR_ENUM_EMPTY_OUT_SANITIZE_CAP_ = 80;
+/**
+ * 親辿り後など: enum_empty_out 調査対象外を列挙待ちへ戻す上限（メニュー）。
+ * 未設定=3000。切戻しはメニューを使わない。
+ */
+var PR_ENUM_EMPTY_REOPEN_CAP_PROP_ = 'PR_ENUM_EMPTY_REOPEN_CAP';
+var PR_ENUM_EMPTY_REOPEN_CAP_DEFAULT_ = 3000;
+/**
+ * 空振りリセット後、メニューがその場で既存列挙を回す（2026-10-28 案E）。
+ * 心拍に reopen 分岐は足さない。未設定=ON。切戻し false＝シート戻しのみ。
+ */
+var PR_ENUM_RESET_RUN_ENUM_PROP_ = 'PR_ENUM_RESET_RUN_ENUM';
+/** メニュー列挙の残り印（心拍は特別扱いしない。列挙後は消える）。旧 enum_reopen_walk も同義。 */
+var PR_ENUM_RESET_PENDING_PROG_ = 'enum_reset_pending';
+var PR_ENUM_RESET_TRIGGER_FN_ = 'prRunEnumResetFromTrigger';
+/**
+ * 洗える小中=0 かつ Catalog待ちありのとき、余力ありでも列挙する（2026-10-25 案A）。
+ * 旧: 余力ありは列挙OFF→店レーンのみ（unkが減らず sm=0 が続く）。未設定=ON。切戻し false。
+ * 空回り防止: 連続 N 回 force したら1回店へ譲る（PR_CYCLE_ENUM_SM0_YIELD_EVERY）。
+ * 2026-10-26: 店続きより列挙優先／列挙後 sm=0 なら skip_enum を剥がす（1回で止まらない）。
+ */
+var PR_CYCLE_ENUM_WHEN_SM0_PROP_ = 'PR_CYCLE_ENUM_WHEN_SM0';
+var PR_CYCLE_ENUM_SM0_STREAK_PROP_ = 'PR_CYCLE_ENUM_SM0_STREAK';
+var PR_CYCLE_ENUM_SM0_YIELD_EVERY_PROP_ = 'PR_CYCLE_ENUM_SM0_YIELD_EVERY';
+var PR_CYCLE_ENUM_SM0_YIELD_EVERY_DEFAULT_ = 3;
+/**
+ * 列挙1社ごとの原因を①ログへ（2026-10-26）。小中が増えないときの追及用。
+ * 未設定=ON。切戻し false＝社別 enum_diag 行を出さない（バッチ要約のみ従来）。
+ */
+var PR_ENUM_DIAG_LOG_PROP_ = 'PR_ENUM_DIAG_LOG';
+/**
+ * 実態AI前の未調査≥ゲートのとき、大・特大へ逃げない（2026-10-24夕／夜改）。
+ * 未設定=ON。切戻し false → 大特大ブロックOFF。
+ * 自動レ点は門中も可（既定）。旧のレ点止めだけ戻すなら PR_JITTA_BACKLOG_BLOCK_AUTO_CK=true。
+ */
+var PR_JITTA_BACKLOG_IDLE_PROP_ = 'PR_JITTA_BACKLOG_IDLE';
+/** 未設定=OFF。true のときだけ未調査≥ゲートで自動レ点を止める（旧動作）。 */
+var PR_JITTA_BACKLOG_BLOCK_AUTO_CK_PROP_ = 'PR_JITTA_BACKLOG_BLOCK_AUTO_CK';
 var PR_ALIGHT_DAILY_DONE_DAY_PROP_ = 'PR_ALIGHT_DAILY_DONE_DAY';
 var PR_ALIGHT_DAILY_DONE_COUNT_PROP_ = 'PR_ALIGHT_DAILY_DONE_COUNT';
 var PR_ALIGHT_ROUND_DAY_PROP_ = 'PR_ALIGHT_ROUND_DAY';
@@ -549,6 +627,7 @@ var PR_SHOP_BEFORE_LARGE_CACHE_ = null;
 var PR_SHOP_BEFORE_LARGE_CACHE_HIT_ = 0;
 /** 上2つの実行内キャッシュ（1ページ20件ごとに読むため）。prGasStart_ で null に戻す。 */
 var PR_CATALOG_RANK_PROBE_CACHE_ = null;
+var PR_CATALOG_SURVEY_ROOT_GATE_CACHE_ = null;
 /**
  * 社名の法人格ゆれを Catalog 照合語に足す（2026-09-09）。
  * 「大平水産(株)」→ 大平水産／大平水産株式会社。Amazon の商品名にカッコ株は出ないため
@@ -627,6 +706,35 @@ var PR_WASH_ABORT_EPOCH_PROP_ = 'PR_WASH_ABORT_EPOCH';
 /** 現在の洗いロックが取得された時点の abort 世代。 */
 var PR_WASH_LOCK_EPOCH_PROP_ = 'PR_WASH_LOCK_EPOCH';
 var PR_WASH_FULL_LOCK_OWNER_PROP_ = 'PR_WASH_FULL_LOCK_OWNER';
+/**
+ * N3 親分割（2026-10-29）: 列挙は全体洗いロックを取らず親名ロックのみ。
+ * Keepa洗いは全体＋親。同一メーカー同時は禁止、別メーカーは並行可。
+ * 未設定=ON。切戻し false＝列挙も全体ロック（旧）。
+ */
+var PR_WASH_PARENT_PARTITION_PROP_ = 'PR_WASH_PARENT_PARTITION';
+/** 親ロック JSON { maker: {lane, owner, until} }。TTL は洗いロックと同じ。 */
+var PR_WASH_PARENT_LOCK_PROP_ = 'PR_WASH_PARENT_LOCKS_JSON';
+/**
+ * 改訂P2: Catalog親ロックを競合スプシのシートでも共有（別script同士）。
+ * 未設定=ON。切戻し false＝① Script Properties のみ（競合と排他しない）。
+ */
+var PR_SHARED_CATALOG_LOCK_PROP_ = 'PR_SHARED_CATALOG_LOCK';
+var PR_SHARED_CATALOG_LOCK_SHEET_ = 'Catalog親ロック';
+var PR_SHARED_CATALOG_LOCK_OWNER_ = 'hb';
+/**
+ * 案E再開の待ち分（欠発・洗いピーク避け）。未設定=5。切戻し 1 で旧。
+ */
+var PR_ENUM_RESET_REARM_MIN_PROP_ = 'PR_ENUM_RESET_REARM_MIN';
+var PR_ENUM_RESET_REARM_MIN_DEFAULT_ = 5;
+/**
+ * 案E予約の発火予定（ms）。幽霊トリガー判定用（2026-10-31 案P1）。
+ */
+var PR_ENUM_RESET_EXPECT_FIRE_MS_PROP_ = 'PR_ENUM_RESET_EXPECT_FIRE_MS';
+/**
+ * 発火予定超過後、何分で幽霊扱いするか。未設定=10。
+ */
+var PR_ENUM_RESET_STALE_GRACE_MIN_PROP_ = 'PR_ENUM_RESET_STALE_GRACE_MIN';
+var PR_ENUM_RESET_STALE_GRACE_MIN_DEFAULT_ = 10;
 var PR_PROF_SELLER_MIN_HEADER_ = '出品者数下限';
 var PR_PROF_SELLER_MAX_HEADER_ = '出品者数上限';
 var PR_PROF_SELLER_MIN_DEFAULT_ = 1;
@@ -671,9 +779,24 @@ var PR_PROF_COL_ORDER_ = [
 var PR_WASH_QUEUE_SHEET_ = '①洗いキュー';
 var PR_WASH_SPLIT_SHEET_ = '①洗い分割語';
 var PR_MAKER_MASTER_SHEET_ = 'メーカーマスタ';
-/** Keepa済キュー行の保持日数。未設定=90（3か月）。Property PR_WASH_QUEUE_RETENTION_DAYS。 */
+/** Keepa済キュー行の保持日数。未設定=90（3か月）。Property PR_WASH_QUEUE_RETENTION_DAYS。0で日数条件オフ。 */
 var PR_WASH_QUEUE_RETENTION_DAYS_DEFAULT_ = 90;
 var PR_WASH_QUEUE_RETENTION_DAYS_PROP_ = 'PR_WASH_QUEUE_RETENTION_DAYS';
+/**
+ * 完了／調査対象外／要修復（＋旧保留）の社の Keepa済行を消す。未設定=ON。
+ * 切戻し false＝日数条件だけ（旧）。
+ */
+var PR_WASH_QUEUE_PURGE_DONE_PROP_ = 'PR_WASH_QUEUE_PURGE_DONE';
+/** 行ごと削除の上限。超えたら書き戻し。Property PR_WASH_QUEUE_PURGE_BLOCK_MAX。 */
+var PR_WASH_QUEUE_PURGE_BLOCK_MAX_DEFAULT_ = 2000;
+var PR_WASH_QUEUE_PURGE_BLOCK_MAX_PROP_ = 'PR_WASH_QUEUE_PURGE_BLOCK_MAX';
+/**
+ * 未済行数の上限。超えたら新規列挙の追記を止める（洗いは続ける）。未設定=50000。0でオフ。
+ */
+var PR_WASH_QUEUE_PENDING_ROWS_MAX_DEFAULT_ = 50000;
+var PR_WASH_QUEUE_PENDING_ROWS_MAX_PROP_ = 'PR_WASH_QUEUE_PENDING_ROWS_MAX';
+/** 未済行数の実行内キャッシュ（null=未計測）。 */
+var PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = null;
 var PR_WASH_STATUS_HEADER_ = '洗い状態';
 var PR_WASH_PROGRESS_HEADER_ = '洗い進捗';
 /** 実態=要確認のときだけ Amazon 検索URL。列名「実態ck」（末尾追加。M列の「実態」は触らない）。 */
@@ -771,6 +894,23 @@ var PR_D1_ENRICH_BLANK_BB_PROP_ = 'PR_D1_ENRICH_BLANK_BB';
 var PR_D1_ENRICH_CAP_PROP_ = 'PR_D1_ENRICH_CAP';
 var PR_D1_ENRICH_CAP_DEFAULT_ = 20;
 var PR_KEEPA_FULL_WRITE_PROP_ = 'PR_KEEPA_FULL_WRITE_ENABLED';
+/**
+ * Keepa梱包三辺が空のときだけタジマヤ（tajimaya-cc.net）からピース／ケース寸法を補完。
+ * 未設定=ON。切戻し PR_TAJIMAYA_DIM_FILL_ENABLED=false。AIなし。
+ */
+var PR_TAJIMAYA_DIM_FILL_PROP_ = 'PR_TAJIMAYA_DIM_FILL_ENABLED';
+/** 品番リスト空手数料のタジマヤ補完・1回あたり件数。省略=20。 */
+var PR_TAJIMAYA_DIM_FILL_CAP_PROP_ = 'PR_TAJIMAYA_DIM_FILL_CAP';
+var PR_TAJIMAYA_DIM_FILL_CAP_DEFAULT_ = 20;
+/** タジマヤ寸法で失敗した JAN→理由（再チェック浪費防止）。 */
+var PR_TAJIMAYA_MISS_PROP_ = 'PR_TAJIMAYA_MISS_JSON';
+var PR_TAJIMAYA_MISS_MAX_KEYS_ = 800;
+/** 一時失敗（HTTP等）の再試行クールダウン秒。省略=21600（6時間）。 */
+var PR_TAJIMAYA_MISS_COOLDOWN_SEC_DEFAULT_ = 21600;
+/** タジマヤ寸法補完の二重実行防止（untilMs）。 */
+var PR_TAJIMAYA_DIM_LOCK_PROP_ = 'PR_TAJIMAYA_DIM_LOCK_UNTIL';
+var PR_TAJIMAYA_DIM_LOCK_OWNER_PROP_ = 'PR_TAJIMAYA_DIM_LOCK_OWNER';
+var PR_TAJIMAYA_DIM_LOCK_TTL_MS_ = 25 * 60 * 1000;
 var PR_PURPOSE_RESEARCH_ = 'リサーチ';
 var PR_JITTAI_MAKER_ = '製造メーカー';
 var PR_JITTAI_BRAND_ = '入口ブランド';
@@ -1041,42 +1181,77 @@ function onOpen() {
       .addItem('T6. 尾西 列挙だけ（キュー）', 'prMenuWashFullEnumDryOnishi')
       .addItem('T7. 旧: レ点メーカー→リスト', 'prMenuMakerResearchAndListUp')
       .addItem('T8. 旧: 未調査メーカー自動→リスト', 'prMenuAutoMakerResearchAndListUp');
+    // 99 は項目が多いので階層化（画面からはみ出さない）
+    var m99Stop = ui
+      .createMenu('1. 止める・診断')
+      .addItem('自動を止める（洗いトリガー停止）', 'prMenuWashFullTriggerStop')
+      .addItem('洗いトリガーだけ診断', 'prMenuWashTriggerDiagnose')
+      .addItem('心拍だけ診断', 'prMenuCycleLivenessDiagnose');
+    var m99Wash = ui
+      .createMenu('2. 洗い')
+      .addItem('洗いを手動で続ける', 'prMenuWashFullContinue')
+      .addItem('洗いをループで続ける', 'prMenuWashFullLoopContinue')
+      .addItem('洗いトリガーを手動開始', 'prMenuWashFullTriggerStart')
+      .addItem('洗いキューの期限切れ削除', 'prMenuWashQueuePurgeExpired')
+      .addItem('偽完了を列挙中に戻す（候補0の完了）', 'prMenuFalseCompleteRewash')
+      .addItem(
+        'enum空振りをリセットして列挙（enum_empty_out）',
+        'prMenuReopenEnumEmptyOut'
+      )
+      .addItem(
+        'title0空振りをリセットして列挙（title0_skip）',
+        'prMenuReopenTitle0Skip'
+      )
+      .addItem('自動選定→洗い1スライス（C3）', 'prMenuCycleC3MakerWash')
+      .addItem('自動選定→洗い→完走トリガー（C3+T）', 'prMenuCycleC3MakerWashWithTrigger');
+    var m99List = ui
+      .createMenu('3. D1・D2・完走')
+      .addItem('完走連鎖だけ実行（D1→D2→心拍）', 'prMenuCycleC4AfterComplete')
+      .addItem('D1だけ（門→品番リスト）', 'prMenuListAppendD1')
+      .addItem('D2だけ（見積候補に絞る）', 'prMenuListFilterD2')
+      .addItem('D1→D2 連続', 'prMenuListD1ThenD2')
+      .addItem('単品名だけAI充填', 'prMenuSingleNameFill')
+      .addItem('タジマヤ寸法補完（FBA空・保管空）', 'prMenuTajimayaDimFillGaps')
+      .addItem('転記チェック（週次・今すぐ）', 'prMenuListTransferWeeklyCheckNow')
+      .addItem('D2 backlog解消→C4再開', 'prMenuCycleC4ResumeAfterD2Clear');
+    var m99Keepa = ui
+      .createMenu('4. Keepaフル')
+      .addItem('Keepaフル索引を直す', 'prMenuRebuildKeepaFullIndex')
+      .addItem('Keepaフルから再門', 'prMenuRegateFromKeepaFull')
+      .addItem('Keepaフル用量プローブ（読取のみ）', 'prMenuKeepaFullSizeProbe')
+      .addItem('ASIN列チャンク比較（読取のみ）', 'prMenuKeepaFullAsinChunkProbe');
+    var m99Seller = ui
+      .createMenu('5. セラー・店')
+      .addItem('セラー台帳を足す（C0）', 'prMenuSellerAccum')
+      .addItem('セラーヒットを再計算', 'prMenuSellerHitBackfill')
+      .addItem('店1件通し（レ点1→門→①候補）', 'prMenuSellerOneThrough')
+      .addItem('レ点の店を調査（旧・複数）', 'prMenuCkSellers');
+    var m99Maker = ui
+      .createMenu('6. メーカー・実態')
+      .addItem('実態ck（要確認に検索URL）', 'prMenuSyncMakerJittaCkUrls')
+      .addItem('実態ラベル移行（要確認→未調査）', 'prMenuMigrateJittaUnchecked_')
+      .addItem('①候補の重複ASINまとめ', 'prMenuCompactCand')
+      .addItem('マスタ旧データを消して再調査用に', 'prMenuResetStaleMakerMaster');
+    var m99Cycle = ui
+      .createMenu('7. サイクル・メール')
+      .addItem('日次生存メールを今すぐ送る', 'prMenuCycleDailyMailNow')
+      .addItem('約1分後にサイクル再開', 'prMenuCycleResume');
+    var m99Backup = ui
+      .createMenu('8. バックアップ')
+      .addItem('日次バックアップ今すぐ', 'prMenuProjectDailyBackupRunNow')
+      .addItem('日次バックアップ強制コピー', 'prMenuProjectDailyBackupForceCopy')
+      .addItem('日次バックアップ8時トリガー設置', 'prMenuProjectDailyBackupInstallTrigger')
+      .addItem('日次バックアップトリガー削除', 'prMenuProjectDailyBackupRemoveTrigger');
     var m99 = ui
       .createMenu('99. 運用・切り分け')
-      .addItem('1. 自動を止める（洗いトリガー停止）', 'prMenuWashFullTriggerStop')
-      .addItem('2. 洗いトリガーだけ診断', 'prMenuWashTriggerDiagnose')
-      .addItem('3. 心拍だけ診断', 'prMenuCycleLivenessDiagnose')
-      .addItem('4. 完走連鎖だけ実行（D1→D2→心拍）', 'prMenuCycleC4AfterComplete')
-      .addItem('5. D1だけ（門→品番リスト）', 'prMenuListAppendD1')
-      .addItem('6. D2だけ（見積候補に絞る）', 'prMenuListFilterD2')
-      .addItem('7. D1→D2 連続', 'prMenuListD1ThenD2')
-      .addItem('8. 単品名だけAI充填', 'prMenuSingleNameFill')
-      .addItem('9. セラー台帳を足す（C0）', 'prMenuSellerAccum')
-      .addItem('10. セラーヒットを再計算', 'prMenuSellerHitBackfill')
-      .addItem('11. 洗いを手動で続ける', 'prMenuWashFullContinue')
-      .addItem('12. 洗いをループで続ける', 'prMenuWashFullLoopContinue')
-      .addItem('13. 洗いトリガーを手動開始', 'prMenuWashFullTriggerStart')
-      .addItem('14. 洗いキューの期限切れ削除', 'prMenuWashQueuePurgeExpired')
-      .addItem('15. 実態ck（要確認に検索URL）', 'prMenuSyncMakerJittaCkUrls')
-      .addItem('16. 実態ラベル移行（要確認→未調査）', 'prMenuMigrateJittaUnchecked_')
-      .addItem('17. Keepaフル索引を直す', 'prMenuRebuildKeepaFullIndex')
-      .addItem('18. Keepaフルから再門', 'prMenuRegateFromKeepaFull')
-      .addItem('19. ①候補の重複ASINまとめ', 'prMenuCompactCand')
-      .addItem('20. 偽完了を列挙中に戻す（候補0の完了）', 'prMenuFalseCompleteRewash')
-      .addItem('21. マスタ旧データを消して再調査用に', 'prMenuResetStaleMakerMaster')
-      .addItem('22. 日次生存メールを今すぐ送る', 'prMenuCycleDailyMailNow')
-      .addItem('23. 約1分後にサイクル再開', 'prMenuCycleResume')
-      .addItem('24. 自動選定→洗い1スライス（C3）', 'prMenuCycleC3MakerWash')
-      .addItem('25. 自動選定→洗い→完走トリガー（C3+T）', 'prMenuCycleC3MakerWashWithTrigger')
-      .addItem('26. 店1件通し（レ点1→門→①候補）', 'prMenuSellerOneThrough')
-      .addItem('27. レ点の店を調査（旧・複数）', 'prMenuCkSellers')
-      .addItem('28. 転記チェック（週次・今すぐ）', 'prMenuListTransferWeeklyCheckNow')
-      .addItem('29. D2 backlog解消→C4再開', 'prMenuCycleC4ResumeAfterD2Clear')
-      .addSeparator()
-      .addItem('30. 日次バックアップ今すぐ', 'prMenuProjectDailyBackupRunNow')
-      .addItem('31. 日次バックアップ強制コピー', 'prMenuProjectDailyBackupForceCopy')
-      .addItem('32. 日次バックアップ8時トリガー設置', 'prMenuProjectDailyBackupInstallTrigger')
-      .addItem('33. 日次バックアップトリガー削除', 'prMenuProjectDailyBackupRemoveTrigger')
+      .addSubMenu(m99Stop)
+      .addSubMenu(m99Wash)
+      .addSubMenu(m99List)
+      .addSubMenu(m99Keepa)
+      .addSubMenu(m99Seller)
+      .addSubMenu(m99Maker)
+      .addSubMenu(m99Cycle)
+      .addSubMenu(m99Backup)
       .addSeparator()
       .addSubMenu(mTest);
     ui.createMenu('自動リサーチ')
@@ -1325,9 +1500,11 @@ function prGasStart_() {
   PR_CYCLE_POOL_CACHE_ = null;
   PR_WASH_QUEUE_COUNT_CACHE_ = null;
   PR_WASH_QUEUE_PENDING_CACHE_ = null;
+  PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = null;
   PR_WASH_QUEUE_SNAP_ = {};
   PR_MAKER_BAND_CACHE_ = null;
   PR_CATALOG_RANK_PROBE_CACHE_ = null;
+  PR_CATALOG_SURVEY_ROOT_GATE_CACHE_ = null;
   PR_SHOP_BEFORE_LARGE_CACHE_ = null;
   PR_SHOP_BEFORE_LARGE_CACHE_HIT_ = 0;
   PR_KEEPA_LIVE_LEFT_SNAP_ = null;
@@ -2029,8 +2206,35 @@ function prCycleArmHeartbeatAfterIdle_(runId, tag) {
   });
 }
 
+/** Property PR_ENUM_EMPTY_OUT。未設定=ON。 */
+function prEnumEmptyOutEnabled_() {
+  return prCkEnabled_(PR_ENUM_EMPTY_OUT_PROP_);
+}
+
+/** Property PR_JITTA_BACKLOG_IDLE。未設定=ON。 */
+function prJittaBacklogIdleEnabled_() {
+  return prCkEnabled_(PR_JITTA_BACKLOG_IDLE_PROP_);
+}
+
+/**
+ * 列挙済み・キュー0（洗う物なし）→ 調査対象外。洗い待ち／unk に載せない。
+ * @return {boolean} 書いたら true
+ */
+function prMarkEnumEmptyOut_(parent, queueN, band) {
+  parent = String(parent || '').trim();
+  if (!parent || !prEnumEmptyOutEnabled_()) return false;
+  var q = Number(queueN);
+  if (!(q === 0)) return false;
+  var prog =
+    'enum_empty_out queue=0' + (band ? ' band=' + String(band) : '');
+  prSetMakerWashStatus_(parent, PR_WASH_ST_OUT_, prog);
+  Logger.log('[仕入れ検討①] enum_empty_out parent=%s band=%s', parent, band || '');
+  return true;
+}
+
 /**
  * 心拍 enumOnly 完了後: 規模帯だけ残し、Keepa中／列挙中を外す（大特大が小中より先に続き洗いされないため）。
+ * キュー0は調査対象外（enum_empty_out）。それ以外は状態空＋enum_done（90日除外にしない）。
  * 大・特大の未済キューは上限社数だけ残す（PR_WASH_QUEUE_XL_PENDING_MAKERS_MAX）。
  */
 function prFinalizeEnumOnlySize_(parent) {
@@ -2044,6 +2248,14 @@ function prFinalizeEnumOnlySize_(parent) {
   var cut501 = queueN >= PR_CATALOG_SPLIT_THRESHOLD_ + 1;
   prWriteMakerSumBand_(loc.sh, loc.sheetRow, queueN, cut501);
   var band = prMakerCatalogBand_(cut501 ? Math.max(queueN, PR_CATALOG_SPLIT_THRESHOLD_ + 1) : queueN);
+  if (queueN === 0 && prMarkEnumEmptyOut_(parent, queueN, band)) {
+    if (band === PR_BAND_L_ || band === PR_BAND_XL_) {
+      try {
+        prWashQueueTrimXlPendingOverCap_({ runId: 'enum_finalize', quiet: true, parent: parent });
+      } catch (eXlFin0) {}
+    }
+    return { ok: true, queueN: queueN, band: band, out: true };
+  }
   // 続き対象から外す（空＝未着手扱い。完了にはしない＝90日除外にしない）
   if (loc.idxSt >= 0) loc.sh.getRange(loc.sheetRow, loc.idxSt + 1).setValue('');
   if (loc.idxProg >= 0) {
@@ -2061,6 +2273,826 @@ function prFinalizeEnumOnlySize_(parent) {
     } catch (eXlFin) {}
   }
   return { ok: true, queueN: queueN, band: band };
+}
+
+/** enum_empty 再オープン1回の上限。 */
+function prEnumEmptyReopenCap_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_ENUM_EMPTY_REOPEN_CAP_PROP_);
+  var n = Number(raw);
+  if (!isNaN(n) && n > 0) return Math.floor(n);
+  return PR_ENUM_EMPTY_REOPEN_CAP_DEFAULT_;
+}
+
+function prEnumResetRunEnumEnabled_() {
+  return prCkEnabled_(PR_ENUM_RESET_RUN_ENUM_PROP_);
+}
+
+function prWashParentPartitionEnabled_() {
+  return prCkEnabled_(PR_WASH_PARENT_PARTITION_PROP_);
+}
+
+function prEnumResetRearmMin_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_ENUM_RESET_REARM_MIN_PROP_) ||
+      PR_ENUM_RESET_REARM_MIN_DEFAULT_
+  );
+  if (!(n > 0)) n = PR_ENUM_RESET_REARM_MIN_DEFAULT_;
+  return Math.max(1, Math.floor(n));
+}
+
+function prEnumResetStaleGraceMin_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_ENUM_RESET_STALE_GRACE_MIN_PROP_) ||
+      PR_ENUM_RESET_STALE_GRACE_MIN_DEFAULT_
+  );
+  if (!(n > 0)) n = PR_ENUM_RESET_STALE_GRACE_MIN_DEFAULT_;
+  return Math.max(1, Math.floor(n));
+}
+
+function prCountEnumResetTriggers_() {
+  var list = ScriptApp.getProjectTriggers();
+  var n = 0;
+  var i;
+  for (i = 0; i < list.length; i++) {
+    if (list[i].getHandlerFunction() === PR_ENUM_RESET_TRIGGER_FN_) n++;
+  }
+  return n;
+}
+
+function prEnumResetExpectFireMs_() {
+  return Number(
+    PropertiesService.getScriptProperties().getProperty(PR_ENUM_RESET_EXPECT_FIRE_MS_PROP_) || 0
+  );
+}
+
+function prEnumResetClearExpectFire_() {
+  try {
+    PropertiesService.getScriptProperties().deleteProperty(PR_ENUM_RESET_EXPECT_FIRE_MS_PROP_);
+  } catch (eDel) {}
+}
+
+/**
+ * 案Eトリガーが幽霊か（予約あるが発火予定が無い／過ぎている）。
+ * 予定なし＋トリガーありも幽霊扱い（旧経路・破損）。
+ */
+function prEnumResetTriggerIsStale_() {
+  var n = prCountEnumResetTriggers_();
+  if (!(n > 0)) return false;
+  var expect = prEnumResetExpectFireMs_();
+  if (!(expect > 0)) return true;
+  var graceMs = prEnumResetStaleGraceMin_() * 60 * 1000;
+  return new Date().getTime() > expect + graceMs;
+}
+
+/**
+ * 案E残りがあり、予約が無いか幽霊なら張り直す（2026-10-31 案P1）。
+ * 新番犬時計は増やさない。心拍／洗い終わり／drain finally から呼ぶ。
+ * 発火予定（または実行中リース）が未来なら触らない → 二重drain防止。
+ * @return {number} 予約した分数。しなければ 0
+ */
+function prMaybeArmEnumResetRecovery_(runId, tag) {
+  if (!prEnumResetRunEnumEnabled_()) return 0;
+  var left = 0;
+  try {
+    left = prCountEnumResetPending_();
+  } catch (eC) {
+    left = 0;
+  }
+  if (!(left > 0)) {
+    if (prCountEnumResetTriggers_() > 0) prClearEnumResetTriggers_();
+    else prEnumResetClearExpectFire_();
+    return 0;
+  }
+  var now = new Date().getTime();
+  var expect = prEnumResetExpectFireMs_();
+  // 予約待ち or 実行中リース中は二重起動しない
+  if (expect > now) return 0;
+  var nTrig = prCountEnumResetTriggers_();
+  if (nTrig > 0) {
+    if (!prEnumResetTriggerIsStale_()) return 0;
+    prClearEnumResetTriggers_();
+    Logger.log(
+      '[仕入れ検討①] enum_reset_clear_stale left=%s tag=%s runId=%s',
+      left,
+      tag || '',
+      runId || ''
+    );
+  }
+  var mins = prEnumResetRearmMin_();
+  var armTag = String(tag || 'enum_reset_recovery');
+  prScheduleEnumResetTrigger_(mins, { runId: runId || '', tag: armTag });
+  Logger.log(
+    '[仕入れ検討①] enum_reset_recovery_arm left=%s afterMin=%s tag=%s runId=%s',
+    left,
+    mins,
+    armTag,
+    runId || ''
+  );
+  try {
+    prAppendLog_([
+      runId || '',
+      'enum_reset リカバリ予約',
+      'DONE',
+      new Date(),
+      left,
+      mins,
+      '',
+      ('tag=' + armTag + ' left=' + left + ' afterMin=' + mins).slice(0, 200),
+    ]);
+  } catch (eLog) {}
+  return mins;
+}
+
+/**
+ * 洗い終了時: 案E残りがありトリガーが無ければ再武装（15分番犬は増やさない）。
+ * 案P1: 幽霊トリガーなら消して張り直し。
+ * @return {number} 予約した分数。しなければ 0
+ */
+function prMaybeArmEnumResetAfterWash_(runId) {
+  return prMaybeArmEnumResetRecovery_(runId, 'after_wash');
+}
+
+/**
+ * 心拍生存tick: 案E放置の拾い（既存 clock15 に相乗り。新時計なし）。
+ * @return {number}
+ */
+function prMaybeArmEnumResetFromHeartbeat_(runId) {
+  return prMaybeArmEnumResetRecovery_(runId, 'hb_enum_rearm');
+}
+
+/** メニュー列挙の残り印か（旧 reopen_walk 含む）。心拍選定は見ない。 */
+function prEnumResetPendingProg_(prog) {
+  var s = String(prog || '');
+  return (
+    s.indexOf(PR_ENUM_RESET_PENDING_PROG_) >= 0 ||
+    s.indexOf('enum_reopen_walk') >= 0 ||
+    s.indexOf('title0_reopen_walk') >= 0
+  );
+}
+
+/**
+ * 親辿り修正後など: enum_empty_out 調査対象外／旧 reopen 印をリセットし、メニュー列挙待ち印へ。
+ * 対象: (調査対象外＋enum_empty_out) または 既に enum_reopen_walk／enum_reset_pending。
+ * 除外: title0_skip／survey_root_out／非仕入先。Catalog見積>0 は触らない。
+ * 書込: 状態・見積・規模帯を空。進捗はメニュー列挙用の一時印（心拍分岐なし）。
+ * @return {{n:number, detail:string, parents:!Array<string>, skipped:number}}
+ */
+function prReopenEnumEmptyOutMakers_(opt) {
+  opt = opt || {};
+  var dry = !!opt.dryRun;
+  var cap = Math.max(1, Number(opt.cap) || prEnumEmptyReopenCap_());
+  var quiet = !!opt.quiet;
+  var runId = String(opt.runId || 'enum_reset').trim();
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    return { n: 0, detail: 'enum_reset_skip no_sum', parents: [], skipped: 0 };
+  }
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
+  var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
+  if (idxM < 0 || idxSt < 0 || idxProg < 0) {
+    return { n: 0, detail: 'enum_reset_skip no_cols', parents: [], skipped: 0 };
+  }
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var parents = [];
+  var skipped = 0;
+  var r;
+  for (r = 0; r < vals.length && parents.length < cap; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    var st = String(vals[r][idxSt] || '').trim();
+    var prog = String(vals[r][idxProg] || '');
+    var pending = prEnumResetPendingProg_(prog);
+    var emptyOut = st === PR_WASH_ST_OUT_ && prog.indexOf('enum_empty_out') >= 0;
+    if (!pending && !emptyOut) continue;
+    if (
+      prog.indexOf('title0_skip') >= 0 ||
+      prog.indexOf('survey_root_out') >= 0 ||
+      prog.indexOf('非仕入先') >= 0
+    ) {
+      skipped++;
+      continue;
+    }
+    var estCell = idxEst >= 0 ? vals[r][idxEst] : '';
+    var nEst = Number(String(estCell == null ? '' : estCell).replace(/[^\d.-]/g, ''));
+    if (!isNaN(nEst) && nEst > 0 && String(estCell).trim() !== '') {
+      skipped++;
+      continue;
+    }
+    var sheetRow = r + 2;
+    if (!dry) {
+      sh.getRange(sheetRow, idxSt + 1).setValue('');
+      sh.getRange(sheetRow, idxProg + 1).setValue(PR_ENUM_RESET_PENDING_PROG_);
+      if (idxEst >= 0) sh.getRange(sheetRow, idxEst + 1).setValue('');
+      if (idxBand >= 0) sh.getRange(sheetRow, idxBand + 1).setValue('');
+      try {
+        prTitleZeroClear_(parent);
+      } catch (eT0) {}
+      try {
+        prCyclePipeListRemove_(PR_WASH_TITLE0_SKIP_SET_PROP_, parent);
+      } catch (eSkip) {}
+    }
+    parents.push(parent);
+  }
+  if (!dry && parents.length) {
+    prMakerBandMapClear_();
+  }
+  var detail =
+    (dry ? 'dry ' : '') +
+    'enum_reset n=' +
+    parents.length +
+    ' skip=' +
+    skipped +
+    ' cap=' +
+    cap +
+    (parents.length ? ' makers=' + parents.slice(0, 8).join('|') : '');
+  Logger.log('[仕入れ検討①] runId=%s %s', runId, detail);
+  if (!quiet) {
+    try {
+      prAppendLog_([
+        runId,
+        'enum_reset',
+        dry ? 'DRY' : 'DONE',
+        new Date(),
+        '',
+        parents.length,
+        '',
+        detail.slice(0, 220),
+      ]);
+    } catch (eLog) {}
+  }
+  return { n: parents.length, detail: detail, parents: parents, skipped: skipped };
+}
+
+function prClearEnumResetTriggers_() {
+  var tr = ScriptApp.getProjectTriggers();
+  var i;
+  for (i = 0; i < tr.length; i++) {
+    if (tr[i].getHandlerFunction() === PR_ENUM_RESET_TRIGGER_FN_) {
+      ScriptApp.deleteTrigger(tr[i]);
+    }
+  }
+  prEnumResetClearExpectFire_();
+}
+
+function prScheduleEnumResetTrigger_(afterMin, logOpt) {
+  var mins = Math.max(1, Math.floor(Number(afterMin) || prEnumResetRearmMin_()));
+  prClearEnumResetTriggers_();
+  ScriptApp.newTrigger(PR_ENUM_RESET_TRIGGER_FN_).timeBased().after(mins * 60 * 1000).create();
+  var expectMs = new Date().getTime() + mins * 60 * 1000;
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      PR_ENUM_RESET_EXPECT_FIRE_MS_PROP_,
+      String(expectMs)
+    );
+  } catch (eExp) {}
+  var rid = (logOpt && logOpt.runId) || '';
+  var tag = (logOpt && logOpt.tag) || 'enum_reset';
+  Logger.log(
+    '[仕入れ検討①] enum_reset_arm afterMin=%s runId=%s tag=%s expectMs=%s',
+    mins,
+    rid,
+    tag,
+    expectMs
+  );
+  try {
+    prAppendLog_([
+      rid,
+      'enum_reset トリガー予約',
+      'DONE',
+      new Date(),
+      '',
+      '',
+      '',
+      (
+        'afterMin=' +
+        mins +
+        ' fn=' +
+        PR_ENUM_RESET_TRIGGER_FN_ +
+        ' tag=' +
+        tag
+      ).slice(0, 200),
+    ]);
+  } catch (eL) {}
+  return mins;
+}
+
+/**
+ * メニュー列挙残り印を1件取る（上から）。
+ * @param {Object=} excludeParents このスライスで lock_busy した親（再挑しない）
+ * @return {{parent:string, sheetRow:number, idxProg:number, sh:GoogleAppsScript.Spreadsheet.Sheet}|null}
+ */
+function prPickNextEnumResetPending_(excludeParents) {
+  excludeParents = excludeParents || {};
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return null;
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  if (idxM < 0 || idxProg < 0) return null;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    if (excludeParents[parent]) continue;
+    if (!prEnumResetPendingProg_(vals[r][idxProg])) continue;
+    return { parent: parent, sheetRow: r + 2, idxProg: idxProg, sh: sh };
+  }
+  return null;
+}
+
+function prCountEnumResetPending_() {
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  if (idxProg < 0) return 0;
+  var vals = sh.getRange(2, idxProg + 1, sh.getLastRow(), idxProg + 1).getValues();
+  var n = 0;
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    if (prEnumResetPendingProg_(vals[r][0])) n++;
+  }
+  return n;
+}
+
+/**
+ * リセット印の社を既存 enumOnly で消化（心拍分岐なし）。
+ * N3: 親ロックのみ（別親のKeepaと並行可）。予算切れ／残りは自己再予約。
+ * @return {{done:number, skip:number, left:number, detail:string}}
+ */
+function prRunEnumResetDrain_(runId) {
+  runId = String(runId || '').trim() ||
+    'pr_enum_reset_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  if (!prEnumResetRunEnumEnabled_()) {
+    return { done: 0, skip: 0, left: prCountEnumResetPending_(), detail: 'enum_reset_drain off' };
+  }
+  var t0 = new Date().getTime();
+  var doneN = 0;
+  var skipN = 0;
+  var busyN = 0;
+  var stopBy = 'list_end';
+  var busyParents = {};
+  var left = 0;
+  var detail = '';
+  var didSchedule = false;
+  try {
+    while (true) {
+      if (doneN > 0 && !prCycleEnumBatchHasBudget_()) {
+        stopBy = 'budget';
+        break;
+      }
+      var hit = prPickNextEnumResetPending_(busyParents);
+      if (!hit) {
+        stopBy = busyN > 0 && doneN === 0 ? 'all_busy' : 'list_end';
+        break;
+      }
+      var parent = hit.parent;
+      // 印はロック成功後に消す（lock_busy で印が消えて山が減ったように見えるのを防ぐ）
+      try {
+        var needles = prMakerWashNeedles_(parent, '');
+        var entry0 = prMakerCatalogEntry_(parent, '', '');
+        var washOut = prRunMakerWashFull_({
+          parent: parent,
+          entry: entry0,
+          needles: needles,
+          tag: 'menu_enum_reset',
+          runId: runId,
+          loopKeepa: false,
+          quiet: true,
+          armTrigger: false,
+          enumOnly: true,
+        });
+        var detail0 = String((washOut && washOut.detail) || '');
+        if (washOut && washOut.skip && /lock_busy/.test(detail0)) {
+          busyN++;
+          skipN++;
+          busyParents[parent] = true;
+          Logger.log(
+            '[仕入れ検討①] enum_reset_drain lock_busy parent=%s %s',
+            parent,
+            detail0.slice(0, 120)
+          );
+          // 同一親が洗い中 → 次の親へ（並行の価値）。全社 busy なら後で再予約。
+          continue;
+        }
+        if (washOut && washOut.ok === false) {
+          skipN++;
+          Logger.log(
+            '[仕入れ検討①] enum_reset_drain not_ok parent=%s %s',
+            parent,
+            detail0.slice(0, 120)
+          );
+          continue;
+        }
+        var fin = prFinalizeEnumOnlySize_(parent);
+        doneN++;
+        var band = String(fin.band || PR_BAND_UNK_);
+        var qN = Number(fin.queueN) || 0;
+        var why = prEnumDiagWhy_(fin, band, qN, washOut);
+        prEnumDiagAppend_(
+          runId,
+          parent,
+          why,
+          'band=' + band + ' queue=' + qN + ' via=menu_enum_reset i=' + doneN
+        );
+        Logger.log(
+          '[仕入れ検討①] enum_reset_drain parent=%s band=%s queue=%s why=%s',
+          parent,
+          band,
+          qN,
+          why
+        );
+      } catch (eB) {
+        var msgB = prRedactKey_(String((eB && eB.message) || eB));
+        skipN++;
+        if (/タイトル含有0/.test(msgB)) {
+          try {
+            prHandleWashTitleZero_({
+              parent: parent,
+              runId: runId,
+              tag: 'menu_enum_reset_title0',
+              armTrigger: false,
+              quiet: true,
+            });
+          } catch (eT) {}
+        }
+        Logger.log(
+          '[仕入れ検討①] WARN enum_reset_drain_skip parent=%s %s',
+          parent,
+          msgB.slice(0, 120)
+        );
+      }
+    }
+    left = prCountEnumResetPending_();
+    // 勝ち負け・busy 問わず残りがあれば自己再予約（番犬なし）
+    if (left > 0) {
+      prScheduleEnumResetTrigger_(prEnumResetRearmMin_(), {
+        runId: runId,
+        tag: busyN > 0 && doneN === 0 ? 'drain_all_busy' : 'drain_continue',
+      });
+    } else {
+      prClearEnumResetTriggers_();
+    }
+    didSchedule = true;
+    detail =
+      'enum_reset_drain done=' +
+      doneN +
+      ' skip=' +
+      skipN +
+      ' busy=' +
+      busyN +
+      ' left=' +
+      left +
+      ' stop=' +
+      stopBy +
+      ' elapsedMs=' +
+      (new Date().getTime() - t0);
+    Logger.log('[仕入れ検討①] runId=%s %s', runId, detail);
+    try {
+      prAppendLog_([
+        runId,
+        'enum_reset_drain',
+        'DONE',
+        new Date(),
+        doneN,
+        left,
+        '',
+        detail.slice(0, 220),
+      ]);
+    } catch (eLog) {}
+  } catch (eDrain) {
+    stopBy = 'error';
+    left = prCountEnumResetPending_();
+    detail =
+      'enum_reset_drain error left=' +
+      left +
+      ' ' +
+      prRedactKey_(String((eDrain && eDrain.message) || eDrain)).slice(0, 120);
+    Logger.log('[仕入れ検討①] runId=%s %s', runId, detail);
+    try {
+      prAppendLog_([
+        runId,
+        'enum_reset_drain',
+        'FAILED',
+        new Date(),
+        doneN,
+        left,
+        '',
+        detail.slice(0, 220),
+      ]);
+    } catch (eLog2) {}
+  } finally {
+    // 案P1: 届く失敗でも残りがあれば予約。未スケジュールなら実行中リースを外してから武装。
+    try {
+      if (!didSchedule) prEnumResetClearExpectFire_();
+      prMaybeArmEnumResetRecovery_(runId, 'drain_finally');
+    } catch (eFin) {}
+  }
+  return { done: doneN, skip: skipN, left: left, detail: detail };
+}
+
+/** トリガー: リセット列挙の続き（人手再クリック不要）。 */
+function prRunEnumResetFromTrigger() {
+  prGasStart_();
+  var runId =
+    'pr_enum_reset_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  // 実行中リース: 予算＋猶予まで「未来の expect」を残し、心拍の二重drainを防ぐ。
+  // サーバーエラーで消えてもリース期限後に心拍／洗い終わりが拾う。
+  try {
+    var leaseMs =
+      new Date().getTime() + PR_GAS_BUDGET_MS_ + prEnumResetStaleGraceMin_() * 60 * 1000;
+    PropertiesService.getScriptProperties().setProperty(
+      PR_ENUM_RESET_EXPECT_FIRE_MS_PROP_,
+      String(leaseMs)
+    );
+  } catch (eLease) {}
+  try {
+    prAppendLog_([
+      runId,
+      'enum_reset_trigger',
+      'RUNNING',
+      new Date(),
+      '',
+      '',
+      '',
+      'fire pending=' + prCountEnumResetPending_(),
+    ]);
+  } catch (eL0) {}
+  try {
+    prRunEnumResetDrain_(runId);
+  } finally {
+    try {
+      prMaybeArmEnumResetRecovery_(runId, 'trigger_finally');
+    } catch (eTf) {}
+  }
+}
+
+/** メニュー: enum_empty_out 調査対象外 → リセット＋その場列挙（親辿り後）。 */
+function prMenuReopenEnumEmptyOut() {
+  prGasStart_();
+  var ui = SpreadsheetApp.getUi();
+  var dry = prReopenEnumEmptyOutMakers_({ dryRun: true, quiet: true });
+  var pendingN = prCountEnumResetPending_();
+  var runEnum = prEnumResetRunEnumEnabled_();
+  var ans = ui.alert(
+    'enum空振りをリセットして列挙',
+    '対象見込み: ' +
+      dry.n +
+      ' 社（除外 ' +
+      dry.skipped +
+      '）。いまの列挙残り印: ' +
+      pendingN +
+      '。\n' +
+      '条件: 調査対象外＋enum_empty_out、または既にリセット待ち印。\n' +
+      '状態・見積・規模帯を空にし、' +
+      (runEnum ? 'このメニューで既存列挙を回します（切れは自動再開）。' : 'シート戻しのみ（列挙OFF）。') +
+      '\n\n上限 ' +
+      prEnumEmptyReopenCap_() +
+      ' 社/回。進めてよいですか？',
+    ui.ButtonSet.YES_NO
+  );
+  if (ans !== ui.Button.YES) {
+    prMenuToast_('① enumリセット', '中止', 5);
+    return;
+  }
+  var runId = 'pr_enum_reset_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var r = prReopenEnumEmptyOutMakers_({ dryRun: false, quiet: false, runId: runId });
+  var drain = { detail: 'drain_skip' };
+  if (runEnum) {
+    drain = prRunEnumResetDrain_(runId);
+  }
+  prMenuToast_(
+    '① enumリセット',
+    String(r.detail || '').slice(0, 80) + ' | ' + String(drain.detail || '').slice(0, 80),
+    20
+  );
+}
+
+/**
+ * title0_skip をリセットしメニュー列挙待ち印へ（Catalog OR／親辿り後）。
+ * 対象: 進捗 title0_skip。除外: survey_root_out／非仕入先。見積>0 は触らない。
+ * 併せて Property PR_WASH_TITLE0_FAIL_JSON／PR_WASH_TITLE0_SKIP_SET を空にする。
+ * @return {{n:number, detail:string, parents:!Array<string>, skipped:number, propCleared:boolean}}
+ */
+function prReopenTitle0SkipMakers_(opt) {
+  opt = opt || {};
+  var dry = !!opt.dryRun;
+  var cap = Math.max(1, Number(opt.cap) || prEnumEmptyReopenCap_());
+  var quiet = !!opt.quiet;
+  var runId = String(opt.runId || 'title0_reset').trim();
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    return {
+      n: 0,
+      detail: 'title0_reset_skip no_sum',
+      parents: [],
+      skipped: 0,
+      propCleared: false,
+    };
+  }
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
+  var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
+  if (idxM < 0 || idxSt < 0 || idxProg < 0) {
+    return {
+      n: 0,
+      detail: 'title0_reset_skip no_cols',
+      parents: [],
+      skipped: 0,
+      propCleared: false,
+    };
+  }
+  var skipBefore = prCyclePipeListGet_(PR_WASH_TITLE0_SKIP_SET_PROP_).length;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var parents = [];
+  var skipped = 0;
+  var r;
+  for (r = 0; r < vals.length && parents.length < cap; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    var prog = String(vals[r][idxProg] || '');
+    if (prog.indexOf('title0_skip') < 0) continue;
+    if (prog.indexOf('survey_root_out') >= 0 || prog.indexOf('非仕入先') >= 0) {
+      skipped++;
+      continue;
+    }
+    var estCell = idxEst >= 0 ? vals[r][idxEst] : '';
+    var nEst = Number(String(estCell == null ? '' : estCell).replace(/[^\d.-]/g, ''));
+    if (!isNaN(nEst) && nEst > 0 && String(estCell).trim() !== '') {
+      skipped++;
+      continue;
+    }
+    var sheetRow = r + 2;
+    if (!dry) {
+      sh.getRange(sheetRow, idxSt + 1).setValue('');
+      sh.getRange(sheetRow, idxProg + 1).setValue(PR_ENUM_RESET_PENDING_PROG_);
+      if (idxEst >= 0) sh.getRange(sheetRow, idxEst + 1).setValue('');
+      if (idxBand >= 0) sh.getRange(sheetRow, idxBand + 1).setValue('');
+      try {
+        prTitleZeroClear_(parent);
+      } catch (eT0) {}
+      try {
+        prCyclePipeListRemove_(PR_WASH_TITLE0_SKIP_SET_PROP_, parent);
+      } catch (eSkip) {}
+    }
+    parents.push(parent);
+  }
+  var propCleared = false;
+  if (!dry) {
+    try {
+      PropertiesService.getScriptProperties().deleteProperty(PR_WASH_TITLE0_FAIL_PROP_);
+      PropertiesService.getScriptProperties().deleteProperty(PR_WASH_TITLE0_SKIP_SET_PROP_);
+      propCleared = true;
+    } catch (eProp) {
+      propCleared = false;
+    }
+    if (parents.length) prMakerBandMapClear_();
+  }
+  var detail =
+    (dry ? 'dry ' : '') +
+    'title0_reset n=' +
+    parents.length +
+    ' skip=' +
+    skipped +
+    ' skipSetWas=' +
+    skipBefore +
+    ' propCleared=' +
+    (dry ? 'pending' : propCleared ? '1' : '0') +
+    (parents.length ? ' makers=' + parents.slice(0, 8).join('|') : '');
+  Logger.log('[仕入れ検討①] runId=%s %s', runId, detail);
+  if (!quiet) {
+    try {
+      prAppendLog_([
+        runId,
+        'title0_reset',
+        dry ? 'DRY' : 'DONE',
+        new Date(),
+        '',
+        parents.length,
+        '',
+        detail.slice(0, 220),
+      ]);
+    } catch (eLog) {}
+  }
+  return {
+    n: parents.length,
+    detail: detail,
+    parents: parents,
+    skipped: skipped,
+    propCleared: propCleared,
+  };
+}
+
+/** メニュー: title0_skip → リセット＋その場列挙（OR／親辿り後）。 */
+function prMenuReopenTitle0Skip() {
+  prGasStart_();
+  var ui = SpreadsheetApp.getUi();
+  var dry = prReopenTitle0SkipMakers_({ dryRun: true, quiet: true });
+  var skipN = prCyclePipeListGet_(PR_WASH_TITLE0_SKIP_SET_PROP_).length;
+  var runEnum = prEnumResetRunEnumEnabled_();
+  var ans = ui.alert(
+    'title0空振りをリセットして列挙',
+    'シート対象見込み: ' +
+      dry.n +
+      ' 社（除外 ' +
+      dry.skipped +
+      '）。\n' +
+      'Property skip集合: いま ' +
+      skipN +
+      ' 名（実行時に FAIL_JSON／SKIP_SET も空にします）。\n' +
+      '条件: 進捗 title0_skip。調査ルート外・非仕入先・見積>0 は除外。\n' +
+      '状態・見積・規模帯を空にし、' +
+      (runEnum ? 'このメニューで既存列挙を回します（切れは自動再開）。' : 'シート戻しのみ。') +
+      '\n\n進めてよいですか？',
+    ui.ButtonSet.YES_NO
+  );
+  if (ans !== ui.Button.YES) {
+    prMenuToast_('① title0リセット', '中止', 5);
+    return;
+  }
+  var runId =
+    'pr_t0reset_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var r = prReopenTitle0SkipMakers_({ dryRun: false, quiet: false, runId: runId });
+  var drain = { detail: 'drain_skip' };
+  if (runEnum) {
+    drain = prRunEnumResetDrain_(runId);
+  }
+  prMenuToast_(
+    '① title0リセット',
+    String(r.detail || '').slice(0, 80) + ' | ' + String(drain.detail || '').slice(0, 80),
+    20
+  );
+}
+
+/**
+ * 既存の enum_done queue=0（状態空のまま unk 居座り）を調査対象外へ。心拍 sanitize 用。
+ * @return {{n:number, detail:string}}
+ */
+function prSanitizeEnumEmptyGhosts_() {
+  if (!prEnumEmptyOutEnabled_()) {
+    return { n: 0, detail: 'enum_empty_out_skip disabled' };
+  }
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return { n: 0, detail: 'enum_empty_out_skip no_sum' };
+  prEnsureMakerWashStatusCols_(sh);
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  var idxProg = prHeaderIndex_(hdr, PR_WASH_PROGRESS_HEADER_);
+  var idxEst = prHeaderIndex_(hdr, PR_CATALOG_EST_COL_);
+  var idxBand = prHeaderIndex_(hdr, PR_BAND_COL_);
+  if (idxM < 0 || idxSt < 0 || idxProg < 0) {
+    return { n: 0, detail: 'enum_empty_out_skip no_cols' };
+  }
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var fixed = [];
+  var r;
+  var cap = PR_ENUM_EMPTY_OUT_SANITIZE_CAP_;
+  for (r = 0; r < vals.length && fixed.length < cap; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    var st = String(vals[r][idxSt] || '').trim();
+    if (st === PR_WASH_ST_OUT_ || st === PR_WASH_ST_DONE_ || st === PR_WASH_ST_FIX_) continue;
+    if (st === PR_WASH_ST_ENUM_ || st === PR_WASH_ST_KEEPA_ || st === PR_WASH_ST_INFER_ || st === PR_WASH_ST_NEED_Q2_) {
+      continue;
+    }
+    var prog = String(vals[r][idxProg] || '');
+    if (prog.indexOf('enum_empty_out') >= 0) continue;
+    var mDone = prog.match(/enum_done\s+queue=(\d+)/i);
+    if (!mDone) continue;
+    var q = Number(mDone[1]);
+    if (!(q === 0)) continue;
+    var estCell = idxEst >= 0 ? vals[r][idxEst] : '';
+    var nEst = Number(String(estCell == null ? '' : estCell).replace(/[^\d.-]/g, ''));
+    // 見積が正の数なら列挙成功扱い（状態空の別穴）。0／空だけ対象外化
+    if (!isNaN(nEst) && nEst > 0 && String(estCell).trim() !== '') continue;
+    var band = idxBand >= 0 ? String(vals[r][idxBand] || '').trim() : '';
+    if (prMarkEnumEmptyOut_(parent, 0, band)) {
+      fixed.push(parent);
+    }
+  }
+  var detail =
+    'enum_empty_out n=' +
+    fixed.length +
+    (fixed.length ? ' makers=' + fixed.slice(0, 8).join('|') : '');
+  Logger.log('[仕入れ検討①] %s', detail);
+  return { n: fixed.length, detail: detail };
 }
 
 /** Property PR_CYCLE_POOL_REUSE。未設定=ON。false で毎回数え直す旧動作。 */
@@ -3077,6 +4109,57 @@ function prCycleClockSnapshot_() {
  * @param {string} firstParent 心拍が選んだ先頭社（必ず最初に処理する）
  * @return {{n:number, detail:string}}
  */
+/** 列挙診断ログ（①ログ enum_diag）。未設定=ON。 */
+function prEnumDiagLogEnabled_() {
+  return prCkEnabled_(PR_ENUM_DIAG_LOG_PROP_);
+}
+
+/**
+ * 列挙1社の結果を why= に落とす（小中が増えない追及用）。
+ * title0（タイトル含有0）は洗い側で握りつぶされても washOut.title0 で優先する。
+ * @return {string}
+ */
+function prEnumDiagWhy_(fin, band, queueN, washOut) {
+  if (washOut && washOut.title0) return 'title0';
+  if (washOut && /title0_retry|title0_skip|タイトル含有0/.test(String(washOut.detail || ''))) {
+    return 'title0';
+  }
+  if (fin && fin.out) return 'enum_empty_out';
+  var q = Number(queueN);
+  if (!(q > 0)) q = 0;
+  if (band === PR_BAND_S_ || band === PR_BAND_M_) {
+    return q > 0 ? 'sm_queue_ok' : 'sm_band_queue0';
+  }
+  if (band === PR_BAND_L_) return q > 0 ? 'band_L' : 'band_L_queue0';
+  if (band === PR_BAND_XL_) return q > 0 ? 'band_XL' : 'band_XL_queue0';
+  if (band === PR_BAND_UNK_ || !band) return 'band_unk';
+  return 'band_other';
+}
+
+/** enum_diag 用に detail から pages/titles/survey 等を抜き出す。 */
+function prEnumDiagCauseBits_(detail) {
+  var s = String(detail || '');
+  if (!s) return '';
+  var parts = s.match(
+    /(?:pages|titles|added|surveyDrop|surveyMiss|title0_n|queue)=\d+|entry=[^\s]+|legal_retry=1|needle=[^\s]+/g
+  );
+  return parts && parts.length ? parts.join(' ') : '';
+}
+
+function prEnumDiagAppend_(runId, parent, why, extra) {
+  if (!prEnumDiagLogEnabled_()) return;
+  prAppendLog_([
+    runId || '',
+    'enum_diag',
+    'DONE',
+    new Date(),
+    '',
+    String(parent || '').slice(0, 80),
+    '',
+    ('why=' + why + (extra ? ' ' + extra : '')).slice(0, 220),
+  ]);
+}
+
 function prCycleRunEnumBatch_(runId, firstParent) {
   var cap = prCycleEnumBatchN_();
   var order = [];
@@ -3096,6 +4179,7 @@ function prCycleRunEnumBatch_(runId, firstParent) {
   }
   var t0 = new Date().getTime();
   var bands = {};
+  var whyCount = {};
   var doneN = 0;
   var skipN = 0;
   var stopBy = 'list_end';
@@ -3110,10 +4194,12 @@ function prCycleRunEnumBatch_(runId, firstParent) {
     }
     var parent = order[i];
     try {
-      prRunMakerWashFull_({
+      var needles = prMakerWashNeedles_(parent, '');
+      var entry0 = prMakerCatalogEntry_(parent, '', '');
+      var washOut = prRunMakerWashFull_({
         parent: parent,
-        entry: prMakerCatalogEntry_(parent, '', ''),
-        needles: prMakerWashNeedles_(parent, ''),
+        entry: entry0,
+        needles: needles,
         tag: 'hb_enum',
         runId: runId,
         loopKeepa: false,
@@ -3124,19 +4210,44 @@ function prCycleRunEnumBatch_(runId, firstParent) {
       var fin = prFinalizeEnumOnlySize_(parent);
       doneN++;
       var band = String(fin.band || PR_BAND_UNK_);
+      var qN = Number(fin.queueN) || 0;
       bands[band] = (bands[band] || 0) + 1;
+      var why = prEnumDiagWhy_(fin, band, qN, washOut);
+      whyCount[why] = (whyCount[why] || 0) + 1;
+      var needle0 = needles && needles.length ? String(needles[0] || '').slice(0, 40) : '';
+      var causeBits = prEnumDiagCauseBits_(washOut && washOut.detail);
+      if (washOut && washOut.title0N != null && !/title0_n=/.test(causeBits)) {
+        causeBits = (causeBits ? causeBits + ' ' : '') + 'title0_n=' + washOut.title0N;
+      }
+      prEnumDiagAppend_(
+        runId,
+        parent,
+        why,
+        'band=' +
+          band +
+          ' queue=' +
+          qN +
+          (fin && fin.out ? ' out=1' : '') +
+          (needle0 ? ' needle=' + needle0 : '') +
+          (entry0 ? ' entry=' + String(entry0).slice(0, 40) : '') +
+          (causeBits ? ' ' + causeBits : '') +
+          ' i=' +
+          (i + 1) +
+          '/' +
+          order.length
+      );
       Logger.log(
-        '[仕入れ検討①] enum_batch %s/%s parent=%s band=%s queue=%s',
+        '[仕入れ検討①] enum_batch %s/%s parent=%s band=%s queue=%s why=%s',
         i + 1,
         order.length,
         parent,
         band,
-        fin.queueN
+        qN,
+        why
       );
       // 小・中が出たら列挙をやめて洗いへ譲る（小中優先を崩さない）。
       // ただし中身ゼロの社で止まると洗う材料が無いまま譲り、空振り選定に往復15分を捨てる
       if (band === PR_BAND_S_ || band === PR_BAND_M_) {
-        var qN = Number(fin.queueN) || 0;
         if (!stopOnQueue || qN > 0) {
           stockN++;
           // 1社で譲ると洗い終わるたびに列挙からやり直しになり、社の切替が実測22.4分。
@@ -3171,7 +4282,9 @@ function prCycleRunEnumBatch_(runId, firstParent) {
       }
     } catch (eB) {
       var msgB = prRedactKey_(String((eB && eB.message) || eB));
+      var whySkip = 'skip_other';
       if (/タイトル含有0/.test(msgB)) {
+        whySkip = 'title0';
         try {
           prHandleWashTitleZero_({
             parent: parent,
@@ -3181,11 +4294,28 @@ function prCycleRunEnumBatch_(runId, firstParent) {
             quiet: true,
           });
         } catch (eT) {}
+      } else if (/survey|ルート|調査カテゴリ/i.test(msgB)) {
+        whySkip = 'survey_root';
       }
+      whyCount[whySkip] = (whyCount[whySkip] || 0) + 1;
+      var skipBits = prEnumDiagCauseBits_(msgB);
+      prEnumDiagAppend_(
+        runId,
+        parent,
+        whySkip,
+        (skipBits ? skipBits + ' ' : '') +
+          'err=' +
+          msgB.slice(0, 100) +
+          ' i=' +
+          (i + 1) +
+          '/' +
+          order.length
+      );
       skipN++;
       Logger.log(
-        '[仕入れ検討①] WARN enum_batch_skip parent=%s %s',
+        '[仕入れ検討①] WARN enum_batch_skip parent=%s why=%s %s',
         parent,
+        whySkip,
         msgB.slice(0, 120)
       );
     }
@@ -3195,22 +4325,41 @@ function prCycleRunEnumBatch_(runId, firstParent) {
       return k + '=' + bands[k];
     })
     .join(' ');
+  var whyStr = Object.keys(whyCount)
+    .map(function (k) {
+      return k + '=' + whyCount[k];
+    })
+    .join('|');
+  var detail =
+    'enum_batch n=' +
+    doneN +
+    '/' +
+    order.length +
+    ' cap=' +
+    cap +
+    ' skip=' +
+    skipN +
+    ' stop=' +
+    stopBy +
+    (bandStr ? ' ' + bandStr : '') +
+    (whyStr ? ' why=' + whyStr : '') +
+    ' elapsedMs=' +
+    (new Date().getTime() - t0);
+  if (prEnumDiagLogEnabled_()) {
+    prAppendLog_([
+      runId || '',
+      'enum_diag_sum',
+      'DONE',
+      new Date(),
+      doneN,
+      '',
+      '',
+      detail.slice(0, 220),
+    ]);
+  }
   return {
     n: doneN,
-    detail:
-      'enum_batch n=' +
-      doneN +
-      '/' +
-      order.length +
-      ' cap=' +
-      cap +
-      ' skip=' +
-      skipN +
-      ' stop=' +
-      stopBy +
-      (bandStr ? ' ' + bandStr : '') +
-      ' elapsedMs=' +
-      (new Date().getTime() - t0),
+    detail: detail,
   };
 }
 
@@ -4176,8 +5325,36 @@ function prCycleEnsureLiveness_(runId, via) {
     return { alive: true, rearmed: true, reason: 'paused_rearm_01', clocks: clocks };
   }
   prCycleHardResetClocks_(rid, String(via || '') + ':' + snap.reason);
-  var c4Parent = prCycleMaybeArmC4ForLastComplete_(rid, 'liveness_c4_recover');
-  var afterMin = prCycleArmHeartbeatAfterIdle_(rid, 'liveness_reset');
+  // 洗い再武装を先に。C4 needs 走査（候補＋キュー）が重いとここで死に、
+  // hard_reset だけの無限沈黙になる（実測 2026-11-06〜: Keepa token / liveness_reset 無し）。
+  var afterMin = 0;
+  try {
+    afterMin = prCycleArmHeartbeatAfterIdle_(rid, 'liveness_reset');
+  } catch (eArm) {
+    Logger.log(
+      '[仕入れ検討①] ERROR liveness_arm_wash %s',
+      String((eArm && eArm.message) || eArm).slice(0, 160)
+    );
+    prAppendLog_([
+      rid,
+      'heartbeat liveness',
+      'FAILED',
+      new Date(),
+      '',
+      '',
+      '',
+      ('liveness_arm_wash_err ' + String((eArm && eArm.message) || eArm)).slice(0, 200),
+    ]);
+  }
+  var c4Parent = '';
+  try {
+    c4Parent = prCycleMaybeArmC4ForLastComplete_(rid, 'liveness_c4_recover');
+  } catch (eC4) {
+    Logger.log(
+      '[仕入れ検討①] WARN liveness_c4_recover %s',
+      String((eC4 && eC4.message) || eC4).slice(0, 160)
+    );
+  }
   prAppendLog_([
     rid,
     'heartbeat liveness',
@@ -4218,6 +5395,15 @@ function prRunCycleLivenessFromTrigger() {
       String((eStall && eStall.message) || eStall).slice(0, 120)
     );
   }
+  var enumArm = 0;
+  try {
+    enumArm = prMaybeArmEnumResetFromHeartbeat_(runId);
+  } catch (eEnumArm) {
+    Logger.log(
+      '[仕入れ検討①] WARN hb_enum_rearm %s',
+      String((eEnumArm && eEnumArm.message) || eEnumArm).slice(0, 120)
+    );
+  }
   prAppendLog_([
     runId,
     'heartbeat liveness',
@@ -4236,7 +5422,8 @@ function prRunCycleLivenessFromTrigger() {
         ? ' stall_recover=1 parked=' + (stallRec.parked || 0)
         : stallRec && stallRec.reason
           ? ' stall=' + stallRec.reason
-          : ''),
+          : '') +
+      (enumArm > 0 ? ' enum_rearm=' + enumArm : ''),
   ]);
 }
 
@@ -5342,17 +6529,32 @@ function prNextHeartbeatAction_() {
   var canShop = prShopHasTokenRoom_();
   var needRestock = prSmNeedShopRestock_(smN);
   deferNote += ' tok=' + tokBand;
-  // 店フル途中は列挙より先。予約以下なら洗いへ譲る（洗い用60を食わない）
+  // 店フル途中は列挙より先。ただし案A（sm=0+Catalog待ち）は列挙を先（2026-10-26）。
+  // 予約以下なら洗いへ譲る（洗い用60を食わない）
   if (prAlightHasContinue_()) {
     if (tokBand === 'none') {
       deferNote += ' yield_alight_reserve';
       Logger.log('[仕入れ検討①] yield_alight_reserve left=%s', prKeepaLiveLeftSnap_());
+    } else if (prCycleShouldPreferEnumOverShop_(smN, pools)) {
+      deferNote += ' yield_alight_for_enum_sm0';
+      Logger.log(
+        '[仕入れ検討①] yield_alight_for_enum_sm0 sm=0 tok=%s streak=%s',
+        tokBand,
+        prCycleEnumSm0Streak_()
+      );
     } else {
       return { action: 'alight', detail: 'alight_continue' };
     }
   }
   // 完走直後の店は、洗える小中が3社未満かつ余力ありのときだけ。3社以上は④。
   var shopParent = prCycleShopAfterSmParent_();
+  if (shopParent && prCycleShouldPreferEnumOverShop_(smN, pools)) {
+    Logger.log(
+      '[仕入れ検討①] yield_shop_after_for_enum_sm0 parent=%s sm=0',
+      shopParent
+    );
+    shopParent = '';
+  }
   if (shopParent && prShopTokenGateEnabled_() && !needRestock) {
     prCycleClearShopAfterSm_();
     Logger.log('[仕入れ検討①] skip_shop_sm_full sm=%s tok=%s', smN, tokBand);
@@ -5436,24 +6638,67 @@ function prNextHeartbeatAction_() {
     }
     // 安全弁: 1日の回数を使い切ったら 0 扱い。`実態再採取しない` の書き込みが失敗しても
     // 心拍が jitta に居座らない（居座ると smN=0 のとき洗いが丸ごと止まる）
+    // 例外: 小中=0 かつ未調査ゲート中は仕分けを日次上限で止めない（①主体時）
     if (jittaPend > 0 && !prJittaHbDailyHasRoom_()) {
-      Logger.log(
-        '[仕入れ検討①] jitta_hb_daily_cap pend=%s count=%s/%s',
-        jittaPend,
-        prJittaHbDailyCount_(),
-        prJittaHbDailyMax_()
-      );
-      jittaPend = 0;
+      var bypassCap =
+        smN === 0 &&
+        prJittaBacklogIdleEnabled_() &&
+        prJittaBacklogBlocksXl_();
+      if (bypassCap) {
+        Logger.log(
+          '[仕入れ検討①] jitta_hb_daily_cap_bypass_backlog pend=%s count=%s/%s',
+          jittaPend,
+          prJittaHbDailyCount_(),
+          prJittaHbDailyMax_()
+        );
+      } else {
+        Logger.log(
+          '[仕入れ検討①] jitta_hb_daily_cap pend=%s count=%s/%s',
+          jittaPend,
+          prJittaHbDailyCount_(),
+          prJittaHbDailyMax_()
+        );
+        jittaPend = 0;
+      }
     }
   }
 
-  // 列挙は余力なしのときだけ（Keepaを使わない時間で次の小中を作る）。洗えるあいだは④。
+  // 列挙は原則・余力なしのときだけ（Keepaを使わない時間で次の小中を作る）。洗えるあいだは④。
+  // 例外（2026-10-25 案A）: sm=0 かつ Catalog待ちあり → 余力ありでも列挙（店より先）。
+  // 連続 force が YIELD_EVERY に達したら1回店へ譲る。切戻し PR_CYCLE_ENUM_WHEN_SM0=false。
   // ゲートオフは従来どおり、1回やったら次は洗いに譲る。
+  if (smN > 0) prCycleEnumSm0StreakClear_('sm_pool');
   var skipEnum = prCycleSkipEnumOnce_();
   var runEnum = !skipEnum;
+  var enumSm0Force = false;
   if (prShopTokenGateEnabled_()) {
     if (canWash) {
       runEnum = false;
+      if (
+        smN === 0 &&
+        prCycleEnumWhenSm0Enabled_() &&
+        prCycleEnumSm0Streak_() < prCycleEnumSm0YieldEvery_()
+      ) {
+        var hasCatWait = prCyclePoolsHaveCatalogWait_(pools);
+        if (hasCatWait) {
+          // 列挙後に付く skip 付箋があっても、小中ゼロのあいだは force する
+          if (skipEnum) prCycleClearSkipEnumOnce_('enum_when_sm0');
+          runEnum = true;
+          enumSm0Force = true;
+        }
+      } else if (
+        smN === 0 &&
+        prCycleEnumWhenSm0Enabled_() &&
+        prCycleEnumSm0Streak_() >= prCycleEnumSm0YieldEvery_()
+      ) {
+        prCycleEnumSm0StreakClear_('yield_shop');
+        deferNote += ' enum_sm0_yield_shop';
+        Logger.log(
+          '[仕入れ検討①] enum_when_sm0 yield_shop every=%s tok=%s',
+          prCycleEnumSm0YieldEvery_(),
+          tokBand
+        );
+      }
     } else {
       if (skipEnum) prCycleClearSkipEnumOnce_('token_none_enum');
       runEnum = true;
@@ -5462,6 +6707,14 @@ function prNextHeartbeatAction_() {
   if (runEnum) {
     var catPend = prCycleFirstCatalogPending_();
     if (catPend && catPend.parent) {
+      if (enumSm0Force) {
+        prCycleEnumSm0StreakBump_();
+        deferNote +=
+          ' enum_when_sm0 streak=' +
+          prCycleEnumSm0Streak_() +
+          '/' +
+          prCycleEnumSm0YieldEvery_();
+      }
       return {
         action: 'enum_unknown',
         maker: catPend.parent,
@@ -5469,12 +6722,21 @@ function prNextHeartbeatAction_() {
       };
     }
     if (pools.unk.length) {
+      if (enumSm0Force) {
+        prCycleEnumSm0StreakBump_();
+        deferNote +=
+          ' enum_when_sm0 streak=' +
+          prCycleEnumSm0Streak_() +
+          '/' +
+          prCycleEnumSm0YieldEvery_();
+      }
       return {
         action: 'enum_unknown',
         maker: pools.unk[0].parent,
         detail: 'band_unknown' + deferNote,
       };
     }
+    if (enumSm0Force) prCycleEnumSm0StreakClear_('no_pend');
   }
 
   // 洗いスライス後の補充1回（小中が閾値未満かつ余力ありのときだけ）
@@ -5564,6 +6826,23 @@ function prNextHeartbeatAction_() {
         deferNote,
     };
   }
+  // 未調査≥ゲート: 大特大だけ禁止。自動レ点は可（名取り本線）。
+  var backlogBlocksXl = false;
+  var backlogNForXl = 0;
+  if (smN === 0 && prJittaBacklogBlocksXl_()) {
+    backlogBlocksXl = true;
+    try {
+      backlogNForXl = prCountMakerJittaAiPendingUninvestigated_();
+    } catch (eBl) {
+      backlogNForXl = -1;
+    }
+    Logger.log(
+      '[仕入れ検討①] jitta_backlog_xl_block uninvestigated=%s gate=%s owner=%s',
+      backlogNForXl,
+      prJittaBacklogGate_(),
+      prJittaOwner_()
+    );
+  }
   if (smN === 0 && (!prShopTokenGateEnabled_() || canShop)) {
     var shopEmpty = prCycleShopBeforeLargeAction_({
       unchecked: unchecked,
@@ -5576,6 +6855,21 @@ function prNextHeartbeatAction_() {
 
   // 小中=0: 店ラウンド尽きた／材料なし → 大・特大（余力なしでは洗わない）
   if (smN === 0 && (pools.byBand['大'].length || pools.byBand['特大'].length)) {
+    if (backlogBlocksXl) {
+      return {
+        action: 'idle',
+        detail:
+          'jitta_backlog_xl_block uninvestigated=' +
+          backlogNForXl +
+          ' gate=' +
+          prJittaBacklogGate_() +
+          ' owner=' +
+          prJittaOwner_() +
+          ' jittaPend=' +
+          jittaPend +
+          deferNote,
+      };
+    }
     if (!canWash) {
       return {
         action: 'idle',
@@ -5781,6 +7075,17 @@ function prCycleShopBeforeLargeActionRaw_(opt) {
   }
   // §4.4-f: 店もレ点候補も無いときだけ C0
   if (untagged > 0 && shopOpen) {
+    // 撤回: 余力ありでも大特大へ譲らない（小中補充が本線。明示 Prop=true のときだけ旧実験）
+    if (prC0YieldWashWhenAmpleEnabled_() && prKeepaTokenBand_() === 'ample') {
+      Logger.log(
+        '[仕入れ検討①] c0_yield_wash_ample untagged=%s done=%s rounds=%s left=%s',
+        untagged,
+        done,
+        rounds,
+        prKeepaLiveLeftSnap_()
+      );
+      return null;
+    }
     return {
       action: 'c0',
       detail:
@@ -5794,6 +7099,19 @@ function prCycleShopBeforeLargeActionRaw_(opt) {
     };
   }
   return null;
+}
+
+/**
+ * Property PR_C0_YIELD_WASH_WHEN_AMPLE。
+ * **未設定=OFF**（2026-10-24 撤回。大特大への譲りは本線外）。明示 true のときだけ有効。
+ */
+function prC0YieldWashWhenAmpleEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(
+    PR_C0_YIELD_WASH_WHEN_AMPLE_PROP_
+  );
+  if (raw == null || String(raw).trim() === '') return false;
+  var s = String(raw).trim().toUpperCase();
+  return s === 'TRUE' || s === '1' || s === 'ON' || s === 'はい';
 }
 
 /** 心拍アクションを1回実行し、必要なら次トリガーを張る。終了時は生存番犬で時計を点検。 */
@@ -5840,6 +7158,19 @@ function prDispatchHeartbeat_(runId) {
   try {
     var san = prSanitizeDeferredLargeKeepaStuck_();
     sanDetail = san.detail || '';
+    var sanEmpty = prSanitizeEnumEmptyGhosts_();
+    if (sanEmpty && sanEmpty.n > 0) {
+      sanDetail =
+        String(sanDetail || '') +
+        (sanDetail ? ' | ' : '') +
+        String(sanEmpty.detail || '');
+      san.n = (Number(san.n) || 0) + (Number(sanEmpty.n) || 0);
+    } else if (sanEmpty && sanEmpty.detail) {
+      sanDetail =
+        String(sanDetail || '') +
+        (sanDetail ? ' | ' : '') +
+        String(sanEmpty.detail || '');
+    }
     // 原因特定のため n=0 でも①ログへ（sm/unk ゲート・解除メーカー名）
     prAppendLog_([runId, 'heartbeat sanitize', 'DONE', new Date(), san.n, '', '', sanDetail]);
   } catch (eSan) {
@@ -6081,6 +7412,7 @@ function prDispatchHeartbeat_(runId) {
     // 規模帯の確定は1実行でまとめる（1社ごとの受け渡し待ちが実測7分だった）
     if (enumOnly && prCycleEnumBatchN_() > 1) {
       var batch = prCycleRunEnumBatch_(runId, parent);
+      prCycleClearSkipEnumIfNoSm_('after_enum_batch');
       var hbMinB = prCycleArmHeartbeatAfterIdle_(runId, 'hb_after_enum');
       prAppendLog_([
         runId,
@@ -6125,6 +7457,7 @@ function prDispatchHeartbeat_(runId) {
       // enumOnly: 規模確定のみ。Keepa中にしない・次心拍へ
       if (enumOnly) {
         prFinalizeEnumOnlySize_(parent);
+        prCycleClearSkipEnumIfNoSm_('after_enum_one');
         var hbMin = prCycleArmHeartbeatAfterIdle_(runId, 'hb_after_enum');
         prAppendLog_([
           runId,
@@ -6398,7 +7731,11 @@ function prDispatchHeartbeat_(runId) {
   }
 
   // idle: 種切れでも短時間後に再予約（沈黙防止）。予約切れ待ちは短くする
-  var idleMin = String((act && act.detail) || '').indexOf('token_reserve') >= 0 ? 5 : 30;
+  var idleDetail = String((act && act.detail) || '');
+  var idleMin = 30;
+  if (idleDetail.indexOf('token_reserve') >= 0 || idleDetail.indexOf('jitta_backlog_gate') >= 0) {
+    idleMin = 5;
+  }
   prScheduleWashFullTrigger_(prWashFullTriggerAfterMin_(idleMin, ''), {
     runId: runId,
     parent: '',
@@ -6412,7 +7749,7 @@ function prDispatchHeartbeat_(runId) {
     idleMin,
     '',
     '',
-    'idle rearm ' + ((act && act.detail) || ''),
+    'idle rearm ' + idleDetail,
   ]);
   return act;
   } catch (eHb) {
@@ -7520,6 +8857,7 @@ function prB4RunSlice_(runId, opt) {
   var doneN = 0;
   var skipN = 0;
   var failN = 0;
+  var sizeLimitStop = false;
   var lines = [];
   var i;
   var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
@@ -7582,11 +8920,22 @@ function prB4RunSlice_(runId, opt) {
       if (sh && idxMemo >= 0 && w.detail) {
         sh.getRange(t.sheetRow, idxMemo + 1).setValue(prAppendMemo_(t.memo, w.detail));
       }
+      if (prIsSheetsSizeLimitError_({ message: w.detail })) {
+        sizeLimitStop = true;
+        try {
+          prSetMakerWashStatus_(t.parent, PR_WASH_ST_FIX_, 'size_limit');
+        } catch (eFix) {}
+        Logger.log(
+          '[仕入れ検討①] runId=%s B4 size_limit_stop parent=%s',
+          runId,
+          t.parent
+        );
+      }
     }
     lines.push(
       t.parent + ':' + (w.skip ? 'skip' : w.ok ? 'done' : 'fail') + ' ' + String(w.detail || '').slice(0, 80)
     );
-    if (prGasTimeUp_()) break;
+    if (sizeLimitStop || prGasTimeUp_()) break;
   }
 
   targets = prCollectCkMakerTargets_();
@@ -7601,6 +8950,11 @@ function prB4RunSlice_(runId, opt) {
   ) {
     more = false;
     jittaDetail += ' stuck_no_washable';
+  }
+  // サイズ上限は再試行しても同じ → B4 専用トリガーを張らない
+  if (sizeLimitStop) {
+    more = false;
+    jittaDetail += ' size_limit_stop';
   }
   var detail =
     jittaDetail +
@@ -8778,6 +10132,37 @@ function prKeepaFullRowToMapRec_(vals, idxAsin, idxAt, idxJson, idxFp) {
   };
 }
 
+/** Keepaフル ASIN列走査の1回あたり行数。省略=25000。0=旧一括。 */
+function prKeepaFullAsinColChunk_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_KEEPA_FULL_ASIN_COL_CHUNK_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_KEEPA_FULL_ASIN_COL_CHUNK_DEFAULT_;
+  var n = Number(raw);
+  if (!(n >= 0)) return PR_KEEPA_FULL_ASIN_COL_CHUNK_DEFAULT_;
+  return Math.floor(n);
+}
+
+/**
+ * ASIN列を chunk 行ずつ読む。fn(vals, startSheetRow)。false を返すと以降を止める。
+ * @return {number} 読んだチャンク数
+ */
+function prKeepaFullForEachAsinColChunk_(sh, idxAsin, fn) {
+  if (!sh || idxAsin < 0 || sh.getLastRow() < 2) return 0;
+  var n = sh.getLastRow() - 1;
+  var chunk = prKeepaFullAsinColChunk_();
+  if (!(chunk > 0)) chunk = n;
+  var offset = 0;
+  var reads = 0;
+  while (offset < n) {
+    var take = Math.min(chunk, n - offset);
+    var startRow = 2 + offset;
+    var vals = sh.getRange(startRow, idxAsin + 1, take, 1).getValues();
+    reads++;
+    if (fn(vals, startRow) === false) break;
+    offset += take;
+  }
+  return reads;
+}
+
 /**
  * ASIN列だけ走査して want の行番号を取る（索引が空／ずれ時）。全列は読まない。
  * @return {Array<{asin:string,row:number}>}
@@ -8788,32 +10173,34 @@ function prKeepaFullFindRowsByAsinCol_(sh, idxAsin, want) {
   var need = {};
   var i;
   for (i = 0; i < want.length; i++) need[want[i]] = true;
-  var n = sh.getLastRow() - 1;
-  var vals = sh.getRange(2, idxAsin + 1, n, 1).getValues();
   var found = {};
-  var r;
-  for (r = 0; r < vals.length; r++) {
-    var a = String(vals[r][0] || '')
-      .trim()
-      .toUpperCase();
-    if (!a || !need[a] || found[a]) continue;
-    found[a] = true;
-    out.push({ asin: a, row: r + 2 });
-    if (Object.keys(found).length >= want.length) break;
-  }
+  var wantN = want.length;
+  prKeepaFullForEachAsinColChunk_(sh, idxAsin, function (vals, startRow) {
+    var r;
+    for (r = 0; r < vals.length; r++) {
+      var a = String(vals[r][0] || '')
+        .trim()
+        .toUpperCase();
+      if (!a || !need[a] || found[a]) continue;
+      found[a] = true;
+      out.push({ asin: a, row: startRow + r });
+      if (Object.keys(found).length >= wantN) return false;
+    }
+    return true;
+  });
   return out;
 }
 
 /**
- * 指定行を小チャンクで全列読み、map レコード化。
+ * 指定行を必要列だけ読む（ASIN／取得日時／生JSON／価格指紋）。全列読み禁止。
  * @return {{map:Object, mismatch:string}}
  */
 function prKeepaFullReadRowsToMap_(sh, hdr, rowList, idxAsin, idxAt, idxJson, idxFp) {
   var map = {};
   var mismatch = '';
   if (!rowList || !rowList.length) return { map: map, mismatch: mismatch };
-  var lastCol = hdr.length;
   var chunk = prKeepaFullAsinReadChunk_();
+  if (!(chunk > 0)) chunk = 1;
   var i = 0;
   while (i < rowList.length) {
     var startRow = rowList[i].row;
@@ -8826,19 +10213,33 @@ function prKeepaFullReadRowsToMap_(sh, hdr, rowList, idxAsin, idxAt, idxJson, id
       j++;
     }
     var numRows = j - i + 1;
-    var block = sh.getRange(startRow, 1, numRows, lastCol).getValues();
+    var asinCol = sh.getRange(startRow, idxAsin + 1, numRows, 1).getValues();
+    var atCol =
+      idxAt >= 0 ? sh.getRange(startRow, idxAt + 1, numRows, 1).getValues() : null;
+    var jsonCol = sh.getRange(startRow, idxJson + 1, numRows, 1).getValues();
+    var fpCol =
+      idxFp >= 0 ? sh.getRange(startRow, idxFp + 1, numRows, 1).getValues() : null;
     var b;
-    for (b = 0; b < block.length; b++) {
+    for (b = 0; b < numRows; b++) {
       var expect = rowList[i + b].asin;
-      var rec = prKeepaFullRowToMapRec_(block[b], idxAsin, idxAt, idxJson, idxFp);
-      var got = rec ? rec._asin : '';
+      var got = String(asinCol[b][0] || '')
+        .trim()
+        .toUpperCase();
       if (got && got !== expect) {
         mismatch = 'want=' + expect + ' got=' + got + ' row=' + rowList[i + b].row;
         return { map: map, mismatch: mismatch };
       }
-      if (rec) {
-        map[expect] = { at: rec.at, product: rec.product, fp: rec.fp };
+      var product = null;
+      try {
+        product = JSON.parse(String(jsonCol[b][0] || ''));
+      } catch (eParse) {
+        product = null;
       }
+      map[expect] = {
+        at: atCol ? prParseKeepaFullTime_(atCol[b][0]) : 0,
+        product: product,
+        fp: fpCol ? String(fpCol[b][0] || '') : '',
+      };
     }
     i = j + 1;
   }
@@ -9376,7 +10777,7 @@ function prAppendKeepaFull_(products) {
         continue;
       }
       Logger.log('[仕入れ検討①] Keepaフル stage=overwrite asin=%s row=%s', asin, loc.rowNum);
-      sh.getRange(loc.rowNum, 1, 1, line.length).setValues([line]);
+      prKeepaFullWriteRowLine_(sh, loc.rowNum, line, headers);
       wrote++;
       overwriteN++;
       if (loc.extraRows && loc.extraRows.length) {
@@ -9429,19 +10830,20 @@ function prKeepaFullAsinRowIndex_(sh, headers) {
     if (String(headers[h] || '').trim() === 'ASIN') idxAsin = h;
   }
   if (idxAsin < 0) return out;
-  var n = sh.getLastRow() - 1;
-  // ASIN→行 しか作らないので ASIN 列だけ読む（旧: 生JSON を含む全列を読んでいた）
-  var vals = sh.getRange(2, idxAsin + 1, n, 1).getValues();
-  var r;
-  for (r = 0; r < vals.length; r++) {
-    var asin = String(vals[r][0] || '')
-      .trim()
-      .toUpperCase();
-    if (!asin) continue;
-    var sheetRow = r + 2;
-    if (!out[asin]) out[asin] = { rowNum: sheetRow, extraRows: [] };
-    else out[asin].extraRows.push(sheetRow);
-  }
+  // ASIN→行 しか作らないので ASIN 列だけ読む（2026-10-21: 全行一括はサイズ上限→chunk）
+  prKeepaFullForEachAsinColChunk_(sh, idxAsin, function (vals, startRow) {
+    var r;
+    for (r = 0; r < vals.length; r++) {
+      var asin = String(vals[r][0] || '')
+        .trim()
+        .toUpperCase();
+      if (!asin) continue;
+      var sheetRow = startRow + r;
+      if (!out[asin]) out[asin] = { rowNum: sheetRow, extraRows: [] };
+      else out[asin].extraRows.push(sheetRow);
+    }
+    return true;
+  });
   return out;
 }
 
@@ -9519,53 +10921,75 @@ function prCleanupKeepaFullBlankRows_(sh) {
   var r;
   if (prKeepaFullBlankScanBatchEnabled_()) {
     var t0 = new Date().getTime();
-    // ASIN が入っている行は消さない。まず ASIN 列だけ読んで候補を絞る
-    var asinCol = sh.getRange(2, idxAsin + 1, last - 1, 1).getValues();
+    // ASIN が入っている行は消さない。まず ASIN 列だけ読んで候補を絞る（chunk）
     var cand = [];
-    for (r = 0; r < asinCol.length; r++) {
-      if (String(asinCol[r][0] || '').trim() === '') cand.push(r + 2);
-    }
+    var asinColReads = prKeepaFullForEachAsinColChunk_(sh, idxAsin, function (asinCol, startRow) {
+      for (r = 0; r < asinCol.length; r++) {
+        if (String(asinCol[r][0] || '').trim() === '') cand.push(startRow + r);
+      }
+      return true;
+    });
     var blank = [];
-    // 候補だけ全列を見る（生JSON を含む全行読みはしない）。連続行はまとめ読み（上限 chunk）
+    // 候補は1行ずつ・生JSON列を避けて読む（全列×複数行はサイズ上限の原因）
+    var idxJsonBlank = -1;
+    for (h = 0; h < headers.length; h++) {
+      if (String(headers[h] || '').trim() === '生JSON') idxJsonBlank = h;
+    }
     var i = 0;
     var reads = 0;
-    var readChunk = prKeepaFullBlankReadChunk_();
-    while (i < cand.length) {
-      var j = i;
-      while (j + 1 < cand.length && cand[j + 1] === cand[j] + 1) j++;
-      var blockStart = cand[i];
-      var blockN = j - i + 1;
-      var off = 0;
-      while (off < blockN) {
-        var take =
-          readChunk > 0 ? Math.min(readChunk, blockN - off) : blockN - off;
-        var vals = sh.getRange(blockStart + off, 1, take, lastCol).getValues();
+    for (i = 0; i < cand.length; i++) {
+      var sheetRow = cand[i];
+      var any = false;
+      var c;
+      if (idxJsonBlank > 0) {
         reads++;
-        var k;
-        for (k = 0; k < take; k++) {
-          var any = false;
-          var c;
-          for (c = 0; c < vals[k].length; c++) {
-            if (String(vals[k][c] || '').trim() !== '') {
-              any = true;
-              break;
-            }
+        var left = sh.getRange(sheetRow, 1, 1, idxJsonBlank).getValues()[0];
+        for (c = 0; c < left.length; c++) {
+          if (String(left[c] || '').trim() !== '') {
+            any = true;
+            break;
           }
-          if (!any) blank.push(blockStart + off + k);
         }
-        off += take;
       }
-      i = j + 1;
+      if (!any && idxJsonBlank >= 0 && idxJsonBlank + 1 < lastCol) {
+        reads++;
+        var right = sh
+          .getRange(sheetRow, idxJsonBlank + 2, 1, lastCol - idxJsonBlank - 1)
+          .getValues()[0];
+        for (c = 0; c < right.length; c++) {
+          if (String(right[c] || '').trim() !== '') {
+            any = true;
+            break;
+          }
+        }
+      }
+      if (!any && idxJsonBlank < 0) {
+        reads++;
+        var all = sh.getRange(sheetRow, 1, 1, lastCol).getValues()[0];
+        for (c = 0; c < all.length; c++) {
+          if (String(all[c] || '').trim() !== '') {
+            any = true;
+            break;
+          }
+        }
+      }
+      if (!any && idxJsonBlank >= 0) {
+        reads++;
+        if (String(sh.getRange(sheetRow, idxJsonBlank + 1).getValue() || '').trim() !== '') {
+          any = true;
+        }
+      }
+      if (!any) blank.push(sheetRow);
     }
     prDeleteSheetRowsDescending_(sh, blank);
     deleted = blank.length;
     Logger.log(
-      '[仕入れ検討①] Keepaフル blank_scan rows=%s cand=%s reads=%s deleted=%s readChunk=%s elapsedMs=%s',
+      '[仕入れ検討①] Keepaフル blank_scan rows=%s cand=%s reads=%s asinColReads=%s deleted=%s mode=splitJsonRow elapsedMs=%s',
       last - 1,
       cand.length,
       reads,
+      asinColReads,
       deleted,
-      readChunk,
       new Date().getTime() - t0
     );
   } else {
@@ -9604,34 +11028,66 @@ function prCleanupKeepaFullBlankRows_(sh) {
 }
 
 /**
+ * Keepaフル1行を書く。生JSON列は単独 setValue（他列と一括しない）。
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sh
+ * @param {number} rowNum
+ * @param {Array<*>} line
+ * @param {Array<*>} headers
+ */
+function prKeepaFullWriteRowLine_(sh, rowNum, line, headers) {
+  if (!sh || !(rowNum >= 2) || !line || !line.length) return;
+  var idxJson = -1;
+  var h;
+  for (h = 0; h < (headers || []).length; h++) {
+    if (String(headers[h] || '').trim() === '生JSON') {
+      idxJson = h;
+      break;
+    }
+  }
+  if (idxJson < 0) {
+    sh.getRange(rowNum, 1, 1, line.length).setValues([line]);
+    return;
+  }
+  if (idxJson > 0) {
+    sh.getRange(rowNum, 1, 1, idxJson).setValues([line.slice(0, idxJson)]);
+  }
+  sh.getRange(rowNum, idxJson + 1).setValue(line[idxJson]);
+  if (idxJson + 1 < line.length) {
+    sh.getRange(rowNum, idxJson + 2, 1, line.length - idxJson - 1).setValues([
+      line.slice(idxJson + 1),
+    ]);
+  }
+}
+
+/**
  * データ行をヘッダ直下（2行目）へ挿入。複数行はまとめて差し込み（上が先の行）。
  * 2026-10-17: 生JSONが重いので PR_KEEPA_FULL_INSERT_CHUNK 件ずつ（省略=5。0=旧一括）。
+ * 生JSONは prKeepaFullWriteRowLine_ で列分離。
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sh
  * @param {Array<Array<*>>} lines
  */
 function prInsertRowsBelowHeader_(sh, lines) {
   if (!sh || !lines || !lines.length) return;
-  var cols = lines[0].length;
+  var headers = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), lines[0].length)).getValues()[0];
   var chunk = prKeepaFullInsertChunk_();
-  if (!(chunk > 0) || lines.length <= chunk) {
-    sh.insertRowsBefore(2, lines.length);
-    sh.getRange(2, 1, lines.length, cols).setValues(lines);
-    return;
-  }
-  // 上が先の行を保つため、後ろの塊から挿入する（毎回2行目へ差し込む）
+  if (!(chunk > 0)) chunk = 1;
+  // 上が先の行を保つため、後ろの塊から挿入。生JSONは行ごと単独書き。
   var start = lines.length;
   while (start > 0) {
     var from = Math.max(0, start - chunk);
     var part = lines.slice(from, start);
     sh.insertRowsBefore(2, part.length);
-    sh.getRange(2, 1, part.length, cols).setValues(part);
+    var p;
+    for (p = 0; p < part.length; p++) {
+      prKeepaFullWriteRowLine_(sh, 2 + p, part[p], headers);
+    }
     try {
       SpreadsheetApp.flush();
     } catch (eFlush) {}
     start = from;
   }
   Logger.log(
-    '[仕入れ検討①] Keepaフル insert_chunked n=%s chunk=%s',
+    '[仕入れ検討①] Keepaフル insert_chunked n=%s chunk=%s splitJson=Y',
     lines.length,
     chunk
   );
@@ -11300,12 +12756,34 @@ function prEnsureWashQueueSheet_() {
   return prEnsureSheet_(PR_WASH_QUEUE_SHEET_, PR_WASH_QUEUE_HEADERS_);
 }
 
-/** Keepa済キュー行の保持日数（既定90）。0以下は掃除オフ。 */
+/** Keepa済キュー行の保持日数（既定90）。0以下は日数条件オフ（完了社掃除は別Prop）。 */
 function prWashQueueRetentionDays_() {
   var raw = PropertiesService.getScriptProperties().getProperty(PR_WASH_QUEUE_RETENTION_DAYS_PROP_);
   if (raw == null || String(raw).trim() === '') return PR_WASH_QUEUE_RETENTION_DAYS_DEFAULT_;
   var n = Number(String(raw).trim());
   if (!isFinite(n)) return PR_WASH_QUEUE_RETENTION_DAYS_DEFAULT_;
+  return Math.floor(n);
+}
+
+/** Property PR_WASH_QUEUE_PURGE_DONE。未設定=ON。 */
+function prWashQueuePurgeDoneEnabled_() {
+  return prCkEnabled_(PR_WASH_QUEUE_PURGE_DONE_PROP_);
+}
+
+function prWashQueuePurgeBlockMax_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_WASH_QUEUE_PURGE_BLOCK_MAX_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_WASH_QUEUE_PURGE_BLOCK_MAX_DEFAULT_;
+  var n = Number(String(raw).trim());
+  if (!isFinite(n) || n < 1) return PR_WASH_QUEUE_PURGE_BLOCK_MAX_DEFAULT_;
+  return Math.floor(n);
+}
+
+/** 未済行数上限。0以下=オフ。 */
+function prWashQueuePendingRowsMax_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_WASH_QUEUE_PENDING_ROWS_MAX_PROP_);
+  if (raw == null || String(raw).trim() === '') return PR_WASH_QUEUE_PENDING_ROWS_MAX_DEFAULT_;
+  var n = Number(String(raw).trim());
+  if (!isFinite(n) || n < 0) return PR_WASH_QUEUE_PENDING_ROWS_MAX_DEFAULT_;
   return Math.floor(n);
 }
 
@@ -11329,9 +12807,151 @@ function prParseWashQueueEnumDate_(v) {
   return null;
 }
 
+/** 洗い状態が終わり（Keepa済を消してよい）か。 */
+function prWashQueuePurgeDoneStatus_(st) {
+  var s = String(st || '').trim();
+  return (
+    s === PR_WASH_ST_DONE_ ||
+    s === PR_WASH_ST_OUT_ ||
+    s === PR_WASH_ST_FIX_ ||
+    s === PR_WASH_ST_HOLD_
+  );
+}
+
 /**
- * Keepa済かつ列挙日時が保持日数より古い行を削除。未済は残す。列挙日時空は残す。
- * days<=0 なら何もしない。
+ * メーカーサマリから「終わり状態」の社名セット。
+ * @return {!Object<string, boolean>}
+ */
+function prWashQueueDoneMakerSet_() {
+  var out = {};
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_MAKER_SUM_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return out;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxSt = prHeaderIndex_(hdr, PR_WASH_STATUS_HEADER_);
+  if (idxM < 0 || idxSt < 0) return out;
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    var parent = String(vals[r][idxM] || '').trim();
+    if (!parent) continue;
+    if (prWashQueuePurgeDoneStatus_(vals[r][idxSt])) out[parent] = true;
+  }
+  return out;
+}
+
+/**
+ * シート行番号（降順可）を連続ブロック削除。大きい塊は書き戻し。
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sh
+ * @param {!Array<!Array<*>>} vals データ行（ヘッダ除く）
+ * @param {!Array<number>} delIdx0 0始まりインデックス（vals）
+ * @param {number} colN
+ * @return {{deleted:number, method:string}}
+ */
+function prWashQueueApplyDeletes_(sh, vals, delIdx0, colN) {
+  var deleted = delIdx0.length;
+  if (!deleted) return { deleted: 0, method: 'none' };
+  var blockMax = prWashQueuePurgeBlockMax_();
+  if (deleted > blockMax) {
+    var mark = {};
+    var i;
+    for (i = 0; i < delIdx0.length; i++) mark[delIdx0[i]] = true;
+    var keep = [];
+    for (i = 0; i < vals.length; i++) {
+      if (mark[i]) continue;
+      keep.push(vals[i]);
+    }
+    var width = Math.max(colN, PR_WASH_QUEUE_HEADERS_.length);
+    if (keep.length) {
+      sh.getRange(2, 1, keep.length, width).setValues(keep);
+    }
+    var last = sh.getLastRow();
+    var keepEnd = keep.length + 1;
+    if (last > keepEnd) {
+      sh.deleteRows(keepEnd + 1, last - keepEnd);
+    }
+    return { deleted: deleted, method: 'rewrite' };
+  }
+  delIdx0.sort(function (a, b) {
+    return b - a;
+  });
+  var runs = [];
+  var start = delIdx0[0];
+  var end = delIdx0[0];
+  for (i = 1; i < delIdx0.length; i++) {
+    var idx = delIdx0[i];
+    if (idx === end - 1) {
+      end = idx;
+      continue;
+    }
+    runs.push({ lo: end, hi: start });
+    start = idx;
+    end = idx;
+  }
+  runs.push({ lo: end, hi: start });
+  for (i = 0; i < runs.length; i++) {
+    var lo = runs[i].lo;
+    var hi = runs[i].hi;
+    sh.deleteRows(lo + 2, hi - lo + 1);
+  }
+  return { deleted: deleted, method: 'block' };
+}
+
+/**
+ * 1社の Keepa済行だけ消す（完走直後用。全キュー走査の期限切れ掃除はしない）。
+ * @return {{ok:boolean, deleted:number, detail:string}}
+ */
+function prWashQueuePurgeKeepaDoneForParent_(parent, runId) {
+  parent = String(parent || '').trim();
+  if (!parent || !prWashQueuePurgeDoneEnabled_()) {
+    return { ok: true, deleted: 0, detail: 'purge_done_skip' };
+  }
+  var sh = prEnsureWashQueueSheet_();
+  if (sh.getLastRow() < 2) return { ok: true, deleted: 0, detail: 'empty' };
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
+  var idxK = prHeaderIndex_(hdr, 'Keepa済');
+  if (idxM < 0 || idxK < 0) return { ok: false, deleted: 0, detail: 'no_cols' };
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
+  var delIdx = [];
+  var r;
+  for (r = 0; r < vals.length; r++) {
+    if (String(vals[r][idxM] || '').trim() !== parent) continue;
+    if (!prCkIsTrue_(vals[r][idxK])) continue;
+    delIdx.push(r);
+  }
+  var applied = prWashQueueApplyDeletes_(sh, vals, delIdx, lastCol);
+  if (applied.deleted) {
+    prWashQueueCountCacheClear_();
+    prWashQueueSnapshotClear_();
+  }
+  var detail =
+    'parent_purge parent=' +
+    parent +
+    ' deleted=' +
+    applied.deleted +
+    ' method=' +
+    applied.method;
+  Logger.log('[仕入れ検討①] runId=%s %s', runId || '', detail);
+  if (applied.deleted) {
+    prAppendLog_([
+      runId || '',
+      '洗いキューKeepa済削除',
+      'DONE',
+      new Date(),
+      applied.deleted,
+      '',
+      '',
+      detail.slice(0, 200),
+    ]);
+  }
+  return { ok: true, deleted: applied.deleted, detail: detail };
+}
+
+/**
+ * Keepa済の掃除: 終わり状態の社 ＋（days>0なら）列挙日時が古い行。未済は残す。
  * @param {{quiet?:boolean, runId?:string, days?:number}} opt
  * @return {{ok:boolean, deleted:number, days:number, detail:string}}
  */
@@ -11342,8 +12962,9 @@ function prPurgeExpiredWashQueueRows_(opt) {
   var days = opt && opt.days != null ? Number(opt.days) : prWashQueueRetentionDays_();
   if (!isFinite(days)) days = PR_WASH_QUEUE_RETENTION_DAYS_DEFAULT_;
   days = Math.floor(days);
-  if (days <= 0) {
-    var offDetail = 'retention_off days=' + days;
+  var purgeDone = prWashQueuePurgeDoneEnabled_();
+  if (days <= 0 && !purgeDone) {
+    var offDetail = 'retention_off days=' + days + ' purge_done=0';
     prAppendLog_([runId, '洗いキュー期限切れ削除', 'DONE', new Date(), '', 0, '', offDetail]);
     return { ok: true, deleted: 0, days: days, detail: offDetail };
   }
@@ -11356,38 +12977,61 @@ function prPurgeExpiredWashQueueRows_(opt) {
   }
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxM = prHeaderIndex_(hdr, 'メーカー');
   var idxK = prHeaderIndex_(hdr, 'Keepa済');
   var idxDt = prHeaderIndex_(hdr, '列挙日時');
-  if (idxK < 0 || idxDt < 0) {
-    throw new Error('①洗いキューに Keepa済／列挙日時 列がありません');
+  if (idxK < 0 || idxDt < 0 || idxM < 0) {
+    throw new Error('①洗いキューに メーカー／Keepa済／列挙日時 列がありません');
   }
-  var cutoff = new Date();
-  cutoff.setTime(cutoff.getTime() - days * 24 * 60 * 60 * 1000);
+  var doneSet = purgeDone ? prWashQueueDoneMakerSet_() : {};
+  var cutoffMs = 0;
+  if (days > 0) {
+    cutoffMs = new Date().getTime() - days * 24 * 60 * 60 * 1000;
+  }
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
-  var delRows = [];
+  var delIdx = [];
+  var doneN = 0;
+  var expiredN = 0;
+  var makers = {};
   var r;
   for (r = 0; r < vals.length; r++) {
     if (!prCkIsTrue_(vals[r][idxK])) continue;
-    var dt = prParseWashQueueEnumDate_(vals[r][idxDt]);
-    if (!dt) continue;
-    if (dt.getTime() < cutoff.getTime()) delRows.push(r + 2);
+    var parent = String(vals[r][idxM] || '').trim();
+    var byDone = purgeDone && parent && doneSet[parent];
+    var byAge = false;
+    if (cutoffMs > 0) {
+      var dt = prParseWashQueueEnumDate_(vals[r][idxDt]);
+      if (dt && dt.getTime() < cutoffMs) byAge = true;
+    }
+    if (!byDone && !byAge) continue;
+    delIdx.push(r);
+    if (byDone) doneN++;
+    if (byAge) expiredN++;
+    if (parent) makers[parent] = true;
   }
-  delRows.sort(function (x, y) {
-    return y - x;
-  });
-  var d;
-  for (d = 0; d < delRows.length; d++) {
-    sh.deleteRow(delRows[d]);
-  }
-  if (delRows.length) {
+  var applied = prWashQueueApplyDeletes_(sh, vals, delIdx, lastCol);
+  if (applied.deleted) {
     prWashQueueCountCacheClear_();
     prWashQueueSnapshotClear_();
   }
-  var detail = 'deleted=' + delRows.length + ' days=' + days + ' cutoff=' + cutoff.toISOString();
+  var detail =
+    'deleted=' +
+    applied.deleted +
+    ' done=' +
+    doneN +
+    ' expired=' +
+    expiredN +
+    ' method=' +
+    applied.method +
+    ' makers=' +
+    Object.keys(makers).length +
+    ' days=' +
+    days +
+    (cutoffMs > 0 ? ' cutoff=' + new Date(cutoffMs).toISOString() : '');
   Logger.log('[仕入れ検討①] runId=%s wash_queue_purge %s', runId, detail);
-  prAppendLog_([runId, '洗いキュー期限切れ削除', 'DONE', new Date(), '', delRows.length, '', detail]);
+  prAppendLog_([runId, '洗いキュー期限切れ削除', 'DONE', new Date(), '', applied.deleted, '', detail.slice(0, 200)]);
   if (!quiet) prMenuToast_('① 洗いキュー削除', detail);
-  return { ok: true, deleted: delRows.length, days: days, detail: detail };
+  return { ok: true, deleted: applied.deleted, days: days, detail: detail };
 }
 
 function prMenuWashQueuePurgeExpired() {
@@ -12139,6 +13783,7 @@ function prWashQueueUniqCount_(parent) {
 function prWashQueueCountCacheClear_() {
   PR_WASH_QUEUE_COUNT_CACHE_ = null;
   PR_WASH_QUEUE_PENDING_CACHE_ = null;
+  PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = null;
 }
 
 /** Property PR_WASH_QUEUE_PENDING_MAP。未設定=ON。false で社ごとに読み直す旧動作。 */
@@ -12158,6 +13803,7 @@ function prWashQueuePendingMap_() {
   var sh = prEnsureWashQueueSheet_();
   if (sh.getLastRow() < 2) {
     PR_WASH_QUEUE_PENDING_CACHE_ = out;
+    PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = 0;
     return out;
   }
   var lastCol = Math.max(sh.getLastColumn(), 1);
@@ -12167,17 +13813,20 @@ function prWashQueuePendingMap_() {
   var idxK = prHeaderIndex_(hdr, 'Keepa済');
   if (idxM < 0 || idxA < 0) {
     PR_WASH_QUEUE_PENDING_CACHE_ = out;
+    PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = 0;
     return out;
   }
   var vals = sh.getRange(2, 1, sh.getLastRow() - 1, lastCol).getValues();
   // 同じ ASIN が複数行あるとき、1行でも未済なら未処理として数える（prWashQueuePendingKeepa_ と同じ）
   var state = {};
+  var pendingRows = 0;
   var r;
   for (r = 0; r < vals.length; r++) {
     var m = String(vals[r][idxM] || '').trim();
     var a = String(vals[r][idxA] || '').trim().toUpperCase();
     if (!m || !a) continue;
     var done = idxK >= 0 && prCkIsTrue_(vals[r][idxK]);
+    if (!done) pendingRows++;
     var key = m + '\t' + a;
     if (state[key] === undefined) state[key] = done;
     else if (!done) state[key] = false;
@@ -12190,13 +13839,39 @@ function prWashQueuePendingMap_() {
     out[mk] = (out[mk] || 0) + 1;
   }
   PR_WASH_QUEUE_PENDING_CACHE_ = out;
+  PR_WASH_QUEUE_PENDING_ROWS_CACHE_ = pendingRows;
   Logger.log(
-    '[仕入れ検討①] queue_pending_map rows=%s makers=%s elapsedMs=%s',
+    '[仕入れ検討①] queue_pending_map rows=%s pendingRows=%s makers=%s elapsedMs=%s',
     vals.length,
+    pendingRows,
     Object.keys(out).length,
     new Date().getTime() - t0
   );
   return out;
+}
+
+/** 未済行数（実行内キャッシュ。先に pending map を温める）。 */
+function prWashQueuePendingRowCount_() {
+  if (PR_WASH_QUEUE_PENDING_ROWS_CACHE_ != null) return PR_WASH_QUEUE_PENDING_ROWS_CACHE_;
+  prWashQueuePendingMap_();
+  return Number(PR_WASH_QUEUE_PENDING_ROWS_CACHE_) || 0;
+}
+
+/**
+ * 未済行が上限以上なら新規メーカーへの追記を止める。
+ * すでにキューに行があるメーカー（列挙途中）は続行可。
+ * @return {boolean} true=追記禁止
+ */
+function prWashQueuePendingRowsCapBlocksAppend_(parent) {
+  var maxN = prWashQueuePendingRowsMax_();
+  if (!(maxN > 0)) return false;
+  var pendingRows = prWashQueuePendingRowCount_();
+  if (pendingRows < maxN) return false;
+  parent = String(parent || '').trim();
+  if (!parent) return true;
+  var snap = prWashQueueSnapshot_(parent);
+  if (snap.rows && snap.rows.length > 0) return false;
+  return true;
 }
 
 /** Property PR_WASH_QUEUE_SNAPSHOT。未設定=ON。false で毎回読み直す旧動作。 */
@@ -12452,6 +14127,16 @@ function prWashQueueAppendAsins_(parent, entry, asins) {
     Logger.log('[仕入れ検討①] xl_cap skip_append parent=%s n=%s', parent, asins.length);
     return 0;
   }
+  if (prWashQueuePendingRowsCapBlocksAppend_(parent)) {
+    Logger.log(
+      '[仕入れ検討①] pending_rows_cap skip_append parent=%s n=%s pendingRows=%s max=%s',
+      parent,
+      asins.length,
+      prWashQueuePendingRowCount_(),
+      prWashQueuePendingRowsMax_()
+    );
+    return 0;
+  }
   var sh = prEnsureWashQueueSheet_();
   var snap = prWashQueueSnapshot_(parent);
   var existing = {};
@@ -12484,6 +14169,10 @@ function prWashQueueAppendAsins_(parent, entry, asins) {
   if (PR_WASH_QUEUE_PENDING_CACHE_) {
     PR_WASH_QUEUE_PENDING_CACHE_[parent] =
       (Number(PR_WASH_QUEUE_PENDING_CACHE_[parent]) || 0) + newAsins.length;
+  }
+  if (PR_WASH_QUEUE_PENDING_ROWS_CACHE_ != null) {
+    PR_WASH_QUEUE_PENDING_ROWS_CACHE_ =
+      Number(PR_WASH_QUEUE_PENDING_ROWS_CACHE_) + newAsins.length;
   }
   return lines.length;
 }
@@ -12635,6 +14324,9 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
   var sinkMax = PR_CAT_INFER_SAMPLE_MAX_;
   // Amazon 側に順位が1つも付いていないヒット数。Keepa の stats空／順位欠測とほぼ同じ集合（実測99%／96%）
   var noRank = 0;
+  var surveyDrop = 0;
+  var surveyMiss = 0;
+  var surveyDropBy = {};
   var cut = prCatalogRankCutEnabled_();
   function ret_(done, timeup, tk) {
     return {
@@ -12642,6 +14334,9 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
       pages: pages,
       hits: hits,
       noRank: noRank,
+      surveyDrop: surveyDrop,
+      surveyMiss: surveyMiss,
+      surveyDropBy: surveyDropBy,
       nextToken: tk,
       done: done,
       timeup: timeup,
@@ -12656,7 +14351,12 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
     }
     var cat = prCatalogSearchPage_(entry, token);
     pages++;
-    var pageHits = prCatalogTitleHits_(cat.items, needles);
+    // 既定OR: 検索ヒット→調査カテゴリ。旧ANDは PR_CATALOG_TITLE_GATE=true
+    var pageKeep = prCatalogPageKeepForQueue_(cat.items, needles);
+    surveyDrop += pageKeep.drop;
+    surveyMiss += pageKeep.miss;
+    prSurveyDropByMerge_(surveyDropBy, pageKeep.dropBy);
+    var pageHits = pageKeep.keep;
     hits += pageHits.length;
     var batch = [];
     var i;
@@ -12676,6 +14376,15 @@ function prCatalogEnumerateQueryToQueue_(parent, entry, needles, startToken, max
       if (!a || seen[a]) continue;
       seen[a] = true;
       batch.push(a);
+    }
+    if (batch.length && prWashQueuePendingRowsCapBlocksAppend_(parent)) {
+      Logger.log(
+        '[仕入れ検討①] pending_rows_cap stop_enum parent=%s pendingRows=%s max=%s',
+        parent,
+        prWashQueuePendingRowCount_(),
+        prWashQueuePendingRowsMax_()
+      );
+      return ret_(false, false, token);
     }
     added += prWashQueueAppendAsins_(parent, entry, batch);
     token = cat.nextToken || '';
@@ -13158,6 +14867,12 @@ function prCatalogNoRankTag_(noRank, hits) {
   );
 }
 
+/** ①ログ用。Catalog 調査ルート切りの落とし件数。ゲートOFFなら空。 */
+function prCatalogSurveyRootTag_(drop, miss) {
+  if (!prCatalogSurveyRootGateEnabled_()) return '';
+  return ' surveyDrop=' + (Number(drop) || 0) + ' surveyMiss=' + (Number(miss) || 0);
+}
+
 /**
  * Catalog 列挙→①洗いキュー。ユニークが閾値超なら第2語分割。Keepaはしない。
  * page0満杯だけでは分割しない（500超が正）。
@@ -13204,18 +14919,45 @@ function prEnumerateMakerToQueue_(opt) {
   totalAdded += erMain.added;
   totalPages += erMain.pages;
   var totalNoRank = Number(erMain.noRank) || 0;
+  var totalSurveyDrop = Number(erMain.surveyDrop) || 0;
+  var totalSurveyMiss = Number(erMain.surveyMiss) || 0;
+  var totalDropBy = erMain.surveyDropBy || {};
+  var dropTop = prSurveyDropByTopTag_(totalDropBy, 5);
   var uniq = Object.keys(prWashQueueAsinSet_(parent)).length;
   Logger.log(
-    '[仕入れ検討①] runId=%s enum main parent=%s uniq=%s pages=%s titles=%s noRank=%s done=%s timeup=%s',
+    '[仕入れ検討①] runId=%s enum main parent=%s uniq=%s pages=%s titles=%s noRank=%s surveyDrop=%s surveyMiss=%s dropTop=%s done=%s timeup=%s',
     runId,
     parent,
     uniq,
     totalPages,
     titles.length,
     totalNoRank,
+    totalSurveyDrop,
+    totalSurveyMiss,
+    dropTop || '-',
     erMain.done ? 'Y' : 'N',
     erMain.timeup ? 'Y' : 'N'
   );
+  // Amazon大分類 vs ロジック許可の差（キュー0／大量drop の追及）
+  if (totalSurveyDrop > 0 || totalSurveyMiss > 0 || !(uniq > 0)) {
+    prSurveyDropDiagAppend_(
+      runId,
+      parent,
+      'keep=' +
+        (Number(erMain.hits) || 0) +
+        ' drop=' +
+        totalSurveyDrop +
+        ' miss=' +
+        totalSurveyMiss +
+        ' pages=' +
+        totalPages +
+        ' queue=' +
+        uniq +
+        (dropTop ? ' dropTop=' + dropTop : '') +
+        ' entry=' +
+        String(entry || '').slice(0, 40)
+    );
+  }
   if (erMain.timeup) {
     prSetMakerWashStatus_(parent, PR_WASH_ST_ENUM_, 'tok=' + (erMain.nextToken || '').slice(0, 80));
     return {
@@ -13241,7 +14983,8 @@ function prEnumerateMakerToQueue_(opt) {
         ' pages=' +
         totalPages +
         // 順位なし＝Keepa で stats空／順位欠測になる見込み（実測99%／96%）。CUT=OFF なので今はキューに入っている
-        prCatalogNoRankTag_(totalNoRank, erMain.hits),
+        prCatalogNoRankTag_(totalNoRank, erMain.hits) +
+        prCatalogSurveyRootTag_(totalSurveyDrop, totalSurveyMiss),
     };
   }
   // 閾値超 → 分割B（タイトル推定 → ①洗い分割語 → 語ごと列挙）
@@ -13288,7 +15031,22 @@ function prEnumerateMakerToQueue_(opt) {
         legalRetry: true,
       });
     }
-    throw new Error('タイトル含有0 entry=' + entry);
+    // キュー0（旧ラベル「タイトル含有0」も catch 互換で残す）
+    throw new Error(
+      'タイトル含有0 Catalog列挙0 entry=' +
+        entry +
+        ' pages=' +
+        totalPages +
+        ' titles=' +
+        titles.length +
+        ' added=' +
+        totalAdded +
+        ' titleGate=' +
+        (prCatalogTitleGateEnabled_() ? 'ON' : 'OFF') +
+        prCatalogSurveyRootTag_(totalSurveyDrop, totalSurveyMiss) +
+        (dropTop ? ' dropTop=' + dropTop : '') +
+        (opt && opt.legalRetry ? ' legal_retry=1' : '')
+    );
   }
   prTitleZeroClear_(parent);
   prSetMakerWashStatus_(parent, PR_WASH_ST_KEEPA_, 'queue=' + uniq);
@@ -13330,7 +15088,7 @@ function prWashFullKeepaSlice_(opt) {
       }
       prClearMakerSumCk_(parent);
       try {
-        prPurgeExpiredWashQueueRows_({ quiet: true, runId: runId });
+        prWashQueuePurgeKeepaDoneForParent_(parent, runId);
       } catch (purgeErr0) {
         Logger.log(
           '[仕入れ検討①] runId=%s WARN queue_purge %s',
@@ -13446,7 +15204,7 @@ function prWashFullKeepaSlice_(opt) {
     }
     prClearMakerSumCk_(parent);
     try {
-      prPurgeExpiredWashQueueRows_({ quiet: true, runId: runId });
+      prWashQueuePurgeKeepaDoneForParent_(parent, runId);
     } catch (purgeErr) {
       Logger.log(
         '[仕入れ検討①] runId=%s WARN queue_purge %s',
@@ -13613,62 +15371,307 @@ function prWashFullUnlock_() {
   // LOCK_EPOCH は残す（次の abort 比較用）。unlock だけでは世代は上げない。
 }
 
+function prWashParentLocksLoad_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(PR_WASH_PARENT_LOCK_PROP_);
+    if (!raw) return {};
+    var o = JSON.parse(raw);
+    return o && typeof o === 'object' ? o : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function prWashParentLocksSave_(map) {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date().getTime();
+  var out = {};
+  var k;
+  for (k in map) {
+    if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+    var e = map[k];
+    if (!e || !(Number(e.until) > now)) continue;
+    out[k] = e;
+  }
+  var keys = Object.keys(out);
+  if (!keys.length) {
+    props.deleteProperty(PR_WASH_PARENT_LOCK_PROP_);
+    return;
+  }
+  props.setProperty(PR_WASH_PARENT_LOCK_PROP_, JSON.stringify(out));
+}
+
+function prSharedCatalogLockEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_SHARED_CATALOG_LOCK_PROP_);
+  if (raw == null || String(raw).trim() === '') return true;
+  return String(raw).toLowerCase() !== 'false';
+}
+
+function prEnsureSharedCatalogLockSheet_() {
+  var ss = SpreadsheetApp.openById(PR_COMPETITOR_SS_);
+  var sh = ss.getSheetByName(PR_SHARED_CATALOG_LOCK_SHEET_);
+  if (!sh) {
+    sh = ss.insertSheet(PR_SHARED_CATALOG_LOCK_SHEET_);
+    sh
+      .getRange(1, 1, 1, 6)
+      .setValues([['メーカー', 'owner', 'lane', 'untilMs', 'runId', 'updated']]);
+  }
+  return sh;
+}
+
+/**
+ * 競合と共有する Catalog 親ロック（シート）。owner=hb|comp。
+ * @return {boolean}
+ */
+function prSharedCatalogParentTryLock_(parent, owner, runId) {
+  parent = String(parent || '').trim();
+  owner = String(owner || PR_SHARED_CATALOG_LOCK_OWNER_).trim() || PR_SHARED_CATALOG_LOCK_OWNER_;
+  if (!parent) return true;
+  if (!prSharedCatalogLockEnabled_()) return true;
+  var sh = prEnsureSharedCatalogLockSheet_();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var now = new Date().getTime();
+    var lastRow = sh.getLastRow();
+    var map = {};
+    var rowOf = {};
+    if (lastRow >= 2) {
+      var vals = sh.getRange(2, 1, lastRow - 1, 6).getValues();
+      var r;
+      for (r = 0; r < vals.length; r++) {
+        var p = String(vals[r][0] || '').trim();
+        if (!p) continue;
+        var until = Number(vals[r][3]) || 0;
+        if (until <= now) continue;
+        map[p] = { owner: String(vals[r][1] || ''), lane: String(vals[r][2] || ''), until: until };
+        rowOf[p] = r + 2;
+      }
+    }
+    var cur = map[parent];
+    if (cur && cur.until > now) {
+      if (String(cur.owner) === owner && String(cur.lane) === 'enum') {
+        var rowSame = rowOf[parent];
+        if (rowSame) {
+          sh.getRange(rowSame, 4, 1, 3).setValues([
+            [now + PR_WASH_FULL_LOCK_TTL_MS_, String(runId || ''), prNowFetchedAt_()],
+          ]);
+        }
+        return true;
+      }
+      Logger.log(
+        '[仕入れ検討①] shared_catalog_lock busy parent=%s held=%s owner_try=%s',
+        parent,
+        cur.owner,
+        owner
+      );
+      return false;
+    }
+    var row = rowOf[parent];
+    if (row) {
+      sh.getRange(row, 1, 1, 6).setValues([
+        [
+          parent,
+          owner,
+          'enum',
+          now + PR_WASH_FULL_LOCK_TTL_MS_,
+          String(runId || ''),
+          prNowFetchedAt_(),
+        ],
+      ]);
+    } else {
+      sh.appendRow([
+        parent,
+        owner,
+        'enum',
+        now + PR_WASH_FULL_LOCK_TTL_MS_,
+        String(runId || ''),
+        prNowFetchedAt_(),
+      ]);
+    }
+    SpreadsheetApp.flush();
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function prSharedCatalogParentUnlock_(parent, owner) {
+  parent = String(parent || '').trim();
+  owner = String(owner || PR_SHARED_CATALOG_LOCK_OWNER_).trim() || PR_SHARED_CATALOG_LOCK_OWNER_;
+  if (!parent || !prSharedCatalogLockEnabled_()) return;
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_SHARED_CATALOG_LOCK_SHEET_);
+  if (!sh || sh.getLastRow() < 2) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+    var r;
+    for (r = 0; r < vals.length; r++) {
+      if (String(vals[r][0] || '').trim() !== parent) continue;
+      if (String(vals[r][1] || '') !== owner) return;
+      sh.getRange(r + 2, 1, 1, 6).setValues([['', '', '', '', '', '']]);
+      return;
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * メーカー名キーの親ロック。lane=enum|wash。別 lane が有効なら負け。
+ * enum 時は競合との共有シートロックも取る（改訂P2）。
+ * @return {boolean}
+ */
+function prWashParentTryLock_(parent, lane, owner) {
+  parent = String(parent || '').trim();
+  lane = String(lane || '').trim() || 'wash';
+  if (!parent) return true;
+  if (!prWashParentPartitionEnabled_()) return true;
+  var sharedGot = false;
+  if (lane === 'enum') {
+    if (!prSharedCatalogParentTryLock_(parent, PR_SHARED_CATALOG_LOCK_OWNER_, owner)) {
+      return false;
+    }
+    sharedGot = true;
+  }
+  var map = prWashParentLocksLoad_();
+  var now = new Date().getTime();
+  var cur = map[parent];
+  if (cur && Number(cur.until) > now) {
+    if (String(cur.lane) === lane && String(cur.owner || '') === String(owner || '')) {
+      cur.until = now + PR_WASH_FULL_LOCK_TTL_MS_;
+      map[parent] = cur;
+      prWashParentLocksSave_(map);
+      return true;
+    }
+    if (String(cur.lane) !== lane || String(cur.owner || '') !== String(owner || '')) {
+      Logger.log(
+        '[仕入れ検討①] parent_lock busy parent=%s lane_try=%s held=%s owner_try=%s',
+        parent,
+        lane,
+        cur.lane,
+        owner || ''
+      );
+      if (sharedGot) prSharedCatalogParentUnlock_(parent, PR_SHARED_CATALOG_LOCK_OWNER_);
+      return false;
+    }
+  }
+  map[parent] = {
+    lane: lane,
+    owner: String(owner || ''),
+    until: now + PR_WASH_FULL_LOCK_TTL_MS_,
+  };
+  prWashParentLocksSave_(map);
+  return true;
+}
+
+function prWashParentUnlock_(parent, lane) {
+  parent = String(parent || '').trim();
+  if (!parent) return;
+  if (!prWashParentPartitionEnabled_()) return;
+  var map = prWashParentLocksLoad_();
+  var cur = map[parent];
+  if (!cur) {
+    if (lane === 'enum') prSharedCatalogParentUnlock_(parent, PR_SHARED_CATALOG_LOCK_OWNER_);
+    return;
+  }
+  if (lane && String(cur.lane) !== String(lane)) return;
+  delete map[parent];
+  prWashParentLocksSave_(map);
+  if (lane === 'enum' || String(cur.lane) === 'enum') {
+    prSharedCatalogParentUnlock_(parent, PR_SHARED_CATALOG_LOCK_OWNER_);
+  }
+}
+
+function prWashLockBusyResult_(opt, runId, armTrigger, why) {
+  var quiet = !!(opt && opt.quiet);
+  var busyMsg = '洗い完走ロック中（他実行中）。しばらく待つかトリガー停止後に再実行';
+  if (!quiet) prMenuFailAlert_(busyMsg);
+  var detail = String(why || 'lock_busy') + ' ' + prWashLockDiag_();
+  prAppendLog_([
+    runId,
+    ((opt && opt.tag) || 'wash_full') + ' 洗い完走',
+    'DONE',
+    new Date(),
+    '',
+    String((opt && opt.parent) || '').slice(0, 80),
+    '',
+    (detail + ' armTrigger=' + (armTrigger ? 'Y' : 'N')).slice(0, 200),
+  ]);
+  if (armTrigger) {
+    PropertiesService.getScriptProperties().setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
+    var leftSecBusy = prWashLockLeftSec_();
+    var busyWait = leftSecBusy > 0 ? Math.min(2, Math.ceil(leftSecBusy / 60) + 1) : 1;
+    if (busyWait < 1) busyWait = 1;
+    var busyAfter = prScheduleWashFullTrigger_(busyWait, {
+      runId: runId,
+      parent: String((opt && opt.parent) || '').trim(),
+      tag: ((opt && opt.tag) || 'wash_full') + '_lock_busy',
+    });
+    return {
+      ok: false,
+      skip: true,
+      detail:
+        'lock_busy trigger_armed afterMin=' +
+        busyAfter +
+        ' leftSec=' +
+        leftSecBusy +
+        ' ' +
+        detail,
+    };
+  }
+  return { ok: false, skip: true, detail: detail };
+}
+
 /**
  * 洗い完走本線: 列挙（未なら）→ Keepa 1スライス（loopKeepa なら時間上限まで繰り返し）。
  * armTrigger=true なら未完了時に時間トリガーで再開（完走で解除）。
+ * N3: enumOnly は親ロックのみ（別親 Keepa と並行）。Keepa は全体＋親。
  */
 function prRunMakerWashFull_(opt) {
   if (!PR_GAS_START_MS_) prGasStart_();
   var quiet = !!(opt && opt.quiet);
   var enumOnly = !!(opt && opt.enumOnly);
-  var loopKeepa = !!(opt && opt.loopKeepa);
   var armTrigger = !!(opt && opt.armTrigger);
   var runId =
     (opt && opt.runId) || 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var parent = String((opt && opt.parent) || '').trim();
   var lockOwner = runId + (armTrigger ? ':arm' : ':run');
-  if (!prWashFullTryLock_(lockOwner)) {
-    var busyMsg = '洗い完走ロック中（他実行中）。しばらく待つかトリガー停止後に再実行';
-    if (!quiet) prMenuFailAlert_(busyMsg);
-    prAppendLog_([
-      runId,
-      ((opt && opt.tag) || 'wash_full') + ' 洗い完走',
-      'DONE',
-      new Date(),
-      '',
-      '',
-      '',
-      'lock_busy ' + prWashLockDiag_() + ' armTrigger=' + (armTrigger ? 'Y' : 'N'),
-    ]);
-    // トリガー経路でロック負けすると予約が消え停滞する → ロック残り＋1分で再予約
-    if (armTrigger) {
-      PropertiesService.getScriptProperties().setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
-      var leftSecBusy = prWashLockLeftSec_();
-      // 30分TTL待ちにしない（孤児は reconcile 済み想定。真の競合も短周期で再試行）
-      var busyWait = leftSecBusy > 0 ? Math.min(2, Math.ceil(leftSecBusy / 60) + 1) : 1;
-      if (busyWait < 1) busyWait = 1;
-      var busyAfter = prScheduleWashFullTrigger_(busyWait, {
-        runId: runId,
-        parent: String((opt && opt.parent) || '').trim(),
-        tag: ((opt && opt.tag) || 'wash_full') + '_lock_busy',
-      });
-      return {
-        ok: false,
-        skip: true,
-        detail:
-          'lock_busy trigger_armed afterMin=' +
-          busyAfter +
-          ' leftSec=' +
-          leftSecBusy +
-          ' ' +
-          prWashLockDiag_(),
-      };
+  var partition = prWashParentPartitionEnabled_();
+  var gotGlobal = false;
+  var gotParent = false;
+  var lane = enumOnly ? 'enum' : 'wash';
+
+  if (enumOnly && partition) {
+    if (!prWashParentTryLock_(parent, 'enum', lockOwner)) {
+      return prWashLockBusyResult_(opt, runId, false, 'lock_busy_parent lane=enum');
     }
-    return { ok: false, skip: true, detail: 'lock_busy' };
+    gotParent = !!parent;
+  } else {
+    if (!prWashFullTryLock_(lockOwner)) {
+      return prWashLockBusyResult_(opt, runId, armTrigger, 'lock_busy');
+    }
+    gotGlobal = true;
+    if (partition && parent) {
+      if (!prWashParentTryLock_(parent, 'wash', lockOwner)) {
+        prWashFullUnlock_();
+        gotGlobal = false;
+        return prWashLockBusyResult_(opt, runId, armTrigger, 'lock_busy_parent lane=wash');
+      }
+      gotParent = true;
+    }
   }
   try {
     return prRunMakerWashFullBody_(opt);
   } finally {
-    prWashFullUnlock_();
+    if (gotParent) prWashParentUnlock_(parent, lane);
+    if (gotGlobal) prWashFullUnlock_();
+    if (!enumOnly) {
+      try {
+        prMaybeArmEnumResetAfterWash_(runId);
+      } catch (eArm) {}
+    }
   }
 }
 
@@ -13819,6 +15822,8 @@ function prRunMakerWashFullBody_(opt) {
       if (extra.afterMin != null) out.afterMin = extra.afterMin;
       if (extra.armed != null) out.armed = extra.armed;
       if (extra.refillIn != null) out.refillIn = extra.refillIn;
+      if (extra.title0) out.title0 = true;
+      if (extra.title0N != null) out.title0N = extra.title0N;
     }
     return out;
   }
@@ -14212,8 +16217,16 @@ function prRunMakerWashFullBody_(opt) {
         armTrigger: armTrigger,
         quiet: quiet,
       });
-      if (quiet) return done_(true, tz.skipped, tz.detail, 'DONE');
-      if (tz.skipped) return done_(true, true, tz.detail, 'DONE');
+      // pages/titles/survey を detail に残す（quiet 握りつぶしでも enum_diag が読める）
+      var tzDetail =
+        String(tz.detail || '') +
+        ' title0_n=' +
+        (tz.count != null ? tz.count : '') +
+        ' ' +
+        msg.slice(0, 140);
+      var tzExtra = { title0: true, title0N: tz.count };
+      if (quiet) return done_(true, tz.skipped, tzDetail, 'DONE', tzExtra);
+      if (tz.skipped) return done_(true, true, tzDetail, 'DONE', tzExtra);
       prAppendLog_([
         runId,
         tag + ' 洗い完走',
@@ -14222,9 +16235,9 @@ function prRunMakerWashFullBody_(opt) {
         tz.count,
         parent,
         '',
-        tz.detail.slice(0, 200),
+        tzDetail.slice(0, 200),
       ]);
-      return done_(true, false, tz.detail, 'DONE');
+      return done_(true, false, tzDetail, 'DONE', tzExtra);
     }
     if (armTrigger) {
       PropertiesService.getScriptProperties().setProperty(PR_WASH_FULL_TRIGGER_PROP_, 'true');
@@ -16299,12 +18312,16 @@ function prRunMakerWash_(opt) {
       );
     }
     var cat = prCatalogSearchPage0_(entry);
-    var hits = prCatalogTitleHits_(cat.items, needles);
+    var page0 = prCatalogPageKeepForQueue_(cat.items, needles);
+    var hits = page0.keep;
     Logger.log(
-      '[仕入れ検討①] runId=%s catalog http=%s title_hit=%s next=%s',
+      '[仕入れ検討①] runId=%s catalog http=%s keep=%s title_hit=%s raw=%s titleGate=%s next=%s',
       runId,
       cat.code,
       hits.length,
+      page0.titleHitN,
+      page0.rawN,
+      prCatalogTitleGateEnabled_() ? 'ON' : 'OFF',
       cat.nextToken ? 'Y' : 'N'
     );
     if (!hits.length) {
@@ -16320,17 +18337,24 @@ function prRunMakerWash_(opt) {
         );
         entry = altE;
         cat = prCatalogSearchPage0_(entry);
-        hits = prCatalogTitleHits_(cat.items, needles);
+        page0 = prCatalogPageKeepForQueue_(cat.items, needles);
+        hits = page0.keep;
         Logger.log(
-          '[仕入れ検討①] runId=%s catalog_retry http=%s title_hit=%s',
+          '[仕入れ検討①] runId=%s catalog_retry http=%s keep=%s title_hit=%s',
           runId,
           cat.code,
-          hits.length
+          hits.length,
+          page0.titleHitN
         );
       }
     }
     if (!hits.length) {
-      throw new Error('タイトル含有0 entry=' + entry);
+      throw new Error(
+        'タイトル含有0 Catalog列挙0 entry=' +
+          entry +
+          ' titleGate=' +
+          (prCatalogTitleGateEnabled_() ? 'ON' : 'OFF')
+      );
     }
     var want = [];
     var i;
@@ -16505,6 +18529,14 @@ function prSpapiMarketplace_() {
   return mp || PR_SPAPI_DEFAULT_MP_;
 }
 
+/** Catalog Items の includedData（順位プローブ／調査ルート切りで増やす）。 */
+function prCatalogIncludedData_() {
+  var parts = ['summaries'];
+  if (prCatalogRankProbeEnabled_()) parts.push('salesRanks');
+  if (prCatalogSurveyRootGateEnabled_()) parts.push('classifications');
+  return parts.join(',');
+}
+
 /** Catalog Items 1ページ（pageSize≤20）。nextToken で続き。生はモールヒットに書かない。 */
 function prCatalogSearchPage_(keywords, pageToken) {
   var endpoint = prSpapiEndpoint_();
@@ -16518,7 +18550,7 @@ function prCatalogSearchPage_(keywords, pageToken) {
     '&keywords=' +
     encodeURIComponent(String(keywords || '')) +
     '&includedData=' +
-    (prCatalogRankProbeEnabled_() ? 'summaries,salesRanks' : 'summaries') +
+    encodeURIComponent(prCatalogIncludedData_()) +
     '&pageSize=20';
   var pt = String(pageToken || '').trim();
   if (pt) url += '&pageToken=' + encodeURIComponent(pt);
@@ -16561,11 +18593,14 @@ function prCatalogSearchPage_(keywords, pageToken) {
       brand = String(sums[0].brand || '').trim();
     }
     if (asin) {
+      var root = prCatalogRootFromClassifications_(it.classifications);
       items.push({
         asin: asin,
         title: title,
         brand: brand,
         rankN: prCatalogRankCount_(it),
+        rootId: root.rootId,
+        rootName: root.rootName,
       });
     }
   }
@@ -16672,12 +18707,271 @@ function prCatalogRankProbeEnabled_() {
   return PR_CATALOG_RANK_PROBE_CACHE_;
 }
 
+/**
+ * Property PR_CATALOG_SURVEY_ROOT_GATE。未設定=ON。
+ * false＝Catalog でルートを切らず旧動作（門で調査カテゴリ外を落とす）。
+ */
+function prCatalogSurveyRootGateEnabled_() {
+  if (PR_CATALOG_SURVEY_ROOT_GATE_CACHE_ === null) {
+    PR_CATALOG_SURVEY_ROOT_GATE_CACHE_ = prCkEnabled_(PR_CATALOG_SURVEY_ROOT_GATE_PROP_);
+  }
+  return PR_CATALOG_SURVEY_ROOT_GATE_CACHE_;
+}
+
+/**
+ * タイトル含有ゲート。未設定=OFF（OR・規模案A／洗い＝検索∪商品名ヒット）。
+ * true で旧AND（タイトル／ブランド必須）。prCkEnabled_ は未設定=ONなので使わない。
+ */
+function prCatalogTitleGateEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_CATALOG_TITLE_GATE_PROP_);
+  if (raw == null || String(raw).trim() === '') return false;
+  var s = String(raw).trim().toUpperCase();
+  return s === 'TRUE' || s === '1' || s === 'ON' || s === 'はい';
+}
+
+/**
+ * Catalog 1ページ → キュー候補。
+ * 既定OR: 検索ヒットを調査カテゴリで切る（商品名ヒットは包含。ノーブランド可）。
+ * 旧AND: PR_CATALOG_TITLE_GATE=true でタイトル／ブランド含有のみから調査カテゴリ。
+ * @return {{keep:!Array<!Object>, drop:number, miss:number, titleHitN:number, rawN:number}}
+ */
+function prCatalogPageKeepForQueue_(items, needles) {
+  var raw = items || [];
+  var titleHits = prCatalogTitleHits_(raw, needles);
+  var pool = prCatalogTitleGateEnabled_() ? titleHits : raw;
+  var rootF = prCatalogFilterSurveyRoot_(pool);
+  return {
+    keep: rootF.keep,
+    drop: rootF.drop,
+    miss: rootF.miss,
+    dropBy: rootF.dropBy || {},
+    titleHitN: titleHits.length,
+    rawN: raw.length,
+  };
+}
+
+/** 調査ルート落とし診断。未設定=ON。 */
+function prSurveyDropDiagEnabled_() {
+  return prCkEnabled_(PR_SURVEY_DROP_DIAG_PROP_);
+}
+
+/** ロジック側の許可ルート一覧タグ。 */
+function prSurveyRootAllowTag_() {
+  var roots = prSurveyRootCategories_();
+  var parts = [];
+  var i;
+  for (i = 0; i < roots.length; i++) {
+    parts.push(
+      String(roots[i].id || '') + ':' + String(roots[i].label || '').slice(0, 24)
+    );
+  }
+  return parts.join('|').slice(0, 140);
+}
+
+/** dropBy を件数多い順に並べる。 */
+function prSurveyDropByTopTag_(dropBy, maxN) {
+  var pairs = [];
+  var k;
+  for (k in dropBy || {}) {
+    if (!Object.prototype.hasOwnProperty.call(dropBy, k)) continue;
+    pairs.push({ k: k, n: Number(dropBy[k]) || 0 });
+  }
+  pairs.sort(function (a, b) {
+    return b.n - a.n;
+  });
+  var lim = maxN > 0 ? maxN : 5;
+  var out = [];
+  var i;
+  for (i = 0; i < pairs.length && i < lim; i++) {
+    out.push(pairs[i].k + '=' + pairs[i].n);
+  }
+  return out.join('|');
+}
+
+function prSurveyDropByMerge_(into, add) {
+  var k;
+  for (k in add || {}) {
+    if (!Object.prototype.hasOwnProperty.call(add, k)) continue;
+    into[k] = (into[k] || 0) + (Number(add[k]) || 0);
+  }
+  return into;
+}
+
+/**
+ * ①ログ survey_diag: allow=（ロジック） dropTop=（Amazon側で落ちた大分類）
+ */
+function prSurveyDropDiagAppend_(runId, parent, extra) {
+  if (!prSurveyDropDiagEnabled_()) return;
+  prAppendLog_([
+    runId || '',
+    'survey_diag',
+    'DONE',
+    new Date(),
+    '',
+    String(parent || '').slice(0, 80),
+    '',
+    ('allow=' + prSurveyRootAllowTag_() + (extra ? ' ' + extra : '')).slice(0, 220),
+  ]);
+}
+
 /** Property PR_CATALOG_RANK_CUT。未設定=OFF（記録だけ）。明示的に ON にしたときだけ切る。 */
 function prCatalogRankCutEnabled_() {
   if (!prCatalogRankProbeEnabled_()) return false;
   var raw = PropertiesService.getScriptProperties().getProperty(PR_CATALOG_RANK_CUT_PROP_);
   var s = String(raw == null ? '' : raw).trim().toUpperCase();
   return s === 'TRUE' || s === '1' || s === 'ON' || s === 'はい';
+}
+
+/** Catalog 分類ノードの ID。 */
+function prCatalogClassifNodeId_(n) {
+  if (!n || typeof n !== 'object') return '';
+  return String(n.classificationId || n.id || '')
+    .trim()
+    .replace(/\.0$/, '');
+}
+
+/** Catalog 分類ノードの表示名。 */
+function prCatalogClassifNodeName_(n) {
+  if (!n || typeof n !== 'object') return '';
+  return String(n.displayName || n.name || '').trim();
+}
+
+/**
+ * classifications の parent 辿り。未設定=ON。
+ * false＝先頭ノードだけ（旧・食品が調査ルートと不一致）。
+ */
+function prCatalogClassifWalkParentEnabled_() {
+  return prCkEnabled_(PR_CATALOG_CLASSIF_WALK_PARENT_PROP_);
+}
+
+/**
+ * 1ノードから parent を辿り leaf→tip の列。
+ * @return {!Array<!Object>}
+ */
+function prCatalogClassifParentChain_(node) {
+  var out = [];
+  var cur = node;
+  var guard = 0;
+  while (cur && typeof cur === 'object' && guard < 24) {
+    out.push(cur);
+    cur = cur.parent;
+    guard++;
+  }
+  return out;
+}
+
+/**
+ * ブロックから分類ノード配列を取る。
+ * @return {!Array<!Object>}
+ */
+function prCatalogClassifNodesFromBlock_(block) {
+  if (!block) return [];
+  var nodes = block.classifications;
+  if (nodes && nodes.length) return nodes;
+  if (block.displayName || block.classificationId || block.name || block.id) {
+    return [block];
+  }
+  if (Array.isArray(block)) return block;
+  return [];
+}
+
+/**
+ * チェーン上に調査ルートがあればその ID/名前。無ければ tip（最上位）。
+ * @return {{rootId:string, rootName:string, hit:boolean}}
+ */
+function prCatalogClassifChainSurveyPick_(chain) {
+  var empty = { rootId: '', rootName: '', hit: false };
+  if (!chain || !chain.length) return empty;
+  var tip = chain[chain.length - 1];
+  var tipId = prCatalogClassifNodeId_(tip);
+  var tipName = prCatalogClassifNodeName_(tip);
+  if (!prCatalogClassifWalkParentEnabled_()) {
+    var leaf = chain[0];
+    return {
+      rootId: prCatalogClassifNodeId_(leaf),
+      rootName: prCatalogClassifNodeName_(leaf),
+      hit: false,
+    };
+  }
+  var k;
+  for (k = chain.length - 1; k >= 0; k--) {
+    var id = prCatalogClassifNodeId_(chain[k]);
+    var nm = prCatalogClassifNodeName_(chain[k]);
+    if (prSurveyRootIdMatches_(id) || prSurveyRootLabelMatches_(nm)) {
+      return { rootId: id, rootName: nm, hit: true };
+    }
+  }
+  return { rootId: tipId, rootName: tipName, hit: false };
+}
+
+/**
+ * SP-API classifications から調査照合用ルートを取る。
+ * 既定: parent を辿り調査ルートONと一致する祖先があればそれ、無ければツリー最上位。
+ * 切戻し PR_CATALOG_CLASSIF_WALK_PARENT=false: 配列先頭のみ（旧）。
+ * 複数ブロックがあるときは調査ヒットを優先。
+ * @return {{rootId:string, rootName:string}}
+ */
+function prCatalogRootFromClassifications_(classifications) {
+  if (!classifications || !classifications.length) {
+    return { rootId: '', rootName: '' };
+  }
+  var fallback = null;
+  var c;
+  for (c = 0; c < classifications.length; c++) {
+    var nodes = prCatalogClassifNodesFromBlock_(classifications[c]);
+    var ni;
+    for (ni = 0; ni < nodes.length; ni++) {
+      var n0 = nodes[ni];
+      if (!n0 || typeof n0 !== 'object') continue;
+      var chain = prCatalogClassifParentChain_(n0);
+      if (!chain.length) continue;
+      var pick = prCatalogClassifChainSurveyPick_(chain);
+      if (!pick.rootId && !pick.rootName) continue;
+      if (pick.hit) {
+        return { rootId: pick.rootId, rootName: pick.rootName };
+      }
+      if (!fallback) {
+        fallback = { rootId: pick.rootId, rootName: pick.rootName };
+      }
+    }
+  }
+  return fallback || { rootId: '', rootName: '' };
+}
+
+/**
+ * Catalog 行を調査カテゴリONルートだけ残す（タイトルゲートの前後どちらでも可）。
+ * ゲートOFF時はそのまま返す。欠測・ルート外は落とす。
+ * dropBy: 「Amazon側 rootId:rootName」→件数（追及用）。
+ * @return {{keep:!Array<!Object>, drop:number, miss:number, dropBy:!Object}}
+ */
+function prCatalogFilterSurveyRoot_(items) {
+  var list = items || [];
+  if (!prCatalogSurveyRootGateEnabled_()) {
+    return { keep: list, drop: 0, miss: 0, dropBy: {} };
+  }
+  var keep = [];
+  var drop = 0;
+  var miss = 0;
+  var dropBy = {};
+  var i;
+  for (i = 0; i < list.length; i++) {
+    var it = list[i] || {};
+    var rootId = String(it.rootId || '').trim().replace(/\.0$/, '');
+    var rootName = String(it.rootName || '').trim();
+    if (!rootId && !rootName) {
+      miss++;
+      continue;
+    }
+    if (prSurveyRootIdMatches_(rootId) || prSurveyRootLabelMatches_(rootName)) {
+      keep.push(it);
+    } else {
+      drop++;
+      var key = (rootId || '?') + ':' + (rootName || '?');
+      if (key.length > 60) key = key.slice(0, 60);
+      dropBy[key] = (dropBy[key] || 0) + 1;
+    }
+  }
+  return { keep: keep, drop: drop, miss: miss, dropBy: dropBy };
 }
 
 /**
@@ -16989,10 +19283,26 @@ function prExtractSetCountFromTitle_(title) {
   return candidates.length > 0 ? candidates[0] : null;
 }
 
+/**
+ * 袋×ケース（例: 10袋入×(2ケース) → 20）。
+ * ×10袋 だけ拾う誤りを防ぐため alt の先頭で掛ける。出品 extractSetCount と同式。
+ */
+function prParseBagTimesCaseFromTitle_(title) {
+  if (!title) return null;
+  var s = prNormalizeFullwidthDigits_(String(title).trim());
+  var m = s.match(/(\d+)\s*袋入?\s*[×xXｘ]\s*[\(（]?\s*(\d+)\s*ケース/);
+  if (!m) return null;
+  var n = parseInt(m[1], 10) * parseInt(m[2], 10);
+  if (n >= 1 && n <= 999) return { setCount: n, source: 'bag_x_case' };
+  return null;
+}
+
 /** 計N袋・種×各・5食など ASIN貼り付け regex で拾えない分（parseSetCountFromItemName 系）。 */
 function prParseSetCountFromTitleAlt_(title) {
   if (!title) return null;
   var s = prNormalizeFullwidthDigits_(String(title).trim());
+  var bagCase = prParseBagTimesCaseFromTitle_(s);
+  if (bagCase) return bagCase;
   var totalBag = s.match(/(?:合計|計|全)\s*(\d+)\s*袋/i);
   if (totalBag) {
     var tn = parseInt(totalBag[1], 10);
@@ -17186,20 +19496,21 @@ function prRebuildKeepaFullIndex_(shFull) {
   var lines = [PR_KEEPA_FULL_INDEX_HEADERS_.slice()];
   var cache = {};
   if (last >= 2) {
-    var n = last - 1;
-    var asins = sh.getRange(2, idxAsin + 1, n, 1).getValues();
-    var r;
     var seen = {};
-    for (r = 0; r < asins.length; r++) {
-      var a = String(asins[r][0] || '')
-        .trim()
-        .toUpperCase();
-      if (!a || seen[a]) continue;
-      seen[a] = true;
-      var sheetRow = r + 2;
-      lines.push([a, sheetRow]);
-      cache[a] = sheetRow;
-    }
+    prKeepaFullForEachAsinColChunk_(sh, idxAsin, function (asins, startRow) {
+      var r;
+      for (r = 0; r < asins.length; r++) {
+        var a = String(asins[r][0] || '')
+          .trim()
+          .toUpperCase();
+        if (!a || seen[a]) continue;
+        seen[a] = true;
+        var sheetRow = startRow + r;
+        lines.push([a, sheetRow]);
+        cache[a] = sheetRow;
+      }
+      return true;
+    });
   }
   idxSh.clear();
   var idxChunk = prKeepaFullIndexChunk_();
@@ -17268,15 +19579,25 @@ function prLoadKeepaFullIndexMap_() {
 }
 
 /**
- * rowList を小チャンクで flat 行化。ずれ時は mismatch 文字列。
+ * rowList を列ごと読みで flat 行化（生JSONは読まない）。全列一括禁止。
  * @return {{out:Object, mismatch:string}}
  */
 function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
   var out = {};
   var mismatch = '';
   if (!rowList || !rowList.length) return { out: out, mismatch: mismatch };
-  var lastCol = hdr.length;
+  var idxAsin = -1;
+  var colIdx = [];
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    var key = String(hdr[h] || '').trim();
+    if (!key || key === '生JSON') continue;
+    if (key === 'ASIN') idxAsin = h;
+    colIdx.push({ key: key, idx: h });
+  }
+  if (idxAsin < 0) return { out: out, mismatch: 'ASIN列なし' };
   var chunk = prKeepaFullAsinReadChunk_();
+  if (!(chunk > 0)) chunk = 1;
   var pos = 0;
   while (pos < rowList.length) {
     var startRow = rowList[pos].row;
@@ -17289,24 +19610,26 @@ function prKeepaFullReadRowsToFlat_(sh, hdr, rowList) {
       j++;
     }
     var numRows = j - pos + 1;
-    var block = sh.getRange(startRow, 1, numRows, lastCol).getValues();
+    var colVals = {};
+    var ci;
+    for (ci = 0; ci < colIdx.length; ci++) {
+      colVals[colIdx[ci].key] = sh
+        .getRange(startRow, colIdx[ci].idx + 1, numRows, 1)
+        .getValues();
+    }
     var b;
-    for (b = 0; b < block.length; b++) {
-      var vals = block[b];
-      var rec = {};
-      var h;
-      for (h = 0; h < hdr.length; h++) {
-        var key = String(hdr[h] || '').trim();
-        if (!key || key === '生JSON') continue;
-        rec[key] = vals[h];
-      }
+    for (b = 0; b < numRows; b++) {
       var expect = rowList[pos + b].asin;
-      var got = String(rec['ASIN'] || '')
+      var got = String(colVals['ASIN'][b][0] || '')
         .trim()
         .toUpperCase();
       if (got && got !== expect) {
         mismatch = 'want=' + expect + ' got=' + got + ' row=' + rowList[pos + b].row;
         return { out: out, mismatch: mismatch };
+      }
+      var rec = {};
+      for (ci = 0; ci < colIdx.length; ci++) {
+        rec[colIdx[ci].key] = colVals[colIdx[ci].key][b][0];
       }
       out[expect] = rec;
     }
@@ -17416,6 +19739,426 @@ function prMenuRebuildKeepaFullIndex() {
     prMenuFailAlert_(msg);
     throw e;
   }
+}
+
+/**
+ * Keepaフルの getValues 用量境界を測る（書込なし）。
+ * 99「34. Keepaフル用量プローブ（読取のみ）」。①ログにケースごと OK／SIZE_LIMIT／ERR。
+ */
+function prMenuKeepaFullSizeProbe() {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=keepa_full_size_probe state=RUNNING', runId);
+  try {
+    var r = prKeepaFullSizeProbe_(runId);
+    var state = r.failN > 0 ? 'PARTIAL' : 'DONE';
+    if (r.okN === 0 && r.failN > 0) state = 'FAILED';
+    prAppendLog_([
+      runId,
+      'Keepaフル用量プローブ',
+      state,
+      new Date(),
+      r.okN,
+      r.failN,
+      '',
+      String(r.detail || '').slice(0, 200),
+    ]);
+    prMenuToast_(
+      '① 用量プローブ',
+      'OK ' + r.okN + ' / FAIL ' + r.failN + '（①ログ詳細）',
+      12
+    );
+  } catch (e) {
+    var msg = prRedactKey_(String((e && e.message) || e));
+    prAppendLog_([runId, 'Keepaフル用量プローブ', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    prMenuFailAlert_(msg);
+    throw e;
+  }
+}
+
+/**
+ * Keepaフル読取の段階プローブ。Keepaフルへは書かない。
+ * @param {string} runId
+ * @return {{okN:number, failN:number, detail:string}}
+ */
+function prKeepaFullSizeProbe_(runId) {
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    return { okN: 0, failN: 0, detail: 'sheet_empty' };
+  }
+  var lastRow = sh.getLastRow();
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var dataRows = lastRow - 1;
+  var hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxAsin = -1;
+  var idxJson = -1;
+  var idxAt = -1;
+  var idxFp = -1;
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    var name = String(hdr[h] || '').trim();
+    if (name === 'ASIN') idxAsin = h;
+    if (name === '生JSON') idxJson = h;
+    if (name === '取得日時') idxAt = h;
+    if (name === '価格指紋') idxFp = h;
+  }
+  var okN = 0;
+  var failN = 0;
+  var firstFail = '';
+
+  function approxBytes_(vals) {
+    try {
+      return JSON.stringify(vals).length;
+    } catch (eB) {
+      return -1;
+    }
+  }
+
+  function runCase_(caseName, reader) {
+    if (prGasTimeUp_()) {
+      Logger.log('[仕入れ検討①] runId=%s size_probe time_up skip=%s', runId, caseName);
+      return;
+    }
+    var t0 = new Date().getTime();
+    try {
+      var info = reader() || {};
+      var ms = new Date().getTime() - t0;
+      var bytes = info.bytes != null ? info.bytes : -1;
+      var rows = info.rows != null ? info.rows : '';
+      var detail =
+        'OK name=' +
+        caseName +
+        ' rows=' +
+        rows +
+        ' bytes~=' +
+        bytes +
+        ' ms=' +
+        ms +
+        ' dataRows=' +
+        dataRows +
+        ' cols=' +
+        lastCol;
+      Logger.log('[仕入れ検討①] runId=%s size_probe %s', runId, detail);
+      prAppendLog_([
+        runId,
+        'Keepaフル用量 ' + caseName,
+        'DONE',
+        new Date(),
+        rows,
+        bytes >= 0 ? bytes : '',
+        '',
+        detail.slice(0, 200),
+      ]);
+      okN++;
+    } catch (e1) {
+      var ms2 = new Date().getTime() - t0;
+      var msg = prRedactKey_(String((e1 && e1.message) || e1));
+      var kind = prIsSheetsSizeLimitError_(e1) ? 'SIZE_LIMIT' : 'ERR';
+      var detail2 =
+        kind + ' name=' + caseName + ' ms=' + ms2 + ' ' + msg.slice(0, 120);
+      Logger.log('[仕入れ検討①] runId=%s size_probe %s', runId, detail2);
+      prAppendLog_([
+        runId,
+        'Keepaフル用量 ' + caseName,
+        'FAILED',
+        new Date(),
+        '',
+        '',
+        '',
+        detail2.slice(0, 200),
+      ]);
+      failN++;
+      if (!firstFail) firstFail = caseName + ':' + kind;
+    }
+  }
+
+  // 1) 索引・空行掃除相当: ASIN列×全データ行
+  if (idxAsin >= 0) {
+    runCase_('asin_col_all', function () {
+      var vals = sh.getRange(2, idxAsin + 1, dataRows, 1).getValues();
+      return { rows: vals.length, bytes: approxBytes_(vals) };
+    });
+  }
+
+  // 2) 必要列（生JSONなし）×1 / 50 — 列ごと
+  var thinIdx = [];
+  if (idxAsin >= 0) thinIdx.push(idxAsin);
+  if (idxAt >= 0) thinIdx.push(idxAt);
+  if (idxFp >= 0) thinIdx.push(idxFp);
+  function readThinCols_(nRows) {
+    var totalBytes = 0;
+    var i;
+    for (i = 0; i < thinIdx.length; i++) {
+      var vals = sh.getRange(2, thinIdx[i] + 1, nRows, 1).getValues();
+      totalBytes += approxBytes_(vals);
+    }
+    return { rows: nRows, bytes: totalBytes };
+  }
+  if (thinIdx.length) {
+    runCase_('thin_cols_x1', function () {
+      return readThinCols_(1);
+    });
+    runCase_('thin_cols_x50', function () {
+      return readThinCols_(Math.min(50, dataRows));
+    });
+  }
+
+  // 3) 生JSON列だけ ×1→5→10→20→50
+  if (idxJson >= 0) {
+    var jn;
+    var jsonNs = [1, 5, 10, 20, 50];
+    for (jn = 0; jn < jsonNs.length; jn++) {
+      (function (n) {
+        runCase_('json_x' + n, function () {
+          var take = Math.min(n, dataRows);
+          var vals = sh.getRange(2, idxJson + 1, take, 1).getValues();
+          return { rows: vals.length, bytes: approxBytes_(vals) };
+        });
+      })(jsonNs[jn]);
+    }
+  }
+
+  // 4) 全列 ×1 / 5（旧 insert に近い）
+  runCase_('full_width_x1', function () {
+    var vals = sh.getRange(2, 1, 1, lastCol).getValues();
+    return { rows: vals.length, bytes: approxBytes_(vals) };
+  });
+  runCase_('full_width_x5', function () {
+    var take = Math.min(5, dataRows);
+    var vals = sh.getRange(2, 1, take, lastCol).getValues();
+    return { rows: vals.length, bytes: approxBytes_(vals) };
+  });
+
+  // 5) 案Aマップ相当: 必要4列を1行ずつ（生JSONは単独）
+  if (idxAsin >= 0 && idxJson >= 0) {
+    runCase_('map_need_cols_x1_splitJson', function () {
+      var total = 0;
+      var cols = [idxAsin, idxAt, idxFp].filter(function (x) {
+        return x >= 0;
+      });
+      var i;
+      for (i = 0; i < cols.length; i++) {
+        total += approxBytes_(sh.getRange(2, cols[i] + 1, 1, 1).getValues());
+      }
+      total += approxBytes_(sh.getRange(2, idxJson + 1, 1, 1).getValues());
+      return { rows: 1, bytes: total };
+    });
+  }
+
+  var detail =
+    'ok=' +
+    okN +
+    ' fail=' +
+    failN +
+    ' dataRows=' +
+    dataRows +
+    ' cols=' +
+    lastCol +
+    (firstFail ? ' firstFail=' + firstFail : '');
+  return { okN: okN, failN: failN, detail: detail };
+}
+
+/**
+ * ASIN列をチャンク幅ごとに全行カバーし、通否と合計時間を①ログへ（書込なし）。
+ * 99→4 Keepaフル「ASIN列チャンク比較」。
+ */
+function prMenuKeepaFullAsinChunkProbe() {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=keepa_full_asin_chunk_probe state=RUNNING', runId);
+  try {
+    var r = prKeepaFullAsinChunkProbe_(runId);
+    var state = r.failN > 0 && r.okN > 0 ? 'PARTIAL' : r.okN > 0 ? 'DONE' : 'FAILED';
+    prAppendLog_([
+      runId,
+      'ASIN列チャンク比較',
+      state,
+      new Date(),
+      r.okN,
+      r.failN,
+      '',
+      String(r.detail || '').slice(0, 200),
+    ]);
+    prMenuToast_(
+      '① ASINチャンク',
+      'OK幅 ' +
+        r.okN +
+        ' / FAIL ' +
+        r.failN +
+        (r.bestChunk ? ' 最短 chunk=' + r.bestChunk + ' totalMs=' + r.bestMs : ''),
+      14
+    );
+  } catch (e) {
+    var msg = prRedactKey_(String((e && e.message) || e));
+    prAppendLog_([runId, 'ASIN列チャンク比較', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    prMenuFailAlert_(msg);
+    throw e;
+  }
+}
+
+/**
+ * ASIN列 getValues のチャンク幅比較。Keepaフルへ書かない。
+ * @param {string} runId
+ * @return {{okN:number, failN:number, bestChunk:number, bestMs:number, detail:string}}
+ */
+function prKeepaFullAsinChunkProbe_(runId) {
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh || sh.getLastRow() < 2) {
+    return { okN: 0, failN: 0, bestChunk: 0, bestMs: 0, detail: 'sheet_empty' };
+  }
+  var lastRow = sh.getLastRow();
+  var dataRows = lastRow - 1;
+  var hdr = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+  var idxAsin = -1;
+  var h;
+  for (h = 0; h < hdr.length; h++) {
+    if (String(hdr[h] || '').trim() === 'ASIN') {
+      idxAsin = h;
+      break;
+    }
+  }
+  if (idxAsin < 0) {
+    return { okN: 0, failN: 0, bestChunk: 0, bestMs: 0, detail: 'no_asin_col' };
+  }
+  var col = idxAsin + 1;
+  // 幅候補（小さい→大きい）。落ちた幅は全行カバーせず次へ。
+  var widths = [5000, 10000, 15000, 20000, 25000, 30000, 40000];
+  var okN = 0;
+  var failN = 0;
+  var bestChunk = 0;
+  var bestMs = 0;
+  var w;
+
+  for (w = 0; w < widths.length; w++) {
+    if (prGasTimeUp_()) {
+      Logger.log('[仕入れ検討①] runId=%s asin_chunk time_up', runId);
+      break;
+    }
+    var chunk = widths[w];
+    if (chunk > dataRows) chunk = dataRows;
+    var name = 'asin_chunk_' + chunk;
+
+    // 先頭1チャンクで通否
+    var tProbe = new Date().getTime();
+    try {
+      sh.getRange(2, col, chunk, 1).getValues();
+    } catch (e0) {
+      var ms0 = new Date().getTime() - tProbe;
+      var msg0 = prRedactKey_(String((e0 && e0.message) || e0));
+      var kind0 = prIsSheetsSizeLimitError_(e0) ? 'SIZE_LIMIT' : 'ERR';
+      var d0 =
+        kind0 +
+        ' name=' +
+        name +
+        ' firstChunkMs=' +
+        ms0 +
+        ' dataRows=' +
+        dataRows +
+        ' ' +
+        msg0.slice(0, 80);
+      Logger.log('[仕入れ検討①] runId=%s asin_chunk %s', runId, d0);
+      prAppendLog_([runId, 'ASINチャンク ' + name, 'FAILED', new Date(), '', '', '', d0.slice(0, 200)]);
+      failN++;
+      continue;
+    }
+
+    // 全行カバー（同じ幅で分割）
+    var tAll = new Date().getTime();
+    var reads = 0;
+    var offset = 0;
+    var coverOk = true;
+    var coverErr = '';
+    while (offset < dataRows) {
+      if (prGasTimeUp_()) {
+        coverOk = false;
+        coverErr = 'time_up';
+        break;
+      }
+      var take = Math.min(chunk, dataRows - offset);
+      var startRow = 2 + offset;
+      try {
+        sh.getRange(startRow, col, take, 1).getValues();
+        reads++;
+      } catch (e1) {
+        coverOk = false;
+        coverErr = prIsSheetsSizeLimitError_(e1) ? 'SIZE_LIMIT' : 'ERR';
+        coverErr += ' ' + prRedactKey_(String((e1 && e1.message) || e1)).slice(0, 80);
+        break;
+      }
+      offset += take;
+    }
+    var totalMs = new Date().getTime() - tAll;
+    if (!coverOk) {
+      var dFail =
+        coverErr +
+        ' name=' +
+        name +
+        ' reads=' +
+        reads +
+        ' totalMs=' +
+        totalMs +
+        ' dataRows=' +
+        dataRows;
+      Logger.log('[仕入れ検討①] runId=%s asin_chunk %s', runId, dFail);
+      prAppendLog_([
+        runId,
+        'ASINチャンク ' + name,
+        'FAILED',
+        new Date(),
+        reads,
+        totalMs,
+        '',
+        dFail.slice(0, 200),
+      ]);
+      failN++;
+      continue;
+    }
+    var dOk =
+      'OK name=' +
+      name +
+      ' chunk=' +
+      chunk +
+      ' reads=' +
+      reads +
+      ' totalMs=' +
+      totalMs +
+      ' dataRows=' +
+      dataRows +
+      ' avgMs=' +
+      (reads ? Math.round(totalMs / reads) : 0);
+    Logger.log('[仕入れ検討①] runId=%s asin_chunk %s', runId, dOk);
+    prAppendLog_([
+      runId,
+      'ASINチャンク ' + name,
+      'DONE',
+      new Date(),
+      reads,
+      totalMs,
+      '',
+      dOk.slice(0, 200),
+    ]);
+    okN++;
+    if (!bestMs || totalMs < bestMs) {
+      bestMs = totalMs;
+      bestChunk = chunk;
+    }
+  }
+
+  var detail =
+    'ok=' +
+    okN +
+    ' fail=' +
+    failN +
+    ' dataRows=' +
+    dataRows +
+    (bestChunk ? ' bestChunk=' + bestChunk + ' bestTotalMs=' + bestMs : '');
+  return {
+    okN: okN,
+    failN: failN,
+    bestChunk: bestChunk,
+    bestMs: bestMs,
+    detail: detail,
+  };
 }
 
 /**
@@ -17836,6 +20579,515 @@ function prListPackDimsFromFull_(full) {
   };
 }
 
+function prTajimayaDimFillEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(PR_TAJIMAYA_DIM_FILL_PROP_);
+  if (raw == null || String(raw).trim() === '') return true;
+  var s = String(raw).trim().toUpperCase();
+  return !(s === 'FALSE' || s === '0' || s === 'OFF' || s === 'いいえ');
+}
+
+function prTajimayaDimFillCap_() {
+  var n = Number(
+    PropertiesService.getScriptProperties().getProperty(PR_TAJIMAYA_DIM_FILL_CAP_PROP_) ||
+      PR_TAJIMAYA_DIM_FILL_CAP_DEFAULT_
+  );
+  if (!(n > 0)) n = PR_TAJIMAYA_DIM_FILL_CAP_DEFAULT_;
+  if (n > 80) n = 80;
+  return Math.floor(n);
+}
+
+/** @type {Object<string, Object>} */
+var PR_TAJIMAYA_LOOKUP_CACHE_ = {};
+
+function prListPackDimsOk_(dims) {
+  return (
+    dims &&
+    isFinite(dims.l) &&
+    isFinite(dims.w) &&
+    isFinite(dims.h) &&
+    dims.l >= 0.5 &&
+    dims.w >= 0.5 &&
+    dims.h >= 0.5
+  );
+}
+
+function prListJanFromFull_(full) {
+  var jan = String((full && (full['商品コード: EAN'] || full['JANコード'] || full.JAN)) || '')
+    .trim()
+    .replace(/\D/g, '');
+  if (!/^\d{8,14}$/.test(jan)) return '';
+  return jan;
+}
+
+function prListLooksMultipack_(full, titleHint) {
+  var nItems = Number((full && full['アイテム数']) || '');
+  var nPack = Number((full && full['パッケージ数量']) || '');
+  if (isFinite(nItems) && nItems >= 2) return true;
+  if (isFinite(nPack) && nPack >= 2) return true;
+  var t = String(titleHint || (full && full['商品名']) || '');
+  if (/[×xX]\s*\d{1,3}\s*(本|個|袋|缶|食|箱|ケース)/.test(t)) return true;
+  if (/\d+\s*(本|個|袋)\s*入/.test(t)) return true;
+  if (t.indexOf('ケース') >= 0) return true;
+  return false;
+}
+
+function prTajimayaFetch_(url) {
+  var lastErr = '';
+  var attempt;
+  for (attempt = 0; attempt < 2; attempt++) {
+    try {
+      var resp = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        followRedirects: true,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'ja,en;q=0.9',
+        },
+      });
+      var code = resp.getResponseCode();
+      if (code >= 200 && code < 300) {
+        return resp.getContentText('UTF-8');
+      }
+      lastErr = 'HTTP ' + code;
+    } catch (eFetch) {
+      lastErr = String((eFetch && eFetch.message) || eFetch).slice(0, 80);
+    }
+    if (attempt === 0) Utilities.sleep(600);
+  }
+  throw new Error(lastErr || 'fetch_fail');
+}
+
+function prTajimayaMissMap_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(PR_TAJIMAYA_MISS_PROP_);
+    if (!raw) return {};
+    return JSON.parse(raw) || {};
+  } catch (eMiss) {
+    return {};
+  }
+}
+
+function prTajimayaMissSave_(map) {
+  var m = map || {};
+  var keys = Object.keys(m);
+  if (keys.length > PR_TAJIMAYA_MISS_MAX_KEYS_) {
+    keys.sort(function (a, b) {
+      var ta = Number((m[a] && m[a].t) || 0);
+      var tb = Number((m[b] && m[b].t) || 0);
+      return ta - tb;
+    });
+    var keep = {};
+    var i;
+    for (i = keys.length - PR_TAJIMAYA_MISS_MAX_KEYS_; i < keys.length; i++) {
+      keep[keys[i]] = m[keys[i]];
+    }
+    m = keep;
+  }
+  PropertiesService.getScriptProperties().setProperty(PR_TAJIMAYA_MISS_PROP_, JSON.stringify(m));
+}
+
+function prTajimayaMissIsPermanentErr_(err) {
+  var e = String(err || '');
+  return (
+    e === 'no_search_hit' ||
+    e === 'no_jan_match' ||
+    e === 'no_usable_dims' ||
+    e === 'bad_jan' ||
+    e === 'lookup_fail'
+  );
+}
+
+function prTajimayaMissIsSkipped_(map, jan) {
+  if (!map || !jan || !map[jan]) return false;
+  var rec = map[jan];
+  var err = String((rec && rec.e) || '');
+  if (prTajimayaMissIsPermanentErr_(err)) return true;
+  var t = Number((rec && rec.t) || 0);
+  var cool = PR_TAJIMAYA_MISS_COOLDOWN_SEC_DEFAULT_ * 1000;
+  if (t > 0 && new Date().getTime() - t < cool) return true;
+  return false;
+}
+
+function prTajimayaMissRemember_(map, jan, err) {
+  if (!map || !jan) return false;
+  var e = String(err || 'miss').slice(0, 40);
+  if (e === 'disabled' || e === 'already_has_dims' || e === 'no_jan' || e === 'known_miss') {
+    return false;
+  }
+  var prev = map[jan] || {};
+  map[jan] = {
+    e: e,
+    n: (Number(prev.n) || 0) + 1,
+    t: new Date().getTime(),
+  };
+  return true;
+}
+
+function prTajimayaMissClear_(map, jan) {
+  if (!map || !jan || !map[jan]) return false;
+  delete map[jan];
+  return true;
+}
+
+function prTajimayaDimFillTryLock_(owner) {
+  var props = PropertiesService.getScriptProperties();
+  var now = new Date().getTime();
+  var until = Number(props.getProperty(PR_TAJIMAYA_DIM_LOCK_PROP_) || 0);
+  if (until > now) {
+    Logger.log(
+      '[仕入れ検討①] tajimaya_dim lock busy until=%s owner_try=%s',
+      until,
+      owner || ''
+    );
+    return false;
+  }
+  props.setProperty(PR_TAJIMAYA_DIM_LOCK_PROP_, String(now + PR_TAJIMAYA_DIM_LOCK_TTL_MS_));
+  props.setProperty(PR_TAJIMAYA_DIM_LOCK_OWNER_PROP_, String(owner || ''));
+  return true;
+}
+
+function prTajimayaDimFillUnlock_() {
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty(PR_TAJIMAYA_DIM_LOCK_PROP_);
+  props.deleteProperty(PR_TAJIMAYA_DIM_LOCK_OWNER_PROP_);
+}
+
+function prTajimayaTdAfter_(html, label) {
+  var re = new RegExp(
+    label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '<\\/th>\\s*<td[^>]*>([\\s\\S]*?)<\\/td>',
+    'i'
+  );
+  var m = html.match(re);
+  if (!m) return '';
+  return String(m[1] || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
+
+function prTajimayaParseMmTriple_(text) {
+  var m = String(text || '').match(
+    /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/i
+  );
+  if (!m) return null;
+  return { a: Number(m[1]), b: Number(m[2]), c: Number(m[3]) };
+}
+
+function prTajimayaMmToCmTriple_(mm) {
+  if (!mm) return null;
+  return {
+    l: Math.round((mm.a / 10) * 10) / 10,
+    w: Math.round((mm.b / 10) * 10) / 10,
+    h: Math.round((mm.c / 10) * 10) / 10,
+  };
+}
+
+function prTajimayaAutoGridUnitMm_(caseMm, n) {
+  var cs = [Number(caseMm.a), Number(caseMm.b), Number(caseMm.c)].sort(function (x, y) {
+    return y - x;
+  });
+  var factors = [];
+  var a;
+  for (a = 1; a <= n; a++) {
+    if (n % a) continue;
+    var m = n / a;
+    var b;
+    for (b = 1; b <= m; b++) {
+      if (m % b) continue;
+      factors.push([a, b, m / b]);
+    }
+  }
+  var best = null;
+  var fi;
+  for (fi = 0; fi < factors.length; fi++) {
+    var abc = factors[fi];
+    var perms = [
+      [abc[0], abc[1], abc[2]],
+      [abc[0], abc[2], abc[1]],
+      [abc[1], abc[0], abc[2]],
+      [abc[1], abc[2], abc[0]],
+      [abc[2], abc[0], abc[1]],
+      [abc[2], abc[1], abc[0]],
+    ];
+    var pi;
+    for (pi = 0; pi < perms.length; pi++) {
+      var p = perms[pi];
+      var dims = [cs[0] / p[0], cs[1] / p[1], cs[2] / p[2]].sort(function (x, y) {
+        return y - x;
+      });
+      var pair = Math.min(
+        Math.abs(dims[0] - dims[1]) / Math.max(dims[0], dims[1]),
+        Math.abs(dims[0] - dims[2]) / Math.max(dims[0], dims[2]),
+        Math.abs(dims[1] - dims[2]) / Math.max(dims[1], dims[2])
+      );
+      var thin = Math.min(dims[0], dims[1], dims[2]) / Math.max(dims[0], dims[1], dims[2]);
+      var score = pair + (thin < 0.15 ? 0.5 : 0);
+      if (!best || score < best.score) {
+        best = { score: score, dims: dims, factor: p };
+      }
+    }
+  }
+  return best;
+}
+
+function prTajimayaParseProduct_(html, jan) {
+  var out = {
+    pieceMm: null,
+    caseMm: null,
+    packN: null,
+    pieceWeightG: null,
+    caseWeightG: null,
+    janOk: false,
+  };
+  var pageJan = prTajimayaTdAfter_(html, 'JANコード') || prTajimayaTdAfter_(html, 'JAN');
+  if (pageJan && String(pageJan).indexOf(jan) >= 0) out.janOk = true;
+  if (!out.janOk && html.indexOf(jan) >= 0) out.janOk = true;
+  out.pieceMm = prTajimayaParseMmTriple_(
+    prTajimayaTdAfter_(html, 'ピースサイズ（mm）') || prTajimayaTdAfter_(html, 'ピースサイズ')
+  );
+  out.caseMm = prTajimayaParseMmTriple_(
+    prTajimayaTdAfter_(html, 'ケースサイズ（mm）') || prTajimayaTdAfter_(html, 'ケースサイズ')
+  );
+  var packTd =
+    prTajimayaTdAfter_(html, '１ケースのピースの数') ||
+    prTajimayaTdAfter_(html, '1ケースのピースの数') ||
+    prTajimayaTdAfter_(html, 'ケースのピースの数');
+  if (packTd) {
+    var pm = String(packTd).replace(/,/g, '').match(/\d+/);
+    if (pm) {
+      var pn = Number(pm[0]);
+      if (pn >= 1 && pn <= 5000) out.packN = pn;
+    }
+  }
+  var pw = prTajimayaTdAfter_(html, 'ピース重量（g）') || prTajimayaTdAfter_(html, 'ピース重量');
+  if (pw) {
+    var pwm = String(pw).replace(/,/g, '').match(/[\d.]+/);
+    if (pwm) out.pieceWeightG = Number(pwm[0]);
+  }
+  var cw = prTajimayaTdAfter_(html, 'ケース重量（g）') || prTajimayaTdAfter_(html, 'ケース重量');
+  if (cw) {
+    var cwm = String(cw).replace(/,/g, '').match(/[\d.]+/);
+    if (cwm) out.caseWeightG = Number(cwm[0]);
+  }
+  return out;
+}
+
+/**
+ * JAN → タジマヤ。JAN一致必須。
+ * @return {{ok:boolean, url?:string, pieceMm?:Object, caseMm?:Object, packN?:number, pieceWeightG?:number, caseWeightG?:number, err?:string}}
+ */
+function prTajimayaLookupByJan_(jan) {
+  jan = String(jan || '').trim();
+  if (!/^\d{8,14}$/.test(jan)) return { ok: false, err: 'bad_jan' };
+  if (PR_TAJIMAYA_LOOKUP_CACHE_[jan]) return PR_TAJIMAYA_LOOKUP_CACHE_[jan];
+  var out = { ok: false, err: '' };
+  try {
+    var searchUrl =
+      'https://www.tajimaya-cc.net/?s=' + encodeURIComponent(jan) + '&search-type=products';
+    var searchHtml = prTajimayaFetch_(searchUrl);
+    var urls = [];
+    var reAbs = /https:\/\/www\.tajimaya-cc\.net\/products\/\d+/g;
+    var mAbs;
+    while ((mAbs = reAbs.exec(searchHtml))) {
+      if (urls.indexOf(mAbs[0]) < 0) urls.push(mAbs[0]);
+    }
+    var reRel = /href="(\/products\/\d+)"/g;
+    var mRel;
+    while ((mRel = reRel.exec(searchHtml))) {
+      var u = 'https://www.tajimaya-cc.net' + mRel[1];
+      if (urls.indexOf(u) < 0) urls.push(u);
+    }
+    if (!urls.length) {
+      out.err = 'no_search_hit';
+      PR_TAJIMAYA_LOOKUP_CACHE_[jan] = out;
+      return out;
+    }
+    var i;
+    for (i = 0; i < Math.min(urls.length, 5); i++) {
+      Utilities.sleep(200);
+      var prodHtml = prTajimayaFetch_(urls[i]);
+      var parsed = prTajimayaParseProduct_(prodHtml, jan);
+      if (!parsed.janOk) continue;
+      out.ok = true;
+      out.url = urls[i];
+      out.pieceMm = parsed.pieceMm;
+      out.caseMm = parsed.caseMm;
+      out.packN = parsed.packN;
+      out.pieceWeightG = parsed.pieceWeightG;
+      out.caseWeightG = parsed.caseWeightG;
+      PR_TAJIMAYA_LOOKUP_CACHE_[jan] = out;
+      return out;
+    }
+    out.err = 'no_jan_match';
+  } catch (e) {
+    out.err = String((e && e.message) || e).slice(0, 80);
+  }
+  PR_TAJIMAYA_LOOKUP_CACHE_[jan] = out;
+  return out;
+}
+
+/**
+ * 梱包三辺が空のときだけタジマヤで補完して full を書き換える。
+ * @return {{filled:boolean, src:string, err:string}}
+ */
+function prListEnsurePackDimsFromTajimaya_(full, titleHint, opt) {
+  var empty = { filled: false, src: '', err: '' };
+  if (!prTajimayaDimFillEnabled_()) {
+    empty.err = 'disabled';
+    return empty;
+  }
+  if (!full) return empty;
+  var dims0 = prListPackDimsFromFull_(full);
+  if (prListPackDimsOk_(dims0)) {
+    empty.err = 'already_has_dims';
+    return empty;
+  }
+  var jan = prListJanFromFull_(full);
+  if (!jan) {
+    empty.err = 'no_jan';
+    return empty;
+  }
+  var missMap = opt && opt.missMap ? opt.missMap : null;
+  var missOwned = false;
+  if (!missMap) {
+    missMap = prTajimayaMissMap_();
+    missOwned = true;
+  }
+  if (prTajimayaMissIsSkipped_(missMap, jan)) {
+    empty.err = 'known_miss';
+    return empty;
+  }
+  var hit = prTajimayaLookupByJan_(jan);
+  if (!hit.ok) {
+    empty.err = hit.err || 'lookup_fail';
+    if (prTajimayaMissRemember_(missMap, jan, empty.err)) {
+      if (missOwned) prTajimayaMissSave_(missMap);
+      else if (opt && opt.missDirtyRef) opt.missDirtyRef.v = true;
+    }
+    Logger.log(
+      '[仕入れ検討①] tajimaya_dim miss jan=%s asin=%s err=%s',
+      jan,
+      String(full['ASIN'] || ''),
+      empty.err
+    );
+    return empty;
+  }
+  var multi = prListLooksMultipack_(full, titleHint);
+  var cm = null;
+  var src = '';
+  var weightG = NaN;
+  if (multi && hit.caseMm) {
+    cm = prTajimayaMmToCmTriple_(hit.caseMm);
+    src = 'tajimaya_case';
+    if (isFinite(hit.caseWeightG) && hit.caseWeightG > 0) weightG = hit.caseWeightG;
+  } else if (hit.pieceMm) {
+    cm = prTajimayaMmToCmTriple_(hit.pieceMm);
+    src = 'tajimaya_piece';
+    if (isFinite(hit.pieceWeightG) && hit.pieceWeightG > 0) weightG = hit.pieceWeightG;
+  } else if (hit.caseMm && hit.packN && hit.packN >= 2) {
+    var grid = prTajimayaAutoGridUnitMm_(hit.caseMm, hit.packN);
+    if (grid && grid.dims) {
+      cm = {
+        l: Math.round((grid.dims[0] / 10) * 10) / 10,
+        w: Math.round((grid.dims[1] / 10) * 10) / 10,
+        h: Math.round((grid.dims[2] / 10) * 10) / 10,
+      };
+      src = 'tajimaya_case_div_grid';
+      if (isFinite(hit.caseWeightG) && hit.caseWeightG > 0 && hit.packN > 0) {
+        weightG = hit.caseWeightG / hit.packN;
+      }
+    }
+  } else if (hit.caseMm) {
+    cm = prTajimayaMmToCmTriple_(hit.caseMm);
+    src = 'tajimaya_case_only';
+    if (isFinite(hit.caseWeightG) && hit.caseWeightG > 0) weightG = hit.caseWeightG;
+  }
+  if (!cm || !prListPackDimsOk_(cm)) {
+    empty.err = 'no_usable_dims';
+    if (prTajimayaMissRemember_(missMap, jan, empty.err)) {
+      if (missOwned) prTajimayaMissSave_(missMap);
+      else if (opt && opt.missDirtyRef) opt.missDirtyRef.v = true;
+    }
+    Logger.log(
+      '[仕入れ検討①] tajimaya_dim no_usable jan=%s url=%s multi=%s',
+      jan,
+      hit.url || '',
+      multi
+    );
+    return empty;
+  }
+  full['梱包_L_cm'] = String(cm.l);
+  full['梱包_W_cm'] = String(cm.w);
+  full['梱包_H_cm'] = String(cm.h);
+  if (isFinite(weightG) && weightG > 0 && !prListPackWeightG_(full)) {
+    full['梱包_重量_g'] = String(Math.round(weightG));
+  }
+  try {
+    prKeepaFullPatchPackDims_(String(full['ASIN'] || ''), cm.l, cm.w, cm.h, weightG);
+  } catch (ePatch) {
+    Logger.log(
+      '[仕入れ検討①] tajimaya_dim keepa_patch_fail %s',
+      String((ePatch && ePatch.message) || ePatch).slice(0, 80)
+    );
+  }
+  if (prTajimayaMissClear_(missMap, jan)) {
+    if (missOwned) prTajimayaMissSave_(missMap);
+    else if (opt && opt.missDirtyRef) opt.missDirtyRef.v = true;
+  }
+  Logger.log(
+    '[仕入れ検討①] tajimaya_dim fill asin=%s jan=%s src=%s LWH=%s/%s/%s url=%s',
+    String(full['ASIN'] || ''),
+    jan,
+    src,
+    cm.l,
+    cm.w,
+    cm.h,
+    hit.url || ''
+  );
+  return { filled: true, src: src, err: '' };
+}
+
+/** Keepaフル既存行の梱包寸法だけ上書き（空のとき／今回補完時）。 */
+function prKeepaFullPatchPackDims_(asin, lCm, wCm, hCm, weightG) {
+  asin = String(asin || '')
+    .trim()
+    .toUpperCase();
+  if (!/^B[0-9A-Z]{9}$/.test(asin)) return;
+  if (!prKeepaFullWriteEnabled_()) return;
+  var sh = SpreadsheetApp.openById(PR_COMPETITOR_SS_).getSheetByName(PR_KEEPA_FULL_SHEET_);
+  if (!sh) return;
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  var idxAsin = -1;
+  var idxL = -1;
+  var idxW = -1;
+  var idxH = -1;
+  var idxWt = -1;
+  var h;
+  for (h = 0; h < headers.length; h++) {
+    var name = String(headers[h] || '').trim();
+    if (name === 'ASIN') idxAsin = h;
+    if (name === '梱包_L_cm') idxL = h;
+    if (name === '梱包_W_cm') idxW = h;
+    if (name === '梱包_H_cm') idxH = h;
+    if (name === '梱包_重量_g') idxWt = h;
+  }
+  if (idxAsin < 0 || idxL < 0 || idxW < 0 || idxH < 0) return;
+  var rowIndex = prKeepaFullAsinRowIndex_(sh, headers);
+  var rowNum = rowIndex[asin];
+  if (!(rowNum >= 2)) return;
+  sh.getRange(rowNum, idxL + 1).setValue(lCm);
+  sh.getRange(rowNum, idxW + 1).setValue(wCm);
+  sh.getRange(rowNum, idxH + 1).setValue(hCm);
+  if (idxWt >= 0 && isFinite(weightG) && weightG > 0) {
+    var curWt = sh.getRange(rowNum, idxWt + 1).getValue();
+    if (curWt == null || String(curWt).trim() === '' || !(Number(curWt) > 0)) {
+      sh.getRange(rowNum, idxWt + 1).setValue(Math.round(weightG));
+    }
+  }
+}
+
 /** クイックショップ／FBA手数料。Keepaフル L1 列 → 設定マスタ first-fit → Keepa FBA手数料。 */
 function prListFbaFieldsFromFull_(full) {
   var tier = prListCellStr_(full['出品FBAティア']);
@@ -17865,6 +21117,8 @@ function prListBuildRec_(headers, full, candRow) {
   rec['過去1か月販売数（表示あれば）'] = full['月間売上'] != null ? String(full['月間売上']) : '';
   rec['商品名'] = String(full['商品名'] || '');
   rec['JANコード'] = String(full['商品コード: EAN'] || '');
+  // 梱包三辺が空のときだけタジマヤ補完（既存サイズは触らない）
+  prListEnsurePackDimsFromTajimaya_(full, rec['商品名']);
   rec['サイズ'] = prPackSizeFromFull_(full);
   rec['重量'] = prPackWeightFromFull_(full);
   rec['出品者数'] = full['出品者数'] != null ? String(full['出品者数']) : '';
@@ -19140,6 +22394,235 @@ function prRunSingleNameFill_(opt) {
   };
 }
 
+/**
+ * 品番リストで最安あり・JANあり・サイズ空、かつ（FBA空 または 保管空）の行をタジマヤ寸法補完。
+ * 梱包三辺が既にある行／失敗印付きJANは触らない。残りは自動再開。
+ * 2026-11-15: 保管空も対象（旧はFBA空のみ → FBAありサイズなしが落ちていた）。
+ */
+function prMenuTajimayaDimFillGaps() {
+  prGasStart_();
+  var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  Logger.log('[仕入れ検討①] runId=%s step=tajimaya_dim_fill state=RUNNING', runId);
+  var locked = false;
+  try {
+    prRefuseOriginalSs_();
+    if (!prTajimayaDimFillEnabled_()) {
+      throw new Error(PR_TAJIMAYA_DIM_FILL_PROP_ + '=false（切戻し中）');
+    }
+    if (!prTajimayaDimFillTryLock_(runId)) {
+      prAppendLog_([
+        runId,
+        'タジマヤ寸法補完',
+        'DONE',
+        new Date(),
+        '',
+        0,
+        '',
+        'skip=busy',
+      ]);
+      Logger.log('[仕入れ検討①] runId=%s step=tajimaya_dim_fill state=DONE skip=busy', runId);
+      return;
+    }
+    locked = true;
+    var sh = prSpreadsheet_().getSheetByName(PR_LIST_SHEET_);
+    if (!sh) throw new Error('シートなし: ' + PR_LIST_SHEET_);
+    var headers = prListHeaders_(sh);
+    var iAsin = headers.indexOf('ASIN');
+    var iJan = headers.indexOf('JANコード');
+    var iFba = headers.indexOf('FBA手数料');
+    var iStorage = headers.indexOf('在庫保管手数料（セット）');
+    var iPrice = headers.indexOf('最安値');
+    var iName = headers.indexOf('商品名');
+    var iSize = headers.indexOf('サイズ');
+    var iWt = headers.indexOf('重量');
+    var iQs = headers.indexOf('クイックショップサイズ表記');
+    var iSum = headers.indexOf('サイズ3辺合計');
+    if (iAsin < 0 || iFba < 0 || iPrice < 0) {
+      throw new Error('必須列なし ASIN/FBA手数料/最安値');
+    }
+    var lastRow = sh.getLastRow();
+    if (lastRow < PR_LIST_DATA_START_) {
+      prMenuToast_('① タジマヤ寸法', '対象行なし');
+      return;
+    }
+    var missMap = prTajimayaMissMap_();
+    var missDirtyRef = { v: false };
+    var nRows = lastRow - PR_LIST_DATA_START_ + 1;
+    var vals = sh.getRange(PR_LIST_DATA_START_, 1, nRows, headers.length).getValues();
+    var targets = [];
+    var skipKnown = 0;
+    var r;
+    for (r = 0; r < vals.length; r++) {
+      var row = vals[r];
+      var asin = String(row[iAsin] || '')
+        .trim()
+        .toUpperCase();
+      if (!/^B[0-9A-Z]{9}$/.test(asin)) continue;
+      var price = Number(String(row[iPrice] || '').replace(/[,¥]/g, ''));
+      if (!(price > 0)) continue;
+      var fee = Number(String(row[iFba] || '').replace(/[,¥]/g, ''));
+      var feeEmpty = !(isFinite(fee) && fee > 0);
+      var stEmpty = true;
+      if (iStorage >= 0) {
+        var stRaw = String(row[iStorage] || '').trim();
+        if (stRaw !== '') {
+          var stNum = Number(stRaw.replace(/[,¥]/g, ''));
+          stEmpty = !(isFinite(stNum) && stNum >= 0);
+        }
+      }
+      // FBAも保管も埋まっているなら寸法補完の対象外
+      if (!feeEmpty && !stEmpty) continue;
+      var jan = '';
+      if (iJan >= 0) jan = String(row[iJan] || '').replace(/\D/g, '');
+      if (!/^\d{8,14}$/.test(jan)) continue;
+      var sizeStr = iSize >= 0 ? String(row[iSize] || '').trim() : '';
+      if (sizeStr && /\d/.test(sizeStr) && /x|×/i.test(sizeStr)) continue;
+      if (prTajimayaMissIsSkipped_(missMap, jan)) {
+        skipKnown++;
+        continue;
+      }
+      targets.push({
+        sheetRow: PR_LIST_DATA_START_ + r,
+        asin: asin,
+        jan: jan,
+        name: iName >= 0 ? String(row[iName] || '') : '',
+        feeEmpty: feeEmpty,
+      });
+    }
+    var cap = prTajimayaDimFillCap_();
+    var leftover = 0;
+    if (targets.length > cap) {
+      leftover = targets.length - cap;
+      targets = targets.slice(0, cap);
+    }
+    if (!targets.length) {
+      var noneDetail = 'fill=0 miss=0 skip_known=' + skipKnown + ' leftover=0';
+      prAppendLog_([runId, 'タジマヤ寸法補完', 'DONE', new Date(), '', 0, '', noneDetail]);
+      prMenuToast_('① タジマヤ寸法', '新規対象なし（既知miss=' + skipKnown + '）', 12);
+      return;
+    }
+    var asins = [];
+    for (r = 0; r < targets.length; r++) asins.push(targets[r].asin);
+    var flatMap = asins.length ? prLoadKeepaFullFlatMapForAsins_(asins) : {};
+    var filled = 0;
+    var miss = 0;
+    var noFull = 0;
+    var errTally = {};
+    var ensOpt = { missMap: missMap, missDirtyRef: missDirtyRef };
+    for (r = 0; r < targets.length; r++) {
+      if (prGasTimeUp_()) {
+        leftover += targets.length - r;
+        break;
+      }
+      var t = targets[r];
+      var full = flatMap[t.asin];
+      if (!full) {
+        full = {
+          ASIN: t.asin,
+          '商品コード: EAN': t.jan,
+          商品名: t.name,
+        };
+        noFull++;
+      } else {
+        if (!prListJanFromFull_(full) && t.jan) full['商品コード: EAN'] = t.jan;
+      }
+      var ens = prListEnsurePackDimsFromTajimaya_(full, t.name, ensOpt);
+      if (!ens.filled) {
+        miss++;
+        var ek = String(ens.err || 'miss');
+        errTally[ek] = (errTally[ek] || 0) + 1;
+        continue;
+      }
+      var fba = prListFbaFieldsFromFull_(full);
+      if (iSize >= 0) sh.getRange(t.sheetRow, iSize + 1).setValue(prPackSizeFromFull_(full));
+      if (iWt >= 0) sh.getRange(t.sheetRow, iWt + 1).setValue(prPackWeightFromFull_(full));
+      // 既存FBAは消さない（保管目的の寸法補完で空上書きしない）
+      if (t.feeEmpty && iFba >= 0 && fba.fee) {
+        sh.getRange(t.sheetRow, iFba + 1).setValue(fba.fee);
+      }
+      if (t.feeEmpty && iQs >= 0 && fba.tier) {
+        sh.getRange(t.sheetRow, iQs + 1).setValue(fba.tier);
+      }
+      if (iSum >= 0 && fba.sumCm) sh.getRange(t.sheetRow, iSum + 1).setValue(fba.sumCm);
+      filled++;
+      Utilities.sleep(250);
+    }
+    if (missDirtyRef.v) prTajimayaMissSave_(missMap);
+    var errParts = [];
+    var ek2;
+    for (ek2 in errTally) {
+      if (!Object.prototype.hasOwnProperty.call(errTally, ek2)) continue;
+      errParts.push(ek2 + '=' + errTally[ek2]);
+    }
+    var detail =
+      'fill=' +
+      filled +
+      ' miss=' +
+      miss +
+      ' skip_known=' +
+      skipKnown +
+      ' no_keepa_row=' +
+      noFull +
+      ' cap=' +
+      cap +
+      ' leftover=' +
+      leftover +
+      (errParts.length ? ' errs:' + errParts.join(',') : '');
+    prAppendLog_([runId, 'タジマヤ寸法補完', 'DONE', new Date(), '', filled, '', detail]);
+    Logger.log('[仕入れ検討①] runId=%s step=tajimaya_dim_fill state=DONE %s', runId, detail);
+    if (leftover > 0) {
+      prTajimayaDimFillArmContinue_(90, runId);
+      prMenuToast_('① タジマヤ寸法', detail + ' → 約1.5分後に自動続き', 14);
+    } else {
+      prMenuToast_('① タジマヤ寸法', detail, 12);
+    }
+  } catch (e) {
+    var msg = prRedactKey_(String((e && e.message) || e));
+    Logger.log('[仕入れ検討①] runId=%s step=tajimaya_dim_fill state=FAILED %s', runId, msg);
+    prAppendLog_([runId, 'タジマヤ寸法補完', 'FAILED', new Date(), '', '', '', msg.slice(0, 200)]);
+    prMenuFailAlert_(msg);
+    throw e;
+  } finally {
+    if (locked) prTajimayaDimFillUnlock_();
+  }
+}
+
+function prTajimayaDimFillArmContinue_(afterSec, runId) {
+  var sec = Number(afterSec) || 90;
+  if (sec < 30) sec = 30;
+  var triggers = ScriptApp.getProjectTriggers();
+  var i;
+  for (i = 0; i < triggers.length; i++) {
+    var fn = triggers[i].getHandlerFunction();
+    if (fn === 'prMenuTajimayaDimFillGaps' || fn === 'prRunTajimayaDimFillFromTrigger') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('prRunTajimayaDimFillFromTrigger')
+    .timeBased()
+    .after(sec * 1000)
+    .create();
+  var detail = 'arm_continue afterSec=' + sec;
+  Logger.log('[仕入れ検討①] tajimaya_dim_fill %s', detail);
+  try {
+    prAppendLog_([
+      runId || 'pr_tajimaya_arm',
+      'タジマヤ寸法補完',
+      'RUNNING',
+      new Date(),
+      '',
+      '',
+      '',
+      detail,
+    ]);
+  } catch (eArm) {}
+}
+
+/** トリガー再開用（メニュー本体と同じ）。 */
+function prRunTajimayaDimFillFromTrigger() {
+  prMenuTajimayaDimFillGaps();
+}
+
 function prMenuSingleNameFill() {
   prGasStart_();
   var runId = 'pr_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
@@ -20377,6 +23860,86 @@ function prCycleClearShopAfterWash_(why) {
   }
 }
 
+/** 小中=0 のとき余力ありでも列挙（案A）。未設定=ON。 */
+function prCycleEnumWhenSm0Enabled_() {
+  return prCkEnabled_(PR_CYCLE_ENUM_WHEN_SM0_PROP_);
+}
+
+function prCycleEnumSm0YieldEvery_() {
+  var n = parseInt(
+    PropertiesService.getScriptProperties().getProperty(PR_CYCLE_ENUM_SM0_YIELD_EVERY_PROP_) ||
+      PR_CYCLE_ENUM_SM0_YIELD_EVERY_DEFAULT_,
+    10
+  );
+  if (!(n > 0)) n = PR_CYCLE_ENUM_SM0_YIELD_EVERY_DEFAULT_;
+  return n;
+}
+
+function prCycleEnumSm0Streak_() {
+  return (
+    Number(
+      PropertiesService.getScriptProperties().getProperty(PR_CYCLE_ENUM_SM0_STREAK_PROP_) || 0
+    ) || 0
+  );
+}
+
+function prCycleEnumSm0StreakSet_(n) {
+  n = Number(n) || 0;
+  if (n <= 0) {
+    PropertiesService.getScriptProperties().deleteProperty(PR_CYCLE_ENUM_SM0_STREAK_PROP_);
+    return;
+  }
+  PropertiesService.getScriptProperties().setProperty(
+    PR_CYCLE_ENUM_SM0_STREAK_PROP_,
+    String(Math.floor(n))
+  );
+}
+
+function prCycleEnumSm0StreakBump_() {
+  prCycleEnumSm0StreakSet_(prCycleEnumSm0Streak_() + 1);
+}
+
+function prCycleEnumSm0StreakClear_(why) {
+  var was = prCycleEnumSm0Streak_();
+  if (was > 0) {
+    Logger.log(
+      '[仕入れ検討①] enum_sm0_streak clear why=%s was=%s',
+      String(why || ''),
+      was
+    );
+  }
+  prCycleEnumSm0StreakSet_(0);
+}
+
+/** Catalog待ち（unk または見積未了）があるか。 */
+function prCyclePoolsHaveCatalogWait_(pools) {
+  if (pools && pools.unk && pools.unk.length) return true;
+  var peek = prCycleFirstCatalogPending_();
+  return !!(peek && peek.parent);
+}
+
+/**
+ * 案A: 小中ゼロ＋Catalog待ちのあいだは店より列挙を優先する。
+ * 連続 force 上限に達しているときは店へ譲る（false）。
+ */
+function prCycleShouldPreferEnumOverShop_(smN, pools) {
+  if (!(smN === 0) || !prCycleEnumWhenSm0Enabled_()) return false;
+  if (prCycleEnumSm0Streak_() >= prCycleEnumSm0YieldEvery_()) return false;
+  return prCyclePoolsHaveCatalogWait_(pools);
+}
+
+/** 列挙直後: 洗える小中がまだ0なら skip_enum 付箋を剥がす（次も force 列挙できる）。 */
+function prCycleClearSkipEnumIfNoSm_(why) {
+  try {
+    PR_CYCLE_POOL_CACHE_ = null;
+    var sm = prCyclePoolCounts_().smN;
+    if (sm > 0) return;
+  } catch (e) {}
+  if (prCycleSkipEnumOnce_()) {
+    prCycleClearSkipEnumOnce_(String(why || 'enum_sm0_no_sm'));
+  }
+}
+
 function prCycleSkipEnumOnce_() {
   return prCkIsTrue_(
     PropertiesService.getScriptProperties().getProperty(PR_CYCLE_SKIP_ENUM_ONCE_PROP_)
@@ -20813,8 +24376,43 @@ function prCountMakerJittaAiPendingUninvestigated_() {
   return n;
 }
 
-/** 未調査がゲート以上なら自動レ点を止める（山を増やさない）。OWNER=comp でも件数ゲートは維持。要確認山では止めない。 */
+/** 旧: 未調査≥ゲートで自動レ点停止。既定OFF（門中もレ点可・2026-10-24夜）。 */
+function prJittaBacklogBlockAutoCkEnabled_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(
+    PR_JITTA_BACKLOG_BLOCK_AUTO_CK_PROP_
+  );
+  if (raw == null || raw === '') return false;
+  return String(raw).toLowerCase() === 'true';
+}
+
+/** 未調査≥ゲートかつ（明示Propで）自動レ点を止めるか。既定は止めない。 */
 function prJittaBacklogBlocksAutoCk_() {
+  var n = prCountMakerJittaAiPendingUninvestigated_();
+  var gate = prJittaBacklogGate_();
+  var blocked = false;
+  if (prJittaBacklogBlockAutoCkEnabled_()) {
+    if (prJittaOwnerIsComp_()) {
+      blocked = n >= gate;
+    } else if (prJittaHbLaneEnabled_() && prJittaResolveEnabled_()) {
+      blocked = n >= gate;
+    }
+  }
+  Logger.log(
+    '[仕入れ検討①] auto_ck_gate uninvestigated=%s gate=%s blocked=%s blockProp=%s',
+    n,
+    gate,
+    blocked ? 'Y' : 'N',
+    prJittaBacklogBlockAutoCkEnabled_() ? 'Y' : 'N'
+  );
+  return blocked;
+}
+
+/**
+ * 未調査≥ゲートなら大・特大を始めない（Keepa効率用）。
+ * 自動レ点とは分離（2026-10-24夜）。
+ */
+function prJittaBacklogBlocksXl_() {
+  if (!prJittaBacklogIdleEnabled_()) return false;
   var n = prCountMakerJittaAiPendingUninvestigated_();
   var gate = prJittaBacklogGate_();
   var blocked = false;
@@ -20824,7 +24422,7 @@ function prJittaBacklogBlocksAutoCk_() {
     blocked = n >= gate;
   }
   Logger.log(
-    '[仕入れ検討①] auto_ck_gate uninvestigated=%s gate=%s blocked=%s',
+    '[仕入れ検討①] xl_backlog_gate uninvestigated=%s gate=%s blocked=%s',
     n,
     gate,
     blocked ? 'Y' : 'N'
@@ -20832,7 +24430,7 @@ function prJittaBacklogBlocksAutoCk_() {
   return blocked;
 }
 
-/** 自動レ点候補数。バックログ中は 0。 */
+/** 自動レ点候補数。旧バックログ止めは Prop ON のときだけ 0。 */
 function prEffectiveAutoCkCandidates_(rawCand) {
   var n = Number(rawCand) || 0;
   if (n <= 0) return 0;

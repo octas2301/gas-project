@@ -1,0 +1,9 @@
+{
+  "id": "T-D2C-01",
+  "desc": "標準サイズ・軽量は見積候補",
+  "input": {
+    "qs_tier": "標準2e",
+    "weight": "1200g"
+  },
+  "expect": { "flag": "見積候補", "reason": "" }
+}

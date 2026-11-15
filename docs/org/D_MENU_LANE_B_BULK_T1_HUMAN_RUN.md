@@ -16,7 +16,7 @@
 | 列解決 | **項目名**（`xlsm_header_aliases`） |
 | 人間入力 | **マスタのみ** |
 | 再DL | 同型（PT＋指紋）が棚にあれば **不要** |
-| `HERB.xlsm` | 本線外 |
+| `HERB.xlsm` | 単体は本線外。PT=`HERB` は複合 `FOOD_HERB_SEASONING_…` で充填 |
 | prod | **実装済** — [PROD承認](LV4_LANE_B_BULK_TEMPLATE_T1_PROD_APPROVAL.md)／[PROD HUMAN_RUN](D_MENU_LANE_B_BULK_T1_PROD_HUMAN_RUN.md) |
 
 ---
@@ -27,7 +27,7 @@
 ① スプシでカテゴリ／PTを決める（P4b等）
 ② Agent: 棚引き
      ・あり → 「SCダウンロード不要」→ 06から充填へ
-     ・なし → 「SCでバルクをDLし 09 へ保存」→ 人間が09へ → B-T0 → 06登録後に充填
+     ・なし → 09/06 に `{PT}.xlsm` があれば B-T1 が指紋＋列マップを自動登録して充填。無ければ「SCでバルクをDLし 09 へ保存」→ 人間が09へ → E③ → 再充填
 ③ dry_run 充填（項目名マップ）→ 03／05
 ④（[prod第2段](LV4_LANE_B_BULK_TEMPLATE_T1_PROD_APPROVAL.md)承認後）prod → 人間が SC UP
 ```
@@ -64,7 +64,7 @@ python c1_bulk_fill_by_name.py --product-type SEASONING ^
 
 | 状況 | やること |
 |------|----------|
-| 「DL不要」 | 09 に落とさない。03 DRYRUN／05 不足・ギャップを確認 |
+| 「DL不要」 | 09 に落とさない。**05** の不足・ギャップを確認（dry_run は xlsm 非作成） |
 | 「09へDL要求」 | SC→**09** → Agent に B-T0 → 06登録後に再依頼 |
 | 充填後 | **05** の `*_NAME_MAP_GAPS.json`／C1_REPORT を確認 |
 
@@ -80,7 +80,7 @@ python c1_bulk_fill_by_name.py --product-type SEASONING ^
 | 棚あり＝DL不要 | **OK** | `B_T1_SHELF_SEASONING_20260801_084530` |
 | 棚なし＝DL要求 | **OK** | HERB → `registry_miss`／`B_T1_SHELF_HERB_…` |
 | 項目名解決 | **OK** | 66/66 HIT・legacy差0 |
-| dry_run 充填 | **OK** | `B_T1_FILL_SEASONING_20260801_084627` → `…_DRYRUN.xlsm` |
+| dry_run 充填 | **OK** | `B_T1_FILL_SEASONING_20260801_084627`（当時は `_DRYRUN.xlsm`。**2026-10-29以降は xlsm 非作成・05のみ**） |
 
 ---
 
@@ -88,5 +88,8 @@ python c1_bulk_fill_by_name.py --product-type SEASONING ^
 
 | 日付 | 内容 |
 |------|------|
+| 2026-10-29 | **dry_run xlsm 廃止**: B-T1 dry_run は `_DRYRUN.xlsm` を 03 に出さない。確認は 05 のみ。prod のみ 03 へ PACKAGED。 |
+| 2026-09-18 | **バルクごと必須埋め**: 充填時に純正「データ定義」を読み、必須／条件付き必須で値がある列だけ書く。 |
+| 2026-09-18 | **auto-onboard**: 棚なしでも 09/06 の `{PT}.xlsm` から指紋＋列マップを自動登録して充填。 |
 | 2026-08-01 | 起草。棚引き追記。 |
 | 2026-08-01 | **実装＋スモーク**（棚／項目名／dry_run）。 |

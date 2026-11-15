@@ -1,0 +1,13 @@
+{
+  "id": "odashi_variant",
+  "note": "お出し表記ゆれでもシリーズ核ヒット",
+  "productName": "食べるおだし（ かつお ）",
+  "makerName": "石原水産",
+  "expectedCategoryId": "1071",
+  "topN": 15,
+  "hits": [
+    {"title": "コーヒー", "maker": "", "genreCategoryId": "41392", "path": "食品:ドリンク:コーヒー"},
+    {"title": "食べるお出し かつお 石原水産", "maker": "石原水産", "genreCategoryId": "1071", "path": "食品:乾物、乾燥豆類、缶詰:かつお節、削り節"},
+    {"title": "食べるお出し まぐろ", "maker": "", "genreCategoryId": "1071", "path": "食品:乾物、乾燥豆類、缶詰:かつお節、削り節"}
+  ]
+}

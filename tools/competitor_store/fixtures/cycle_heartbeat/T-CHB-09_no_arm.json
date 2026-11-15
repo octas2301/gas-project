@@ -1,0 +1,1 @@
+{"id":"T-CHB-09","desc":"手動再開済みなら01:00不要","kind":"01_arm","input":{"paused":true,"manual_resumed":true},"expect":false}

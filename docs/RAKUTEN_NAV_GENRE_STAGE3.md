@@ -1,7 +1,7 @@
 # 楽天ジャンルID — Stage3 要件（都度API・マスタ書込）
 
 **文書種別**: requirements（実装前の正）  
-**最終更新**: 2026-07-26  
+**最終更新**: 2026-08-20  
 **状態**: **実装済**（2026-07-26 承認「楽天ジャンル Stage3（都度API・メニュー8）を承認」）  
 **承認パッケージ**: [org/LV4_RAKUTEN_GENRE_STAGE3_IMPLEMENTATION_APPROVAL.md](org/LV4_RAKUTEN_GENRE_STAGE3_IMPLEMENTATION_APPROVAL.md)  
 **親**: メニュー8（[org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md](org/D_MENU_AMAZON_AI_ADOPT_REQUIREMENTS.md)）／AGENTS.md §10（RWS候補→Nav確認）
@@ -35,14 +35,22 @@ NavigationAPI 2.0 の `genres.get` は **ID指定の取得**のみ（フリー�
 
 ```text
 メニュー8（レ点親）・トグルON
-  → クエリ組み立て: JAN優先 → なければ 商品名ベース（＋メインKW短く可）
+  → 分岐: セット親（セット構成1_親SKUあり）／単品親
+  → N種: AI情報取得data 構成1～5_商品名（同名1種）→ なければ セット構成1～5_親SKU。N≥2 のときだけ「N種」をクエリに使用
+  → クエリ（成功するまで次へ）:
+       セット親: メーカー+短名+N種 → 短名+N種 → メーカー+短名 → メーカー+商品名 → 商品名 → 短名 → メインKW → JAN → orFlag=1
+       単品親: JAN → メーカー+商品名 → 商品名 → 短名 → メインKW → orFlag=1
   → RWS Ichiba Item Search（都度・hits≤30）
+       投票対象: evalRakutenItemNameMatchScore（競合価格と同系）または セット系ワード（セット/ミックス/詰め合わせ/N種）
+       商品名固定・魚種固定・ジャンル番号決め打ちはしない
        genreId をレスポンスから収集し頻度投票
   → 最頻 genreId を RMS NavigationAPI genres.get で検証
        nameJa / nameJaPath 取得（既存 diagnose パーサ流用）
   → 親行の 楽天ジャンルID / 楽天ジャンルID名 に書込
   → 失敗・低信頼 → 要確認_*（空欄のまま or 触らない）
 ```
+
+**2026-08-20（改）**: 食べるおだし等の専用ロジックを廃止。**1ロジック×多段フォールバック検索**に統一。Yahoo 7.6 も同一クエリビルダー共用（JAN判定はクエリ文字列が数字かで判定）。
 
 ### 2.1 投票ルール
 
@@ -113,4 +121,6 @@ NavigationAPI 2.0 の `genres.get` は **ID指定の取得**のみ（フリー�
 | 日付 | 内容 |
 |------|------|
 | 2026-07-26 | **実装**: メニュー8へ接続。承認済。要 clasp push。 |
+| 2026-08-20 | **改**: 1ロジック×多段フォールバック（N種・JAN順序・汎用投票フィルタ）。専用ミックスロジック廃止。 |
+| 2026-08-20 | Ichiba クエリ多段化・商品名フィルタ（ミックス親）。構成単品ジャンル流用なし。 |
 | 2026-07-26 | 初版。都度API（Ichiba投票→Nav確認）。AI推奨は正本外。 |

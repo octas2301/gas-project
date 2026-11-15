@@ -1,0 +1,16 @@
+{
+  "id": "drive_bad_guard",
+  "note": "門全滅かつゆるいも0のときDrive 2140はガードで書かない",
+  "productName": "食べるおだし（ ぶり ） 40ｇ",
+  "makerName": "石原水産",
+  "expectedCategoryId": "",
+  "topN": 15,
+  "hits": [
+    {"title": "おしゃぶり 歯固め ベビー", "maker": "", "genreCategoryId": "2140", "path": "ベビー、キッズ、マタニティ:おもちゃ、教材:おしゃぶり、歯固め"}
+  ],
+  "fallback": {
+    "source": "drive_master_csv",
+    "yahooCategoryId": "2140",
+    "path": "ベビー、キッズ、マタニティ:おもちゃ、教材:おしゃぶり、歯固め"
+  }
+}

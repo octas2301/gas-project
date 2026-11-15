@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-32",
+  "desc": "Keepa中は余りでも止めない",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "途中社", "実態": "製造メーカー", "洗い状態": "Keepa中", "catalog_estimate": 50},
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 3, "catalog_estimate": 40}
+    ],
+    "catalog_estimate": {"途中社": 50, "小社": 40},
+    "unchecked_sellers": 8,
+    "token_room": true
+  },
+  "expect": {"action": "wash_continue", "maker": "途中社"}
+}

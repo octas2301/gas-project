@@ -1,0 +1,1 @@
+{"id":"T-CHB-07","desc":"一時停止","kind":"next","input":{"paused":true,"maker_sum":[{"メーカー":"小社","実態":"製造メーカー","catalog_estimate":10}]},"expect":{"action":"paused"}}

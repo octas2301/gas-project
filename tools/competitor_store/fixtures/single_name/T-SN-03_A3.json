@@ -1,0 +1,26 @@
+{
+  "id": "T-SN-03",
+  "desc": "A3 検索JAN無し",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000001",
+    "hit_asin": "B000000001",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": []
+  },
+  "expect": {
+    "pattern": "A3",
+    "single_trust": "high",
+    "jan_trust": "mid",
+    "for_estimate": true,
+    "need_human": false,
+    "write_single_name": true
+  }
+}

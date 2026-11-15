@@ -91,7 +91,7 @@
 
 | 最小必須項目 | マスタの列（既存） | AI情報取得data（既存） | 備考 |
 |--------------|--------------------|-------------------------|------|
-| 商品識別子 | 親SKU、子SKU、ASINコード | ASINコード、JANコード、商品名 | 突合は ASIN/JAN/（商品名または商品名amazon）/商品名ベース（マスタに列がある場合のみ最後）。AI側の名前キーは AI情報取得data の商品名。詳細は [TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md](TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md)「AI→マスタ同期の突合に商品名ベースを追加した件」。syncAiDataToMaster は親行のみ更新 |
+| 商品識別子 | 親SKU、子SKU、ASINコード | ASINコード、JANコード、商品名 | **2026-09-17**: 既定JOINは一意ASIN（マスタ親・AIとも1件）→ 一意商品名ベース＝AI商品名 → 一意JAN（マスタ親・AIとも1件）。メーカーは両方非空のときだけ一致必須。ブランドはJOINキーにしない。旧（ASIN→JAN後勝ち→名前→商品名ベース）は `AI_DESC_FISH_MIX_JOIN_ENABLED=false`。詳細は [TITLE_WORKAREA](TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md)。syncAiDataToMaster は親行のみ更新 |
 | 商品名 | 商品名 | 商品名 | 子SKU行は「商品名【バリエーション値】」で展開される想定（既存ロジック） |
 | 価格 | 商品の販売価格（列がある場合）または ▼マスタ 経由 | — | マスタに列が無い場合は構築時に追加。NUMERIC_COL_NAMES に含まれる |
 | 在庫数 | 在庫数（列がある場合）または ▼マスタ 経由 | — | 同上 |

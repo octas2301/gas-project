@@ -1,0 +1,24 @@
+{
+  "id": "T-SN-06",
+  "desc": "B3 JAN欠測",
+  "input": {
+    "draft_name": "たまごスープ",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000002",
+    "hit_asin": "B000000002",
+    "keepa_jans": [],
+    "search_jans": []
+  },
+  "expect": {
+    "pattern": "B3",
+    "single_trust": "high",
+    "jan_trust": "欠測",
+    "for_estimate": true,
+    "need_human": false,
+    "write_single_name": true
+  }
+}

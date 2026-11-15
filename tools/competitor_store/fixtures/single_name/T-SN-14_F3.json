@@ -1,0 +1,27 @@
+{
+  "id": "T-SN-14",
+  "desc": "F3 ヒットASINが当行と違う",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000009",
+    "hit_asin": "B000000099",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ]
+  },
+  "expect": {
+    "pattern": "F3",
+    "single_trust": "要確認",
+    "for_estimate": false,
+    "need_human": true,
+    "write_single_name": false
+  }
+}

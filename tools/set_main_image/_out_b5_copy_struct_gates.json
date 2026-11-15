@@ -1,0 +1,194 @@
+[
+  {
+    "id": "GOOD_mix_cheese_ume",
+    "expect_pass": true,
+    "gates_pass": true,
+    "test_ok": true,
+    "fails": []
+  },
+  {
+    "id": "GOOD_mix_fish_sample",
+    "expect_pass": true,
+    "gates_pass": true,
+    "test_ok": true,
+    "fails": []
+  },
+  {
+    "id": "BAD_S1_single_part",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S1:proposal[0] only_hits=['チーズ']"
+    ]
+  },
+  {
+    "id": "BAD_S2_no_sales",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S2:proposal[0] empty_salesTalk"
+    ]
+  },
+  {
+    "id": "BAD_S3_no_detail_ui",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S3:ui_cannot_open_detail"
+    ]
+  },
+  {
+    "id": "BAD_S4_tail",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S4:proposal[0] bad_tail=チズて"
+    ]
+  },
+  {
+    "id": "BAD_S5_old_prompt",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S5:old_persona_ban_line_present"
+    ]
+  },
+  {
+    "id": "BAD_S6_remake_all",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S6:unchecked_catch_changed key=T4:ben_0:2"
+    ]
+  },
+  {
+    "id": "BAD_S7_no_scene_ui",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S7:ui_scene_not_editable"
+    ]
+  },
+  {
+    "id": "BAD_S8_naive_slice",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S8:proposal[0] burn_is_naive_slice_with_bad_tail"
+    ]
+  },
+  {
+    "id": "BAD_S9_mix_distinct_policy",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S9:mix_still_allows_single_distinct"
+    ]
+  },
+  {
+    "id": "BAD_S10_errand_split",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S10:proposal[0] persona_errand_mismatch"
+    ]
+  },
+  {
+    "id": "BAD_S11_taste_first",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S11:proposal[0] taste_first_heading"
+    ]
+  },
+  {
+    "id": "BAD_S11_heading_only",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S11:proposal[0] heading_only"
+    ]
+  },
+  {
+    "id": "BAD_S12_scene_sales",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S12:proposal[0] scene_sales_word=お得"
+    ]
+  },
+  {
+    "id": "BAD_S12_dish_repeat",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S12:food_dish_keys_not_varied"
+    ]
+  },
+  {
+    "id": "BAD_S13_entrance_gate",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S13:entrance_gate_dropped_candidates"
+    ]
+  },
+  {
+    "id": "BAD_S14_burn_only",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S14:sales_not_in_image_text"
+    ]
+  },
+  {
+    "id": "BAD_S14_long_sales_no_burn",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S14:proposal[0] salesTalk_too_long_without_salesBurn"
+    ]
+  },
+  {
+    "id": "GOOD_S14_long_sales_with_burn",
+    "expect_pass": true,
+    "gates_pass": true,
+    "test_ok": true,
+    "fails": []
+  },
+  {
+    "id": "SNAP_current_gas_like",
+    "expect_pass": false,
+    "gates_pass": false,
+    "test_ok": true,
+    "fails": [
+      "S2:proposal[0] empty_salesTalk",
+      "S3:ui_cannot_open_detail",
+      "S4:proposal[0] bad_tail=出せて",
+      "S5:old_persona_ban_line_present",
+      "S6:unchecked_catch_changed key=T3:u:2",
+      "S7:ui_scene_not_editable",
+      "S9:mix_still_allows_single_distinct",
+      "S10:proposal[0] catchBurn_heading_mismatch",
+      "S13:entrance_gate_dropped_candidates",
+      "S14:sales_not_in_image_text"
+    ]
+  }
+]

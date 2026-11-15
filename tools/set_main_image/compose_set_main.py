@@ -26,6 +26,7 @@ from master_sets import load_checked_set_children, load_set_children_for_parent
 from rakuten_badge import compose_rakuten_badge, list_font_ids, load_font_catalog
 from rakuten_layer import compose_rakuten_layered
 from work_paths import (
+    SUB_RAKUTEN,
     default_work_root,
     move_rakuten_base_to_processed,
     resolve_amazon_base,
@@ -134,9 +135,27 @@ def run_batch(
         else:
             report["digitLayer"] = None
 
-    # 親SKUごとにベースをキャッシュ
+    # 親SKUごとにベース・文字色をキャッシュ（共有→マップ→フォールバック）
     rakuten_bases: dict = {}
     amazon_bases: dict = {}
+    parent_text_colors: dict = {}
+
+    def _color_for_parent(psku: str) -> str:
+        if psku not in parent_text_colors:
+            from b5_set_base_map import resolve_text_color_for_parent
+
+            tc, src = resolve_text_color_for_parent(
+                psku, work_root=work_root, default=text_color
+            )
+            parent_text_colors[psku] = tc
+            LOG.info(
+                "textColor parent=%s source=%s fallback=%s -> %s",
+                psku,
+                src,
+                text_color,
+                tc,
+            )
+        return parent_text_colors[psku]
 
     for ch in children:
         if ch.set_count < 1:
@@ -171,21 +190,36 @@ def run_batch(
                 mode = preset
                 meta_extra = {}
             else:
-                if ch.parent_sku not in rakuten_bases:
-                    bp = resolve_rakuten_base(work_root, ch.parent_sku, rakuten_base)
-                    rakuten_bases[ch.parent_sku] = bp
-                    LOG.info("rakuten base parent=%s %s", ch.parent_sku, bp)
-                bp = rakuten_bases[ch.parent_sku]
+                # P3b: 子SKUごとに set_base_map を参照（無ければ親1枚）
+                cache_key = f"{ch.parent_sku}::{ch.child_sku}"
+                if cache_key not in rakuten_bases:
+                    bp = resolve_rakuten_base(
+                        work_root,
+                        ch.parent_sku,
+                        rakuten_base,
+                        child_sku=ch.child_sku,
+                    )
+                    rakuten_bases[cache_key] = bp
+                    LOG.info(
+                        "rakuten base parent=%s child=%s %s",
+                        ch.parent_sku,
+                        ch.child_sku,
+                        bp,
+                    )
+                bp = rakuten_bases[cache_key]
                 if rakuten_engine == "layered":
+                    tc_parent = _color_for_parent(ch.parent_sku)
+                    gold_n = ch.badge_count or ch.set_count
                     img, layer_meta = compose_rakuten_layered(
                         base_path=bp,
-                        set_count=ch.set_count,
+                        set_count=gold_n,
                         unit=ch.unit,
+                        each_count=ch.each_count,
                         font_id=font_id,
                         digit_layer_path=None,
                         work_root=work_root,
                         render_mode="glyph_alpha",
-                        text_color=text_color,
+                        text_color=tc_parent,
                     )
                     mode = f"layered:{layer_meta.get('mode')}"
                     tc = layer_meta.get("textColor") or {}
@@ -219,6 +253,8 @@ def run_batch(
                 "parentSku": ch.parent_sku,
                 "childSku": ch.child_sku,
                 "n": ch.set_count,
+                "badgeCount": ch.badge_count or ch.set_count,
+                "eachCount": ch.each_count,
                 "unit": ch.unit,
                 "mall": name_mall,
                 "path": str(out_path),
@@ -234,16 +270,30 @@ def run_batch(
                 mode,
             )
 
-    # 楽天／Yahoo 量産が1件以上成功したベースだけ 02/処理済み へ移動
+    # 楽天／Yahoo 量産が1件以上成功したベース（＋マップ関連）を 02/処理済み へ
     moved_bases = []
     if report["outputs"]:
         used_paths = set()
+        parents_done = set()
         for ent in report["outputs"]:
             if ent.get("mall") in ("rakuten", "yahoo"):
                 psku = ent.get("parentSku")
-                bp = rakuten_bases.get(psku)
+                csku = ent.get("childSku")
+                bp = rakuten_bases.get(f"{psku}::{csku}") or rakuten_bases.get(psku)
                 if bp:
                     used_paths.add(Path(bp))
+                if psku:
+                    parents_done.add(psku)
+        # マップ・テーマ別ファイルもまとめて移動
+        try:
+            from b5_set_base_map import list_map_related_files
+
+            rakuten_dir = Path(work_root) / SUB_RAKUTEN
+            for psku in parents_done:
+                for p in list_map_related_files(rakuten_dir, psku):
+                    used_paths.add(Path(p))
+        except Exception as e:
+            LOG.warning("map-related collect skip: %s", e)
         for bp in sorted(used_paths, key=lambda p: str(p)):
             dest = move_rakuten_base_to_processed(bp, work_root)
             if dest:
@@ -332,7 +382,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument(
         "--text-color",
         default="1",
-        help="文字色: 1|2|3|4|5 または えんじ|青|黒|緑|茶（既定=1えんじ）",
+        help="文字色フォールバック: 1|2|3|4|5|auto または えんじ|青|黒|緑|茶。"
+        " auto=1と同じ（親の 02/set_base_map.json textColor を常に優先）",
     )
     ap.add_argument("--smoke-amazon", action="store_true")
     ap.add_argument("--smoke-rakuten", action="store_true")

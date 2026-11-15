@@ -1,0 +1,52 @@
+---
+description: B-⑤ MAIN／混在レビューを開く／開き直すときは最新コード＋正しいフォルダで起動し直す
+alwaysApply: true
+---
+
+# B-⑤ レビューは常に freshen
+
+人間が次のいずれかを言ったら、手元の古い URL／古い PID をそのまま渡さず、**必ず起動し直してから** URL を渡す。
+
+- レビューを開く／開き直す／更新して／最新？／古くない？
+- 戻らない／直ってない／まだ古い／反映されない／どうしたらよい（レビュー画面の文脈）
+- review / 8865 / 8866 / 8780 / 8781
+- MAIN レビューのキャッチ欄・再生成 UI の話のあとで画面を見る
+- 混在レビュー（独自＋競合）／サブ画像の確認ページ
+
+## 正（MAIN・コマンド）
+
+出品リポの `tools/set_main_image` で:
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project\tools\set_main_image
+python b5_main_base_review_launch.py --fresh --prefix （親SKU接頭辞） --base-port 8865 --no-wait
+```
+
+複数親なら `--prefix` を並べる。省略名ごと最新全部なら `--fresh --from-root-latest --no-wait`。
+
+## 正（混在レビュー・サブ）
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project\tools\set_main_image
+python sub_image_mix_review_launch.py --jan （JAN） --theme-new-dir （overview_copy_…の絶対パス） --base-port 8780 --no-wait
+```
+
+- **同じJANの別商品名ベースは `--theme-new-dir` を分け、ポートも分ける**（マニフェストは `mix_manifest_{JAN}_{フォルダ名}.json`。1ファイル上書き禁止）
+- コード変更後は旧ポートのプロセスを止めてから起動し直し。古いタブの F5 だけでは足りない
+- 渡す URL の画面上部で **商品名と作業フォルダ名** が対象と一致することを一言確認する
+
+## コード変更直後（必須）
+
+`b5_main_base_review_loop.py`／`b5_main_base_review_launch.py`／`sub_image_mix_review_loop.py`／`sub_image_mix_review_launch.py` を直したターンでは、人間に「ブラウザを再読込して」だけで済ませない。**こちらで起動し直して新 URL を渡す**までを同じターンで行う。
+
+## 禁止
+
+- チャットに残った `http://127.0.0.1:8865/` や `8780` を、プロセス確認なしで「開いて」と返す
+- 旧 compose／旧 overview_copy（タイムスタンプが古い）を記憶だけで指定する
+- 同じJANで `mix_manifest_{JAN}.json` だけを使い、別商品のレビューを同時に開くこと
+- レビューコードを直したあと、プロセスを殺さず「直った」「再読込すれば見える」と言う
+- 人間のブラウザ F5 だけを、コード反映の手段として案内する
+
+## 止めたときの返し
+
+「レビューは起動し直します。古いプロセスのままの URL は渡しません。同じJANの別商品はマニフェストとポートを分けます。」

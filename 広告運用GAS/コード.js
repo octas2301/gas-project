@@ -41,7 +41,11 @@ function onOpen() {
     .addItem('2. 広告バルクをDriveに保存する', 'generateBulkFiles')
     .addItem('2-② 広告バルクの誤りをチェックする', 'checkBulkFileErrors')
     .addSeparator()
-    .addItem('3. 楽天お宝キーワードの広告CSVを作る', 'generateRakutenKeywordAdCSV')
+    .addItem('3. 未広告ASIN：一覧を更新する', 'menuUnadvertisedAsinRefreshList')
+    .addItem('3-② 未広告ASIN：レ点からバルクを作る', 'menuUnadvertisedAsinGenerateBulk')
+    .addItem('3-③ 未広告ASIN：掲載マニュアルを作る（画像枠つき）', 'createUnadvertisedAsinManualSheet')
+    .addSeparator()
+    .addItem('4. 楽天お宝キーワードの広告CSVを作る', 'generateRakutenKeywordAdCSV')
     .addSeparator()
     .addSubMenu(ui.createMenu('99.テスト用')
       .addItem('99-① 操作マニュアルシートを作る', 'createManualSheet')
@@ -483,6 +487,163 @@ function createManualSheet() {
   setH(r, "STEP 2：実行と反映", "#34A853"); r++;
   sheet.getRange(r, 2, 2, 2).setValues([["1. 分析・生成", "メニューから「分析」→「バルク生成」の順に実行。"], ["2. アップロード", "生成されたExcelをAmazonの「一括操作」画面からアップ。"]]).setWrap(true);
   Browser.msgBox("マニュアルを更新しました。");
+}
+
+/**
+ * 未広告ASIN → スポンサープロダクト広告（人手UL）の手順書。
+ * 灰色の枠にスクショを貼れる（挿入 → 画像 → セル内に画像）。
+ */
+function createUnadvertisedAsinManualSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const name = '📌未広告ASIN掲載マニュアル';
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  sheet.clear();
+  sheet.setFrozenRows(2);
+  sheet.setColumnWidth(1, 56);
+  sheet.setColumnWidth(2, 200);
+  sheet.setColumnWidth(3, 520);
+  sheet.setColumnWidth(4, 280);
+  sheet.setColumnWidth(5, 280);
+
+  const imgHint_ = '【ここにスクショを貼る】\n貼り方: この枠のセルを選択 → 挿入 → 画像 → セル内に画像';
+  const paintImg_ = (r, rows, label) => {
+    const range = sheet.getRange(r, 4, rows, 2);
+    range.merge()
+      .setValue(imgHint_ + '\n\n' + label)
+      .setBackground('#F1F3F4')
+      .setFontColor('#5F6368')
+      .setFontSize(10)
+      .setWrap(true)
+      .setVerticalAlignment('middle')
+      .setHorizontalAlignment('center')
+      .setBorder(true, true, true, true, false, false, '#9AA0A6', SpreadsheetApp.BorderStyle.DASHED);
+    for (let i = 0; i < rows; i++) sheet.setRowHeight(r + i, 22);
+    sheet.setRowHeight(r, 28);
+    sheet.setRowHeight(r + rows - 1, 28);
+  };
+  const head_ = (r, text, color) => {
+    sheet.getRange(r, 1, 1, 5).merge()
+      .setValue(text)
+      .setBackground(color)
+      .setFontColor('#FFFFFF')
+      .setFontWeight('bold')
+      .setFontSize(12)
+      .setHorizontalAlignment('left');
+  };
+  const step_ = (r, no, title, body) => {
+    sheet.getRange(r, 1).setValue(no).setFontWeight('bold').setHorizontalAlignment('center');
+    sheet.getRange(r, 2).setValue(title).setFontWeight('bold').setWrap(true);
+    sheet.getRange(r, 3).setValue(body).setWrap(true);
+    sheet.setRowHeight(r, Math.min(120, 36 + Math.floor(String(body).length / 28) * 14));
+  };
+
+  let r = 1;
+  sheet.getRange(r, 1, 1, 5).merge()
+    .setValue('スポンサープロダクト広告（未広告ASIN）— 手動掲載マニュアル')
+    .setFontSize(16).setFontWeight('bold').setHorizontalAlignment('center');
+  r = 2;
+  sheet.getRange(r, 1, 1, 5).merge()
+    .setValue('メニュー「🚀 広告運用」の 3 / 3-② を使う手順。灰色枠に自分の画面スクショを貼ると分かりやすい。最終更新: メニュー3-③で再作成可。')
+    .setWrap(true).setFontColor('#444444');
+  sheet.setRowHeight(r, 48);
+
+  r = 4;
+  head_(r, '0. 全体の流れ（どこから何をするか）', '#1A73E8');
+  r = 5;
+  step_(r, '流れ', '入口',
+    'スプレッドシート上部メニュー → 「🚀 広告運用」\n' +
+    '・3. 未広告ASIN：一覧を更新する\n' +
+    '・3-② 未広告ASIN：レ点からバルクを作る\n' +
+    '・3-③ このマニュアルを作り直す\n' +
+    'できたxlsx → Amazon広告の「一括操作」からアップロード（Ads API承認前は人手UL）');
+  paintImg_(r, 6, '題材例: メニュー「🚀 広告運用」を開いた画面');
+  r += 7;
+
+  head_(r, '1. 毎回やること（掲載の本番手順）', '#FF9900');
+  r++;
+  step_(r, '①', '広告中CSVを取る',
+    'Amazon広告 → レポート → 「広告中の商品」（Advertised product）をCSVでDL。\n' +
+    'Driveの Amazon用フォルダ内「📥広告中の商品レポート」へ保存（いちばん新しい1本が正）。');
+  paintImg_(r, 5, '題材例: 広告中の商品レポートのDL画面');
+  r += 6;
+
+  step_(r, '②', '一覧を更新',
+    'メニュー → 「3. 未広告ASIN：一覧を更新する」\n' +
+    'シート「未広告ASIN一覧」が書き換わる。出品開始が新しい順・最大200件。');
+  paintImg_(r, 5, '題材例: 一覧更新後のダイアログ（出品数／あり／なし）');
+  r += 6;
+
+  step_(r, '③', 'レ点（載せる子だけON）',
+    '「未広告ASIN一覧」で、載せたい子のレ点だけON。\n' +
+    '【重要】広告状態が「あり」の行は原則OFF。\n' +
+    '先日UL成功でも、レポート未反映だと「なし」＋レ点ONのまま残ることがある → 二重作成になるので、成功分のレ点は外す。\n' +
+    '備考に「相乗り」「名前衝突」がある行は既定OFF（必要なら人がON）。');
+  paintImg_(r, 6, '題材例: 未広告ASIN一覧（レ点・広告状態・備考）');
+  r += 7;
+
+  step_(r, '④', '一括キャンペーンDLを置く（既存に足すとき必須）',
+    'Amazon広告 → 左「一括操作」→「カスタマイズしたスプレッドシートを作成しダウンロード」。\n' +
+    'スポンサープロダクトにチェック。インプレッション0除外はOFF推奨。\n' +
+    '落としたxlsx/CSVを Drive「📥一括キャンペーンDL」へ（最新1本が正）。\n' +
+    '一覧更新・3-②のとき機械が「ID参照用」へ数値IDを書き込む（手貼り不要）。\n' +
+    'ファイルが無い／IDが無い親はバルク時にスキップ。');
+  paintImg_(r, 6, '題材例: 一括操作のカスタムDL／📥一括キャンペーンDLフォルダ');
+  r += 7;
+
+  step_(r, '⑤', 'バルクを作る',
+    'メニュー → 「3-② 未広告ASIN：レ点からバルクを作る」→ はい。\n' +
+    'Drive「📦生成されたバルクファイル」に UnadvertisedAsinBulk_日時.xlsx が保存される。');
+  paintImg_(r, 5, '題材例: バルク保存完了ダイアログ');
+  r += 6;
+
+  step_(r, '⑥', 'Amazonへアップロード',
+    'Amazon広告 → 左メニュー「一括操作」（またはキャンペーン周りの一括操作）。\n' +
+    '「キャンペーンのアップロード」→ さきほどのxlsxを選ぶ → アップロード。\n' +
+    '※「すべてのツール」一覧には無いことがある。左の一括操作／管理から開く。\n' +
+    'ファイル名（オプション）は空でよい。');
+  paintImg_(r, 6, '題材例: 一括操作のアップロード画面');
+  r += 7;
+
+  step_(r, '⑦', '結果確認',
+    '一括操作の履歴で Success / Failed を見る。FailedならエラーレポートをDLして原因を直す。\n' +
+    '成功後すぐ「広告中の商品」CSVに出ないことがある → 一覧の「あり」反映は遅れる。\n' +
+    '反映前に同じレ点で再ULしない。');
+  paintImg_(r, 5, '題材例: 一括操作の Success／Failed 行');
+  r += 6;
+
+  head_(r, '2. 一覧の見方（短い表）', '#34A853');
+  r++;
+  sheet.getRange(r, 1, 1, 5).merge().setValue(
+    'レ点=載せる子／掲載方針=新規ペア or 既存に追加／キャンペーン予定名=商品が分かる名前（ASIN末尾を付けない）／' +
+    '広告状態=あり・なし／備考=相乗り・名前衝突・親フォールバックなど'
+  ).setWrap(true);
+  sheet.setRowHeight(r, 56);
+  r += 2;
+
+  head_(r, '3. よくある注意', '#EA4335');
+  r++;
+  sheet.getRange(r, 1, 4, 3).setValues([
+    ['注意', '同じメニューを件数分割で何度も押さない', '切れても機械再開が正。人手で3を連打しない。'],
+    ['注意', 'UL成功直後の再生成', 'レポート未反映の「なし＋レ点ON」をそのまま3-②すると二重作成エラーになる。'],
+    ['注意', '最適化（除外・入札）', 'メニュー1・2は別レーン（従来のKW最適化）。未広告の初回掲載は3と3-②。'],
+    ['注意', 'Ads API', 'API承認後はUL自動化を検討。承認前は一括操作の人手ULが正。']
+  ]).setWrap(true);
+  sheet.getRange(r, 1, 4, 1).setFontWeight('bold');
+  r += 5;
+
+  head_(r, '4. 画像の貼り方（共通）', '#5F6368');
+  r++;
+  sheet.getRange(r, 1, 1, 5).merge().setValue(
+    '右側の灰色の点線枠をクリック → メニュー「挿入」→「画像」→「セル内に画像」→ スクショを選ぶ。\n' +
+    '枠が小さいときは行の高さをドラッグで広げる。マニュアルを消しそうになったら、メニュー「3-③」で作り直せる。'
+  ).setWrap(true);
+  sheet.setRowHeight(r, 64);
+
+  ss.setActiveSheet(sheet);
+  SpreadsheetApp.getUi().alert(
+    'シート「' + name + '」を作成／更新しました。\n右側の灰色枠にスクショを貼ってください。'
+  );
 }
 
 // --- 共通ヘルパー ---

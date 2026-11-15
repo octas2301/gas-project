@@ -1,0 +1,1 @@
+{"id":"T-CHB-19","desc":"小中0・補充なしなら大","kind":"next","input":{"maker_sum":[{"メーカー":"大社","実態":"製造メーカー","セラーヒット":3,"catalog_estimate":400}],"catalog_estimate":{"大社":400},"unchecked_sellers":0,"auto_ck_candidates":0,"untagged_gate_asins":0},"expect":{"action":"wash_large","maker":"大社"}}

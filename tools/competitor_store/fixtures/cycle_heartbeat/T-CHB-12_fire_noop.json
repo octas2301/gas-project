@@ -1,0 +1,1 @@
+{"id":"T-CHB-12","desc":"手動再開後の01:00はnoop","kind":"01_fire","input":{"paused":false,"manual_resumed":true,"other_running":false},"expect":"noop_manual"}

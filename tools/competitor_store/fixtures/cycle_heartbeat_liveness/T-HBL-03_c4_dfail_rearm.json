@@ -1,0 +1,1 @@
+{"id":"T-HBL-03","desc":"正: C4のD失敗でも心拍再武装","steps":[{"action":"c4_d_fail","now_ms":1000}],"expect":{"alive":true,"reason":"wash_trigger","wash_n":1,"log_has":["c4_d_fail"]}}

@@ -1,0 +1,12 @@
+{
+  "id": "T-TCR-03",
+  "desc": "skip後の再bumpは永久skip（カウンタループしない）",
+  "mode": "unit_counter_reset",
+  "parent": "株式会社山清",
+  "skip_rounds": 1,
+  "expect": {
+    "after_repick_count": 3,
+    "permanent": true
+  },
+  "note": "PR_WASH_TITLE0_SKIP_SET により再選定しても即 skip"
+}

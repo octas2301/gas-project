@@ -23,10 +23,10 @@
 | Key | 値 |
 |-----|-----|
 | `AMAZON_U4_URL_EMBED_ENABLED` | `true`（実行時のみ → 終わったら **false**） |
-| `AMAZON_U4_MAX_SKUS` | 省略可（既定 20） |
+| `AMAZON_U4_MAX_SKUS` | **使わない**（設定しても収集カットしない。ログに ignored） |
 | `AMAZON_U4_SKU_LIST` | 任意。カンマ区切り子SKU（最優先） |
 | `AMAZON_U4_FORCE_REUPLOAD` | 省略可。`true` のとき既存 URL があっても再 Put（終わったら **false**） |
-| `AMAZON_U4_SLICE_MS` | 省略可（既定 270000＝4.5分）。超過で残りを約1分後トリガー再開 |
+| `AMAZON_U4_SLICE_MS` | 省略可（既定 1320000＝**22分**）。E②は **E②開始**からの残り。超過で残りを約1分後トリガー再開。旧 270000 が残っていたら削除 |
 | `AMAZON_DRIVE_IMAGE_FOLDER_ID` | 空なら Drive `02` 既定 |
 | `R2_*` | T2と同じ（ACCOUNT / ACCESS / SECRET。**BUCKET・PUBLIC_BASE は未設定で可**＝コード既定） |
 
@@ -35,16 +35,18 @@
 
 ---
 
-## 1b. 途中切れ対策（2026-08-08）
+## 1b. 未充足ドレイン（2026-09-16）
 
 | 対策 | 挙動 |
 |------|------|
+| 未充足を全件キュー | マッチング先頭N件でも件数上限でも切らない。MAIN/PT URLが揃っていない子を全部載せる |
+| E②の切れ | persist＋Drive02 のあと U4。期限は **E②開始＋22分**（25分フル／30分強制終了の手前）。残りはトリガー |
+| 再開波 | `runAmazonU4ResumeFromTrigger` が force:true で続き。1波あたりまた22分。上限12波（`resumeWaveCap` で FAIL。人が同じメニューを件数分割で押す分岐ではない） |
 | URL充足スキップ | `Amazon MAIN URL` と `Amazon PT URL` がどちらも使える https（`r2.cloudflarestorage.com` 除外）なら **SKU全体スキップ**。MAINのみ／PTのみも個別スキップ可 |
 | 1SKU失敗 | 例外でも **他SKU継続**（全体を落とさない） |
 | Put／楽天GETリトライ | 最大3回 |
-| 時間スライス | 既定4.5分超で残りを Property 保存→約1分後自動再開。ログ `state=SLICE` / `CONTINUE` |
 
-**再実行のコツ**: 成功済みはスキップされるので、C②または 21-⑦ をそのまま再実行してよい（`AMAZON_U4_SKU_LIST` は任意）。
+**人間**: E②／21-⑦は **1回**。残り件数があっても同じメニューを再実行しない。失敗リトライだけ再実行。ログ `state=SLICE` / `CONTINUE` / `resumeWave=`。
 
 ---
 ## 2. clasp push

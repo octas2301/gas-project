@@ -4,20 +4,23 @@
  * 方針: docs/org/LV4_AMAZON_CATEGORY_PT_P4B_APPROVAL.md §2
  * - 手数料列 amazon カテゴリーは触らない
  * - Keepa 新規取得なし
- * - P4b-d: 複数ASIN収集→一致チェック→browseNode多数決
- * - 競合無し: JAN Catalog → SHELF/楽天/Yahoo/名称の重み付き投票
- * - Browse未確定なら PT を書かない
+ * - 本線: 貼付◎ → ログ◎ → マスタ他店 → JAN複数ヒット → 楽天/Yahoo/商品名
+ * - 同点は空欄にしない（楽天語→商品名→名称投票→残票）
+ * - 自ASINは単品では数えない（ミックス親だけ可）
+ * - Browse未確定なら PT を書かない（手がかり0のときだけ）
  * - 空セルのみ書込。トグル既定 false
  *
  * Property:
  *   APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED … 既定 false
  *   APPROVAL_AMAZON_P4B_PT_MAX_PARENTS … 既定 3（1〜10）
- *   APPROVAL_AMAZON_P4B_PT_MAX_ASINS … 既定 5（親あたりCatalog試行上限）
+ *   APPROVAL_AMAZON_P4B_PT_MAX_ASINS … 貼付◎ON時 既定10／OFF時5
+ *   APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_ENABLED … 未設定=true。falseで旧マスタ多数決
  */
 
 var APPROVAL_AMAZON_P4B_PT_WRITE_PROP = 'APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED';
 var APPROVAL_AMAZON_P4B_PT_MAX_PROP = 'APPROVAL_AMAZON_P4B_PT_MAX_PARENTS';
 var APPROVAL_AMAZON_P4B_PT_MAX_ASINS_PROP = 'APPROVAL_AMAZON_P4B_PT_MAX_ASINS';
+var APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_PROP = 'APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_ENABLED';
 var AMAZON_P4B_SHELF_VOTE_THRESHOLD_ = 3;
 var AMAZON_P4B_PT_HEADER_ = 'Amazon Product Type';
 var AMAZON_P4B_BROWSE_HEADER_ = 'Amazon Browse Node';
@@ -521,18 +524,489 @@ function amazonP4bSuggestOneParent_(masterCtx, creds, accessToken, parent, colPt
   var warns = [];
   var sources = [];
   var decided = null;
+  var signals = amazonP4bCollectTextSignals_(masterCtx, parent);
+  var isMix = amazonP4bParentIsMix_(masterCtx, parent);
+  var excludeOwn = isMix ? {} : amazonP4bOwnAsinSet_(masterCtx, parent);
+  var ss = (masterCtx.sheet && typeof masterCtx.sheet.getParent === 'function')
+    ? masterCtx.sheet.getParent()
+    : SpreadsheetApp.getActiveSpreadsheet();
+  var maxAsins = amazonP4bMaxAsins_();
+  var lastVote = { voteMap: {}, voteMeta: {}, refAsin: '' };
 
-  var asinCands = amazonP4bCollectCandidateAsins_(masterCtx, parent);
+  function tryStage(cands, stageName) {
+    if (!cands || !cands.length) {
+      Logger.log('[AmazonP4b] runId=' + runId + ' stage=' + stageName + ' n=0');
+      return null;
+    }
+    var built = amazonP4bVoteAsins_(creds, accessToken, parent, jan, cands, runId, warns, sources);
+    if (built.refAsin) lastVote.refAsin = built.refAsin;
+    if (!built.hasAccept) {
+      Logger.log('[AmazonP4b] runId=' + runId + ' stage=' + stageName +
+        ' n=' + cands.length + ' accept=0');
+      return null;
+    }
+    lastVote.voteMap = built.voteMap;
+    lastVote.voteMeta = built.voteMeta;
+    var picked = amazonP4bPickVoteWinnerWithTieBreak_(built.voteMap, built.voteMeta, signals);
+    Logger.log('[AmazonP4b] runId=' + runId + ' stage=' + stageName +
+      ' accept=' + built.acceptCount + ' picked=' + ((picked && picked.nodeId) || 'tie'));
+    return picked;
+  }
+
+  if (amazonP4bPasteCircleVoteEnabled_()) {
+    var pasteBlock = amazonP4bFindPasteBlockIndexForParent_(ss, jan, parent.itemName, isMix);
+    Logger.log('[AmazonP4b] runId=' + runId + ' parent=' + parent.parentSku +
+      ' mix=' + isMix + ' pasteBlock=' + pasteBlock);
+    decided = tryStage(
+      amazonP4bCollectPasteCircleAsins_(ss, pasteBlock, maxAsins, excludeOwn),
+      'paste_circle');
+    if (!amazonP4bHasNode_(decided)) {
+      decided = tryStage(
+        amazonP4bCollectKeepaLogCircleAsins_(ss, jan, parent.itemName, isMix, pasteBlock, maxAsins, excludeOwn),
+        'keepa_log_circle');
+    }
+    if (!amazonP4bHasNode_(decided)) {
+      decided = tryStage(
+        amazonP4bCollectMasterRivalAsins_(masterCtx, parent, maxAsins, excludeOwn, isMix),
+        'master_rival');
+    }
+    if (!amazonP4bHasNode_(decided)) {
+      decided = tryStage(
+        amazonP4bCollectJanCatalogAsins_(creds, accessToken, jan, maxAsins, excludeOwn),
+        'jan_catalog_multi');
+    }
+  } else {
+    decided = tryStage(amazonP4bCollectCandidateAsins_(masterCtx, parent), 'master_legacy');
+    if (!amazonP4bHasNode_(decided) && amazonP4bNormalizeDigits_(jan).length >= 8) {
+      var janCat = amazonP4bFetchCatalogByJan_(creds, accessToken, jan);
+      if (janCat && janCat.refAsin) {
+        decided = tryStage([{ asin: janCat.refAsin, source: 'jan_catalog', cat: janCat }], 'jan_catalog');
+      } else {
+        warns.push('jan_catalog_miss');
+      }
+    }
+  }
+
+  if (decided && decided.needsShelf) {
+    var tiedResolved = amazonP4bResolveTieViaShelf_(signals, decided.tiedKeys, lastVote.voteMeta);
+    decided = tiedResolved || decided.fallback || null;
+    if (decided) sources.push('tie_shelf');
+  }
+
+  if (amazonP4bHasNode_(decided)) {
+    sources.push(decided.source || 'asin_majority');
+    return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
+      existingPt, existingBrowse, decided, sources, warns, jan);
+  }
+
+  var wWinner = amazonP4bPickShelfAlways_(signals);
+  if (wWinner) {
+    sources.push('shelf_weighted');
+    decided = {
+      nodeId: wWinner.nodeId,
+      browse: wWinner.browse,
+      asin: '',
+      source: 'shelf_weighted',
+      productTypes: []
+    };
+    return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
+      existingPt, existingBrowse, decided, sources, warns, jan);
+  }
+
+  decided = amazonP4bPickVoteWinner_(lastVote.voteMap, lastVote.voteMeta);
+  if (amazonP4bHasNode_(decided)) {
+    sources.push('asin_majority_last');
+    return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
+      existingPt, existingBrowse, decided, sources, warns, jan);
+  }
+
+  if (warns.length) {
+    Logger.log('[AmazonP4b] runId=' + runId + ' WARN parent=' + parent.parentSku +
+      ' warns=' + warns.join(';'));
+  }
+  Logger.log('[AmazonP4b] runId=' + runId + ' state=DONE action=NO_WRITE parent=' +
+    parent.parentSku + ' reason=no_signal_at_all');
+  return {
+    parentSku: parent.parentSku,
+    wrote: false,
+    skipReason: 'no_signal_at_all',
+    sources: amazonP4bUniqSources_(sources),
+    productType: existingPt || '',
+    browse: existingBrowse || '',
+    browseNodeId: '',
+    refAsin: lastVote.refAsin || '',
+    jan: jan || '',
+    warns: warns
+  };
+}
+
+function amazonP4bUniqSources_(sources) {
+  var seen = {};
+  var out = [];
+  var i;
+  for (i = 0; i < (sources || []).length; i++) {
+    var s = sources[i];
+    if (!s || seen[s]) continue;
+    seen[s] = true;
+    out.push(s);
+  }
+  return out;
+}
+
+function amazonP4bPasteCircleVoteEnabled_() {
+  return getBoolScriptProperty_(APPROVAL_AMAZON_P4B_PASTE_CIRCLE_VOTE_PROP, true);
+}
+
+function amazonP4bMaxAsins_() {
+  var def = amazonP4bPasteCircleVoteEnabled_() ? 10 : 5;
+  return Math.max(1, Math.min(10,
+    Math.floor(getNumberScriptProperty_(APPROVAL_AMAZON_P4B_PT_MAX_ASINS_PROP, def))));
+}
+
+function amazonP4bHasNode_(decided) {
+  return !!(decided && (decided.nodeId || decided.needsShelf));
+}
+
+function amazonP4bParentIsMix_(masterCtx, parent) {
+  var v = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, 'セット構成2_親SKU');
+  return !!String(v || '').trim();
+}
+
+function amazonP4bOwnAsinSet_(masterCtx, parent) {
+  var seen = {};
+  var rows = [parent.parentRowIndex0].concat(parent.childRowIndexes0 || []);
+  var i;
+  for (i = 0; i < rows.length; i++) {
+    var own = amazonP4bFirstAsinCell_(masterCtx, rows[i], 'ASINコード');
+    if (own) seen[own] = true;
+  }
+  return seen;
+}
+
+function amazonP4bLooksLikeMixTitle_(s) {
+  var t = String(s || '');
+  return /・|セット|詰合|詰め合|アソート|2種|3種|食べ比べ/.test(t);
+}
+
+function amazonP4bCommonLen_(a, b) {
+  var sa = String(a || '');
+  var sb = String(b || '');
+  if (!sa || !sb) return 0;
+  var shortS = sa.length <= sb.length ? sa : sb;
+  var longS = sa.length <= sb.length ? sb : sa;
+  var ln;
+  var i;
+  for (ln = Math.min(12, shortS.length); ln >= 3; ln--) {
+    for (i = 0; i + ln <= shortS.length; i++) {
+      if (longS.indexOf(shortS.substr(i, ln)) >= 0) return ln;
+    }
+  }
+  return 0;
+}
+
+function amazonP4bFindPasteBlockIndexForParent_(ss, jan, itemName, isMix) {
+  if (!ss) return -1;
+  var sheetName = (typeof ASIN_PASTE_SHEET_NAME !== 'undefined')
+    ? ASIN_PASTE_SHEET_NAME : 'ASIN貼り付け（Keepa用）';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return -1;
+  var data = sheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  var hr;
+  var hc;
+  for (hr = 0; hr < Math.min(data.length, 5); hr++) {
+    var rowData = data[hr] || [];
+    for (hc = 0; hc < rowData.length; hc++) {
+      if (String(rowData[hc]).trim() === 'ASIN') {
+        headerRowIdx = hr;
+        break;
+      }
+    }
+    if (headerRowIdx >= 0) break;
+  }
+  if (headerRowIdx < 0) return -1;
+  var headers = data[headerRowIdx] || [];
+  var asinColumns = [];
+  var c;
+  for (c = 0; c < headers.length; c++) {
+    if (String(headers[c]).trim() === 'ASIN') asinColumns.push(c);
+  }
+  var janDigits = amazonP4bNormalizeDigits_(jan);
+  var nameRow = data[0] || [];
+  var bestIdx = -1;
+  var bestScore = -1;
+  var bi;
+  for (bi = 0; bi < asinColumns.length; bi++) {
+    var colAsin = asinColumns[bi];
+    var blockName = String(nameRow[colAsin + 1] || '').trim();
+    var blockJan = amazonP4bNormalizeDigits_(nameRow[colAsin + 2]);
+    if (janDigits && blockJan && blockJan !== janDigits) continue;
+    var mixTitle = amazonP4bLooksLikeMixTitle_(blockName);
+    if (isMix && !mixTitle) continue;
+    if (!isMix && mixTitle) continue;
+    var score = 0;
+    if (janDigits && blockJan && blockJan === janDigits) score += 8;
+    if (amazonP4bTitleLooksRelated_(itemName, blockName)) score += 10;
+    var na = amazonP4bNormalizeHaystack_(itemName);
+    var nb = amazonP4bNormalizeHaystack_(blockName);
+    if (na && nb && (na.indexOf(nb) >= 0 || nb.indexOf(na) >= 0)) score += 5;
+    score += Math.min(8, amazonP4bCommonLen_(na, nb));
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = bi;
+    }
+  }
+  return bestIdx;
+}
+
+function amazonP4bCollectPasteCircleAsins_(ss, blockIndex, maxAsins, excludeOwn) {
+  var out = [];
+  if (!ss || blockIndex < 0) return out;
+  var sheetName = (typeof ASIN_PASTE_SHEET_NAME !== 'undefined')
+    ? ASIN_PASTE_SHEET_NAME : 'ASIN貼り付け（Keepa用）';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return out;
+  var data = sheet.getDataRange().getValues();
+  var headerRowIdx = -1;
+  var hr;
+  var hc;
+  for (hr = 0; hr < Math.min(data.length, 5); hr++) {
+    var rowData = data[hr] || [];
+    for (hc = 0; hc < rowData.length; hc++) {
+      if (String(rowData[hc]).trim() === 'ASIN') {
+        headerRowIdx = hr;
+        break;
+      }
+    }
+    if (headerRowIdx >= 0) break;
+  }
+  if (headerRowIdx < 0) return out;
+  var headers = data[headerRowIdx] || [];
+  var asinColumns = [];
+  var c;
+  for (c = 0; c < headers.length; c++) {
+    if (String(headers[c]).trim() === 'ASIN') asinColumns.push(c);
+  }
+  if (blockIndex >= asinColumns.length) return out;
+  var colAsin = asinColumns[blockIndex];
+  var colEval = colAsin + 2;
+  var colReason = colAsin + 6;
+  var machineOk = [];
+  var allCircle = [];
+  var r;
+  for (r = headerRowIdx + 1; r < data.length; r++) {
+    if (String(data[r][colEval] || '').trim() !== '◎') continue;
+    var asin = String(data[r][colAsin] || '').trim().toUpperCase();
+    if (!amazonP4bLooksLikeAsin_(asin)) continue;
+    if (excludeOwn && excludeOwn[asin]) continue;
+    var rec = { asin: asin, source: 'paste_circle' };
+    allCircle.push(rec);
+    var reason = String(data[r][colReason] || '');
+    if (reason.indexOf('非候補') < 0) machineOk.push(rec);
+  }
+  var use = machineOk.length ? machineOk : allCircle;
+  return amazonP4bCapAsins_(use, maxAsins);
+}
+
+function amazonP4bCollectKeepaLogCircleAsins_(ss, jan, itemName, isMix, pasteBlock, maxAsins, excludeOwn) {
+  var j = String(jan || '').trim();
+  if (j.length < 8 || !ss) return [];
+  var sheetName = (typeof KEEPA_FETCH_LOG_SHEET_NAME !== 'undefined')
+    ? KEEPA_FETCH_LOG_SHEET_NAME : 'Keepa取得_ログ';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0] || [];
+  var colJan = -1;
+  var colAsin = -1;
+  var colEval = -1;
+  var colDate = -1;
+  var colExpect = -1;
+  var colBlock = -1;
+  var c;
+  for (c = 0; c < headers.length; c++) {
+    var h = String(headers[c] || '').trim();
+    if (h === 'JAN') colJan = c;
+    else if (h === 'ASIN') colAsin = c;
+    else if (h === '評価') colEval = c;
+    else if (h === '日時') colDate = c;
+    else if (h.indexOf('期待名') === 0) colExpect = c;
+    else if (h === 'ブロック') colBlock = c;
+  }
+  if (colJan < 0 || colAsin < 0 || colEval < 0) return [];
+  var wantBlock = (pasteBlock >= 0 && colBlock >= 0) ? String(pasteBlock + 1) : '';
+  var latestDate = '';
+  var r;
+  for (r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][colJan] || '').trim() !== j) continue;
+    latestDate = colDate >= 0 ? String(data[r][colDate] || '').trim() : '';
+    break;
+  }
+  if (colDate >= 0 && !latestDate) return [];
+  var out = [];
+  var seen = {};
+  for (r = 1; r < data.length; r++) {
+    if (String(data[r][colJan] || '').trim() !== j) continue;
+    if (colDate >= 0 && String(data[r][colDate] || '').trim() !== latestDate) continue;
+    if (String(data[r][colEval] || '').trim() !== '◎') continue;
+    if (wantBlock && String(data[r][colBlock] || '').trim() !== wantBlock) continue;
+    var expectName = colExpect >= 0 ? String(data[r][colExpect] || '') : '';
+    if (!wantBlock) {
+      var mixTitle = amazonP4bLooksLikeMixTitle_(expectName);
+      if (isMix && !mixTitle) continue;
+      if (!isMix && mixTitle) continue;
+      if (expectName && !amazonP4bTitleLooksRelated_(itemName, expectName)) continue;
+    }
+    var asin = String(data[r][colAsin] || '').trim().toUpperCase();
+    if (!amazonP4bLooksLikeAsin_(asin) || seen[asin]) continue;
+    if (excludeOwn && excludeOwn[asin]) continue;
+    seen[asin] = true;
+    out.push({ asin: asin, source: 'keepa_log_circle' });
+  }
+  return amazonP4bCapAsins_(out, maxAsins);
+}
+
+function amazonP4bCollectMasterRivalAsins_(masterCtx, parent, maxAsins, excludeOwn, isMix) {
+  var rows = [parent.parentRowIndex0].concat(parent.childRowIndexes0 || []);
+  var seenRow = {};
+  var uniqRows = [];
+  var r;
+  for (r = 0; r < rows.length; r++) {
+    if (seenRow[rows[r]]) continue;
+    seenRow[rows[r]] = true;
+    uniqRows.push(rows[r]);
+  }
+  var out = [];
+  var seenAsin = {};
+  function add(asin, source) {
+    asin = String(asin || '').trim().toUpperCase();
+    if (!amazonP4bLooksLikeAsin_(asin) || seenAsin[asin]) return;
+    if (excludeOwn && excludeOwn[asin]) return;
+    if (out.length >= maxAsins) return;
+    seenAsin[asin] = true;
+    out.push({ asin: asin, source: source });
+  }
+  var i;
+  for (i = 0; i < uniqRows.length; i++) {
+    var rawRival = amazonApprovalLv4Cell_(masterCtx, uniqRows[i], AMAZON_P4B_RIVAL_ASIN_HEADER_);
+    if (amazonP4bLooksLikeAsin_(rawRival)) add(rawRival, 'rival_asin');
+  }
+  for (i = 0; i < uniqRows.length; i++) {
+    var urlInfo = amazonP4bFirstUrlOnRow_(masterCtx, uniqRows[i]);
+    if (!urlInfo.url) continue;
+    var ua = amazonP4bAsinFromUrl_(urlInfo.url);
+    if (ua) add(ua, 'rival_url');
+  }
+  if (isMix) {
+    for (i = 0; i < uniqRows.length; i++) {
+      var own = amazonP4bFirstAsinCell_(masterCtx, uniqRows[i], 'ASINコード');
+      if (own) add(own, 'own_asin');
+    }
+  }
+  return out;
+}
+
+function amazonP4bCapAsins_(list, maxAsins) {
+  var cap = Math.max(1, Number(maxAsins) || 10);
+  if (list.length <= cap) return list;
+  return list.slice(0, cap);
+}
+
+function amazonP4bCollectJanCatalogAsins_(creds, accessToken, jan, maxAsins, excludeOwn) {
+  var digits = amazonP4bNormalizeDigits_(jan);
+  if (digits.length < 8) return [];
+  var res = amazonSpapiPutHttpGet_(
+    creds,
+    accessToken,
+    '/catalog/2022-04-01/items',
+    {
+      marketplaceIds: creds.marketplaceId,
+      identifiers: digits,
+      identifiersType: 'JAN',
+      includedData: 'summaries,productTypes,classifications,identifiers'
+    }
+  );
+  if (res.code !== 200 || !res.json) {
+    Logger.log('[AmazonP4b] jan search HTTP ' + res.code + ' jan=' + digits);
+    return [];
+  }
+  var items = res.json.items || [];
+  var out = [];
+  var seen = {};
+  var i;
+  for (i = 0; i < items.length; i++) {
+    var wrapped = amazonP4bWrapCatalogItem_(items[i]);
+    var asin = String(wrapped.refAsin || '').toUpperCase();
+    if (!amazonP4bLooksLikeAsin_(asin) || seen[asin]) continue;
+    if (excludeOwn && excludeOwn[asin]) continue;
+    seen[asin] = true;
+    out.push({ asin: asin, source: 'jan_catalog', cat: wrapped });
+    if (out.length >= maxAsins) break;
+  }
+  return out;
+}
+
+function amazonP4bWrapCatalogItem_(item) {
+  var wrapped = {
+    productTypes: [],
+    browse: amazonP4bBrowseFromClassifications_(item && item.classifications),
+    identifierDigits: [],
+    itemName: '',
+    brand: '',
+    manufacturer: '',
+    refAsin: String((item && (item.asin || item.ASIN)) || '').trim().toUpperCase()
+  };
+  if (!item) return wrapped;
+  var pts = item.productTypes || [];
+  var i;
+  for (i = 0; i < pts.length; i++) {
+    var one = pts[i];
+    var name = '';
+    if (typeof one === 'string') name = one;
+    else if (one && typeof one === 'object') name = one.productType || one.name || '';
+    if (name) wrapped.productTypes.push(String(name));
+  }
+  var summaries = item.summaries || [];
+  if (summaries.length && summaries[0]) {
+    wrapped.itemName = String(summaries[0].itemName || summaries[0].name || '').trim();
+    wrapped.brand = String(summaries[0].brand || summaries[0].brandName || '').trim();
+    wrapped.manufacturer = String(summaries[0].manufacturer || '').trim();
+  }
+  var idBlocks = item.identifiers || [];
+  var idSeen = {};
+  var b;
+  for (b = 0; b < idBlocks.length; b++) {
+    var block = idBlocks[b];
+    var ids = (block && block.identifiers) ? block.identifiers : [];
+    var k;
+    for (k = 0; k < ids.length; k++) {
+      var idObj = ids[k];
+      if (!idObj) continue;
+      var dig = amazonP4bNormalizeDigits_(idObj.identifier || idObj.value || '');
+      if (dig.length >= 8 && !idSeen[dig]) {
+        idSeen[dig] = true;
+        wrapped.identifierDigits.push(dig);
+      }
+    }
+  }
+  return wrapped;
+}
+
+function amazonP4bVoteAsins_(creds, accessToken, parent, jan, cands, runId, warns, sources) {
   var voteMap = {};
   var voteMeta = {};
+  var hasAccept = false;
+  var acceptCount = 0;
+  var refAsin = '';
   var ai;
-  for (ai = 0; ai < asinCands.length; ai++) {
-    var cand = asinCands[ai];
+  for (ai = 0; ai < (cands || []).length; ai++) {
+    var cand = cands[ai];
     sources.push(cand.source);
-    var cat = amazonP4bFetchCatalogHints_(creds, accessToken, cand.asin);
+    if (!refAsin) refAsin = cand.asin;
+    var cat = cand.cat || amazonP4bFetchCatalogHints_(creds, accessToken, cand.asin);
     var chk = amazonP4bCatalogConsistencyCheck_(parent.itemName, jan, cat, cand.asin);
     if (!chk.ok) {
-      warns = warns.concat(chk.reasons);
+      warns.push.apply(warns, chk.reasons);
       Logger.log('[AmazonP4b] runId=' + runId + ' REJECT asin=' + cand.asin +
         ' source=' + cand.source + ' reasons=' + chk.reasons.join(';'));
       continue;
@@ -555,41 +1029,122 @@ function amazonP4bSuggestOneParent_(masterCtx, creds, accessToken, parent, colPt
         itemName: cat.itemName || ''
       };
     }
+    hasAccept = true;
+    acceptCount++;
     Logger.log('[AmazonP4b] runId=' + runId + ' ACCEPT asin=' + cand.asin +
       ' node=' + nodeId + ' source=' + cand.source);
   }
-  decided = amazonP4bPickVoteWinner_(voteMap, voteMeta);
-  if (decided) {
-    sources.push('asin_majority');
-    return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
-      existingPt, existingBrowse, decided, sources, warns, jan);
-  }
+  return {
+    voteMap: voteMap,
+    voteMeta: voteMeta,
+    hasAccept: hasAccept,
+    acceptCount: acceptCount,
+    refAsin: refAsin
+  };
+}
 
-  if (amazonP4bNormalizeDigits_(jan).length >= 8) {
-    var janCat = amazonP4bFetchCatalogByJan_(creds, accessToken, jan);
-    if (janCat && (janCat.browse || (janCat.productTypes && janCat.productTypes.length))) {
-      var chkJ = amazonP4bCatalogConsistencyCheck_(parent.itemName, jan, janCat, janCat.refAsin || '');
-      var nodeJ = amazonP4bExtractBrowseNodeId_(janCat.browse || '');
-      if (chkJ.ok && nodeJ) {
-        sources.push('jan_catalog');
-        decided = {
-          nodeId: nodeJ,
-          browse: janCat.browse,
-          asin: janCat.refAsin || '',
-          source: 'jan_catalog',
-          productTypes: janCat.productTypes || []
-        };
-        return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
-          existingPt, existingBrowse, decided, sources, warns.concat(chkJ.reasons || []), jan);
-      }
-      warns = warns.concat(chkJ.reasons || []);
-      if (!nodeJ) warns.push('jan_catalog_no_browse');
-    } else {
-      warns.push('jan_catalog_miss');
+function amazonP4bVoteMetaToDecided_(nodeId, voteMap, voteMeta) {
+  var meta = (voteMeta && voteMeta[nodeId]) || {};
+  return {
+    nodeId: nodeId,
+    browse: meta.browse || nodeId,
+    asin: meta.asin || '',
+    source: meta.source || 'asin_majority',
+    productTypes: meta.productTypes || [],
+    votes: voteMap ? voteMap[nodeId] : 0
+  };
+}
+
+function amazonP4bTopVoteKeys_(voteMap) {
+  var keys = Object.keys(voteMap || {});
+  if (!keys.length) return [];
+  var max = 0;
+  var i;
+  for (i = 0; i < keys.length; i++) {
+    if (voteMap[keys[i]] > max) max = voteMap[keys[i]];
+  }
+  var top = [];
+  for (i = 0; i < keys.length; i++) {
+    if (voteMap[keys[i]] === max) top.push(keys[i]);
+  }
+  top.sort();
+  return top;
+}
+
+function amazonP4bFilterKeysByHaystack_(keys, voteMeta, haystack) {
+  var hs = amazonP4bNormalizeHaystack_(haystack);
+  if (!hs || hs.length < 2) return [];
+  var hit = [];
+  var i;
+  for (i = 0; i < (keys || []).length; i++) {
+    var nid = keys[i];
+    var browse = String((voteMeta[nid] && voteMeta[nid].browse) || '');
+    var leaf = browse.replace(/\s*\(\d+\)\s*$/, '');
+    var parts = leaf.split('>');
+    var last = amazonP4bNormalizeHaystack_(parts[parts.length - 1] || leaf);
+    if (last.length < 2) continue;
+    if (hs.indexOf(last) >= 0 || last.indexOf(hs) >= 0) {
+      hit.push(nid);
+      continue;
+    }
+    var tokenHit = false;
+    var chunks = last.split(/[・･\/]/);
+    var c;
+    for (c = 0; c < chunks.length; c++) {
+      var ck = amazonP4bNormalizeHaystack_(chunks[c]);
+      if (ck.length >= 2 && hs.indexOf(ck) >= 0) tokenHit = true;
+    }
+    if (tokenHit) hit.push(nid);
+  }
+  return hit;
+}
+
+function amazonP4bPickVoteWinnerWithTieBreak_(voteMap, voteMeta, signals) {
+  var top = amazonP4bTopVoteKeys_(voteMap);
+  if (!top.length) return null;
+  if (top.length === 1) return amazonP4bVoteMetaToDecided_(top[0], voteMap, voteMeta);
+  var mallHs = [signals.rakuten, signals.yahoo].join(' ');
+  var mall = amazonP4bFilterKeysByHaystack_(top, voteMeta, mallHs);
+  if (mall.length === 1) {
+    var dMall = amazonP4bVoteMetaToDecided_(mall[0], voteMap, voteMeta);
+    dMall.source = 'tie_mall';
+    return dMall;
+  }
+  var pool = mall.length ? mall : top;
+  var nameHs = [signals.itemName, signals.nameBase].join(' ');
+  var byName = amazonP4bFilterKeysByHaystack_(pool, voteMeta, nameHs);
+  if (byName.length === 1) {
+    var dName = amazonP4bVoteMetaToDecided_(byName[0], voteMap, voteMeta);
+    dName.source = 'tie_name';
+    return dName;
+  }
+  var remain = byName.length ? byName : pool;
+  return {
+    needsShelf: true,
+    tiedKeys: remain,
+    fallback: amazonP4bVoteMetaToDecided_(remain[0], voteMap, voteMeta)
+  };
+}
+
+function amazonP4bResolveTieViaShelf_(signals, tiedKeys, voteMeta) {
+  var shelf = amazonP4bPickShelfAlways_(signals);
+  if (!shelf || !shelf.nodeId) return null;
+  var i;
+  for (i = 0; i < (tiedKeys || []).length; i++) {
+    if (String(tiedKeys[i]) === String(shelf.nodeId)) {
+      return amazonP4bVoteMetaToDecided_(tiedKeys[i], {}, voteMeta);
     }
   }
+  return {
+    nodeId: shelf.nodeId,
+    browse: shelf.browse,
+    asin: '',
+    source: 'tie_shelf',
+    productTypes: []
+  };
+}
 
-  var signals = amazonP4bCollectTextSignals_(masterCtx, parent);
+function amazonP4bPickShelfAlways_(signals) {
   var wVotes = {};
   var wMeta = {};
   amazonP4bAddShelfVotesFromHaystack_(signals.itemName, 3, wVotes, wMeta, 'item_name');
@@ -597,56 +1152,13 @@ function amazonP4bSuggestOneParent_(masterCtx, creds, accessToken, parent, colPt
   amazonP4bAddShelfVotesFromHaystack_(signals.maker, 1, wVotes, wMeta, 'maker');
   amazonP4bAddShelfVotesFromHaystack_(signals.rakuten, 2, wVotes, wMeta, 'rakuten_genre');
   amazonP4bAddShelfVotesFromHaystack_(signals.yahoo, 2, wVotes, wMeta, 'yahoo_category');
-  var wWinner = amazonP4bPickWeightedWinner_(wVotes, wMeta, AMAZON_P4B_SHELF_VOTE_THRESHOLD_);
-  if (wWinner) {
-    sources.push('shelf_weighted');
-    decided = {
-      nodeId: wWinner.nodeId,
-      browse: wWinner.browse,
-      asin: '',
-      source: 'shelf_weighted',
-      productTypes: []
-    };
-    return amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,
-      existingPt, existingBrowse, decided, sources, warns, jan);
-  }
-
-  if (warns.length) {
-    Logger.log('[AmazonP4b] runId=' + runId + ' WARN parent=' + parent.parentSku +
-      ' warns=' + warns.join(';'));
-  }
-  Logger.log('[AmazonP4b] runId=' + runId + ' state=DONE action=NO_WRITE parent=' +
-    parent.parentSku + ' reason=low_confidence_or_no_browse');
-  return {
-    parentSku: parent.parentSku,
-    wrote: false,
-    skipReason: 'low_confidence_or_no_browse',
-    sources: amazonP4bUniqSources_(sources),
-    productType: existingPt || '',
-    browse: existingBrowse || '',
-    browseNodeId: '',
-    refAsin: asinCands.length ? asinCands[0].asin : '',
-    jan: jan || '',
-    warns: warns
-  };
-}
-
-function amazonP4bUniqSources_(sources) {
-  var seen = {};
-  var out = [];
-  var i;
-  for (i = 0; i < (sources || []).length; i++) {
-    var s = sources[i];
-    if (!s || seen[s]) continue;
-    seen[s] = true;
-    out.push(s);
-  }
-  return out;
+  var hit = amazonP4bPickWeightedWinner_(wVotes, wMeta, 1);
+  if (hit) return hit;
+  return amazonP4bPickWeightedWinner_(wVotes, wMeta, 0);
 }
 
 function amazonP4bCollectCandidateAsins_(masterCtx, parent) {
-  var maxAsins = Math.max(1, Math.min(10,
-    Math.floor(getNumberScriptProperty_(APPROVAL_AMAZON_P4B_PT_MAX_ASINS_PROP, 5))));
+  var maxAsins = amazonP4bMaxAsins_();
   var rows = [parent.parentRowIndex0].concat(parent.childRowIndexes0 || []);
   var seenRow = {};
   var uniqRows = [];
@@ -828,6 +1340,17 @@ function amazonP4bAddShelfVotesFromHaystack_(haystack, weight, voteMap, voteMeta
     var hit = hs.indexOf(leafN) >= 0;
     if (!hit && /肉の缶詰/.test(leafN) && /肉|焼鳥|焼き鳥|コンビーフ|ハム|ソーセージ/.test(hs)) hit = true;
     if (!hit && /魚介の缶詰/.test(leafN) && /魚|鮭|マグロ|ツナ|いわし|鯖|さんま/.test(hs)) hit = true;
+    if (!hit) {
+      var chunks = leafN.split(/[・･]/);
+      var ci;
+      for (ci = 0; ci < chunks.length; ci++) {
+        var ck = String(chunks[ci] || '');
+        if (ck.length >= 3 && hs.indexOf(ck) >= 0) {
+          hit = true;
+          break;
+        }
+      }
+    }
     if (!hit) continue;
     if (!voteMap[nid]) voteMap[nid] = 0;
     voteMap[nid] += weight;
@@ -859,52 +1382,7 @@ function amazonP4bFetchCatalogByJan_(creds, accessToken, jan) {
   }
   var items = res.json.items || [];
   if (!items.length) return null;
-  var item = items[0];
-  var asin = String(item.asin || item.ASIN || '').trim().toUpperCase();
-  var wrapped = {
-    productTypes: [],
-    browse: amazonP4bBrowseFromClassifications_(item.classifications),
-    identifierDigits: [],
-    itemName: '',
-    brand: '',
-    manufacturer: '',
-    refAsin: asin
-  };
-  var pts = item.productTypes || [];
-  var i;
-  for (i = 0; i < pts.length; i++) {
-    var one = pts[i];
-    var name = '';
-    if (typeof one === 'string') name = one;
-    else if (one && typeof one === 'object') name = one.productType || one.name || '';
-    if (name) wrapped.productTypes.push(String(name));
-  }
-  var summaries = item.summaries || [];
-  if (summaries.length && summaries[0]) {
-    wrapped.itemName = String(summaries[0].itemName || summaries[0].name || '').trim();
-    wrapped.brand = String(
-      summaries[0].brand || summaries[0].brandName || ''
-    ).trim();
-    wrapped.manufacturer = String(summaries[0].manufacturer || '').trim();
-  }
-  var idBlocks = item.identifiers || [];
-  var idSeen = {};
-  var b;
-  for (b = 0; b < idBlocks.length; b++) {
-    var block = idBlocks[b];
-    var ids = (block && block.identifiers) ? block.identifiers : [];
-    var k;
-    for (k = 0; k < ids.length; k++) {
-      var idObj = ids[k];
-      if (!idObj) continue;
-      var dig = amazonP4bNormalizeDigits_(idObj.identifier || idObj.value || '');
-      if (dig.length >= 8 && !idSeen[dig]) {
-        idSeen[dig] = true;
-        wrapped.identifierDigits.push(dig);
-      }
-    }
-  }
-  return wrapped;
+  return amazonP4bWrapCatalogItem_(items[0]);
 }
 
 function amazonP4bWritePtBrowseDecision_(masterCtx, parent, colPt, colBrowse, runId,

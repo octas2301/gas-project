@@ -1,0 +1,27 @@
+{
+  "id": "T-SN-13",
+  "desc": "F2 単品なのにタイトル不一致",
+  "input": {
+    "draft_name": "別シリーズ名",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "low",
+    "row_asin": "B000000008",
+    "hit_asin": "B000000008",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ]
+  },
+  "expect": {
+    "pattern": "F2",
+    "single_trust": "要確認",
+    "for_estimate": false,
+    "need_human": true,
+    "write_single_name": false
+  }
+}

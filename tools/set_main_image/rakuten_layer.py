@@ -99,6 +99,7 @@ def compose_rakuten_layered(
     work_root: Optional[Path] = None,
     render_mode: Optional[str] = None,
     text_color: Optional[str] = None,
+    each_count: Optional[int] = None,
 ) -> Tuple[Image.Image, Dict[str, Any]]:
     """
     金丸デザインは触らず、透過文字（グリフPNG）またはFont描画のみ重ねる。
@@ -155,6 +156,7 @@ def compose_rakuten_layered(
             draw_set_label=draw_set_label,
             canvas=int(work.size[0]),
             tint_rgba=tint_rgba,
+            each_count=each_count,
         )
         layout = glyph_meta
     else:
@@ -172,7 +174,9 @@ def compose_rakuten_layered(
         )
 
     badge = f"{set_count}{unit}" if unit else str(set_count)
-    if draw_set_label:
+    if each_count:
+        badge = f"{badge}/各{int(each_count)}"
+    elif draw_set_label:
         badge = f"{badge}/セット"
 
     meta: Dict[str, Any] = {
@@ -184,6 +188,7 @@ def compose_rakuten_layered(
         "digitLen": 1 if int(set_count) < 10 else 2,
         "badgeText": badge,
         "setCount": int(set_count),
+        "eachCount": int(each_count) if each_count else None,
         "unit": unit,
         "textColor": {
             "id": color_ent.get("id"),

@@ -282,6 +282,25 @@ def split_keywords(text: str, n: int = 5) -> List[str]:
     return out
 
 
+def sanitize_amazon_highlight(value: str, colmap: Optional[dict] = None) -> str:
+    """Amazon ハイライト禁止語を除去（例: 100473「抜群」）。語は良い に置換。"""
+    s = _cell_str(value)
+    if not s:
+        return ""
+    phrases = None
+    if colmap:
+        phrases = colmap.get("highlight_forbidden_phrases")
+    if not phrases:
+        phrases = ["抜群"]
+    for phrase in phrases:
+        p = _cell_str(phrase)
+        if p and p in s:
+            s = s.replace(p, "良い")
+    s = re.sub(r"[！!]{2,}", "！", s)
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
+
+
 def resolve_highlight(
     title: str,
     master: Dict[str, str],
@@ -303,7 +322,9 @@ def resolve_highlight(
         else:
             value = _cell_str(master.get(key))
         if value:
-            return value, str(key)
+            cleaned = sanitize_amazon_highlight(value, colmap)
+            if cleaned:
+                return cleaned, str(key)
     return "", "empty"
 
 
@@ -359,24 +380,32 @@ def load_browse_path_by_node(colmap: Optional[dict] = None) -> Dict[str, str]:
 def resolve_browse_xlsm_value(
     browse_raw: str,
     colmap: dict,
+    product_type: str = "",
 ) -> Tuple[str, Optional[str]]:
-    """xlsm の推奨ブラウズノード列用。純正プルダウンと同じ表記を返す。
+    """xlsm の推奨ブラウズノード列用。そのファイルのプルダウンと同じ表記を返す。
 
-    Dropdown Lists 実値は『BrowsePath (NodeId)』。
-    例: 食品・飲料・お酒 > 缶詰・瓶詰 > 肉の缶詰・瓶詰 (71192051)
-    短縮名や Node ID だけは不可。
+    書き方は colmap の browse_xlsm_format（データ定義／Dropdown 実値）。
+    path_id: BrowsePath (NodeId)／digit: 数字だけ／path: 経路のみ。
     """
     raw = _cell_str(browse_raw)
     if not raw:
         return "", "browse empty"
     by_node = load_browse_path_by_node(colmap)
     node = extract_browse_node_id(raw)
+    by_pt = colmap.get("browse_xlsm_format_by_pt") or {}
+    fmt = _cell_str(by_pt.get(_cell_str(product_type))) or _cell_str(
+        colmap.get("browse_xlsm_format")
+    ) or "path_id"
 
     def dropdown_label(path: str, nid: str) -> str:
         p = _cell_str(path)
         n = _cell_str(nid)
+        if fmt == "digit":
+            return n
+        if fmt == "path":
+            return p
         if not p:
-            return ""
+            return n
         if n and p.endswith("(%s)" % n):
             return p
         if n:
@@ -395,7 +424,7 @@ def resolve_browse_xlsm_value(
                 return dropdown_label(path, nid3), None
         if nid2:
             return dropdown_label(path_only, nid2), None
-        return path_only, None
+        return path_only if fmt != "digit" else nid2, None
     leaf = re.sub(r"\s*\(\d{6,}\)\s*$", "", raw).strip()
     matches = [
         (nid4, p) for nid4, p in by_node.items() if p.split(" > ")[-1] == leaf
@@ -404,8 +433,10 @@ def resolve_browse_xlsm_value(
         return dropdown_label(matches[0][1], matches[0][0]), None
     if len(matches) > 1:
         return "", "BrowsePath 複数候補（Node IDをマスタに含めてください）: %s" % leaf
+    if fmt == "digit" and node:
+        return node, None
     return "", (
-        "推奨ブラウズノードをプルダウン表記(BrowsePath (NodeId))に解決できない: %r "
+        "推奨ブラウズノードをそのファイルのプルダウン表記に解決できない: %r "
         "（棚 catalog / Dropdown Lists を確認）" % raw[:80]
     )
 
@@ -416,7 +447,7 @@ def resolve_product_type_browse(
     colmap: dict,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """(pt, browse, error)。require 時はマスタ必須・既定埋込禁止。
-    browse は xlsm プルダウンと同じ『BrowsePath (NodeId)』（数値IDや短縮名だけは不可）。
+    browse はそのファイルのプルダウンと同じ書き方。
     """
     allow = set(
         colmap.get("p4b_c1_product_types")
@@ -431,7 +462,7 @@ def resolve_product_type_browse(
                 "Amazon Product Type / Browse Node 必須"
                 "（マスタ空は不可・既定埋込禁止）"
             )
-        browse_m, berr = resolve_browse_xlsm_value(browse_raw, colmap)
+        browse_m, berr = resolve_browse_xlsm_value(browse_raw, colmap, pt_m)
         if berr or not browse_m:
             return None, None, berr or "BrowsePath 解決失敗"
         if pt_m not in allow:
@@ -442,10 +473,12 @@ def resolve_product_type_browse(
         return pt_m, browse_m, None
     if pt_m and pt_m in allow:
         browse_m, _ = resolve_browse_xlsm_value(
-            browse_raw or _cell_str(defaults.get("browse")), colmap
+            browse_raw or _cell_str(defaults.get("browse")), colmap, pt_m
         )
         return pt_m, browse_m, None
-    browse_m, _ = resolve_browse_xlsm_value(_cell_str(defaults.get("browse")), colmap)
+    browse_m, _ = resolve_browse_xlsm_value(
+        _cell_str(defaults.get("browse")), colmap, _cell_str(defaults.get("product_type"))
+    )
     return (
         _cell_str(defaults.get("product_type")),
         browse_m,
@@ -736,7 +769,15 @@ def build_row_attrs(
         )
     ingredients = _cell_str(master.get("ingredients"))
     passthrough: Dict[str, str] = {}
+    copy_from = colmap.get("template_copy_from") or {}
+    skip_passthrough = {
+        "browse", "sku", "product_type", "parentage", "parent_sku", "size", "inventory",
+    }
     for key in colmap.get("passthrough_fields") or []:
+        if key in skip_passthrough:
+            continue
+        if is_parent and key in ("size", "inventory", "parent_sku"):
+            continue
         if policy.get("omit_item_form") and key == "item_form":
             continue
         if policy.get("omit_temperature_rating") and key == "temperature_rating":
@@ -761,7 +802,14 @@ def build_row_attrs(
             continue
         if policy.get("omit_color") and key == "color":
             continue
-        value = _cell_str(master.get(key)) or _cell_str(defaults.get(key))
+        src = str(copy_from.get(key) or "")
+        value = _cell_str(master.get(key))
+        if not value and src == "ingredients":
+            value = ingredients
+        elif not value and src:
+            value = _cell_str(master.get(src))
+        if not value:
+            value = _cell_str(defaults.get(key))
         if value:
             passthrough[key] = value
 
@@ -795,12 +843,15 @@ def build_row_attrs(
 
     highlight, highlight_source = resolve_highlight(title, master, bullet1, colmap)
     LOG.info(
-        "rowAttrs sku=%s pt=%s browseLen=%d highlightSrc=%s titleLen=%d",
+        "rowAttrs sku=%s pt=%s browseLen=%d browseFmt=%s highlightSrc=%s titleLen=%d parent=%s",
         sku,
         pt_val or "",
         len(browse_val or ""),
+        _cell_str((colmap.get("browse_xlsm_format_by_pt") or {}).get(pt_val or ""))
+        or _cell_str(colmap.get("browse_xlsm_format")),
         highlight_source,
         len(title),
+        is_parent,
     )
 
     return {
@@ -828,7 +879,7 @@ def build_row_attrs(
         "ingredients": ingredients or None,
         "passthrough": passthrough,
         "shipping": resolve_shipping(gen_row, defaults),
-        "inventory": _cell_str(gen_row.get("inventory") or "0"),
+        "inventory": "" if is_parent else _cell_str(gen_row.get("inventory") or "0"),
         "product_type": pt_val or "",
         "browse": browse_val or "",
         "amazon_product_type": _cell_str(master.get("amazon_product_type")),
@@ -916,6 +967,7 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         ws.cell(r, cols[key]).value = value
 
     def write_common(r: int, attrs: Dict[str, Any], parentage: str, parent_sku_val: Any) -> None:
+        is_parent_row = parentage == "親"
         pt_val = _cell_str(attrs.get("product_type")) or _cell_str(defaults.get("product_type"))
         browse_val = _cell_str(attrs.get("browse"))
         if not browse_val and not colmap.get("p4b_require_master_pt_browse"):
@@ -924,7 +976,8 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "product_type", pt_val)
         setc(r, "action", defaults["action"])
         setc(r, "parentage", parentage)
-        setc(r, "parent_sku", parent_sku_val)
+        if not is_parent_row:
+            setc(r, "parent_sku", parent_sku_val)
         setc(r, "var_theme", defaults["var_theme"])
         setc(r, "title", attrs["title"])
         setc(r, "highlight", attrs["highlight"])
@@ -945,7 +998,8 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
             if i < len(kws) and kws[i]:
                 setc(r, key, kws[i])
         setc(r, "color", attrs.get("color"))
-        setc(r, "size", attrs.get("size"))
+        if not is_parent_row:
+            setc(r, "size", attrs.get("size"))
         setc(r, "mfr_part", attrs.get("mfr"))
         setc(r, "import_type", defaults.get("import_type"))
         setc(r, "exclusive", defaults.get("exclusive"))
@@ -957,8 +1011,9 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "list_price", attrs.get("list_price"))
         setc(r, "tax_code", attrs.get("tax_code"))
         setc(r, "fulfillment", defaults.get("fulfillment"))
-        inv = attrs.get("inventory") or "0"
-        setc(r, "inventory", int(inv) if str(inv).isdigit() else inv)
+        if not is_parent_row:
+            inv = attrs.get("inventory") or "0"
+            setc(r, "inventory", int(inv) if str(inv).isdigit() else inv)
         price = attrs["price"]
         setc(r, "price", float(price) if _is_number(price) else price)
         setc(r, "shipping", attrs.get("shipping") or defaults.get("shipping"))
@@ -967,8 +1022,19 @@ def write_family_rows(ws, start_row: int, family: Dict[str, Any], colmap: dict, 
         setc(r, "battery_included", defaults.get("battery_included"))
         setc(r, "hazmat", defaults.get("hazmat"))
         setc(r, "liquid", attrs.get("liquid") or defaults.get("liquid"))
+        skip_pt = {
+            "browse", "sku", "product_type", "parentage", "parent_sku", "size", "inventory",
+        }
         for key, value in (attrs.get("passthrough") or {}).items():
+            if key in skip_pt:
+                continue
             setc(r, key, value)
+        if is_parent_row:
+            LOG.info(
+                "parentOmit sku=%s browseLen=%d sizeSkipped=1 inventorySkipped=1 parentSkuSkipped=1",
+                attrs.get("sku") or "",
+                len(browse_val or ""),
+            )
 
     r = start_row
     write_common(r, family["parent"], "親", None)

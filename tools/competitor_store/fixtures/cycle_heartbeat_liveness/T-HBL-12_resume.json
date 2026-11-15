@@ -1,0 +1,1 @@
+{"id":"T-HBL-12","desc":"手動再開は洗い時計","steps":[{"action":"pause_other","now_ms":1},{"action":"manual_resume","now_ms":2}],"expect":{"alive":true,"reason":"wash_trigger","paused":false,"resume01_n":0}}

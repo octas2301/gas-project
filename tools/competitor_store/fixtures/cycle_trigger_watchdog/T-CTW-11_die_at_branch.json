@@ -1,0 +1,1 @@
+{"id":"T-CTW-11","desc":"H9: 心拍分岐前hard_kill→pickログは残る","kind":"fire_then_watchdog","die_at":"branch","watchdog_after_ms":2100000,"expect":{"outcome":"hard_kill","wd.rearmed":true,"log_has":["phase=pick_end","hard_kill phase=branch"]}}

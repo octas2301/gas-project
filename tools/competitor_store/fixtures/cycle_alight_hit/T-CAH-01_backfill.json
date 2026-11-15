@@ -1,0 +1,34 @@
+{
+  "id": "T-CAH-01",
+  "desc": "バックフィル: batchなし。既存3店の抽出メーカーからヒット再計算",
+  "sellers_before": [
+    {
+      "sellerId": "SHOP_A",
+      "店名": "店A",
+      "調査CK": false,
+      "抽出メーカー": "永谷園|石原水産",
+      "食品比率": "80.0"
+    },
+    {
+      "sellerId": "SHOP_B",
+      "店名": "店B",
+      "調査CK": false,
+      "抽出メーカー": "永谷園",
+      "食品比率": "70.0"
+    },
+    {
+      "sellerId": "SHOP_C",
+      "店名": "店C",
+      "調査CK": false,
+      "抽出メーカー": "五木食品",
+      "食品比率": "90.0"
+    }
+  ],
+  "maker_sum_before": [],
+  "side_effect": { "cand_rows": 10, "keepa_full_rows": 50 },
+  "batch": null,
+  "expect": {
+    "seller_hits": { "永谷園": 2, "石原水産": 1, "五木食品": 1 },
+    "side_effect_unchanged": true
+  }
+}

@@ -1,0 +1,1 @@
+{"id":"T-CTW-07","desc":"H5: 正常完走は heartbeat 再武装・inflight解除","kind":"fire","expect":{"outcome":"done","state.inflight_run_id":"","state.trigger_n":1,"log_has":["branch=heartbeat","trigger_armed"]}}

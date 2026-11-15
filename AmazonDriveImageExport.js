@@ -332,10 +332,14 @@ var AMAZON_U4_RESUME_STATE_PROP = 'AMAZON_U4_RESUME_STATE';
 var AMAZON_U4_RESUME_TRIGGER_FN = 'runAmazonU4ResumeFromTrigger';
 var AMAZON_U4_MASTER_COL_MAIN_URL = 'Amazon MAIN URL';
 var AMAZON_U4_MASTER_COL_PT_URL = 'Amazon PT URL';
+/** 旧・収集カット用。未充足キューは全件。切れは時間（22分） */
 var AMAZON_U4_MAX_SKUS_DEFAULT = 20;
-/** 1実行の実働上限（未設定時）。UrlFetch多発のため短め。残りはトリガー再開 */
-var AMAZON_U4_SLICE_MS_DEFAULT = 270000;
+/** 1実行の安全弁（未設定時）。B統合と同じ22分。30分強制終了の手前 */
+var AMAZON_U4_SAFE_BUDGET_MS = 22 * 60 * 1000;
+var AMAZON_U4_SLICE_MS_DEFAULT = AMAZON_U4_SAFE_BUDGET_MS;
 var AMAZON_U4_PUT_RETRY_DEFAULT = 3;
+/** 再開チェーンの上限（無限ループ防止。人がメニューを再押す分岐ではない） */
+var AMAZON_U4_RESUME_MAX_DEFAULT = 12;
 
 /**
  * メニュー 21-⑦: 対象子SKUの MAIN（＋ONLY時PT）を R2 へ上げ、マスタに URL を書く。
@@ -363,9 +367,6 @@ function menuAmazonU4UrlEmbed() {
   var bucket = String(props.getProperty('R2_BUCKET') || '').trim() || AMAZON_R2_BUCKET_DEFAULT;
   var publicBase = String(props.getProperty('R2_PUBLIC_BASE') || '').trim() || AMAZON_R2_PUBLIC_BASE_DEFAULT;
   publicBase = publicBase.replace(/\/$/, '');
-  var maxSkus = parseInt(String(props.getProperty(AMAZON_U4_MAX_SKUS_PROP) || ''), 10);
-  if (!(maxSkus > 0)) maxSkus = AMAZON_U4_MAX_SKUS_DEFAULT;
-
   if (!accountId || !accessKey || !secretKey) {
     Logger.log('[' + stepName + '] runId=' + runId + ' state=FAILED authMissing=true');
     try {
@@ -373,8 +374,7 @@ function menuAmazonU4UrlEmbed() {
     } catch (e1) {}
     return;
   }
-
-  var targets = amazonU4CollectTargetSkus_(maxSkus);
+  var targets = amazonU4CollectTargetSkus_();
   if (!targets.length) {
     var msg =
       '対象SKUがありません。\n' +
@@ -390,7 +390,7 @@ function menuAmazonU4UrlEmbed() {
     var ui = SpreadsheetApp.getUi();
     var conf = ui.alert(
       '21-⑦ U4 Drive02→R2→マスタURL',
-      '対象SKU数=' + targets.length + '（上限' + maxSkus + '）\n' +
+      '対象SKU数=' + targets.length + '（未充足全件。22分で切り自動再開）\n' +
         '例: ' + targets.slice(0, 3).join(', ') + (targets.length > 3 ? '…' : '') + '\n' +
         'マスタに「' + AMAZON_U4_MASTER_COL_MAIN_URL + '」等を書きます（在庫・JANは触りません）。\n' +
         'xlsm直編集・ZIP・楽天CSVはしません。\n実行しますか？',
@@ -403,7 +403,10 @@ function menuAmazonU4UrlEmbed() {
   } catch (eUi) {}
 
   Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING n=' + targets.length);
-  var summary = amazonU4EmbedUrls_(runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase);
+  var summary = amazonU4EmbedUrls_(runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase, {
+    startedAtMs: Date.now(),
+    resumeWave: 1
+  });
   Logger.log('[' + stepName + '] runId=' + runId + ' state=DONE ' + JSON.stringify(summary));
 
   try {
@@ -418,7 +421,7 @@ function menuAmazonU4UrlEmbed() {
         '\n失敗=' + summary.failed +
         '\nマスタ更新SKU=' + summary.masterUpdated +
         (summary.continued
-          ? ('\n\n※時間スライス: 残り' + (summary.remaining || 0) + '件を約1分後に自動再開します')
+          ? ('\n\n※時間スライス: 残り' + (summary.remaining || 0) + '件を約1分後に自動再開します（メニュー再実行は不要）')
           : '') +
         '\n' + (summary.message || '') +
         '\n\n終わったら ' + AMAZON_U4_URL_EMBED_PROP + ' を false に戻してください。\n' +
@@ -431,8 +434,9 @@ function menuAmazonU4UrlEmbed() {
 
 /**
  * U4 コア（確認・成功ダイアログなし）。Eコース・D新規の自動実行用。
- * @param {{skus?:Array<string>, force?:boolean}=} opts
+ * @param {{skus?:Array<string>, force?:boolean, startedAtMs?:number, resumeWave?:number, resumeRunId?:string}=} opts
  *   skus 指定時はレ点由来の対象だけを処理する。force=true は手動運用トグルを迂回する（D自動実行用）。
+ *   startedAtMs は親ジョブ開始（E②は persist 前）。切れはこの時刻＋22分。
  * @return {{ok:boolean, runId?:string, summary?:Object, error?:string}}
  */
 function amazonU4UrlEmbedSilent_(opts) {
@@ -460,8 +464,11 @@ function amazonU4UrlEmbedSilent_(opts) {
   var bucket = String(props.getProperty('R2_BUCKET') || '').trim() || AMAZON_R2_BUCKET_DEFAULT;
   var publicBase = String(props.getProperty('R2_PUBLIC_BASE') || '').trim() || AMAZON_R2_PUBLIC_BASE_DEFAULT;
   publicBase = publicBase.replace(/\/$/, '');
-  var maxSkus = parseInt(String(props.getProperty(AMAZON_U4_MAX_SKUS_PROP) || ''), 10);
-  if (!(maxSkus > 0)) maxSkus = AMAZON_U4_MAX_SKUS_DEFAULT;
+  var deprecatedMax = String(props.getProperty(AMAZON_U4_MAX_SKUS_PROP) || '').trim();
+  if (deprecatedMax) {
+    Logger.log('[' + stepName + '] runId=' + runId +
+      ' AMAZON_U4_MAX_SKUS ignored (drain by time) value=' + deprecatedMax);
+  }
 
   if (!accountId || !accessKey || !secretKey) {
     var authErr = 'R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY のいずれかが未設定です。';
@@ -472,16 +479,15 @@ function amazonU4UrlEmbedSilent_(opts) {
   var targets = [];
   if (opts.skus && opts.skus.length) {
     var seenSku = {};
-    // 再開時はキュー全体を処理（スライスが再度分割）。初回収集時のみ maxSkus で切る
-    var cap = opts.resumeRunId ? opts.skus.length : maxSkus;
-    for (var si = 0; si < opts.skus.length && targets.length < cap; si++) {
+    var si;
+    for (si = 0; si < opts.skus.length; si++) {
       var one = String(opts.skus[si] || '').trim();
       if (!one || seenSku[one]) continue;
       seenSku[one] = true;
       targets.push(one);
     }
   } else {
-    targets = amazonU4CollectTargetSkus_(maxSkus);
+    targets = amazonU4CollectTargetSkus_();
   }
   if (!targets.length) {
     var msg =
@@ -491,9 +497,16 @@ function amazonU4UrlEmbedSilent_(opts) {
     return { ok: false, runId: runId, error: msg };
   }
 
-  Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING n=' + targets.length);
+  var embedOpts = {
+    startedAtMs: Number(opts.startedAtMs) > 0 ? Number(opts.startedAtMs) : Date.now(),
+    resumeWave: parseInt(opts.resumeWave, 10) > 0 ? parseInt(opts.resumeWave, 10) : 1
+  };
+  Logger.log('[' + stepName + '] runId=' + runId + ' state=RUNNING n=' + targets.length +
+    ' resumeWave=' + embedOpts.resumeWave);
   try {
-    var summary = amazonU4EmbedUrls_(runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase);
+    var summary = amazonU4EmbedUrls_(
+      runId, targets, folderId, accountId, accessKey, secretKey, bucket, publicBase, embedOpts
+    );
     Logger.log('[' + stepName + '] runId=' + runId + ' state=' +
       (summary && summary.continued ? 'CONTINUE' : 'DONE') + ' ' + JSON.stringify(summary));
     if (summary && Number(summary.failed) > 0 && !(Number(summary.mainOk) > 0) &&
@@ -516,59 +529,103 @@ function amazonU4UrlEmbedSilent_(opts) {
 }
 
 /**
- * @param {number} maxSkus
+ * 未充足の子SKUを全件（件数上限なし。切れは時間スライス）。
  * @return {string[]}
  */
-function amazonU4CollectTargetSkus_(maxSkus) {
+function amazonU4CollectTargetSkus_() {
   var seen = {};
-  var out = [];
+  var raw = [];
   function add(sku) {
     sku = String(sku || '').trim();
     if (!sku || seen[sku]) return;
-    if (out.length >= maxSkus) return;
     seen[sku] = true;
-    out.push(sku);
+    raw.push(sku);
   }
 
   var props = PropertiesService.getScriptProperties();
   var listProp = String(props.getProperty(AMAZON_U4_SKU_LIST_PROP) || '').trim();
   if (listProp) {
     listProp.split(/[,，\s]+/).forEach(function (s) { add(s); });
-    if (out.length) return out;
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var matrixName = (typeof SHEET_NAME_MATRIX !== 'undefined') ? SHEET_NAME_MATRIX : '★画像AIマッチング(操作用)';
-  var mx = ss.getSheetByName(matrixName);
-  if (mx && mx.getLastRow() >= 3) {
-    var num = mx.getLastRow() - 2;
-    var keys = mx.getRange(3, 1, num, 2).getValues();
-    var mainF = mx.getRange(3, 76, num, 1).getFormulas();
-    var i;
-    for (i = 0; i < keys.length && out.length < maxSkus; i++) {
-      var cCode = String(keys[i][1] || '').trim();
-      if (!cCode) continue;
-      if (String(mainF[i][0] || '').trim()) add(cCode);
+  if (!raw.length) {
+    var matrixName = (typeof SHEET_NAME_MATRIX !== 'undefined') ? SHEET_NAME_MATRIX : '★画像AIマッチング(操作用)';
+    var mx = ss.getSheetByName(matrixName);
+    if (mx && mx.getLastRow() >= 3) {
+      var num = mx.getLastRow() - 2;
+      var keys = mx.getRange(3, 1, num, 2).getValues();
+      var mainF = mx.getRange(3, 76, num, 1).getFormulas();
+      var i;
+      for (i = 0; i < keys.length; i++) {
+        var cCode = String(keys[i][1] || '').trim();
+        if (!cCode) continue;
+        if (String(mainF[i][0] || '').trim()) add(cCode);
+      }
     }
-    if (out.length) return out;
+  }
+  if (!raw.length) {
+    var masterName = (typeof MASTER_SHEET_NAME !== 'undefined') ? MASTER_SHEET_NAME : '▼商品マスタ(人間作業用)';
+    var master = ss.getSheetByName(masterName);
+    if (master) {
+      var mValues0 = master.getDataRange().getValues();
+      var header0 = getAnchorRowIndex(mValues0);
+      var col0 = getColumnIndexMap(mValues0[header0]);
+      var idxC0 = col0['子SKU'];
+      var idxRef0 = col0['Amazon MAIN 参照'];
+      var r0;
+      if (idxC0 !== undefined) {
+        for (r0 = header0 + 1; r0 < mValues0.length; r0++) {
+          var child0 = String(mValues0[r0][idxC0] || '').trim();
+          if (!child0) continue;
+          if (idxRef0 !== undefined && String(mValues0[r0][idxRef0] || '').trim()) add(child0);
+        }
+      }
+    }
   }
 
+  var forceReupload = getBoolScriptProperty_(AMAZON_U4_FORCE_REUPLOAD_PROP, false);
+  var filled = forceReupload ? {} : amazonU4SkuFullUrlMap_(ss);
+  var need = [];
+  var alreadyFull = 0;
+  var j;
+  for (j = 0; j < raw.length; j++) {
+    if (filled[raw[j]]) {
+      alreadyFull++;
+      continue;
+    }
+    need.push(raw[j]);
+  }
+  Logger.log('[amazonU4CollectTargetSkus_] raw=' + raw.length +
+    ' alreadyFull=' + alreadyFull + ' need=' + need.length + ' (no sku cap)');
+  return need;
+}
+
+/** 子SKU → MAIN+PT とも公開httpsなら true */
+function amazonU4SkuFullUrlMap_(ss) {
+  var map = {};
   var masterName = (typeof MASTER_SHEET_NAME !== 'undefined') ? MASTER_SHEET_NAME : '▼商品マスタ(人間作業用)';
   var master = ss.getSheetByName(masterName);
-  if (!master) return out;
+  if (!master) return map;
   var mValues = master.getDataRange().getValues();
   var headerRowIdx = getAnchorRowIndex(mValues);
+  if (headerRowIdx < 0) return map;
   var colMap = getColumnIndexMap(mValues[headerRowIdx]);
   var idxC = colMap['子SKU'];
-  var idxRef = colMap['Amazon MAIN 参照'];
-  if (idxC === undefined) return out;
+  var idxMainUrl = colMap[AMAZON_U4_MASTER_COL_MAIN_URL];
+  var idxPtUrl = colMap[AMAZON_U4_MASTER_COL_PT_URL];
+  if (idxC === undefined || idxMainUrl === undefined) return map;
   var r;
-  for (r = headerRowIdx + 1; r < mValues.length && out.length < maxSkus; r++) {
+  for (r = headerRowIdx + 1; r < mValues.length; r++) {
     var child = String(mValues[r][idxC] || '').trim();
     if (!child) continue;
-    if (idxRef !== undefined && String(mValues[r][idxRef] || '').trim()) add(child);
+    var mainOk = amazonU4IsUsablePublicUrl_(mValues[r][idxMainUrl]);
+    var ptOk = idxPtUrl === undefined
+      ? true
+      : amazonU4IsUsablePublicUrl_(mValues[r][idxPtUrl]);
+    if (mainOk && ptOk) map[child] = true;
   }
-  return out;
+  return map;
 }
 
 /**
@@ -585,10 +642,19 @@ function amazonU4IsUsablePublicUrl_(url) {
 }
 
 /**
+ * @param {string} runId
+ * @param {string[]} skus
+ * @param {string} folderId
+ * @param {string} accountId
+ * @param {string} accessKey
+ * @param {string} secretKey
+ * @param {string} bucket
+ * @param {string} publicBase
+ * @param {{startedAtMs?:number, resumeWave?:number}=} opts
  * @return {{mainOk:number, ptOk:number, failed:number, skippedFull:number, skippedMain:number, skippedPt:number,
  *   masterUpdated:number, message:string, continued:boolean, remaining:number, parentMainUrlCopied:number, siblingPtUrlCopied:number}}
  */
-function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretKey, bucket, publicBase) {
+function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretKey, bucket, publicBase, opts) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var masterName = (typeof MASTER_SHEET_NAME !== 'undefined') ? MASTER_SHEET_NAME : '▼商品マスタ(人間作業用)';
   var master = ss.getSheetByName(masterName);
@@ -605,11 +671,19 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
   var idxPtUrl = colMap[AMAZON_U4_MASTER_COL_PT_URL];
   var idxPtRef = colMap['Amazon PT 参照'];
 
+  opts = opts || {};
   var props = PropertiesService.getScriptProperties();
   var forceReupload = getBoolScriptProperty_(AMAZON_U4_FORCE_REUPLOAD_PROP, false);
   var sliceMs = parseInt(String(props.getProperty(AMAZON_U4_SLICE_MS_PROP) || ''), 10);
   if (!(sliceMs > 0)) sliceMs = AMAZON_U4_SLICE_MS_DEFAULT;
+  var parentStart = Number(opts.startedAtMs) > 0 ? Number(opts.startedAtMs) : Date.now();
+  var deadlineMs = parentStart + sliceMs;
+  var resumeWave = parseInt(opts.resumeWave, 10);
+  if (!(resumeWave > 0)) resumeWave = 1;
   var startedAt = Date.now();
+  Logger.log('[U4] runId=' + runId + ' n=' + skus.length +
+    ' resumeWave=' + resumeWave + ' budgetMs=' + sliceMs +
+    ' parentStart=' + parentStart + ' deadlineMs=' + deadlineMs);
 
   var mainOk = 0;
   var ptOk = 0;
@@ -626,17 +700,21 @@ function amazonU4EmbedUrls_(runId, skus, folderId, accountId, accessKey, secretK
 
   var s;
   for (s = 0; s < skus.length; s++) {
-    if (s > 0 && (Date.now() - startedAt) >= sliceMs) {
+    if (Date.now() >= deadlineMs) {
       remainingSkus = skus.slice(s);
       continued = true;
       amazonU4ScheduleResume_({
         runId: runId,
         skus: remainingSkus,
-        startedAtIso: new Date().toISOString()
+        startedAtIso: new Date().toISOString(),
+        resumeWave: resumeWave + 1
       });
-      notes.push('SLICE残り=' + remainingSkus.length + '（約1分後トリガー再開）');
+      notes.push('SLICE残り=' + remainingSkus.length +
+        '（約1分後トリガー再開 wave=' + (resumeWave + 1) + '）');
       Logger.log('[U4] runId=' + runId + ' state=SLICE remaining=' + remainingSkus.length +
-        ' elapsedMs=' + (Date.now() - startedAt));
+        ' elapsedFromParentMs=' + (Date.now() - parentStart) +
+        ' waveElapsedMs=' + (Date.now() - startedAt) +
+        ' resumeWave=' + resumeWave);
       break;
     }
 
@@ -885,11 +963,23 @@ function runAmazonU4ResumeFromTrigger() {
     amazonU4ClearResumeState_();
     return;
   }
-  Logger.log('[' + fn + '] state=RUNNING n=' + skus.length + ' parentRunId=' + (state.runId || ''));
+  var wave = parseInt(state.resumeWave, 10);
+  if (!(wave > 0)) wave = 1;
+  if (wave > AMAZON_U4_RESUME_MAX_DEFAULT) {
+    Logger.log('[' + fn + '] state=FAILED resumeWaveCap wave=' + wave +
+      ' max=' + AMAZON_U4_RESUME_MAX_DEFAULT + ' remaining=' + skus.length +
+      ' parentRunId=' + (state.runId || ''));
+    amazonU4ClearResumeState_();
+    return;
+  }
+  Logger.log('[' + fn + '] state=RUNNING n=' + skus.length +
+    ' parentRunId=' + (state.runId || '') + ' resumeWave=' + wave);
   var res = amazonU4UrlEmbedSilent_({
     skus: skus,
     force: true,
-    resumeRunId: state.runId || ''
+    resumeRunId: state.runId || '',
+    startedAtMs: Date.now(),
+    resumeWave: wave
   });
   Logger.log('[' + fn + '] state=' + (res && res.ok ? 'DONE' : 'FAILED') +
     ' ' + JSON.stringify((res && res.summary) || {}) +

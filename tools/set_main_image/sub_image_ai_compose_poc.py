@@ -2,9 +2,9 @@
 """
 サブ画像 AI 合成 PoC v2（Gemini本線 + falシズル）
 
-- 競合に実在するLPテーマのみ選定 → テーマごとにバリエーション → 計10枚
+- チェック済みかつ競合写真があるテーマだけ。1テーマ1枚（A/Bなし）。想像埋めしない
 - 段階1: route=hybrid なら T03(シズル)のみ fal（文字禁止）、他テーマは Gemini
-- トンマナ: ベージュ固定 / 文字量抑制（成分表例外）
+- トンマナ: ベージュ固定 / 文字量抑制（成分表例外） / needPackage・スケール・FOOD_IDENTITY
 """
 from __future__ import annotations
 
@@ -29,6 +29,15 @@ from photo_realism_rules import (
     photo_realism_block_en,
     photo_realism_block_ja,
     photo_realism_meta,
+)
+from theme_compose_rules import (
+    COMPETITOR_PARTS_NO_PACKAGE_JA,
+    accent_text_block,
+    default_need_package,
+    package_lock_block,
+    package_policy_block,
+    person_reuse_block,
+    theme_extra_block,
 )
 from tonmana_palette import (
     DEFAULT_ID as TONMANA_DEFAULT,
@@ -118,6 +127,10 @@ def build_ja_prompt(
     seo_hints_ja: str = "",
     human_feedback: str = "",
     base_color: str = TONMANA_DEFAULT,
+    text_color: str = "1",
+    has_food_unit_canon: bool = False,
+    n_food_secondary: int = 0,
+    has_food_sizzle: bool = False,
 ) -> str:
     """画像生成モデルへの日本語指示（PACKAGE_TRUTH＋文字量上限込み）。"""
     sec = job.get("secondaryThemeId")
@@ -133,27 +146,49 @@ def build_ja_prompt(
             "\n【想像スロット】競合に無いフェーズ補完。表現の型のみ。"
             "ランキング・累計販売・具体価格・特定産地の断定など事実数字の創作は禁止。\n"
         )
-    prop = job.get("proposal") or ("a" if int(job.get("variant") or 1) == 1 else "b")
+    tid = int(job.get("themeId") or 0)
+    need_pkg = default_need_package(tid, job.get("needPackage"))
+    prop = job.get("proposal") or "a"
     feedback_block = ""
     if (human_feedback or "").strip():
         feedback_block = (
             "\n【人間フィードバック（再生成・最優先で反映）】\n"
             f"{human_feedback.strip()}\n"
-            "上記以外のPACKAGE_LOCK・文字量上限・ベース色は維持すること。\n"
+            "上記以外のPACKAGE_LOCK・食材ユニット正本・文字量上限・ベース色は維持すること。\n"
         )
     ton = resolve_tonmana(base_color)
+    extra = theme_extra_block(
+        tid, include_steam=True, has_food_unit_canon=has_food_unit_canon
+    )
+    accent = accent_text_block(text_color, competitor_ocr=True)
+    person = person_reuse_block(tid)
+    pkg_policy = package_policy_block(need_pkg, tid)
+    pkg_lock = package_lock_block(need_pkg)
+    food_in = ""
+    if has_food_unit_canon:
+        food_in += (
+            "- IMAGE_FOOD_UNIT_CANON: 人間が確定した主見本。色・厚み・1片の正。"
+            "競合の盛りや副見本で置き換えるな。\n"
+        )
+    if n_food_secondary:
+        food_in += (
+            "- IMAGE_FOOD_UNIT_SECONDARY_*: 盛り付け（置き方・重なり）だけ。"
+            "色・厚み・1片の形には使うな。\n"
+        )
+    if has_food_sizzle:
+        food_in += "- IMAGE_FOOD_UNIT_SIZZLE: 食欲の状態。形・厚みの正にしない。\n"
     return f"""あなたは EC 商品ページ用のサブ画像を1枚作るデザイナーです（出口は楽天。Amazonは流用）。
 
 【商品】{product_name}
 【スロット】S{int(job.get('slotIndex') or job.get('jobIndex') or 0):02d} / phaseOrder={job.get('phaseOrder', '?')}
 【主テーマ】T{job['themeId']:02d} [{job['phase']}] {job['themeName']}
-【提案】AB{prop}（同じ主テーマで構図・パーツ配置を変える）
+【提案】1テーマ1枚（A/Bなし）
 【テーマの狙い】{job['themeHint']}
 【候補ソース】{src}
 {invent_line}
 【入力】
-- IMAGE_PACKAGE_TRUTH: 商品パッケージ正本（色・柄・ラベル文字・縦横比の唯一の真実。表面は改変不可）
-- IMAGE_COMP_*: 競合サブ参照 {n_comp_refs} 枚（外側パネル・レイアウト参考）
+- IMAGE_PACKAGE_TRUTH: 商品パッケージ正本（載せる場合のみ画面に出す。載せない場合は色参照のみ）
+{food_in}- IMAGE_COMP_*: 競合サブ参照 {n_comp_refs} 枚（外側パネル・レイアウト参考。袋はパーツにしない。食材正本にしない）
 {feedback_block}
 ■ 日本語の必須指示（すべて守ること）
 
@@ -167,14 +202,15 @@ def build_ja_prompt(
 ③ トンマナ／ベース色（B-④選択）
 {tonmana_block_ja(base_color)}
 
-④ AI独自・改変は最大約50%／残りは競合パーツ（パッケージ外）
-- 面積のおよそ半分まで: レイアウト再構成・余白・柔らかい影・ベース色背景・軽い装飾を生成してよい。
-- 残りは競合の説明カード・吹き出し・バッジ・フレーム・シズル等を流用する。
-- 下記「競合外側パネルOCR」を再配置して描く場合も競合パーツ扱いとする。
+{COMPETITOR_PARTS_NO_PACKAGE_JA.strip()}
 - パッケージ表面の文字は正本のまま。OCR対象外・再描字禁止。
 
-{PACKAGE_LOCK.strip()}
+{pkg_policy}
 
+{pkg_lock}
+{extra}
+{accent}
+{person}
 {photo_realism_block_ja()}
 
 {aspect_lock_ja}
@@ -185,10 +221,10 @@ def build_ja_prompt(
 【競合外側パネルOCR（パッケージ表面は含めない・パネル／吹き出しのみ）】
 {ocr_bundle or '（参照の外側パネル文字を短く優先）'}
 
-【禁止】透かし、配送/店舗/問い合わせUI、他SKU商品の混入、カートボタン。架空の価格・ランキング。正本パッケージの色替え・潰し。
+【禁止】透かし、配送/店舗/問い合わせUI、他SKU商品の混入、カートボタン。架空の価格・ランキング。正本パッケージの色替え・潰し。競合写真の袋切り貼り。マップと無関係な強調色。テーマごとに別物の食材に見える盛り。
 
 【出力】正方形の商用サブ画像。パーツ縁に元背景の白フチを残さない。終了前チェックリストを満たすこと。
-（baseColor={ton['id']}）
+（baseColor={ton['id']} textColor={text_color} needPackage={need_pkg}）
 """
 
 
@@ -199,19 +235,29 @@ def build_fal_sizzle_prompt(
     aspect_lock_ja: str = "",
     base_color: str = TONMANA_DEFAULT,
 ) -> str:
-    """fal専用: シズル写真。文字・ロゴ・UIを描かせない（日本語描字禁止）。"""
+    """fal専用: シズル写真。文字・ロゴ・UIを描かせない（日本語描字禁止）。湯気禁止は載せない。"""
+    tid = int(job.get("themeId") or 0)
+    need_pkg = default_need_package(tid, job.get("needPackage"))
+    extra = theme_extra_block(tid, include_steam=False, has_food_unit_canon=False)
+    bag = (
+        "Show PACKAGE_TRUTH bag only if needed for identity; do not paste bag from competitor refs."
+        if need_pkg
+        else "Do not show the product bag/box. PACKAGE_TRUTH is color/texture reference only. Do not paste bags from competitor refs."
+    )
     return f"""Create ONE photoreal EC secondary image focused on FOOD SIZZLE only.
 
 PRODUCT: {product_name}
 THEME: T{job['themeId']:02d} {job['themeName']} / variant V{job['variant']:02d}
 GOAL: {job['themeHint']}
 
-IMAGE_PACKAGE_TRUTH is the ONLY packaging identity. Keep package hue, label art, printed text, logo, shape, and aspect ratio identical. Do not recolor or squash the package.
+{bag}
 {aspect_lock_ja}
 
 {photo_realism_block_en()}
 
 {tonmana_block_en(base_color)}
+
+{extra}
 
 Show appetite appeal: steam, gloss, texture, pouring/sprinkling, or close-up ingredients.
 
@@ -220,6 +266,7 @@ HARD BAN — do NOT draw any of the following:
 - Logos (Amazon, store marks), watermarks, price badges, UI, cart buttons
 - Fake packaging typography or gibberish glyphs
 - Shipping / store / contact graphics
+- Competitor-ref packaging pasted as the product bag
 
 If competitor refs contain text panels, IGNORE them; keep only the physical product / food from PACKAGE_TRUTH.
 Output: square commercial photo. No borders from old backgrounds.
@@ -295,23 +342,19 @@ def _auto_export_compose(
     if not auto_export:
         return None
     from export_sub_images_for_rakuten_matrix import (
-        export_for_human_review,
+        resolve_review_product_key,
         write_export_plan,
     )
 
     out_dir = Path(export_out_dir) if export_out_dir else DEFAULT_RAKUTEN_UPLOAD_DIR
-    # 目視既定: 品番キー1件 × 最大10枚（pick=ab）。全子複製しない。
-    pick = (export_pick or "ab").strip() or "ab"
+    # 作成直後は確認フォルダへ出さない。計画だけ残し、採用時に出す。
+    pick = (export_pick or "a").strip() or "a"
     try:
-        rows, key_info = export_for_human_review(
-            compose_dir=out_root,
-            out_dir=out_dir,
+        key_info = resolve_review_product_key(
             jan=jan,
             child_sku=child_sku,
             master_csv=master_csv or DEFAULT_MASTER_CSV,
-            pick=pick,
-            provider=export_provider or "openai",
-            max_subs=10,
+            compose_dir=out_root,
         )
         key = str(key_info.get("key") or "")
         plan = write_export_plan(
@@ -322,26 +365,25 @@ def _auto_export_compose(
             provider=export_provider or "openai",
             jan=jan,
             product_key=key,
-            mode="review",
+            mode="deferred_until_adopt",
             key_via=str(key_info.get("via") or ""),
         )
         LOG.info(
-            "auto-export(review) done jan=%s key=%s via=%s files=%s out=%s plan=%s",
+            "auto-export deferred jan=%s key=%s via=%s reason=adopt_only plan=%s",
             jan,
             key,
             key_info.get("via"),
-            len(rows),
-            out_dir,
             plan,
         )
         return {
             "ok": True,
-            "mode": "review",
+            "mode": "deferred_until_adopt",
+            "reason": "adopt_only",
             "outDir": str(out_dir),
             "productKey": key,
             "keyVia": key_info.get("via"),
             "childSkus": [key] if key else [],
-            "exported": len(rows),
+            "exported": 0,
             "plan": str(plan),
         }
     except SystemExit as e:
@@ -366,15 +408,17 @@ def run_jan(
     openai_quality: str,
     fal_endpoint: Optional[str],
     route: str,
-    target_slots: int = 5,
-    allow_invented: bool = True,
+    target_slots: int = 10,
+    allow_invented: bool = False,
+    forced_theme_ids: Optional[List[int]] = None,
+    text_color: str = "1",
     package_truth_path: Optional[Path] = None,
     package_truth_dir: Optional[Path] = None,
     truth_map: Optional[Dict[str, Path]] = None,
     require_package_truth: bool = True,
     auto_export: bool = True,
     export_out_dir: Optional[Path] = None,
-    export_pick: str = "ab",
+    export_pick: str = "a",
     master_csv: Optional[Path] = None,
     export_child_sku: str = "",
     base_color: str = TONMANA_DEFAULT,
@@ -441,6 +485,25 @@ def run_jan(
     if not ref_paths:
         raise SystemExit(f"JAN={jan} 参照画像DL失敗")
 
+    from food_unit_canon import prepare_sub_food_canon
+
+    food_meta = prepare_sub_food_canon(jan, out_root, truth=truth_path)
+    if food_meta.get("blocked"):
+        raise SystemExit(f"JAN={jan} {food_meta.get('reasonJa')}")
+    food_canon = Path(str(food_meta.get("path") or ""))
+    has_food_canon = bool(
+        food_canon.is_file() and not food_meta.get("packageOnly")
+    )
+    food_secondary = [Path(p) for p in (food_meta.get("secondary") or []) if Path(p).is_file()]
+    food_sizzle = Path(str(food_meta.get("sizzle") or ""))
+    has_food_sizzle = bool(food_sizzle.is_file())
+    LOG.info(
+        "FOOD_UNIT_CANON jan=%s path=%s source=%s",
+        jan,
+        food_canon if has_food_canon else "",
+        food_meta.get("source"),
+    )
+
     route_mode = resolve_route_mode(route, providers)
     LOG.info("route_mode=%s providers=%s", route_mode, providers)
 
@@ -460,52 +523,19 @@ def run_jan(
     jobs = select_lp_slots(
         hits,
         target_slots=int(target_slots),
-        proposals_per_slot=2,
+        proposals_per_slot=1,
         allow_invented=bool(allow_invented),
         product_name=product_name,
+        forced_theme_ids=forced_theme_ids,
     )
+    for j in jobs:
+        j["needPackage"] = default_need_package(int(j.get("themeId") or 0), j.get("needPackage"))
     if not jobs:
-        raise SystemExit(f"JAN={jan}: テーマスロットを1つも作れませんでした")
-
-    # hybrid で fal があるのに T03 が無い場合、最終スロットを T03 に差し替え（A/Bとも）
-    if (
-        route_mode == "hybrid"
-        and "fal" in providers
-        and not any(int(j.get("themeId") or 0) in FAL_SIZZLE_THEME_IDS for j in jobs)
-        and 3 in hits
-    ):
-        from sub_image_lp_themes import THEME_BY_ID, make_stem
-
-        meta3 = THEME_BY_ID[3]
-        bucket = hits[3]
-        last_slot = int(jobs[-1].get("slotIndex") or 1)
-        repl: List[Dict[str, Any]] = []
-        for j in jobs:
-            if int(j.get("slotIndex") or 0) != last_slot:
-                repl.append(j)
-                continue
-            prop = j.get("proposal") or "a"
-            repl.append(
-                {
-                    **j,
-                    "stem": make_stem(slot=last_slot, theme_id=3, proposal=str(prop)),
-                    "themeId": 3,
-                    "phase": meta3["phase"],
-                    "phaseOrder": meta3["phaseOrder"],
-                    "phaseKey": meta3["phaseKey"],
-                    "themeName": meta3["name"],
-                    "themeSlug": meta3["nameSlug"],
-                    "themeHint": meta3["hint"],
-                    "contentCluster": meta3["contentCluster"],
-                    "source": "competitor",
-                    "refPaths": list(bucket["paths"]),
-                    "ocrSnippets": list(bucket.get("ocrSnippets") or []),
-                    "score": bucket["score"],
-                    "count": bucket["count"],
-                }
-            )
-        jobs = repl
-        LOG.info("hybrid: forced T03 into last slot for fal sizzle lane")
+        LOG.warning(
+            "JAN=%s: チェック済みかつ競合写真があるテーマが0。スキップ",
+            jan,
+        )
+        return None
 
     summary = jobs_summary_ja(jobs)
     route_note = (
@@ -517,10 +547,10 @@ def run_jan(
     )
     route_note += (
         f"\n# スロット設計\n"
-        f"- target_slots={target_slots} × A/B → {len(jobs)}枚\n"
+        f"- チェック∩競合写真・1テーマ1枚 → {len(jobs)}枚（上限{target_slots}）\n"
+        f"- 想像埋め: {'ON' if allow_invented else 'OFF'}\n"
         f"- 分類: ページ全体のみ（パーツ単位は将来拡張）\n"
-        f"- フォールバック: 競合 → phase被り → 想像(最大2)\n"
-        f"- OpenAI quality={openai_quality}\n"
+        f"- OpenAI quality={openai_quality} textColor={text_color}\n"
         f"- PACKAGE_TRUTH: {truth_path.name} aspectWH={aspect_meta.get('aspectWH')}\n"
         f"- SEO keywords: {', '.join(seo_kws) or '(none)'}\n"
     )
@@ -555,10 +585,22 @@ def run_jan(
     for job in jobs:
         refs = [Path(p) for p in job["refPaths"] if Path(p).is_file()][: max_refs_per_job]
         if not refs:
-            refs = ref_paths[:max_refs_per_job]
-        # 正本を先頭。OCRは競合のみ（正本は含めない）
-        image_paths = [truth_path] + refs
-        roles = ["IMAGE_PACKAGE_TRUTH"] + [f"IMAGE_COMP_{i+1}" for i in range(len(refs))]
+            LOG.warning("skip job %s: theme-specific competitor photo missing", job.get("stem"))
+            continue
+        # 正本を先頭。OCRは競合のみ（正本は含めない）。食材正本は truth の次
+        image_paths = [truth_path]
+        roles = ["IMAGE_PACKAGE_TRUTH"]
+        if has_food_canon and Path(food_canon).resolve() != Path(truth_path).resolve():
+            image_paths.append(Path(food_canon))
+            roles.append("IMAGE_FOOD_UNIT_CANON")
+        if has_food_sizzle:
+            image_paths.append(food_sizzle)
+            roles.append("IMAGE_FOOD_UNIT_SIZZLE")
+        for si, sp in enumerate(food_secondary, 1):
+            image_paths.append(sp)
+            roles.append(f"IMAGE_FOOD_UNIT_SECONDARY_{si}")
+        image_paths.extend(refs)
+        roles.extend([f"IMAGE_COMP_{i+1}" for i in range(len(refs))])
         ocr = _ocr_bundle(job)
         prompt_gemini = build_ja_prompt(
             product_name=product_name,
@@ -568,6 +610,10 @@ def run_jan(
             aspect_lock_ja=aspect_lock_ja,
             seo_hints_ja=seo_hints_ja,
             base_color=base_color,
+            text_color=text_color,
+            has_food_unit_canon=has_food_canon,
+            n_food_secondary=len(food_secondary),
+            has_food_sizzle=has_food_sizzle,
         )
         prompt_fal = build_fal_sizzle_prompt(
             product_name=product_name,
@@ -774,9 +820,9 @@ def run_jan(
             [
                 f"# AI合成 v3 — {product_name} ({jan})",
                 "",
-                f"- スロット: {target_slots} × A/B（心理プロセス順）→ {len(jobs)}枚",
+                f"- スロット: チェック∩競合写真・1テーマ1枚 → {len(jobs)}枚（上限{target_slots}）",
                 "- 分類: ページ全体のみ（パーツ単位は将来拡張）",
-                "- フォールバック: 競合 → phase被り → 想像(最大2・事実数字禁止)",
+                f"- 想像埋め: {'ON' if allow_invented else 'OFF'}",
                 f"- 振り分け: route={route_mode}",
                 f"- OpenAI本線 quality={openai_quality}",
                 f"- PACKAGE_TRUTH: {truth_path.name} aspectWH={aspect_meta.get('aspectWH')}",
@@ -809,10 +855,13 @@ def run_jan(
         "packageLock": True,
         "packageTruth": str(truth_path),
         "packageAspect": aspect_meta,
+        "foodUnitCanon": food_meta,
         "seoKeywords": list(seo_kws),
         "aiGenerateMaxPct": 50,
         "targetSlots": target_slots,
         "allowInvented": allow_invented,
+        "textColor": str(text_color or "1"),
+        "proposalsPerSlot": 1,
         "classifyScope": "page_only_competitor_no_package_truth_ocr",
         "routeMode": route_mode,
         "falSizzleThemeIds": sorted(FAL_SIZZLE_THEME_IDS),
@@ -913,6 +962,19 @@ def run_regen_from_queue(
         meta.get("baseColor") or meta.get("tonmana") or TONMANA_DEFAULT
     )
     LOG.info("regen base_color=%s", base_color)
+
+    from food_unit_canon import prepare_sub_food_canon
+
+    food_meta = prepare_sub_food_canon(jan, out_root, truth=truth_path)
+    if food_meta.get("blocked"):
+        raise SystemExit(f"JAN={jan} {food_meta.get('reasonJa')}")
+    food_canon = Path(str(food_meta.get("path") or ""))
+    has_food_canon = bool(food_canon.is_file() and not food_meta.get("packageOnly"))
+    food_secondary = [Path(p) for p in (food_meta.get("secondary") or []) if Path(p).is_file()]
+    food_sizzle = Path(str(food_meta.get("sizzle") or ""))
+    has_food_sizzle = bool(food_sizzle.is_file())
+    LOG.info("regen FOOD_UNIT_CANON=%s source=%s", food_canon if has_food_canon else "", food_meta.get("source"))
+
     regen_log: List[Dict[str, Any]] = []
     for it in items:
         stem = str(it.get("stem") or "").strip()
@@ -924,8 +986,19 @@ def run_regen_from_queue(
             continue
         refs = [Path(p) for p in (job.get("refsUsed") or job.get("refPaths") or []) if Path(p).is_file()]
         refs = refs[: max(1, max_refs_per_job)]
-        image_paths = [truth_path] + refs
-        roles = ["IMAGE_PACKAGE_TRUTH"] + [f"IMAGE_COMP_{i+1}" for i in range(len(refs))]
+        image_paths = [truth_path]
+        roles = ["IMAGE_PACKAGE_TRUTH"]
+        if has_food_canon and Path(food_canon).resolve() != Path(truth_path).resolve():
+            image_paths.append(Path(food_canon))
+            roles.append("IMAGE_FOOD_UNIT_CANON")
+        if has_food_sizzle:
+            image_paths.append(food_sizzle)
+            roles.append("IMAGE_FOOD_UNIT_SIZZLE")
+        for si, sp in enumerate(food_secondary, 1):
+            image_paths.append(sp)
+            roles.append(f"IMAGE_FOOD_UNIT_SECONDARY_{si}")
+        image_paths.extend(refs)
+        roles.extend([f"IMAGE_COMP_{i+1}" for i in range(len(refs))])
         ocr = _ocr_bundle(job)
         prompt = build_ja_prompt(
             product_name=product_name,
@@ -936,6 +1009,10 @@ def run_regen_from_queue(
             seo_hints_ja=seo_hints_ja,
             human_feedback=feedback,
             base_color=base_color,
+            text_color=str(meta.get("textColor") or "1"),
+            has_food_unit_canon=has_food_canon,
+            n_food_secondary=len(food_secondary),
+            has_food_sizzle=has_food_sizzle,
         )
         prompt_fal = build_fal_sizzle_prompt(
             product_name=product_name,
@@ -945,6 +1022,24 @@ def run_regen_from_queue(
         )
         rec: Dict[str, Any] = {"stem": stem, "feedback": feedback, "provider": provider}
         try:
+            from b5_set_base_map import next_regen_filename
+
+            def _regen_out_path(folder: Path) -> Path:
+                """旧ファイルは残し、新名 __rN で書く（上書き禁止）。"""
+                cur = folder / f"{stem}.jpg"
+                if not cur.is_file():
+                    return cur
+                name = next_regen_filename(cur.name)
+                dest = folder / name
+                guard = 0
+                while dest.is_file():
+                    name = next_regen_filename(name)
+                    dest = folder / name
+                    guard += 1
+                    if guard > 40:
+                        raise RuntimeError(f"regen name exhausted: {stem}")
+                return dest
+
             if provider == "gemini" and gemini_client and gemini_mid:
                 data, api_meta = gemini_generate(
                     client=gemini_client,
@@ -955,7 +1050,7 @@ def run_regen_from_queue(
                     aspect_ratio="1:1",
                     image_size="1K",
                 )
-                outp = dir_g / f"{stem}.jpg"
+                outp = _regen_out_path(dir_g)
                 save_as_jpeg(data, outp)
                 rec.update({"ok": True, "path": str(outp), "api": api_meta.get("apiPath")})
             elif provider == "fal":
@@ -964,7 +1059,7 @@ def run_regen_from_queue(
                     image_paths=image_paths,
                     endpoint=fal_endpoint,
                 )
-                outp = dir_f / f"{stem}.jpg"
+                outp = _regen_out_path(dir_f)
                 _save_bytes_jpeg(data, outp)
                 rec.update({"ok": True, "path": str(outp), "endpoint": used_ep})
             else:
@@ -975,23 +1070,34 @@ def run_regen_from_queue(
                     size="1024x1024",
                     quality=openai_quality or DEFAULT_OPENAI_QUALITY,
                 )
-                outp = dir_o / f"{stem}.jpg"
+                outp = _regen_out_path(dir_o)
                 _save_bytes_jpeg(data, outp)
                 rec.update({"ok": True, "path": str(outp), "model": used_model})
-            # jobs メタ更新
+            new_stem = Path(str(rec.get("path") or "")).stem
+            rec["newStem"] = new_stem
+            # 旧 job は残し、新 stem の job を末尾追加（export は同slot最終が勝つ）
+            src_job = None
             for j in meta.get("jobs") or []:
-                if str(j.get("stem")) != stem:
-                    continue
-                j["promptJa"] = prompt
-                j["humanFeedback"] = feedback
-                j[provider] = {
+                if str(j.get("stem")) == stem:
+                    src_job = j
+                    break
+            if src_job is not None:
+                import copy
+
+                nj = copy.deepcopy(src_job)
+                nj["stem"] = new_stem
+                nj["regeneratedFrom"] = stem
+                nj["promptJa"] = prompt
+                nj["humanFeedback"] = feedback
+                nj[provider] = {
                     "ok": True,
                     "path": rec.get("path"),
                     "regenerated": True,
                     "feedback": feedback,
                 }
-                break
-            LOG.info("regen ok %s %s", stem, provider)
+                nj["outRoot"] = str(out_root)
+                meta.setdefault("jobs", []).append(nj)
+            LOG.info("regen ok %s -> %s %s", stem, new_stem, provider)
         except Exception as e:
             rec.update({"ok": False, "error": str(e)})
             LOG.warning("regen fail %s: %s", stem, e)
@@ -1058,12 +1164,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         choices=("low", "medium", "high"),
         help="本線は medium",
     )
-    ap.add_argument("--target-slots", type=int, default=5, choices=(5, 6))
+    ap.add_argument(
+        "--target-slots",
+        type=int,
+        default=10,
+        help="上限枚数（チェック∩写真の件数が少なければその数。1〜10）",
+    )
+    ap.add_argument(
+        "--theme-ids",
+        default="",
+        help="P-align-2b: 人が選んだ LP themeId をカンマ区切り（例 1,3,12）。指定時は自動スロットの代わりにこれだけ生成",
+    )
+    ap.add_argument(
+        "--theme-ids-for",
+        action="append",
+        default=[],
+        help='JAN別: "4906283045119=1,3,12"（複数可。無いJANは --theme-ids）',
+    )
     ap.add_argument(
         "--allow-invented",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="不足フェーズの想像スロット（既定ON・最大2）",
+        default=False,
+        help="不足フェーズの想像スロット（既定OFF。写真が無いテーマは作らない）",
     )
     ap.add_argument(
         "--fal-endpoint",
@@ -1101,10 +1223,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="再生成キューJSON（既定: <compose>/_meta/regen_queue.json）",
     )
     ap.add_argument(
+        "--export-only",
+        action="store_true",
+        help="画像生成せず、各JANの最新 compose の採用用計画だけ書く（確認フォルダへは出さない）",
+    )
+    ap.add_argument(
         "--auto-export",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="合成後に楽天アップロードフォルダへ自動export（既定ON・1話完結）",
+        help="合成後に採用用の計画を書く（確認フォルダへは出さない。既定ON）",
     )
     ap.add_argument(
         "--export-out-dir",
@@ -1112,7 +1239,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=DEFAULT_RAKUTEN_UPLOAD_DIR,
         help="人間目視の正（既定: 02.楽天アップロード画像保存場所）",
     )
-    ap.add_argument("--export-pick", default="ab", help="auto-export の A/B（a|b|ab）。目視既定=ab（最大10枚）")
+    ap.add_argument(
+        "--export-pick",
+        default="a",
+        help="auto-export の A/B（a|b|ab）。既定=a（1テーマ1枚）",
+    )
+    ap.add_argument(
+        "--text-color",
+        default="auto",
+        help="強調色=MAIN textColor（1..5）。auto=02.楽天ベース set_base_map から JANごと解決（既定）",
+    )
+    ap.add_argument(
+        "--text-color-for",
+        action="append",
+        default=[],
+        help='JAN別上書き: "4906283045119=5"（複数可。--text-color より優先）',
+    )
     ap.add_argument(
         "--master-csv",
         type=Path,
@@ -1134,6 +1276,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
+    args.target_slots = max(1, min(10, int(args.target_slots)))
     _setup_log(args.verbose)
 
     providers = [p.strip().lower() for p in str(args.providers).split(",") if p.strip()]
@@ -1153,15 +1296,79 @@ def main(argv: Optional[List[str]] = None) -> int:
             max_refs_per_job=max(1, int(args.max_refs_per_job)),
         )
         print(str(out))
-        print(f"HUMAN_REVIEW_DIR={DEFAULT_RAKUTEN_UPLOAD_DIR}")
+        print("確認フォルダへは出しません。採用したあとだけ出します。")
         return 0
 
     jans = [str(j).strip() for j in (args.jan or []) if str(j).strip()]
     if not jans:
         ap.error("--jan が必要です（または --regen-from）")
 
+    if args.export_only:
+        from sub_image_review_launch import compose_root, latest_compose_dir
+
+        out_dir = Path(args.export_out_dir) if args.export_out_dir else DEFAULT_RAKUTEN_UPLOAD_DIR
+        root = compose_root(work)
+        outs: List[str] = []
+        ok_n = 0
+        for jan in jans:
+            cp = latest_compose_dir(root, jan) if root.is_dir() else None
+            if not cp:
+                LOG.warning("export-only: compose 無し JAN=%s", jan)
+                continue
+            info = _auto_export_compose(
+                cp,
+                jan=jan,
+                auto_export=True,
+                export_out_dir=out_dir,
+                export_pick=str(args.export_pick or "a"),
+                export_provider="openai",
+                master_csv=args.master_csv,
+                child_sku=str(args.export_child_sku or ""),
+            )
+            if info and info.get("ok"):
+                ok_n += 1
+                outs.append(str(cp))
+                print(str(cp))
+            else:
+                LOG.warning("export-only failed JAN=%s info=%s", jan, info)
+        print("確認フォルダへは出しません。採用したあとだけ出します。")
+        print(
+            json.dumps(
+                {"ok": ok_n > 0, "exportedJans": ok_n, "mode": "export_only"},
+                ensure_ascii=False,
+            )
+        )
+        return 0 if ok_n else 3
+
     accepted = read_accepted_from_b3(jans=jans)
     LOG.info("adopted counts %s", {k: len(v) for k, v in accepted.items()})
+
+    def _parse_theme_ids(s: str) -> List[int]:
+        out: List[int] = []
+        for part in str(s or "").replace(" ", "").split(","):
+            if not part:
+                continue
+            try:
+                tid = int(part)
+            except ValueError:
+                continue
+            if tid not in out:
+                out.append(tid)
+        return out
+
+    theme_ids_global = _parse_theme_ids(args.theme_ids)
+    theme_ids_by_jan: Dict[str, List[int]] = {}
+    for spec in args.theme_ids_for or []:
+        raw = str(spec or "").strip()
+        if "=" not in raw:
+            continue
+        j, ids = raw.split("=", 1)
+        theme_ids_by_jan[j.strip()] = _parse_theme_ids(ids)
+
+    from b5_set_base_map import parse_text_color_for_specs, resolve_text_color_for_jan
+
+    text_color_by_jan = parse_text_color_for_specs(args.text_color_for)
+    text_color_arg = str(args.text_color or "auto").strip().lower()
 
     outs = []
     for jan in jans:
@@ -1169,6 +1376,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         if not items:
             LOG.warning("JAN=%s レ点0件スキップ", jan)
             continue
+        if jan in theme_ids_by_jan:
+            forced = theme_ids_by_jan[jan]
+        elif theme_ids_global:
+            forced = theme_ids_global
+        else:
+            forced = None
+        if jan in text_color_by_jan:
+            tc = text_color_by_jan[jan]
+        elif text_color_arg in ("", "auto", "map", "from-map"):
+            tc = resolve_text_color_for_jan(jan, work_root=work, default="1")
+            LOG.info("textColor auto jan=%s -> %s", jan, tc)
+        else:
+            tc = str(args.text_color or "1")
         out = run_jan(
             jan=jan,
             items=items,
@@ -1183,6 +1403,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             route=str(args.route),
             target_slots=int(args.target_slots),
             allow_invented=bool(args.allow_invented),
+            forced_theme_ids=forced,
+            text_color=tc,
             package_truth_dir=args.package_truth_dir,
             truth_map=truth_map,
             require_package_truth=bool(args.require_package_truth),
@@ -1197,7 +1419,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             outs.append(str(out))
             print(str(out))
     if outs:
-        print(f"HUMAN_REVIEW_DIR={args.export_out_dir or DEFAULT_RAKUTEN_UPLOAD_DIR}")
+        print("確認フォルダへは出しません。採用したあとだけ出します。")
     return 0 if outs else 3
 
 

@@ -67,13 +67,14 @@ Keepa 契約は **1本**。出品と同じキー文字列を、①プロジェ�
 | `KEEPA_TOKEN_BUCKET_MAX` | 省略=**300**。洗い完走トリガー待ちの上限（MAX回復＋1分） |
 | `PR_KEEPA_FULL_INDEX_ENABLED` | 省略=ON。Keepaフル索引（ASIN→行）自動。D1は必要ASINだけ読む。切戻し `false`＝旧全件読込 |
 | `PR_KEEPA_FULL_ASIN_MAP` | 省略=ON。**案A**: Keepaフルのマップ／flat は要求 ASIN だけ読む（索引→ずれ時は ASIN列走査）。全件 `getValues` 禁止。切戻し `false`＝旧全件一括（サイズ上限再発あり） |
-| `PR_KEEPA_FULL_ASIN_READ_CHUNK` | 省略=**10**。案Aの連続行読取チャンク（最大50） |
+| `PR_KEEPA_FULL_ASIN_READ_CHUNK` | 省略=**1**。案Aの連続行読取チャンク（最大50）。マップは必要列だけ・生JSONは列単独。追記も生JSONを他列と一括しない |
+| `PR_KEEPA_FULL_ASIN_COL_CHUNK` | 省略=**25000**。索引・空行掃除・ずれ時の **ASIN列全行走査** の分割行数（2026-10-21 比較で最短）。**0＝旧一括**（サイズ上限再発） |
 | `KEEPA_PRODUCT_TOKEN_COST` | 省略=**6**（`product_offers20`＝stats90+offers20）。実測≈5.5–6。洗い待ち・afford。応答の consumed/件数があればそちら優先 |
 | `PR_WASH_QUEUE_COUNT_MAP` | 省略=ON。洗いキュー件数を「メーカー→件数」表で1回読む。切戻し `false`＝社ごとに全行読む旧動作（選定が数分〜十数分に戻る） |
 | `PR_CYCLE_POOL_REUSE` | 省略=ON。選定プール（小中/不明/大/特大）を1実行1回だけ数える。切戻し `false`＝呼ばれるたび数え直す旧動作 |
 | `PR_WASH_QUEUE_SNAPSHOT` | 省略=ON。洗い対象メーカーのキュー行を1実行1回だけ読む（列挙の追記・重複整理・未済取得・Keepa済・残数を共有）。切戻し `false`＝呼ばれるたび全行読む旧動作（1スライス20分超に戻る） |
 | `PR_WASH_ARM_FULL_CAP` | 省略=ON。**実残トークンが満タンなら待ちは2分まで**（overlap 再予約など）。ckpt は同一実行の安全ネットなので対象外。切戻し `false` |
-| `PR_KEEPA_FULL_BLANK_SCAN_BATCH` | 省略=ON。Keepaフルの空行掃除を「ASIN列1回読み→候補行だけ全列」に。切戻し `false`＝最終行から1行ずつ読む旧動作（**Keepa取得のあるスライスが毎回+22分**になる） |
+| `PR_KEEPA_FULL_BLANK_SCAN_BATCH` | 省略=ON。Keepaフルの空行掃除を「ASIN列を chunk 読み→候補行だけ（生JSON分離）」に。切戻し `false`＝最終行から1行ずつ読む旧動作（**Keepa取得のあるスライスが毎回+22分**になる） |
 | `PR_KEEPA_FULL_INSERT_CHUNK` | 省略=**5**。Keepaフル新規行の `setValues` 分割件数（生JSONが重いため）。**0＝旧一括**。2026-10-17「セルの範囲を小さく」対策 |
 | `PR_KEEPA_FULL_INDEX_CHUNK` | 省略=**2000**。Keepaフル索引の書込分割行数。**0＝旧一括** |
 | `PR_KEEPA_FULL_BLANK_READ_CHUNK` | 省略=**40**。空行掃除で全列を読む最大連続行。**0＝連続塊ごと一括** |
@@ -98,6 +99,10 @@ Keepa 契約は **1本**。出品と同じキー文字列を、①プロジェ�
 | `PR_ALIGHT_SHOP_CAP` | 省略=**1**（1実行1店）。旧「浅い3店」は廃止方向 |
 | `PR_ALIGHT_PRODUCT_CAP` | 省略=**20**。**1スライス**の件数（店全体ではない） |
 | `PR_LIST_APPEND_CAP` | 省略=100。1回の追記上限（最大500） |
+| `PR_TAJIMAYA_DIM_FILL_ENABLED` | 省略=ON。梱包三辺空のときだけタジマヤ寸法補完。切戻し `false` |
+| `PR_TAJIMAYA_DIM_FILL_CAP` | 省略=20。メニュー「タジマヤ寸法補完（FBA空・保管空）」1回件数（最大80）。残りは自動再開 |
+| `PR_TAJIMAYA_MISS_JSON` | 自動。失敗JANの印（再チェック防止）。消すと全JAN再試行 |
+| `PR_TAJIMAYA_DIM_LOCK_UNTIL` | 自動。タジマヤ寸法の実行ロック期限。通常は触らない |
 | `PR_LIST_FILTER_ENABLED` | 省略=ON。D2切戻しは `false` |
 | `PR_LIST_FILTER_CAP` | 省略=**1000**。**未判定 ASIN** の1回上限（最大2000） |
 | `PR_D2_ONLY_BLANK` | 省略=ON。見積候補／見送り済み行は D2 で触らない。全行再判定は `false` |
@@ -134,6 +139,7 @@ Keepa 契約は **1本**。出品と同じキー文字列を、①プロジェ�
 | `PR_JITTA_BACKLOG_GATE` | 省略=**30**。実態AI前の未調査がこれ以上なら自動レ点しない。要確認＋信頼度ありは数えない |
 | `PR_JITTA_AFTER_ALIGHT` | 省略=レーンONならOFF。明示 `true` で A-light 末尾もAI |
 | `PR_JITTA_OWNER` | 省略=`hb`（①心拍）。競合DBスクリプト運用時は **`comp`**（①の実態OFF）。切戻しは削除または `hb`。[競合実態AI](B_COMPETITOR_JITTA_REQUIREMENTS.md)。**法人格ゆれ**: 同一キーへミラー／heal（`heal=`）。要 clasp（競合＋①） |
+| **改訂P2 Catalog増員**（2026-10-31／落ちあと強化 2026-11-01） | **コード済**。`CJ_CATALOG_ENABLED=true`＋SP-API鍵＋Catalog時計（初回1回）。途中死は起動先頭予約＋実態AI／ヒットが`catalog_rearm`。人が時計を見張らない。共有`Catalog親ロック`。①沈黙禁止。[競合JITTA §P2](B_COMPETITOR_JITTA_REQUIREMENTS.md)／[competitor_jitta/README](../../competitor_jitta/README.md) |
 | `PR_HIT_RECOUNT_OWNER` | 省略=`comp`（競合GASがセラーヒット／小規模出現）。切戻し **`hb`**=①が名前取りのあと数える |
 
 コンテナバインドのため SS ID Property は不要（`getActiveSpreadsheet`）。
@@ -169,11 +175,19 @@ clasp push
 
 **Keepaフル再門:** 99「Keepaフル再門（①候補・GETなし）」。競合DB `Keepaフル` の生JSONだけで門を再評価（`/product` 消費なし）。既定は **門結果空白行のみ**。全行を新門で上書きする場合は Property `PR_REGATE_ONLY_BLANK=false`。
 
+**Keepaフル用量プローブ（2026-10-21）:** 99→「4. Keepaフル」→「用量プローブ（読取のみ）」。`Keepaフル` へ書かない。ASIN列全行／薄い列×1・50／生JSON×1〜50／全列×1・5／案A相当1行を段階 `getValues` し、①ログにケースごと `DONE`（bytes〜）または `FAILED`（`SIZE_LIMIT`／`ERR`）。上限が分かるまで削減案を決めない。要① clasp。
+
+**ASIN列チャンク比較（2026-10-21）:** 99→「4. Keepaフル」→「ASIN列チャンク比較（読取のみ）」。幅 5千〜4万で ASIN列だけ全行カバー。ケースごと `reads`／`totalMs`／`SIZE_LIMIT`。通る幅のうち `totalMs` 最短を本線候補にする。書込なし。要① clasp。
+
+**ASIN列走査の本線（2026-10-21）:** 索引再構築・空行掃除・ずれ時走査は `PR_KEEPA_FULL_ASIN_COL_CHUNK`（省略 **25000**）で分割。プローブ実測で全幅OK・25000が最短（約24秒）。切戻し `0`＝旧一括。
+
+**99メニュー階層（2026-10-21）:** 項目が多いためサブメニュー化。1止める・診断／2洗い／3 D1・D2・完走／4 Keepaフル／5セラー・店／6メーカー・実態／7サイクル・メール／8バックアップ／テスト。旧の通し番号（99→6 等）は使わない。
+
 **D1 品番リスト（GAS）:** メニュー「D1 門通過→品番リスト」。**新規**は行5から挿入。**既存 ASIN** は Keepa 機械列に差分があれば上書きして行5へ移動。差分なしは触らない。利益の式は上書きしない。差分判定は**数式セルを数式として比べる**（`PR_LIST_DIFF_USE_FORMULA`。画像URLの `=HYPERLINK` が毎回差分になるのを防ぐ）。
 
 **D2 機械絞込（GAS）:** メニュー「D2 機械絞込（見積候補）」。**未判定 ASIN のみ**処理（`PR_D2_ONLY_BLANK` 既定 ON）。空行・判定済み行は cap に数えない。`見積候補`／`見送り理由`。合格: `leftover=0`（未判定が cap 超で残った件数）。
 
-**D2 上限超（C4 停止）:** C4 内 D2 で leftover>0 → `d2_overflow` で心拍へ・**メール（本文に復帰手順）**・`PR_CYCLE_D2_OVERFLOW` 登録。C4 recover／新規 C4 予約は止める。**復帰**: 99→6「D2だけ」で leftover=0 → 99→28「D2 backlog解消→C4再開」（または 4「完走連鎖」）。D2 解消時に needs が1社なら C4 自動再開。
+**D2 上限超（C4 停止）:** C4 内 D2 で leftover>0 → `d2_overflow` で心拍へ・**メール（本文に復帰手順）**・`PR_CYCLE_D2_OVERFLOW` 登録。C4 recover／新規 C4 予約は止める。**復帰**: 99→「3. D1・D2・完走」→「D2だけ」で leftover=0 → 同メニュー「D2 backlog解消→C4再開」（または「完走連鎖」）。D2 解消時に needs が1社なら C4 自動再開。
 
 ### 2.1 A–D を人間が回す手順（データが溜まるか見る）
 
@@ -245,6 +259,7 @@ full_trigger / heartbeat
 - **C4 完走連鎖は洗い完走と別 GAS 実行**（`C4トリガー予約` → 約1分後 `C4 trigger` fire）。長い洗い完走直後の 30 分壁で D2 前切断しない（2026-08-27）
 - **発火ライフサイクル**（2026-08-27）: `inflight` を expect より先に立てる。①ログ `full_trigger phase`（after_clear / pick_begin / pick_end）。二重発火は `overlap_skip`。例外は `outer FAILED`＋`watchdog_rearm`。30分殺し後は inflight が残り、次発火または診断で `inflight_stale`
 - **心拍全体の生存**（2026-08-27／28）: 洗い発火だけでなく C4・心拍分岐・pause も対象。15分ごとの `heartbeat liveness`。沈黙・**予定超過（Keepa最大回復＋5分）**なら `hard_reset`→`liveness_reset`。
+  - **武装順（2026-11-11）**: `hard_reset` のあと **洗い再武装が先**、C4 recover は後（失敗しても洗い時計は残す）。旧順だと C4 走査で死に `hard_reset` だけが続く。
   - **実行中印だけの腐りは 35分基準**（2026-09-08・`PR_CYCLE_INFLIGHT_STALE_FAST` 省略=ON）: GAS は約30分で殺すので、`inflight` が35分を超えたら生きている可能性はない。トークン回復基準の66分を待つと**沈黙死を拾うまで70分空く**（実測 09/08 00:02 発火→`phase=pick_begin` のまま沈黙→01:12 `hard_reset`＝Keepa作業ゼロが179分）。予約トリガーが残っていると `reason=wash_trigger` で生存扱いになり、この inflight 判定だけが唯一の検知口。**予定時刻超過（`expect_overdue`）は従来どおり66分**。`liveness_reset` に `deadPhase=` `overdueMin=` が付く。切戻し `PR_CYCLE_INFLIGHT_STALE_FAST=false`心拍の終わりは `heartbeat end`（washN/c4N/inflight）。C4 の D失敗は停止せず心拍へ。**A-1 だけで再開**（腐った実行印・予約も消す）
 - **洗い→リスト転記は別実行**（維持）: 完走後 C4 は約1分後の別 GAS。同一実行に混ぜない
 - **Keepa 残量**: 予約前 `/token`。`calcLeft` 欠落／不足でも `liveLeft` で次スライス可なら `wait_shortened`（長待ち短縮）。**`*_ckpt` / `overlap_wait` は短縮しない**（2026-09-01。`PR_WASH_CKPT_NO_SHORTEN` 未設定=ON）。効率ループ ON 時は実行中 ckpt 自体を出さない
@@ -277,12 +292,18 @@ full_trigger / heartbeat
 | `title0_skip` / `title0_retry` | タイトル含有0が3回→保留＋心拍。`PR_WASH_TITLE0_SKIP_SET` 永久除外。未満は再試行 |
 | `done_no_candidates` / `false_complete_rewash` / `empty_research` | 偽完了→再洗い（自動1回）／空調査は保留。手動は **99 → 偽完了を列挙中に戻す** |
 | `shop_after_sm` / `xl_week_cap` / `brand_hint` | 中小完走→店挟み（案B）。大特大週間N=2。title0→ブランド行追加 |
-| `enum_batch n=8/8 … stop=` | **まとめ列挙の結果**（2026-09-08）。`stop=sm_found=（社名）`＝小中が出て打ち切り／`stop=budget`＝予算残5分で中断／`stop=list_end`＝対象切れかcap到達。`skip=` は例外で飛ばした社数。帯の内訳（`小=1 特大=4` 等）も並ぶ |
+| `enum_batch n=8/8 … stop=` | **まとめ列挙の結果**（2026-09-08）。`stop=sm_found=（社名）`＝小中が出て打ち切り／`stop=budget`＝予算残5分で中断／`stop=list_end`＝対象切れかcap到達。`skip=` は例外で飛ばした社数。帯の内訳（`小=1 特大=4` 等）も並ぶ。**2026-10-26〜** 末尾に `why=title0=…\|sm_queue_ok=…`（原因集計） |
+| `enum_diag` / `enum_diag_sum` | **列挙の原因追及**（2026-10-26）。社ごと `why=`（**`title0`＝タイトル含有0が本因**／`sm_queue_ok`／`sm_band_queue0`／`enum_empty_out`／`band_L`／`band_XL`／`survey_root`／`skip_other`）＋`band=` `queue=` `needle=` `entry=` `pages=` `titles=` `surveyDrop=`。洗い側で title0 を握りつぶしても `why=title0`（空キューの結果ラベルにしない）。合否は `enum_diag_sum` の `why=` 内訳。切戻し `PR_ENUM_DIAG_LOG=false` |
+| `survey_diag` | **調査カテゴリ落としの差**（2026-10-27）。`allow=`＝①プロファイルでONのルート。`dropTop=`＝Amazon側で落ちた大分類上位（ID:名前=件数）。`miss=`＝分類欠測。切戻し `PR_SURVEY_DROP_DIAG=false` |
 | `C4_d_fail_heartbeat` / `hb_no_maker` | D失敗・メーカー空でも次時計 |
 | `hint=prop_on_but_no_trigger` 等 | 未発火時の推定 |
-| メニュー **洗いトリガー診断** | 99→2。いつでも現状を①ログへ |
-| メニュー **心拍生存診断** | 99→3 |
+| メニュー **洗いトリガー診断** | 99→「1. 止める・診断」→洗いトリガー診断。いつでも現状を①ログへ |
+| メニュー **心拍生存診断** | 99→「1. 止める・診断」→心拍診断 |
 | メニュー **A-1** | 実行中を `a1_park`＋abort世代→孤児ロック破棄→**店日次カウンタ（auto_ck／A-light／ラウンド）リセット**→心拍／C4。**フロー先頭から再選定**（キュー残し）。週間大特大枠は残す。ロック詰まっても1分再試行。**小中=0 なら店ラウンド≤10を尽くすまで大・特大を選ばない**（CYCLE §4.4） |
+| メニュー **enum空振りをリセットして列挙** | 99→「2. 洗い」。**調査対象外＋`enum_empty_out`**（または旧 `enum_reopen_walk`）をリセットし、**同じメニューで既存列挙を回す**（切れは `prRunEnumResetFromTrigger` で自動再開。心拍に reopen 分岐なし）。状態・見積・規模帯を空。一時印 `enum_reset_pending`。上限 `PR_ENUM_EMPTY_REOPEN_CAP`。切戻し列挙だけ `PR_ENUM_RESET_RUN_ENUM=false`。①ログ `enum_reset`／`enum_reset_drain`。要① clasp |
+| **N3 親分割並行（2026-10-29）** | 列挙は**メーカー名**の親ロックのみ（全体洗いロックを取らない）。Keepa洗いは全体＋親。**同一メーカー同時禁止・別メーカーは並行可**。案Eは `left>0` で自己再予約（既定5分）。洗い終了時にも残り印があれば再武装（15分番犬は増やさない）。切戻し `PR_WASH_PARENT_PARTITION=false`／再予約分 `PR_ENUM_RESET_REARM_MIN` |
+| **案P1 案E落ちあと拾い（2026-10-31）** | サーバーエラー等で drain 末尾に届かなくても、**既存心拍 liveness** と洗い終わりが残り印を見て再武装（①ログ `enum_reset リカバリ予約`／`enum_rearm=`）。幽霊予約は発火予定超過で消す。実行中リースで二重起動防止。**新番犬時計は増やさない**。猶予 `PR_ENUM_RESET_STALE_GRACE_MIN`（既定10）。要① clasp |
+| メニュー **title0空振りをリセットして列挙** | 99→「2. 洗い」。進捗 **`title0_skip`** を同上リセット＋列挙。`PR_WASH_TITLE0_*` も空。①ログ `title0_reset`。要① clasp |
 | メニュー **A-2 全診断** | 時計＋沈黙。再武装あり（日常の切り分け） |
 
 **品番リスト**: Keepa スライスごとに門通過分を途中転記（§6.4bis・①ログ `途中D1`）。完走後の C4 は D1→D2→心拍。切戻し `PR_CYCLE_MID_D1_ENABLED=false`。
@@ -369,11 +390,25 @@ python tools/common_ss_view/eff_judge_report.py --hours 24
 | `PR_SHOP_TOKEN_RESERVE` | 60 | 余力なしの上限（これ以下はKeepa作業しない） |
 | `PR_TOKEN_AMPLE` | 200 | 余力ありの下限。中は61–199。店フルはありのときだけ |
 | `PR_SHOP_TOKEN_GATE` | ON | **余力なしでは名取りを始めない**。200以上だけ店1軒。完了店の抽出メーカーをサマリに足す。切戻し `false` |
+| `PR_CYCLE_ENUM_WHEN_SM0` | ON | **小中=0かつCatalog待ちありなら余力ありでも列挙**（案A）。店続きより先（`yield_alight_for_enum_sm0`）。列挙後 sm=0 なら skip 剥がし。切戻し `false` |
+| `PR_CYCLE_ENUM_SM0_YIELD_EVERY` | 3 | 案Aの連続 force 列挙この回数で1回店へ譲る（空回り防止） |
+| `PR_ENUM_DIAG_LOG` | ON | **列挙1社ごとを①ログ `enum_diag` に出す**（小中が増えないときの追及）。切戻し `false`＝社別行だけ止める（`enum_batch` 要約の `why=` は残る） |
 | `PR_SELLER_BAND_S_MAX` | 300 | **店の小**（SKU見積）。メーカー洗いの小≤100とは別。切戻し `100` |
 | `PR_SELLER_BAND_M_MAX` | 600 | **店の中**。切戻し `300` |
 | `PR_SELLER_BAND_L_MAX` | 900 | **店の大**。切戻し `500` |
 | `PR_QUERY_TOTAL_HOLD` | 未設定＝大+1（901） | **これ以上は特大・規模測定のみ（名取りしない）**。切戻し `501` |
 | `PR_SURVEY_ROOT_GATE` | ON | **門・D1・D2で調査カテゴリON以外を落とす**。加えてサマリ `Amazonルートカテゴリ` がONと無交差なら洗い選定・続き・本体も止め調査対象外。切戻し `false` |
+| `PR_CATALOG_SURVEY_ROOT_GATE` | ON | **Catalog列挙で調査ルート以外をキューに入れない**（Keepa前。ログ `surveyDrop=`／`surveyMiss=`）。切戻し `false`＝旧（門だけ） |
+| `PR_CATALOG_CLASSIF_WALK_PARENT` | ON | **分類の parent を辿って調査ルート照合**（先頭だけだと食品下位IDで落ちる）。切戻し `false`＝旧（先頭ノードのみ） |
+| `PR_ENUM_EMPTY_REOPEN_CAP` | 3000 | **enum空振りリセット1回のシート対象上限**（メニュー）。大きくしすぎ注意 |
+| `PR_ENUM_RESET_RUN_ENUM` | ON | **リセット後に同じメニューで列挙**（案E）。`false`＝シート戻しのみ。心拍分岐は増やさない |
+| `PR_WASH_PARENT_PARTITION` | ON | **N3**: 列挙は親ロックのみ／洗いは全体＋親。`false`＝列挙も全体ロック（旧） |
+| `PR_ENUM_RESET_REARM_MIN` | 5 | 案E自己再予約の待ち分。欠発・洗いピーク避け。`1` で旧 |
+| `PR_ENUM_RESET_STALE_GRACE_MIN` | 10 | 案P1: 発火予定超過後に幽霊扱いする猶予分 |
+| `PR_ENUM_RESET_EXPECT_FIRE_MS` | （自動） | 案E予約／実行中リースの予定ms。手動設定しない |
+| `PR_CATALOG_TITLE_GATE` | **OFF** | **タイトル必須の旧AND**。未設定＝OR（検索ヒットを調査カテゴリ後にキュー。商品名ヒット包含・ノーブランド可）。切戻し `true` |
+| `PR_SURVEY_DROP_DIAG` | ON | **調査ルート落としの内訳**を①ログ `survey_diag` へ。`allow=`＝ロジック許可（ID:ラベル）、`dropTop=`＝Amazon側で落ちた大分類（ID:名前=件数）。切戻し `false` |
+| `PR_C0_YIELD_WASH_WHEN_AMPLE` | **OFF（未設定=OFF）** | **撤回**。旧実験「余力ありで C0→大特大」。本線は小中補充。明示 `true` のときだけ旧動作 |)
 | `PR_B4_ENABLED` | ON | **B4 レ点メーカー実態→洗い**（自動一時停止→専用トリガーで飲み干し→自動再開）。切戻し `false` |
 | `PR_ALIGHT_XL_EXTRACT` | 未設定＝OFF | **特大の浅い名取り**。`true` で旧 page0＋最大20件 |
 | `PR_SM_RESTOCK_BELOW` | 3 | **洗える小中がこれ未満なら店で補充**（残り2）。`1` で0になってから店へ行く旧動作 |
@@ -382,8 +417,9 @@ python tools/common_ss_view/eff_judge_report.py --hours 24
 | `PR_JITTA_HB_DAILY_MAX` | 8 | **安全弁**。実態AIレーンに入る回数を1日8回まで（× `PR_JITTA_HB_CAP` 8社＝64社ぶん）。本体の空転止めは上の打ち切りなので、これはフラグ書き込みが失敗したときの保険 |
 | `PR_WASH_ST_SPLIT` | ON（未設定=ON） | **洗い状態の終わりを3区分**（完了／調査対象外／要修復。保留廃止・§10.3tredec）。切戻し `false`＝完了＋通過0を保留に戻す旧動作 |
 | `PR_WASH_ST_SPLIT_MIGRATED` | 空→`Y` | 保留行の1回移行が済んだ印。消すと再移行する。人がシートを手で直さない |
-| `PR_WASH_QUEUE_PURGE_DONE` | ON | **完了／保留の社の Keepa済行を完走時に削除**（キュー75,931行の35%が残り続ける・§10.3non）。切戻し `false`＝日数条件だけの旧動作 |
-| `PR_WASH_QUEUE_PURGE_BLOCK_MAX` | 2000 | これ以下はブロック削除、超えたら書き戻し方式。初回26,027行は書き戻しになる |
+| `PR_WASH_QUEUE_PURGE_DONE` | ON | **完了／調査対象外／要修復の社の Keepa済行を完走時に削除**（§10.3non／CYCLE §6.7.4）。切戻し `false`＝日数条件だけの旧動作 |
+| `PR_WASH_QUEUE_PURGE_BLOCK_MAX` | 2000 | これ以下はブロック削除、超えたら書き戻し方式。初回一括は書き戻しになる |
+| `PR_WASH_QUEUE_PENDING_ROWS_MAX` | 50000 | **未済行がこれ以上なら新規社への列挙追記を止める**（洗いは続行。途中列挙の社は追記可。競合Catalogも同Prop）。切戻し `0`＝オフ |
 | `PR_CYCLE_DAILY_MAIL_TO` | **設定済**（例: `contact@octas2301.com`・2026-09-13 確認） | 日次生存・Catalog上限・週次転記の宛先。4か所とも先にこの Property を読む。**空のときだけ** `Session.getActiveUser()` に落ちる。`oauthScopes` に `userinfo.email` が無いので空だと例外（実測 2026-09-10 20:32／09-11 04:10 等）。届かないときは `①ログ` の `日次メール`／`週次転記メール`／`Catalog上限メール` が `DONE sent=` か `FAILED` かで見る |
 | `PR_WASH_ST_SYNC` | ON | **書いた洗い状態を実行内にも反映**（無駄な `catalog_first_other` 譲りを消す・§10.3quat）。切戻し `false` |
 | `PR_HB_YIELD_ARM_NO_SHORTEN` | ON | **心拍譲りの予約を5分・短縮対象外**（心拍実測4分。`shop_busy` 空振りを消す・§10.3quat）。切戻し `false`（3分＋短縮あり） |
@@ -644,7 +680,8 @@ node で実コードを検証: 6/6 PASS（`node tools/common_ss_view/_tmp_shop_o
 | 手 | 状態 | 効果 |
 |---|---|---|
 | A. 機械タブの空列削除（①洗いキュー26→7列 ほか5タブ） | **実施済 2026-09-13** | 7,003,555 → **4,590,446セル（70.0%→45.9%）**。行は1行も消していない |
-| B. 完了／調査対象外／要修復の社の Keepa済行を自動削除 | 未実装（要件 §6.7.4／§6.10） | 75,931 → 49,904行。スライスの全行走査が34%減 |
+| B. 完了／調査対象外／要修復の社の Keepa済行を自動削除 | **実装済 2026-11-10**（要① clasp。初回はメニュー一括） | 完走時は当該社だけ。メニューで終わり状態の済を一括 |
+| C. 未済5万行で列挙蛇口 | **実装済 2026-11-10**（要①＋競合 clasp） | 新規列挙を止め、洗いで未済を減らす |
 
 **なぜ90日削除では1行も減らないか**: 列挙日時が 8/22〜9/13 しかなく、90日を超えた行が0件。`洗いキュー期限切れ削除` のログは 8/22 以降ずっと `deleted=0`。
 
@@ -678,7 +715,7 @@ node で実コードを検証: 6/6 PASS（`node tools/common_ss_view/_tmp_shop_o
 
 仮想: `python tools/competitor_store/dry_cycle_c3_select.py`（11/11）／ `python tools/competitor_store/dry_cycle_heartbeat.py`（39/39）
 
-GAS: `prRunWashFullFromTrigger` が続き無し時に `prDispatchHeartbeat_`（列挙／小中洗い／**実態AI**／店フル／自動レ点／C0／大）。**列挙（enumOnly）後は `Catalog見積`/`規模帯` を残し Keepa中にしない → 心拍再arm**。小中が残る間／**規模不明が残る間**は大・特大のキュー続きを後回し。**小中=0かつ未調査ありは店より先に実態AI**（§4.5bis）。店は **1店フル**（特大店≥501はフルしない）。日次レ点既定8・店目標5・上限10・新メーカー0で最大10ラウンド。自動レ点は小→未知→中。実態AI前の未調査≥30で自動レ点抑制（要確認山では止めない）。切戻し `PR_CYCLE_HEARTBEAT_ENABLED=false`／実態AIレーン `PR_JITTA_HB_LANE_ENABLED=false`。
+GAS: `prRunWashFullFromTrigger` が続き無し時に `prDispatchHeartbeat_`（列挙／小中洗い／**実態AI**／店フル／自動レ点／C0／大）。**列挙（enumOnly）後は `Catalog見積`/`規模帯` を残し Keepa中にしない → 心拍再arm**。**列挙キュー0は調査対象外**（`enum_empty_out`。切戻し `PR_ENUM_EMPTY_OUT=false`）。小中が残る間／**規模不明が残る間**は大・特大のキュー続きを後回し。**小中=0かつ未調査ありは店より先に実態AI**（§4.5bis）。**未調査≥30のあいだは大特大を始めない**（①ログ `jitta_backlog_xl_block`）。**自動レ点→名取りは可**。切戻し 大特大 `PR_JITTA_BACKLOG_IDLE=false`／旧レ点止め `PR_JITTA_BACKLOG_BLOCK_AUTO_CK=true`。OWNER=`comp` なら競合の実態AI。店は **1店フル**（特大店≥501はフルしない）。日次レ点既定8・店目標5・上限10・新メーカー0で最大10ラウンド。自動レ点は小→未知→中。実態AI前の未調査≥30で自動レ点抑制（要確認山では止めない）。切戻し `PR_CYCLE_HEARTBEAT_ENABLED=false`／実態AIレーン `PR_JITTA_HB_LANE_ENABLED=false`。
 
 ```powershell
 cd C:\Users\takuy\Desktop\gas-project\purchase_research

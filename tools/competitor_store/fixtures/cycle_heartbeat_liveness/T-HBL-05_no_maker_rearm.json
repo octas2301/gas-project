@@ -1,0 +1,1 @@
+{"id":"T-HBL-05","desc":"正: no_maker は idle 再武装","steps":[{"action":"hb_no_maker","now_ms":1000}],"expect":{"alive":true,"reason":"wash_trigger"}}

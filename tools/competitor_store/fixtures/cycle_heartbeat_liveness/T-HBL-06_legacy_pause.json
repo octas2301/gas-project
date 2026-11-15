@@ -1,0 +1,1 @@
+{"id":"T-HBL-06","desc":"旧穴: pause で 01:00 未武装","steps":[{"action":"pause_other","now_ms":1000,"legacy":true}],"expect":{"alive":false,"reason":"paused_no_01","paused":true}}

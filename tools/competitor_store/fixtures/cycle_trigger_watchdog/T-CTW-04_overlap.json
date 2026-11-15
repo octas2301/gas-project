@@ -1,0 +1,13 @@
+{
+  "id": "T-CTW-04",
+  "desc": "H3: inflight中二重発火→overlap_skip＋overlap_wait再予約（2026-09-01）",
+  "kind": "overlap",
+  "expect": {
+    "first.overlap_skip": false,
+    "second.overlap_skip": true,
+    "second.phase": "overlap_skip",
+    "second.overlap_rearmed": true,
+    "state.arm_tag": "overlap_wait",
+    "log_has": ["overlap_skip owner=pr_162345", "overlap_wait トリガー予約"]
+  }
+}

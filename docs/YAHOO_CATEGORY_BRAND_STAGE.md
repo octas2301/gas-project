@@ -58,22 +58,26 @@
 
 ```text
 メニュー8（レ点親）・YahooトグルON
-  → 【候補】JAN/商品名 → itemSearch sort=-review_count
+  → BRANCH1 検索語（**JAN先頭**→メーカー+名→名→メインKW→N種。ミックスもJAN優先）
+  → BRANCH2 itemSearch（**打ち切りなし**・最大6クエリをマージ／**JAN=`-review_count`・文言=`-score`**／上位20）
        price_aware: 重み上位Kを最安プローブ＋自社価格比較
-       popular_only: 重み最大のみ（プローブなし）
+       popular_only:
+         BRANCH_SERIES_CORE／BRANCH_HIT#
+         **JAN由来があれば BRANCH_JAN_PREFER**: 口コミ1位（レビュー差≥閾値）／僅差は多数決
+         無JAN時のみ BRANCH_SAME → ゆるいシリーズFB → AI/Drive ガード
        price_aware かつ失敗時 → AI列 / Drive CSV（§2.7）
-       popular_only かつ失敗時 → カテゴリは要確認（ブランドは38074可）
-  → 【正本検証】getShopCategoryList（Yahoo ID連携）… §2.8
-  → ブランド:
-       price_aware: 市場投票／§2.7 → getShopBrandList
-       popular_only: メーカー名 name 検索 → 無ければ 38074
-  → 親行へ書込
+       popular_only かつ検索自体失敗 → カテゴリは要確認（ブランドは38074可）
+  → BRANCH4 【正本検証】getShopCategoryList
+  → BRANCH5 書込 or FAIL
+  → ブランド: （従来どおり）
 ```
 
 ### 2.1〜2.3（候補ルール）
 
 - `price_aware`: 売れ筋＋自社最安／ブランド投票／`:` 連結は候補用。書込 path は SHP PathName 優先  
-- `popular_only`: `amazonAiPickYahooCategoryPopularWeightOnly_`（TOP_N 重み最大）
+- `popular_only`: **JANヒット優先**（口コミ1位／レビュー差が小さいとき多数決）→ 無ければ点数制門 → …（`tools/yahoo_category_virt`）。食品path専用は廃止
+- JAN閾値（おすすめ既定）: `GAP_MIN=10`・`GAP_RATIO=0.25`（need=max(10, floor(rc2×0.25))）  
+- itemSearch: **JANは `-review_count`（口コミ＝売れ筋近似）**、**文言FBは `-score`（おすすめ順）**。一致率の数値フィールドはAPIに無く、並びが score／review 相当
 
 ### 2.8 SHP 正本検証（必須）
 
@@ -83,7 +87,13 @@
 | ID不一致だが名前検索で1件以上 | **SC側のコードに差し替え**て書込。reason に `shp_resolved`。要確認可 |
 | 0件／認証失敗／APIエラー | **カテゴリは書かない**＋要確認（誤IDを残さない） |
 
-レート: 目安 1クエリ/秒。親あたり検証1〜2回＋sleep。
+レート: 目安 1クエリ/秒。親あたり検証1〜2回＋sleep。検索は最大6クエリ×sleep200ms。
+
+**query 注意（2026-08-22）**: `query` 必須。**数字のみ**（候補IDを query に流用）は `pr-03007`／HTTP 400。実装は葉名／path の非数字を使い、無ければ固定語 `カテゴリ`＋`category_code` で絞る（`amazonAiYahooShpSafeQuery_`）。
+
+**選定ログ（2026-08-22）**: `BRANCH2_MERGE` → `BRANCH_JAN_PREFER`／`BRANCH_JAN_VOTE`（JANあり）または `BRANCH_SAME` → …。仮想: `python tools/yahoo_category_virt/run_virt.py`。  
+**クエリ順**: **JAN先頭**（ミックスも）。無JAN時はメーカー+名→名→メインKW→N種（hit_rate 実測順・内容は従来どおり）。  
+**クエリヒット率調査**: `python tools/yahoo_category_virt/hit_rate_yahoo_queries.py`（パターン表 [HIT_RATE_PATTERNS.md](../tools/yahoo_category_virt/HIT_RATE_PATTERNS.md)）。画面≠API のため短い語の方が API ヒットしやすい場合あり。
 
 `downloadShopCategories` 全件DLは本 Stage 対象外（将来キャッシュ用）。
 

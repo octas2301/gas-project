@@ -12,11 +12,12 @@
 | 項目 | 内容 |
 |------|------|
 | いつ | D で **新規カタログ ON** のときだけ先頭ゲート |
-| 何をする | PT/Browse 空なら P4b → **Browse 必須** → 棚に PT／Node が無ければ **停止＋DL指示** |
-| D の後（新規） | 完了ダイアログの枠を **一字残さず** Cursor Agent に貼る → PACKAGED → 人間が SC UP |
+| 何をする | 09 未取込 xlsm を棚へ → PT/Browse 空なら P4b → **Browse 必須** → 棚に PT／Node が無ければ **専用案内** |
+| D の後（新規） | 完了ダイアログの枠を **一字残さず** Cursor Agent に貼る → B-T1（新PTは 09 の xlsm から指紋＋列マップ自動登録）→ PACKAGED → 人間が SC UP |
 | 相乗りのみ | ゲートなし。Cursor 枠なし。**ASIN空レ点は行スキップ**（有効0件のみ停止） |
 | GTIN | カテゴリ初回だけ。確認は `▼Lv4実行ログ(Amazon)` の `EXEMPTION`（[D_ENTRY §1d](D_MENU_SPAPI_D_ENTRY_HUMAN_RUN.md)） |
 | 棚参照 | Drive の `shelf_registry.json`（Property `AMAZON_SHELF_REGISTRY_FILE_ID`） |
+| 棚なし | E③ が専用案内。案内内の「09フォルダを開く」または `G:\マイドライブ\04.amazonカタログ作成（CSV一括UL）\09.SC純正バルクxlsm保存（人間がDLして保存→Agent確認後06へ）`。SC DL → **09へ保存** → 閉じて **E③をもう一度**。2回目で取込→選択画面（実行は人が押す）。チャット不要 |
 
 ---
 
@@ -35,9 +36,11 @@
    - PT 空の親がある場合のみ `APPROVAL_AMAZON_P4B_PT_WRITE_ENABLED=true`（**自動ONしない**）  
    - 相乗り時は PUT 系（`…_ENABLED`／prodなら `…ALLOW_PROD`）  
 2. D → Amazon → **新規 ON**（相乗りは任意）  
-3. ゲート:
-   - Property／棚なし／未登録 PT／**Browse 空**／browseIndex 未登録 → **停止**。表示どおり手入れまたは DL／棚登録してから **同じ D を再実行**  
-   - 棚ありかつ PT+Browse 充足 → 確認 OK 後に GENERATED（＋相乗り）  
+3. ゲート（E③／新規 ON）:
+   - 先に Drive **09** の未取込 xlsm を棚へ取り込む
+   - まだ Node／PT が無い → **専用案内**（エラー画面ではない）。09へ保存して案内を閉じ、**E③をもう一度**
+   - 取込済み／もともと棚あり → **選択画面**（新規＋相乗り＋マスタ在庫既定）。**実行**で GENERATED
+   - Browse 空 → 停止（同じE③再実行／競合ASIN・URL確認）
 4. 完了ダイアログ: **「枠をコピー」→ Cursor Agent に貼付**  
 5. Agent が Drive 03 に PACKAGED を出すまで待つ  
 6. 人間が SC へ xlsm（＋必要なら画像 ZIP）UP  
@@ -65,6 +68,8 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **PACKAGED auto-onboard**: E③の 09 取込はルーティング。充填は B-T1 が 09/06 の `{PT}.xlsm` から指紋＋列マップを自動登録して 03 へ出す。止まるのは xlsm 無し／必須列 MISS。要出品 clasp（手渡し文）。 |
+| 2026-09-17 | **E③ 09取込**: 案内→09保存→E③再実行で選択画面。自動実行しない。要 `clasp push`。切戻し `AMAZON_SHELF_INGEST_09_ENABLED=false`。 |
 | 2026-08-05 | **Browse必須**: P4b=PT空orBrowse空。ゲートでBrowse空／Node未登録は停止。要 `clasp push`。 |
 | 2026-08-02 | **実装済**: Drive registry＋D先頭ゲート＋Cursor手渡しダイアログ。3者スキップ。 |
 | 2026-08-01 | ASIN空 soft skip（相乗りのみ含む）を要約に追記。 |

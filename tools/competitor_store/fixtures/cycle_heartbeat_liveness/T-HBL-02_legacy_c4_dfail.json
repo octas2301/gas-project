@@ -1,0 +1,1 @@
+{"id":"T-HBL-02","desc":"旧穴: C4のD失敗で時計ゼロ→沈黙","steps":[{"action":"c4_d_fail","now_ms":1000,"legacy":true}],"expect":{"alive":false,"reason":"silence","wash_n":0,"c4_n":0}}

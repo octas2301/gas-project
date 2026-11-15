@@ -56,7 +56,7 @@ def resolve_text_color(
         default_id = str(typo["textColors"].get("defaultId") or "1")
 
     raw = (key or "").strip()
-    if not raw:
+    if not raw or raw.lower() == "auto":
         raw = default_id
 
     # hex

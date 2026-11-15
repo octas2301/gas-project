@@ -51,6 +51,12 @@ const COLUMN_MASTER_SHEET_NAME = '列番号マスタ';
 // ★出力判定用のチェックボックス列名
 const CHECKBOX_HEADER_NAME = '出品CK';
 
+/** 出品CK。true / 文字列 TRUE */
+function masterCheckboxIsTrue_(cell) {
+  return cell === true || String(cell).toUpperCase() === 'TRUE';
+}
+
+
 // ★出力ファイル名 (楽天仕様: normal-item.csv 固定)
 const OUTPUT_FILE_NAME = 'normal-item.csv';
 
@@ -112,6 +118,8 @@ var B_STEP5_SKIP_GENRE_YAHOO_AI_ENABLED_PROP = 'B_STEP5_SKIP_GENRE_YAHOO_AI_ENAB
 var B_STEP5_SKIP_OPENAI_IF_GEMINI_OK_PROP = 'B_STEP5_SKIP_OPENAI_IF_GEMINI_OK';
 /** Step5: AI梱包・配送タリフ・データ根拠を出さない。正は Keepa／6.55。未設定=ON。 */
 var B_STEP5_SKIP_PACK_AI_PROP = 'B_STEP5_SKIP_PACK_AI';
+/** AI情報をマスタへ写すとき、同名でもメーカーが違う行は混ぜない。未設定=ON。falseで旧（後勝ち）。 */
+var AI_DESC_FISH_MIX_JOIN_ENABLED_PROP = 'AI_DESC_FISH_MIX_JOIN_ENABLED';
 /** Step5スキップ対象（TITLE_DROPDOWN／COMPARE 論理名） */
 var B_STEP5_SKIP_GENRE_YAHOO_LOGICAL_ = {
   '★推奨楽天ジャンルID': true,
@@ -515,7 +523,7 @@ function onOpen() {
   } catch (_) {}
 
   try {
-    // AI出品ツールメニュー（A/E/Z=サブ、B/C/D=階層なし。Eは一時Amazonコース）
+    // AI出品ツールメニュー（A/Z=サブ、B/C/D=階層なし。EはAmazon画像と出品）
     ui.createMenu('AI出品ツール')
       .addSubMenu(ui.createMenu('A.準備（ASIN抽出）')
         .addItem('1. dry_run（空欄のみ・未書込）', 'menuAPrepAsinExtractDryRun')
@@ -534,17 +542,22 @@ function onOpen() {
       .addItem('B-④ 楽天MAIN基礎（Python／Cursor指示）', 'menuB5RakutenMainBaseCursorPrompt')
       .addItem('B-⑤ サブ画像作成（Python／Cursor指示）', 'menuB4SubImageCursorPrompt')
       .addItem('B-⑥ Amazon MAIN（透過確認＋Cursor指示）', 'menuB6AmazonSetMainCursorPrompt')
-      .addItem('C. 画像コース（選択可）', 'showCImageCourseModal')
-      .addItem('D. 画像＋出品全モール一括アップロード（選択可）', 'showBatchExportModal')
-      .addSubMenu(ui.createMenu('D補助. Amazon段階実行（旧E）')
-        .addItem('E-0 前提チェック（Property・MAIN URL等）', 'menuAmazonCourseE0Precheck')
-        .addItem('E-1 → C-1（互換）', 'menuAmazonCourseE1ImagePrep')
-        .addItem('E-2 → C-2（互換）', 'menuAmazonCourseE2ImageToUrl')
-        .addItem('E-3 承認候補作成（次はWebで承認①）', 'menuAmazonCourseE3ApprovalCandidates')
-        .addItem('E-4 GENERATED（21-①）', 'menuAmazonCourseE4Generated')
-        .addItem('E-5 UP成功を記録（21-③・SC確認後）', 'menuAmazonCourseE5UploadedOk')
-        .addItem('（案内）画像はCコース／分割はZ', 'menuAmazonCourseEHelpSplit'))
+      .addItem('C. 楽天　画像マッチング', 'showCImageCourseModal')
+      .addItem('D. 楽天・Yahoo 出品アップロード', 'showBatchExportModal')
+      .addSubMenu(ui.createMenu('E. Amazon 画像マッチング＋出品アップロード')
+        .addItem('E① 07→マッチング／MAINをsheetで並び替え', 'menuCImageCourseC1Amazon')
+        .addItem('E② 並び替え結果をマスタsheetへ反映→R2へUP保存', 'menuCImageCourseC2')
+        .addItem('E③ Amazon出品ファイル作成（新規／相乗り）', 'showEAmazonExportModal'))
       .addSubMenu(createZSplitMenu(ui))
+      .addSeparator()
+      .addSubMenu(
+        ui
+          .createMenu('99.日次バックアップ（Drive）')
+          .addItem('今すぐ（更新窓どおり）', 'menuProjectDailyBackupRunNow')
+          .addItem('強制コピー（検収用）', 'menuProjectDailyBackupForceCopy')
+          .addItem('毎朝8時トリガー設置', 'menuProjectDailyBackupInstallTrigger')
+          .addItem('トリガー削除', 'menuProjectDailyBackupRemoveTrigger')
+      )
       .addToUi();
 
     // Yahoo!出品メニュー
@@ -579,102 +592,322 @@ function onOpen() {
 function createCImageCourseMenu(ui) {
   return ui.createMenu('Cコース（互換・分割）')
     .addItem('C-0 前提チェック（Property・07・レ点）', 'menuCImageCourseC0')
-    .addItem('C-1 楽天のみ（マトリクス生成）', 'menuCImageCourseC1Rakuten')
-    .addItem('Ama新カタログ①：メイン画像を07保存⇒MAIN自動（目視）', 'menuCImageCourseC1Amazon')
-    .addItem('Ama新カタログ②：楽天サブ→マスタ反映→URLをR2へUP', 'menuCImageCourseC2')
+    .addItem('02楽天画像フォルダ→マッチングシート作成', 'menuCImageCourseC1Rakuten')
+    .addItem('金丸数字やり直し（一括）※常用はB-④', 'menuCSetMainRakutenFromZMenu_')
     .addSeparator()
+    .addItem('（旧）Ama①→Eへ', 'menuCImageCourseC1Amazon')
+    .addItem('（旧）Ama②→Eへ', 'menuCImageCourseC2')
     .addItem('（案内）分割は Z→C-Amazon①〜④', 'menuCImageCourseHelpSplit');
 }
 
 /**
- * C. 画像コース選択モーダル。Dと同じくトップは1項目に集約する。
+ * CセットMAIN（楽天）用: 出品CKレ点の親を集約し、共有 textColor／02 マップを読む。
+ * 文字色は親共有（MAIN／サブ）→マップの順。人がCで再選択しない。
+ * @return {{
+ *   ok:boolean, error?:string, via:string,
+ *   fallbackSuggested:string, allHaveMapColor:boolean,
+ *   parentN:number, childN:number, mapOkN:number, mapMissingN:number,
+ *   parents:Array<Object>
+ * }}
+ */
+function collectCSetMainRakutenTargets_() {
+  var palette = {
+    '1': 'えんじ',
+    '2': '青',
+    '3': '黒',
+    '4': '緑',
+    '5': '茶'
+  };
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) {
+    return { ok: false, error: 'マスタシート「' + MASTER_SHEET_NAME + '」がありません', parents: [] };
+  }
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) {
+    return { ok: false, error: 'ヘッダ行が見つかりません', parents: [] };
+  }
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = colMap['JANコード'];
+  var colCk = colMap[CHECKBOX_HEADER_NAME];
+  var colChild = colMap['子SKU'];
+  var colParent = colMap['親SKU'];
+  var colName = colMap['商品名ベース'] !== undefined ? colMap['商品名ベース'] : colMap['商品名'];
+  if (colCk === undefined || colParent === undefined) {
+    return {
+      ok: false,
+      error: 'マスタに ' + CHECKBOX_HEADER_NAME + ' / 親SKU が必要です',
+      parents: []
+    };
+  }
+
+  /** @type {Object.<string,{parentSku:string,jan:string,nameBase:string,parentCk:boolean,childCk:Object.<string,boolean>,allChildren:Object.<string,boolean>}>} */
+  var byParent = {};
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    var row = values[r] || [];
+    var psku = String(row[colParent] || '').trim();
+    if (!psku) continue;
+    if (!byParent[psku]) {
+      byParent[psku] = {
+        parentSku: psku,
+        jan: '',
+        nameBase: '',
+        parentCk: false,
+        childCk: {},
+        allChildren: {}
+      };
+    }
+    var bucket = byParent[psku];
+    var child = colChild !== undefined ? String(row[colChild] || '').trim() : '';
+    var ckOn = masterCheckboxIsTrue_(row[colCk]);
+    if (colJan !== undefined && !bucket.jan) {
+      var j = String(row[colJan] || '').trim();
+      if (j.length >= 8) bucket.jan = j;
+    }
+    if (colName !== undefined && !bucket.nameBase) {
+      bucket.nameBase = String(row[colName] || '').trim();
+    }
+    if (!child) {
+      if (ckOn) bucket.parentCk = true;
+    } else {
+      bucket.allChildren[child] = true;
+      if (ckOn) bucket.childCk[child] = true;
+    }
+  }
+
+  var hit = resolveB5RakutenBaseFolderDetailed_();
+  var folder = hit.folder;
+  var parents = [];
+  var mapOkN = 0;
+  var mapMissingN = 0;
+  var childN = 0;
+  var colorCounts = {};
+
+  var keys = Object.keys(byParent);
+  for (var i = 0; i < keys.length; i++) {
+    var b = byParent[keys[i]];
+    var childKeys = Object.keys(b.childCk);
+    var targetChildren = childKeys;
+    if (!targetChildren.length && b.parentCk) {
+      targetChildren = Object.keys(b.allChildren);
+    }
+    if (!targetChildren.length && !b.parentCk) continue;
+
+    var mapOk = false;
+    var textColor = '';
+    var textColorSource = 'none';
+    var adoptedN = 0;
+    var byChildN = 0;
+    var resolvedTc = b5ResolveTextColorForParent_(b.parentSku, b.jan, folder);
+    if (resolvedTc.source === 'shared' || resolvedTc.source === 'map') {
+      textColor = resolvedTc.textColor;
+      textColorSource = resolvedTc.source;
+    }
+    if (folder) {
+      var mapFile = b5FindFileInFolder_(folder, b.parentSku + '_set_base_map.json');
+      if (!mapFile && b.jan) {
+        mapFile = b5FindFileInFolder_(folder, 'ishi-' + b.jan + '-oya_set_base_map.json');
+      }
+      if (mapFile) {
+        try {
+          var obj = JSON.parse(mapFile.getBlob().getDataAsString('UTF-8'));
+          mapOk = true;
+          if (!textColor) {
+            var rawTc = obj && obj.textColor;
+            if (rawTc != null && String(rawTc).trim() !== '') {
+              textColor = b4NormalizeTextColor_(rawTc, '1');
+              textColorSource = 'map';
+            }
+          }
+          var adopted = (obj && obj.adopted) || {};
+          for (var ak in adopted) {
+            if (Object.prototype.hasOwnProperty.call(adopted, ak)) adoptedN++;
+          }
+          var byCh = (obj && obj.byChildSku) || (obj && obj.byChild) || {};
+          for (var ck in byCh) {
+            if (Object.prototype.hasOwnProperty.call(byCh, ck)) byChildN++;
+          }
+        } catch (eMap) {
+          mapOk = false;
+        }
+      }
+    }
+    if (textColorSource === 'shared' || textColorSource === 'map') mapOkN++;
+    else mapMissingN++;
+
+    var nChild = targetChildren.length;
+    childN += nChild;
+    if (textColor) {
+      colorCounts[textColor] = (colorCounts[textColor] || 0) + 1;
+    }
+    parents.push({
+      parentSku: b.parentSku,
+      jan: b.jan,
+      nameBase: b.nameBase,
+      childN: nChild,
+      mapOk: mapOk,
+      textColor: textColor || '',
+      textColorSource: textColorSource,
+      textColorNameJa: textColor ? palette[textColor] || textColor : '',
+      adoptedN: adoptedN,
+      byChildN: byChildN,
+      needsExport02: !mapOk || adoptedN < 1
+    });
+  }
+
+  parents.sort(function (a, b) {
+    return String(a.parentSku).localeCompare(String(b.parentSku), 'ja');
+  });
+
+  var fallbackSuggested = '1';
+  var best = 0;
+  for (var cid in colorCounts) {
+    if (!Object.prototype.hasOwnProperty.call(colorCounts, cid)) continue;
+    if (colorCounts[cid] > best) {
+      best = colorCounts[cid];
+      fallbackSuggested = cid;
+    }
+  }
+  var allHaveMapColor = parents.length > 0 && mapMissingN === 0;
+  return {
+    ok: true,
+    via: hit.via || 'none',
+    fallbackSuggested: fallbackSuggested,
+    allHaveMapColor: allHaveMapColor,
+    parentN: parents.length,
+    childN: childN,
+    mapOkN: mapOkN,
+    mapMissingN: mapMissingN,
+    parents: parents
+  };
+}
+
+/**
+ * モーダル用（google.script.run）。
+ * @return {Object}
+ */
+function getCSetMainRakutenTargetsForModal() {
+  return collectCSetMainRakutenTargets_();
+}
+
+/**
+ * C. 画像コース（仕上げ・救済・補助）。Amazon MAIN 本線は B-⑥。
+ * セットMAIN楽天: 一括・再実行のみ（常用は B-④ Web 弱い統合）。
  * C-2の「実行」は Drive02／R2／マスタURL書込の開始前確認を兼ねる。
  */
 function showCImageCourseModal() {
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
     '<body style="font-family:sans-serif;padding:16px;">' +
-    '<h3>C. 画像コース</h3>' +
-    '<p>今実行する工程を選んでください。Amazon新規カタログの画像処理は2段階です。</p>' +
+    '<h3>C. 楽天　画像マッチング</h3>' +
+    '<p style="font-size:13px;">楽天画像の仕分けまで。アップは <b>D</b>。Amazon は <b>E</b>。金丸の常用は <b>B-④</b>。</p>' +
     '<form id="f">' +
+    '<label><input type="radio" name="course" value="rakuten" checked> ' +
+      '02楽天画像フォルダ→マッチングシート作成</label><br>' +
     '<label><input type="radio" name="course" value="set_main_rakuten"> ' +
-      'セットMAIN量産（楽天・Cursor指示）</label><br>' +
-    '<label><input type="radio" name="course" value="set_main_amazon"> ' +
-      'セットMAIN量産（Amazon・透過確認＋Cursor指示）</label><br>' +
-    '<label><input type="radio" name="course" value="amazon_prepare" checked> ' +
-      'Ama新カタログ①：メイン画像を07保存⇒MAIN自動（目視）</label><br>' +
-    '<label><input type="radio" name="course" value="amazon_finish"> ' +
-      'Ama新カタログ②：楽天サブ→マスタ反映→URLをR2へUP</label><br>' +
-    '<label><input type="radio" name="course" value="rakuten"> ' +
-      '楽天のみ（マトリクス生成）</label><br>' +
-    '<label><input type="radio" name="course" value="precheck"> ' +
-      '前提チェックのみ（Property・07・レ点）</label>' +
+      '金丸数字やり直し（一括）※常用はB-④</label>' +
     '</form>' +
     '<div id="colorBox" style="display:none;margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:6px;">' +
-      '<div style="font-weight:bold;margin-bottom:6px;">文字色（セットMAIN量産）</div>' +
-      '<label style="margin-right:10px;"><input type="radio" name="textColor" value="1" checked> えんじ</label>' +
-      '<label style="margin-right:10px;"><input type="radio" name="textColor" value="2"> 青</label>' +
-      '<label style="margin-right:10px;"><input type="radio" name="textColor" value="3"> 黒</label>' +
-      '<label style="margin-right:10px;"><input type="radio" name="textColor" value="4"> 緑</label>' +
-      '<label><input type="radio" name="textColor" value="5"> 茶</label>' +
-      '<div style="margin-top:6px;color:#666;font-size:11px;">見本: 05…/94.文字色見本/01_えんじ〜05_茶</div>' +
-    '</div>' +
-    '<div id="aspectBox" style="display:none;margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:6px;">' +
-      '<div style="font-weight:bold;margin-bottom:6px;">Amazon量産パターン</div>' +
-      '<label style="margin-right:12px;"><input type="radio" name="aspect" value="square" checked> ①正方形（本線）</label>' +
-      '<label style="margin-right:12px;"><input type="radio" name="aspect" value="portrait"> ②縦長タイプ（合格固定）</label>' +
-      '<label><input type="radio" name="aspect" value="landscape"> ③横長タイプ（合格固定）</label>' +
-      '<div style="margin-top:6px;color:#666;font-size:11px;">正方形＝縁際。縦長＝扇／の字。横長＝N1中央／N2縦二段／N3–4階段／N≥5上hero+下グリッド。いずれもキャンバス正方形・出力07→D本線。N=1含む。</div>' +
+      '<div style="font-weight:bold;margin-bottom:6px;">文字色（金丸一括・楽天）</div>' +
+      '<div id="colorAuto" style="font-size:12px;color:#333;margin-bottom:8px;">読込中…（02 set_base_map）</div>' +
+      '<div id="colorFallbackWrap">' +
+        '<div style="font-size:12px;margin-bottom:4px;">マップに色が無い親だけ使うフォールバック:</div>' +
+        '<label style="margin-right:10px;"><input type="radio" name="textColor" value="1" checked> えんじ</label>' +
+        '<label style="margin-right:10px;"><input type="radio" name="textColor" value="2"> 青</label>' +
+        '<label style="margin-right:10px;"><input type="radio" name="textColor" value="3"> 黒</label>' +
+        '<label style="margin-right:10px;"><input type="radio" name="textColor" value="4"> 緑</label>' +
+        '<label><input type="radio" name="textColor" value="5"> 茶</label>' +
+        '<div style="margin-top:6px;color:#666;font-size:11px;">見本: 05…/94.文字色見本/01_えんじ〜05_茶</div>' +
+      '</div>' +
     '</div>' +
     '<div id="notice" style="margin-top:14px;padding:10px;background:#f5f5f5;font-size:12px;">' +
-      '人間の作業：Drive 07へメイン白抜き（{子SKU}_amazon.jpg）を保存。C①で子SKU一致分はAmazon MAINへ自動投入されます。目視チェック後に②を実行。Drive 02は触りません。' +
+      '02の楽天MAIN／サブから★画像AIマッチングを作成します。R-Cabinetアップは D で行います。' +
     '</div>' +
     '<p style="color:#777;font-size:11px;">' +
-      '※C本線はU2/U4を実行中だけ一時ONし、終了後に元へ戻します。<br>' +
-      '※P1: 07以降のDrive FileはGASのみ（手コピー・手退避禁止）。ZIPはSC用のみ人手。<br>' +
-      '※Amazonは対象セットの子SKUレ点を推奨。親のみレ点は全子が対象です。</p>' +
+      '※次: マッチング目視 → D（楽天・Yahoo）。Amazon は D で楽天サブURL後に E。<br>' +
+      '※金丸やり直しはまれ。日常の金丸は B-④ レビュー（弱い統合）。</p>' +
     '<p style="margin-top:16px;"><button id="run">実行</button> ' +
       '<button id="cancel">キャンセル</button></p>' +
     '<p id="msg" style="color:#666;font-size:12px;"></p>' +
     '<script>' +
     'var notices={' +
-      'set_main_rakuten:"出品CKレ点のセット数で楽天MAINを量産します（N=1含む）。GASは合成せず、Cursorへ貼る指示文を表示します。出力先は楽天アップロード画像フォルダです。",' +
-      'set_main_amazon:"出品CKレ点のAmazonセットMAINを量産します。パターン（正方形/縦長/横長・いずれも合格固定・N=1含む）を選び、①透過PNG②Canva背景リムーバーを確認後にCursor指示を出します。出力は07→D本線。",' +
-      'amazon_prepare:"人間の作業：07へ{子SKU}_amazon.jpgを保存。C①で子SKU一致はAmazon MAINへ自動投入→目視→②。Drive 02は触りません。",' +
-      'amazon_finish:"【書込あり】MAINをマスタへ保存し、楽天サブ画像をR2へアップロードしてAmazon PT URLをマスタへ反映します。同一親でPTが空の対象SKUは、上から最初の兄弟PT URLで補完します。",' +
-      'rakuten:"楽天用の従来マトリクス生成のみ。Amazon U4は実行しません。",' +
-      'precheck:"Property・Drive 07・レ点対象の概況を表示します。"' +
+      'rakuten:"02の楽天MAIN／サブから★画像AIマッチングを作成します。R-Cabinetアップは D で行います。",' +
+      'set_main_rakuten:"出品CKレ点の親・子を一括量産。文字色は親共有→マップ自動。常用はB-④ Web。"' +
     '};' +
+    'var cTargets=null;' +
+    'function setFallbackRadio(id){' +
+      'var els=document.querySelectorAll("input[name=textColor]");' +
+      'for(var i=0;i<els.length;i++){els[i].checked=(els[i].value===String(id));}' +
+    '}' +
+    'function applyTargets(t){' +
+      'cTargets=t;' +
+      'var box=document.getElementById("colorAuto");' +
+      'var fb=document.getElementById("colorFallbackWrap");' +
+      'if(!t||!t.ok){box.textContent=(t&&t.error)?t.error:"対象を読めませんでした";fb.style.display="block";return;}' +
+      'var lines=[];' +
+      'lines.push("対象: 親"+t.parentN+"／子"+t.childN+"（マップ色あり "+t.mapOkN+"・未 "+t.mapMissingN+"）");' +
+      '(t.parents||[]).slice(0,8).forEach(function(p){' +
+        'var col=(p.textColorSource==="shared"||p.textColorSource==="map")?(p.textColor+" "+(p.textColorNameJa||"")+" ["+p.textColorSource+"]"):"（共有・マップ無し→フォールバック）";' +
+        'var warn=p.needsExport02?" ★02未コピーの可能性":"";' +
+        'lines.push("・"+p.parentSku+" 子"+p.childN+" 色="+col+" 採用"+p.adoptedN+warn);' +
+      '});' +
+      'if((t.parents||[]).length>8)lines.push("・…他 "+((t.parents||[]).length-8)+" 親");' +
+      'box.innerHTML=lines.join("<br>");' +
+      'setFallbackRadio(t.fallbackSuggested||"1");' +
+      'fb.style.display=t.allHaveMapColor?"none":"block";' +
+      'if(t.allHaveMapColor){box.innerHTML+="<br><b>文字色はすべてマップから自動。選択不要。</b>";}' +
+    '}' +
+    'function loadTargetsIfNeeded(){' +
+      'var c=document.querySelector("input[name=course]:checked").value;' +
+      'if(c!=="set_main_rakuten")return;' +
+      'document.getElementById("colorAuto").textContent="読込中…（02 set_base_map）";' +
+      'google.script.run.withSuccessHandler(applyTargets)' +
+        '.withFailureHandler(function(e){document.getElementById("colorAuto").textContent="読込失敗: "+e.message;})' +
+        '.getCSetMainRakutenTargetsForModal();' +
+    '}' +
     'function sync(){var c=document.querySelector("input[name=course]:checked").value;' +
       'document.getElementById("notice").textContent=notices[c];' +
-      'document.getElementById("notice").style.background=c==="amazon_finish"?"#fff1f0":"#f5f5f5";' +
       'document.getElementById("colorBox").style.display=c==="set_main_rakuten"?"block":"none";' +
-      'document.getElementById("aspectBox").style.display=c==="set_main_amazon"?"block":"none";}' +
+      'if(c==="set_main_rakuten")loadTargetsIfNeeded();}' +
     'Array.prototype.forEach.call(document.querySelectorAll("input[name=course]"),' +
       'function(x){x.onchange=sync;});sync();' +
     'document.getElementById("run").onclick=function(){' +
       'var c=document.querySelector("input[name=course]:checked").value;' +
       'var tcEl=document.querySelector("input[name=textColor]:checked");' +
       'var tc=tcEl?tcEl.value:"1";' +
-      'var asEl=document.querySelector("input[name=aspect]:checked");' +
-      'var as=asEl?asEl.value:"square";' +
+      'if(c==="set_main_rakuten"&&cTargets&&cTargets.fallbackSuggested){' +
+        'if(cTargets.allHaveMapColor)tc=cTargets.fallbackSuggested;' +
+      '}' +
       'document.getElementById("run").disabled=true;' +
       'document.getElementById("msg").textContent="実行中です...";' +
       'google.script.run.withSuccessHandler(function(){google.script.host.close();})' +
       '.withFailureHandler(function(e){document.getElementById("run").disabled=false;' +
         'document.getElementById("msg").textContent="エラー: "+e.message;})' +
-      '.runCImageCourseSelection({course:c,textColor:tc,aspect:as});};' +
+      '.runCImageCourseSelection({course:c,textColor:tc,aspect:"square"});};' +
     'document.getElementById("cancel").onclick=function(){google.script.host.close();};' +
     '</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(
-    HtmlService.createHtmlOutput(html).setWidth(640).setHeight(620),
-    'C. 画像コース'
+    HtmlService.createHtmlOutput(html).setWidth(640).setHeight(520),
+    'C. 楽天　画像マッチング'
   );
+}
+
+/** Z互換: 金丸一括（マップ色があればフォールバックのみ使用） */
+function menuCSetMainRakutenFromZMenu_() {
+  var t = collectCSetMainRakutenTargets_();
+  var fb = (t && t.ok && t.fallbackSuggested) ? String(t.fallbackSuggested) : '1';
+  return menuCSetMainRakutenCursorPrompt_(fb);
 }
 
 /**
  * Cモーダルの選択を既存の薄いファサードへ安全にdispatchする。
- * @param {string|Object} payload precheck|rakuten|amazon_prepare|amazon_finish|set_main_rakuten
- *        または {course, textColor}
+ * amazon_* / set_main_amazon は互換残置（本線は B-⑥／E）。
  */
 function runCImageCourseSelection(payload) {
   var fn = 'runCImageCourseSelection';
@@ -892,20 +1125,19 @@ function createCAmazonSplitMenu(ui) {
 }
 
 /**
- * E. Amazon出品コース（互換）— Z 配下へ移動。D／D補助からも同等到達可。
- * 画像ステップ E-1/E-2 は C-1/C-2 へ一本化。
- * docs/org/D_MENU_E_AMAZON_COURSE_HUMAN_RUN.md
+ * E段階の互換。本線はトップの E。Z の中に置く。
+ * docs/org/D_MENU_CDE_MENU_SPLIT_REQUIREMENTS.md
  */
 function createEAmazonCourseMenu(ui) {
-  return ui.createMenu('E. Amazon出品コース（互換）')
+  return ui.createMenu('E段階・互換（旧D補助）')
     .addItem('E-0 前提チェック（Property・MAIN URL等）', 'menuAmazonCourseE0Precheck')
-    .addItem('E-1 → C-1 Amazon（互換）', 'menuAmazonCourseE1ImagePrep')
-    .addItem('E-2 → C-2（互換）', 'menuAmazonCourseE2ImageToUrl')
-    .addItem('E-3 承認候補作成（次はWebで承認①）', 'menuAmazonCourseE3ApprovalCandidates')
+    .addItem('E-1 → 07マッチング（互換）', 'menuAmazonCourseE1ImagePrep')
+    .addItem('E-2 → マスタ反映R2（互換）', 'menuAmazonCourseE2ImageToUrl')
+    .addItem('E-3 承認候補作成（次はWebで承認①・温存）', 'menuAmazonCourseE3ApprovalCandidates')
     .addItem('E-4 GENERATED（21-①）', 'menuAmazonCourseE4Generated')
     .addItem('E-5 UP成功を記録（21-③・SC確認後）', 'menuAmazonCourseE5UploadedOk')
     .addSeparator()
-    .addItem('（案内）画像はCコース／分割はZ', 'menuAmazonCourseEHelpSplit');
+    .addItem('（案内）本線はトップE／分割はZ', 'menuAmazonCourseEHelpSplit');
 }
 
 /**
@@ -3273,25 +3505,152 @@ function showBatchExportModal() {
       SpreadsheetApp.getUi().alert('【一括出品】エラーが発生していました', pending, SpreadsheetApp.getUi().ButtonSet.OK);
     }
   } catch (_) {}
+  // 出品CK対象で楽天メイン画像1が揃っていれば「画像スキップ」を初期ON（再送時は人間が外す）
+  var skipImgChecked = false;
+  try {
+    var ssGate = SpreadsheetApp.getActiveSpreadsheet();
+    var gate0 = validateCheckedRowsHaveRakutenMainImage1_(ssGate);
+    skipImgChecked = !!(gate0 && gate0.ok && (gate0.checkedCount || 0) > 0);
+  } catch (_) {}
   const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;padding:16px;">' +
-    '<h3>一括出品実行</h3>' +
+    '<h3>D. 楽天・Yahoo 出品アップロード</h3>' +
     '<p>コースを選んで「実行」を押してください。<br>' +
     '楽天／Yahoo は予約後すぐにポップアップを閉じ、約1分後に裏で実行されます。<br>' +
-    '<b>Amazonを含むコースは即時実行</b>（トリガー裏実行なし）。</p>' +
+    'Amazon は <b>E</b>（画像マッチング＋出品アップロード）を使います。</p>' +
     '<form id="f">' +
     '<label><input type="radio" name="course" value="full" checked> フル（楽天 → Yahoo! の順で実行）</label><br>' +
     '<label><input type="radio" name="course" value="rakuten"> 楽天のみ</label><br>' +
     '<label><input type="radio" name="course" value="yahoo"> Yahoo!のみ</label><br>' +
-    '<label><input type="radio" name="course" value="amazon"> Amazonのみ</label><br>' +
-    '<label><input type="radio" name="course" value="full_amazon"> フル → Amazon（楽天 → Yahoo! → 選択したAmazon方式）</label><br>' +
     '</form>' +
-    '<div id="amazonOptions" style="display:none;margin:12px 0;padding:10px;border:1px solid #ccc;">' +
+    '<p style="margin-top:12px;font-size:13px;">' +
+    '<label><input type="checkbox" id="skipimg"' + (skipImgChecked ? ' checked' : '') +
+    '> 画像アップロードをスキップ（マスタに楽天画像パスが既にある場合）</label><br>' +
+    '<label><input type="checkbox" id="besteffort"> ベストエフォート（画像エラーや楽天CSV失敗でも可能な限り続行）</label>' +
+    '</p>' +
+    '<p style="margin-top:16px;"><button id="run">実行</button> <button id="cancel">キャンセル</button></p>' +
+    '<p id="msg" style="color:#666;font-size:12px;"></p>' +
+    '<p style="color:#888;font-size:11px;margin-top:12px;">※対象は人間がレ点を付けた子SKUです。<br>' +
+    '※出品CK対象の楽天メイン画像1が揃っているとき、画像スキップに最初からレ点が入ります。<br>' +
+    '※画像を再送して付け直す場合は、そのレ点を人間が外してください。<br>' +
+    '※Amazon 新規／相乗りは E「Amazon出品ファイル作成」。<br>' +
+    '※「1分ごと」のトリガーは登録しないでください。楽天／Yahoo予約時に「1分後に1回」が自動作成されます。</p>' +
+    '<script>' +
+    'document.getElementById("run").onclick=function(){' +
+    ' var c=document.querySelector("input[name=course]:checked").value;' +
+    ' var sk=document.getElementById("skipimg").checked;' +
+    ' var be=document.getElementById("besteffort").checked;' +
+    ' document.getElementById("run").disabled=true;' +
+    ' document.getElementById("msg").textContent="予約しました。ポップアップを閉じます...";' +
+    ' google.script.run.withSuccessHandler(function(){ google.script.host.close(); })' +
+    '  .withFailureHandler(function(e){' +
+    '    document.getElementById("run").disabled=false;' +
+    '    var m=(e&&e.message)?String(e.message):String(e);' +
+    '    document.getElementById("msg").textContent="エラー: "+m;' +
+    '    try{alert("【一括出品エラー】\\n\\n"+m);}catch(ae){}' +
+    '  }).scheduleBatchExport(c, sk, be);' +
+    '};' +
+    'document.getElementById("cancel").onclick=function(){ google.script.host.close(); };' +
+    '</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(560).setHeight(460), 'D. 楽天・Yahoo 出品アップロード');
+}
+
+/**
+ * E. Amazon出品ファイル作成（新規／相乗り）。旧 D の Amazon コースを移設。
+ * 前提: D で楽天サブURL済み → E画像①② のあとが安全。
+ */
+function amazonShelfFindSiblingFolder_(parent, prefix) {
+  if (!parent) return null;
+  var it = parent.getFolders();
+  while (it.hasNext()) {
+    var f = it.next();
+    if (String(f.getName() || '').indexOf(prefix) === 0) return f;
+  }
+  return null;
+}
+
+var AMAZON_SHELF_FOLDER09_WIN_PATH_ =
+  'G:\\マイドライブ\\04.amazonカタログ作成（CSV一括UL）\\09.SC純正バルクxlsm保存（人間がDLして保存→Agent確認後06へ）';
+
+/** Drive 09 の開くURLと Windows パス。見つからなくてもパスは出す。 */
+function amazonShelfFolder09Info_() {
+  var info = {
+    name: '09.SC純正バルクxlsm保存（人間がDLして保存→Agent確認後06へ）',
+    winPath: AMAZON_SHELF_FOLDER09_WIN_PATH_,
+    url: ''
+  };
+  try {
+    var fileId = String(PropertiesService.getScriptProperties()
+      .getProperty(AMAZON_SHELF_REGISTRY_FILE_ID_PROP) || '').trim();
+    if (!fileId) return info;
+    var parents = DriveApp.getFileById(fileId).getParents();
+    if (!parents.hasNext()) return info;
+    var folder09 = amazonShelfFindSiblingFolder_(parents.next(), '09.SC純正バルク');
+    if (folder09) info.url = String(folder09.getUrl() || '');
+  } catch (e0) {}
+  return info;
+}
+
+function showE3BulkDlDialog_(guide) {
+  var info = amazonShelfFolder09Info_();
+  var safe = String(guide || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var linkHtml = '';
+  if (info.url) {
+    var u = String(info.url).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    linkHtml = '<p style="margin:12px 0;"><a href="' + u +
+      '" target="_blank" rel="noopener noreferrer" style="font-size:15px;">09フォルダを開く（Googleドライブ）</a></p>';
+  }
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>' +
+    '<body style="font-family:sans-serif;padding:16px;">' +
+    '<h3>新しいバルクファイルの入手が必要です</h3>' +
+    '<p>以下の手順でバルクファイルをセラーセントラルから入手して保存してください。</p>' +
+    linkHtml +
+    '<pre style="white-space:pre-wrap;font-family:sans-serif;font-size:13px;line-height:1.45;max-height:400px;overflow:auto;">' +
+    safe + '</pre>' +
+    '<p><button onclick="google.script.host.close();">閉じる</button></p></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(680).setHeight(660),
+    '新しいバルクファイルの入手が必要です'
+  );
+}
+
+function showEAmazonExportModal() {
+  try {
+    var pending = PropertiesService.getScriptProperties().getProperty('BATCH_EXPORT_PENDING_ALERT');
+    if (pending) {
+      PropertiesService.getScriptProperties().deleteProperty('BATCH_EXPORT_PENDING_ALERT');
+      SpreadsheetApp.getUi().alert('【一括出品】エラーが発生していました', pending, SpreadsheetApp.getUi().ButtonSet.OK);
+    }
+  } catch (_) {}
+  try {
+    if (typeof amazonApprovalLv4LoadMasterContext_ === 'function' &&
+        typeof amazonCheckboxMainlineInspect_ === 'function' &&
+        typeof batchExportAmazonNewPtShelfGate_ === 'function') {
+      var ss0 = SpreadsheetApp.getActiveSpreadsheet();
+      var ctx0 = amazonApprovalLv4LoadMasterContext_(ss0);
+      var ins0 = amazonCheckboxMainlineInspect_(ctx0, { includeNew: true, includeOffer: true });
+      if (ins0.newRows && ins0.newRows.length) {
+        var sg0 = batchExportAmazonNewPtShelfGate_(ss0, ctx0, ins0.newRows, 'showEAmazonExportModal');
+        if (sg0 && sg0.needBulkDl) {
+          showE3BulkDlDialog_(sg0.reason);
+          return;
+        }
+      }
+    }
+  } catch (ePre) {
+    Logger.log('[showEAmazonExportModal] preflight ' + String(ePre && ePre.message ? ePre.message : ePre));
+  }
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:sans-serif;padding:16px;">' +
+    '<h3>E. Amazon出品ファイル作成（新規／相乗り）</h3>' +
+    '<p>即時実行（トリガー裏実行なし）。前提: <b>D</b>で楽天画像URL済み → <b>E</b>画像マッチング／R2 後が安全。</p>' +
+    '<div style="margin:12px 0;padding:10px;border:1px solid #ccc;">' +
     '<b>Amazon出品方式（両方選択可）</b><br>' +
     '<label><input type="checkbox" id="amazonNew" checked> 新規カタログ（レ点 → GENERATED → PACKAGED → SC）</label><br>' +
     '<label><input type="checkbox" id="amazonRemake"> 失敗後の再GENERATED（強制・冪等解除）</label><br>' +
     '<div style="font-size:11px;color:#666;margin:2px 0 6px 18px;">PT/Browseを直した再実行は自動解除されます。指紋が同じままの強制再生成だけON。</div>' +
     '<div id="amazonRemakeHint" style="font-size:11px;color:#666;margin:2px 0 6px 20px;">新規ON時のみ有効・既定OFF。最新の open subBatch のみ解除。SC成功済み（UPLOADED_OK）は対象外。</div>' +
-    '<label><input type="checkbox" id="amazonOffer"> 既存カタログに相乗り（レ点 → SP-API）</label><br>' +
+    '<label><input type="checkbox" id="amazonOffer" checked> 既存カタログに相乗り（レ点 → SP-API）</label><br>' +
+    '<div style="font-size:11px;color:#666;margin:2px 0 6px 18px;">相乗りは ASINコードが必要。無い行はスキップ（新規もONなら新規だけ進む）。相乗りだけONでASIN無しは停止して案内します。</div>' +
     '<div id="offerMode" style="display:none;margin:8px 0 0 20px;">' +
     '<div style="margin-bottom:6px;">' +
     '<label><input type="checkbox" id="offerMfn" checked> 相乗り自己発</label> ' +
@@ -3305,40 +3664,54 @@ function showBatchExportModal() {
     '</div>' +
     '<div style="margin-top:10px;">' +
     '<b>送信在庫</b>（新規GENERATEDの在庫列 ＋ 相乗りPUTのquantity）<br>' +
-    '<label><input type="radio" name="inventoryMode" value="ZERO" checked> 在庫0で出す（承認①相当・既定・誤爆防止）</label><br>' +
-    '<label><input type="radio" name="inventoryMode" value="MASTER"> マスタ在庫で出す（承認②・ALLOW_MASTER_QTY必須）</label>' +
+    '<label><input type="radio" name="inventoryMode" value="ZERO"> 在庫0で出す（承認①相当）</label><br>' +
+    '<label><input type="radio" name="inventoryMode" value="MASTER" checked> マスタ在庫で出す（承認②・既定）</label>' +
     '<div style="font-size:11px;color:#666;margin-top:4px;">新規も相乗りも同じ選択。全て在庫あり固定にはしません。</div>' +
     '</div></div>' +
-    '<p style="margin-top:12px;font-size:13px;">' +
-    '<label><input type="checkbox" id="skipimg"> 画像アップロードをスキップ（マスタに楽天画像パスが既にある場合／楽天・Yahoo部のみ）</label><br>' +
-    '<label><input type="checkbox" id="besteffort"> ベストエフォート（画像エラーや楽天CSV失敗でも可能な限り続行／楽天・Yahoo部のみ）</label>' +
-    '</p>' +
     '<p style="margin-top:16px;"><button id="run">実行</button> <button id="cancel">キャンセル</button></p>' +
     '<p id="msg" style="color:#666;font-size:12px;"></p>' +
-    '<p style="color:#888;font-size:11px;margin-top:12px;">※対象は人間がレ点を付けた子SKUです。相乗りの発送区分はDで選びます（X列は新規SKU式用・変更不要）。<br>' +
-    '※相乗り自己発→Amazon相乗りSKU／FBA→Amazon相乗りSKU_FBA。両方チェック可（Phase2・順次PUT）。<br>' +
-    '※送信在庫の既定は0（新規GENERATED／相乗りとも）。マスタ在庫は ALLOW_MASTER_QTY＋開始前の件数・qty内訳確認が必要。FBAはquantity非送信。<br>' +
-    '※prod既定でも ALLOW_PROD＋開始前確認が必要（自動ONしない）。段階実行は「D補助.旧E」またはZのE互換。<br>' +
-    '※「1分ごと」のトリガーは登録しないでください。楽天／Yahoo予約時に「1分後に1回」が自動作成されます。</p>' +
+    '<div style="margin-top:14px;padding:10px 12px;border:2px solid #2e7d32;background:#e8f5e9;border-radius:4px;color:#1b5e20;font-size:12px;line-height:1.5;">' +
+    '<b>【出品後の修正時（バリエ・属性の直しなど）】次の選択にする</b><br>' +
+    '・新規カタログ … <b>ON</b><br>' +
+    '・失敗後の再GENERATED（強制・冪等解除） … <b>ON</b><br>' +
+    '・既存カタログに相乗り … <b>OFF</b>（相乗りはオファーPUT。カタログ属性の修正ではない）<br>' +
+    '・送信在庫 … まずファイルだけなら「在庫0」。売り在庫も載せるなら「マスタ在庫」' +
+    '</div>' +
+    '<p style="color:#888;font-size:11px;margin-top:12px;">※対象は人間がレ点を付けた子SKUです。<br>' +
+    '※段階実行・承認①は Z → E互換（温存）。日常のレ点本線では必須ではありません。<br>' +
+    '※prod既定でも ALLOW_PROD＋開始前確認が必要（自動ONしない）。</p>' +
     '<script>' +
+    'function showBulkDl(guide){' +
+    ' document.body.innerHTML="";' +
+    ' document.body.style.padding="16px";' +
+    ' var h=document.createElement("h3");' +
+    ' h.textContent="新しいバルクファイルの入手が必要です";' +
+    ' var p=document.createElement("p");' +
+    ' p.textContent="以下の手順でバルクファイルをセラーセントラルから入手して保存してください。";' +
+    ' var m=String(guide||"").match(/https:\\/\\/drive\\.google\\.com\\/drive\\/folders\\/[^\\s]+/);' +
+    ' var a=null;' +
+    ' if(m){ a=document.createElement("a"); a.href=m[0]; a.target="_blank"; a.rel="noopener noreferrer";' +
+    '  a.textContent="09フォルダを開く（Googleドライブ）"; a.style.fontSize="15px"; }' +
+    ' var pre=document.createElement("pre");' +
+    ' pre.style.cssText="white-space:pre-wrap;font-family:sans-serif;font-size:13px;line-height:1.45;max-height:400px;overflow:auto;margin:12px 0;";' +
+    ' pre.textContent=String(guide||"");' +
+    ' var b=document.createElement("button");' +
+    ' b.textContent="閉じる";' +
+    ' b.onclick=function(){ google.script.host.close(); };' +
+    ' document.body.appendChild(h);document.body.appendChild(p);' +
+    ' if(a){ var wrap=document.createElement("p"); wrap.style.margin="12px 0"; wrap.appendChild(a); document.body.appendChild(wrap); }' +
+    ' document.body.appendChild(pre);document.body.appendChild(b);' +
+    '}' +
     'function sync(){' +
-    ' var c=document.querySelector("input[name=course]:checked").value;' +
-    ' var isAmazon=(c==="amazon"||c==="full_amazon");' +
-    ' document.getElementById("amazonOptions").style.display=isAmazon?"block":"none";' +
     ' document.getElementById("offerMode").style.display=document.getElementById("amazonOffer").checked?"block":"none";' +
     ' var anOn=document.getElementById("amazonNew").checked;' +
     ' document.getElementById("amazonRemake").disabled=!anOn;' +
     ' if(!anOn)document.getElementById("amazonRemake").checked=false;' +
     ' document.getElementById("amazonRemakeHint").style.opacity=anOn?"1":"0.5";' +
     '}' +
-    'Array.prototype.forEach.call(document.querySelectorAll("input[name=course]"),function(x){x.onchange=sync;});' +
     'document.getElementById("amazonOffer").onchange=sync;' +
     'document.getElementById("amazonNew").onchange=sync;sync();' +
     'document.getElementById("run").onclick=function(){' +
-    ' var c=document.querySelector("input[name=course]:checked").value;' +
-    ' var sk=document.getElementById("skipimg").checked;' +
-    ' var be=document.getElementById("besteffort").checked;' +
-    ' var amazonNow=(c==="amazon"||c==="full_amazon");' +
     ' var an=document.getElementById("amazonNew").checked;' +
     ' var ao=document.getElementById("amazonOffer").checked;' +
     ' var remake=an&&document.getElementById("amazonRemake").checked;' +
@@ -3349,32 +3722,42 @@ function showBatchExportModal() {
     ' if(document.getElementById("offerFba").checked)ofs.push("fba");' +
     ' var of=ofs.join(",");' +
     ' var imEl=document.querySelector("input[name=inventoryMode]:checked");' +
-    ' var im=imEl?imEl.value:"ZERO";' +
-    ' if(amazonNow&&!an&&!ao){document.getElementById("msg").textContent="Amazon出品方式を1つ以上選んでください。";return;}' +
+    ' var im=imEl?imEl.value:"MASTER";' +
+    ' if(!an&&!ao){document.getElementById("msg").textContent="Amazon出品方式を1つ以上選んでください。";return;}' +
     ' if(ao&&!ofs.length){document.getElementById("msg").textContent="相乗りは自己発／FBAを1つ以上選んでください。";return;}' +
     ' document.getElementById("run").disabled=true;' +
-    ' document.getElementById("msg").textContent=amazonNow?"Amazonコースを即時実行します...":"予約しました。ポップアップを閉じます...";' +
-    ' var runner=google.script.run.withSuccessHandler(function(){ google.script.host.close(); })' +
+    ' document.getElementById("msg").textContent="Amazonコースを即時実行します...";' +
+    ' google.script.run.withSuccessHandler(function(res){' +
+    '    if(res && res.needBulkDl){ showBulkDl(res.guide); return; }' +
+    '    google.script.host.close();' +
+    '  })' +
     '  .withFailureHandler(function(e){' +
     '    document.getElementById("run").disabled=false;' +
     '    var m=(e&&e.message)?String(e.message):String(e);' +
     '    document.getElementById("msg").textContent="エラー: "+m;' +
     '    try{alert("【一括出品エラー】\\n\\n"+m);}catch(ae){}' +
-    '  });' +
-    ' if(amazonNow){ runner.runBatchExportAmazonFacade(c, sk, be, an, ao, om, of, im, remake); }' +
-    ' else { runner.scheduleBatchExport(c, sk, be); }' +
+    '  }).runBatchExportAmazonFacade("amazon", false, false, an, ao, om, of, im, remake);' +
     '};' +
     'document.getElementById("cancel").onclick=function(){ google.script.host.close(); };' +
     '</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(820), '一括出品実行');
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(620).setHeight(720),
+    'E. Amazon出品ファイル作成'
+  );
 }
 
 /**
- * D×Amazon レ点本線。新規／相乗りは同時選択可。承認①経路はZに温存。
- * @param {string=} offerFulfillment mfn | fba | mfn,fba（Phase2）
- * @param {string=} inventoryMode ZERO | MASTER
- * @param {boolean=} remakeUnlock 失敗後再GENERATED（案A・新規ON時のみ）
+ * 相乗り事前検証のスキップ理由が「ASIN無し／不正」か。
+ * 文言ゆれ（ASINコード空…／空/不正: ASIN…）を同一扱いする。
  */
+function amazonOfferSkipIsMissingAsin_(reason) {
+  var r = String(reason || '');
+  if (!r) return false;
+  if (r.indexOf('ASINコード空') === 0) return true;
+  if (r.indexOf('空/不正:') === 0 && r.indexOf('ASIN') >= 0) return true;
+  return false;
+}
+
 function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
   includeNew, includeOffer, offerMode, offerFulfillment, inventoryMode, remakeUnlock) {
   var fn = 'runBatchExportAmazonFacade';
@@ -3454,7 +3837,11 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
       ' parents=' + (shelfGate.parentCount || 0) +
       ' p4bRan=' + !!(shelfGate.p4b && shelfGate.p4b.ran));
     if (!shelfGate.ok) {
-      throw new Error('【D×Amazon停止】新規PT／棚ゲート: ' + (shelfGate.reason || '不明'));
+      if (shelfGate.needBulkDl) {
+        Logger.log('[' + fn + '] needBulkDl=1');
+        return { ok: false, needBulkDl: true, guide: String(shelfGate.reason || '') };
+      }
+      throw new Error('【E×Amazon停止】新規PT／棚ゲート: ' + (shelfGate.reason || '不明'));
     }
     // P4b書込後はマスタ再読込
     if (shelfGate.p4b && shelfGate.p4b.ran) {
@@ -3463,15 +3850,7 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
     gate.ptShelf = shelfGate;
   }
 
-  if (inventoryMode === 'MASTER') {
-    var allowMasterProp = (typeof APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP === 'string')
-      ? APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP
-      : 'APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY';
-    if (!getBoolScriptProperty_(allowMasterProp, false)) {
-      throw new Error(allowMasterProp +
-        '=true が必要です（マスタ在庫＝承認②・既定は無効）。在庫0で出すか Property を有効にしてください。');
-    }
-  }
+  // マスタ在庫(MASTER)は Property ゲートなし（店の既定。開始前確認は残す）。
 
   // prodゲートと人間確認は、フルの楽天／Yahooを開始する前に完了させる。
   var offerPreflightByFx = {};
@@ -3508,10 +3887,10 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
       offerPreflightByFx[fxOne] = pfOne;
       for (var osi = 0; osi < pfOne.skipped.length; osi++) {
         var osReason = String(pfOne.skipped[osi].reason || '');
-        // N列ASIN空は行スキップのみ（新規同時／相乗りのみとも全体は止めない）
-        if (osReason.indexOf('ASINコード空') === 0) {
+        // ASIN無し／不正は行スキップのみ（全体停止にしない。相乗り0件＋新規ONは下で新規だけ続行）
+        if (amazonOfferSkipIsMissingAsin_(osReason)) {
           Logger.log('[' + fn + '] offer_preflight soft_skip_asin row1=' +
-            pfOne.skipped[osi].row1 + ' fx=' + fxOne);
+            pfOne.skipped[osi].row1 + ' fx=' + fxOne + ' reason=' + osReason);
           continue;
         }
         blockingOfferSkips.push({
@@ -3526,8 +3905,14 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
       if (!offerPreflight) offerPreflight = pfOne;
     }
     if (blockingOfferSkips.length) {
-      throw new Error('相乗り事前検証で停止しました。\n' +
-        amazonSpapiExportFormatSkipDetails_(blockingOfferSkips));
+      throw new Error(
+        '相乗り事前検証で停止しました。\n\n' +
+        '【次にやること】\n' +
+        '・新規だけ出す →「既存カタログに相乗り」をOFF、「新規カタログ」をONでもう一度実行\n' +
+        '・相乗りする → 対象子行の ASINコード（または競合店ASIN／URL）を入れてから相乗りONで再実行\n\n' +
+        '（詳細）\n' +
+        amazonSpapiExportFormatSkipDetails_(blockingOfferSkips)
+      );
     }
     var anyOfferItems = false;
     for (var fxk in offerPreflightByFx) {
@@ -3544,7 +3929,12 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
         offerPreflight = null;
         offerPreflightByFx = {};
       } else {
-        throw new Error('相乗りの有効候補が0件です。レ点・N列ASIN・子SKUを確認してください。');
+        throw new Error(
+          '相乗りASINがありません（ASINコード／競合店ASIN／URLが空または不正）。\n\n' +
+          '【次にやること】\n' +
+          '・新規だけ出す →「新規カタログ」だけON（相乗りはOFF）でもう一度実行\n' +
+          '・相乗りする → マスタの対象子行に ASINコードを入れてから、相乗りONで再実行'
+        );
       }
     }
   }
@@ -3601,7 +3991,7 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
     } catch (eRemakeConfirm) {
       Logger.log('[' + fn + '] state=FAILED remake_confirm_dialog_error=' +
         String(eRemakeConfirm && eRemakeConfirm.message || eRemakeConfirm));
-      throw new Error('確認ダイアログを表示できないため安全停止しました。Dを閉じて再実行してください。');
+      throw new Error('確認ダイアログを表示できないため安全停止しました。Eを閉じて再実行してください。');
     }
     if (remakeConfirmation !== ui.Button.OK) {
       Logger.log('[' + fn + '] state=FAILED cancelled_by_user remakeUnlock=true');
@@ -3636,7 +4026,7 @@ function runBatchExportAmazonFacade(course, skipImageUpload, bestEffort,
     '続行しますか？';
   var confirmation;
   try {
-    confirmation = ui.alert('D Amazon レ点本線確認', confirmText, ui.ButtonSet.OK_CANCEL);
+    confirmation = ui.alert('E Amazon レ点本線確認', confirmText, ui.ButtonSet.OK_CANCEL);
   } catch (eConfirm) {
     Logger.log('[' + fn + '] state=FAILED confirmation_dialog_error=' +
       String(eConfirm && eConfirm.message || eConfirm));
@@ -4223,36 +4613,65 @@ function menuCImageCourseC1Amazon() {
   }
   try {
     cCourseWithTempProps_(fn, ['AMAZON_IMAGE_U2_ENABLED'], function () {
-      generateAiImageMatrix();
-
       var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var sheet = ss.getSheetByName(SHEET_NAME_MATRIX);
-      if (!sheet) {
-        throw new Error('「' + SHEET_NAME_MATRIX + '」がありません。C-1 をやり直してください。');
-      }
-      var selection = amazonImageMatrixValidateCurrentSelection_(ss, sheet);
-      if (!selection.ok) {
-        throw new Error(
-          'マッチングsheetが現在のレ点対象と一致しません。レ点を確認して C-1 を再実行してください。\n' +
-            selection.message
-        );
-      }
+      var prep = amazonE1RunPrepareOrLegacy_(ss, fn);
+      var sheet = prep.sheet;
       amazonImageMatrixEnsureZone_(sheet);
       var nRestored = amazonImageMatrixRestoreFromMaster_(ss, sheet, { silent: true });
       var candRes = amazonImageMatrixLoadCandidatesDetail_(sheet, folderId);
       var nCand = candRes.placed;
-      Logger.log('[' + fn + '] state=DONE restored=' + nRestored +
+      Logger.log('[' + fn + '] state=DONE branch=' + prep.branch +
+        ' kept=' + prep.kept + ' added=' + prep.added + ' dropped=' + prep.dropped +
+        ' restored=' + nRestored +
         ' candidates=' + nCand + ' matched=' + candRes.matched +
         ' autobind=' + (candRes.autobind || 0));
       amazonCourseEToast_(
-        'C-1 Amazon完了',
-        '候補' + nCand + '枚／MAIN自動' + (candRes.autobind || 0) +
-          '件。目視してから C-2。02は触らない'
+        'E① 完了',
+        amazonE1DoneToast_(prep, nCand, candRes.autobind || 0)
       );
     });
   } catch (e) {
     amazonCourseEFail_(fn, (e && e.message) || e);
   }
+}
+
+/** E①: 既定は楽天欄保持。Property false のときだけ旧 generateAiImageMatrix。 */
+function amazonE1RunPrepareOrLegacy_(ss, fn) {
+  if (!getBoolScriptProperty_(AMAZON_E1_KEEP_RAKUTEN_PROP, true)) {
+    generateAiImageMatrix();
+    var sheetLegacy = ss.getSheetByName(SHEET_NAME_MATRIX);
+    if (!sheetLegacy) {
+      throw new Error('「' + SHEET_NAME_MATRIX + '」がありません。C-1 をやり直してください。');
+    }
+    var selection = amazonImageMatrixValidateCurrentSelection_(ss, sheetLegacy);
+    if (!selection.ok) {
+      throw new Error(
+        'マッチングsheetが現在のレ点対象と一致しません。レ点を確認して C-1 を再実行してください。\n' +
+          selection.message
+      );
+    }
+    Logger.log('[' + fn + '] prepare=legacy_generate');
+    return { branch: 'legacy_generate', sheet: sheetLegacy, kept: 0, added: 0, dropped: 0, rows: 0 };
+  }
+  var prep = amazonE1PrepareMatrix_(ss);
+  if (!prep || !prep.sheet) {
+    throw new Error('「' + SHEET_NAME_MATRIX + '」を準備できませんでした。');
+  }
+  return prep;
+}
+
+function amazonE1DoneToast_(prep, nCand, nBind) {
+  var branchNote = '';
+  if (prep.branch === 'keep') {
+    branchNote = '楽天欄はそのまま。';
+  } else if (prep.branch === 'rebuild_overlap') {
+    branchNote = 'レ点差分のため枠を作り直し（楽天引継ぎ' + prep.kept +
+      '行／新規' + prep.added + '／除外' + prep.dropped + '）。';
+  } else if (prep.branch === 'create') {
+    branchNote = 'シート新規（楽天欄は空。先にC済みなら再実行で引継ぎ）。';
+  }
+  return '候補' + nCand + '枚／MAIN自動' + nBind + '件。' + branchNote +
+    '目視してから E②。02は触らない';
 }
 
 /**
@@ -4272,14 +4691,14 @@ function menuCImageCourseC2Core_(fn, confirmationDone) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_NAME_MATRIX);
   if (!sheet) {
-    amazonCourseEFail_(fn, 'マトリクスシートがありません。先に C-1 Amazon → MAINドラッグ。');
+    amazonCourseEFail_(fn, 'マトリクスシートがありません。先に E① → MAINの並び替え。');
     return;
   }
   if (!confirmationDone) {
     try {
       var ui = SpreadsheetApp.getUi();
       var conf = ui.alert(
-        'C-2 確認（③→④→U4）',
+        'E② 確認',
         'MAINドラッグ済みの内容をマスタ保存し、Drive 02 へコピー、R2→マスタURL（U4）まで実行します。\n' +
           'Drive File はGASのみ（手コピー・手退避は不要）。U2/U4 は実行中だけ一時ON→復元。\n\n' +
           '続行しますか？',
@@ -4712,9 +5131,441 @@ function batchExportAmazonLoadShelfRegistry_() {
  * PTまたはBrowse空→P4b。P4b後もBrowse空→停止。棚なし／browseIndex未登録→停止＋DL指示。
  * @return {{ok:boolean, reason?:string, parentPts?:Array, parentCount?:number, registryVersion?:string, p4b?:Object}}
  */
+var AMAZON_SHELF_INGEST_09_PROP = 'AMAZON_SHELF_INGEST_09_ENABLED';
+var AMAZON_SHELF_KNOWN_XLSM_ = {
+  'FOOD_FISH_GROCERY.xlsm': {
+    allowed: ['FOOD', 'FISH', 'GROCERY'],
+    preferred: 'GROCERY'
+  },
+  'FOOD_HERB_SEASONING_FISH_VEGETABLE.xlsm': {
+    allowed: ['VEGETABLE', 'FISH', 'SAUCE', 'SEASONING', 'HERB', 'FOOD'],
+    preferred: 'SEASONING'
+  }
+};
+
+function amazonShelfXmlDecode_(s) {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x([0-9a-fA-F]+);/g, function(_, h) {
+      return String.fromCharCode(parseInt(h, 16));
+    })
+    .replace(/&#(\d+);/g, function(_, n) {
+      return String.fromCharCode(Number(n));
+    });
+}
+
+function amazonShelfColLettersToIndex_(ref) {
+  var m = String(ref || '').match(/^([A-Z]+)/i);
+  if (!m) return -1;
+  var s = m[1].toUpperCase();
+  var n = 0;
+  for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+  return n - 1;
+}
+
+function amazonShelfNormBrowseId_(v) {
+  var s = String(v || '').trim();
+  if (!s) return '';
+  var m = s.match(/(\d{6,})/);
+  return m ? m[1] : s;
+}
+
+function amazonShelfPtFromXlsmName_(name) {
+  var n = String(name || '').replace(/^~\$/, '').replace(/\.xlsm$/i, '');
+  return n.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+}
+
+function amazonShelfBlobByPath_(blobs, suffix) {
+  suffix = String(suffix || '').replace(/\\/g, '/').replace(/^\//, '').toLowerCase();
+  var i;
+  for (i = 0; i < blobs.length; i++) {
+    var n = String(blobs[i].getName() || '').replace(/\\/g, '/').replace(/^\//, '').toLowerCase();
+    if (n === suffix || n.slice(-suffix.length) === suffix) return blobs[i];
+  }
+  return null;
+}
+
+function amazonShelfParseSharedStrings_(xml) {
+  var out = [];
+  var siRe = /<si\b[^>]*>([\s\S]*?)<\/si>/g;
+  var m;
+  while ((m = siRe.exec(xml))) {
+    var text = '';
+    var tRe = /<t\b[^>]*>([\s\S]*?)<\/t>/g;
+    var tm;
+    while ((tm = tRe.exec(m[1]))) text += amazonShelfXmlDecode_(tm[1]);
+    out.push(text);
+  }
+  return out;
+}
+
+function amazonShelfCellValue_(attrs, inner, sst) {
+  var tm = /\bt="([^"]+)"/.exec(attrs || '');
+  var t = tm ? tm[1] : '';
+  if (t === 's') {
+    var vm = /<v\b[^>]*>([\s\S]*?)<\/v>/.exec(inner || '');
+    var idx = vm ? Number(vm[1]) : -1;
+    return (idx >= 0 && sst && sst[idx] != null) ? String(sst[idx]) : '';
+  }
+  if (t === 'inlineStr') {
+    var texts = [];
+    var tRe = /<t\b[^>]*>([\s\S]*?)<\/t>/g;
+    var x;
+    while ((x = tRe.exec(inner || ''))) texts.push(amazonShelfXmlDecode_(x[1]));
+    return texts.join('');
+  }
+  var vm2 = /<v\b[^>]*>([\s\S]*?)<\/v>/.exec(inner || '');
+  return vm2 ? amazonShelfXmlDecode_(vm2[1]) : '';
+}
+
+function amazonShelfFindBrowseSheetPath_(wbXml, relsXml) {
+  var sheetRe = /<(?:[A-Za-z0-9]+:)?sheet\b([^>]*)\/?>/g;
+  var want = '';
+  var m;
+  while ((m = sheetRe.exec(wbXml))) {
+    var attrs = m[1];
+    var nm = /name="([^"]+)"/.exec(attrs);
+    var rid = /\br:id="([^"]+)"/.exec(attrs);
+    if (!nm || !rid) continue;
+    if (amazonShelfXmlDecode_(nm[1]) === 'データを閲覧する') {
+      want = rid[1];
+      break;
+    }
+  }
+  if (!want) return '';
+  var relRe = /<(?:[A-Za-z0-9]+:)?Relationship\b([^>]*)\/?>/g;
+  while ((m = relRe.exec(relsXml))) {
+    var a = m[1];
+    var id = /\bId="([^"]+)"/.exec(a);
+    var tgt = /\bTarget="([^"]+)"/.exec(a);
+    if (!id || !tgt || id[1] !== want) continue;
+    var t = amazonShelfXmlDecode_(tgt[1]).replace(/\\/g, '/');
+    t = t.replace(/^\/?xl\//, '');
+    if (t.indexOf('worksheets/') !== 0) t = 'worksheets/' + t.replace(/^.*\//, '');
+    return 'xl/' + t;
+  }
+  return '';
+}
+
+/**
+ * 純正 xlsm の「データを閲覧する」から browseIndex 行を抜く。
+ * @return {Array<Object>}
+ */
+function amazonShelfExtractXlsmBrowseRows_(file, templateFile, meta) {
+  var zipBlob = file.getBlob();
+  try { zipBlob.setContentType('application/zip'); } catch (eCt) {}
+  var blobs = Utilities.unzip(zipBlob);
+  var wb = amazonShelfBlobByPath_(blobs, 'xl/workbook.xml');
+  var rels = amazonShelfBlobByPath_(blobs, 'xl/_rels/workbook.xml.rels');
+  if (!wb || !rels) {
+    var names = [];
+    for (var bi = 0; bi < Math.min(blobs.length, 30); bi++) names.push(blobs[bi].getName());
+    throw new Error('workbook.xml がありません blobs=' + names.join(','));
+  }
+  var sheetPath = amazonShelfFindBrowseSheetPath_(
+    wb.getDataAsString('UTF-8'),
+    rels.getDataAsString('UTF-8')
+  );
+  if (!sheetPath) throw new Error('シート「データを閲覧する」がありません');
+  var sheetBlob = amazonShelfBlobByPath_(blobs, sheetPath);
+  if (!sheetBlob) throw new Error('worksheet がありません path=' + sheetPath);
+  var sstBlob = amazonShelfBlobByPath_(blobs, 'xl/sharedStrings.xml');
+  var sst = sstBlob ? amazonShelfParseSharedStrings_(sstBlob.getDataAsString('UTF-8')) : [];
+  var xml = sheetBlob.getDataAsString('UTF-8');
+  var bnI = -1;
+  var bpI = -1;
+  var out = [];
+  var extractedAt = new Date().toISOString();
+  var rowRe = /<(?:[A-Za-z0-9]+:)?row\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z0-9]+:)?row>/g;
+  var rm;
+  while ((rm = rowRe.exec(xml))) {
+    var cells = [];
+    var cRe = /<(?:[A-Za-z0-9]+:)?c\b([^>]*)(?:\/>|>([\s\S]*?)<\/(?:[A-Za-z0-9]+:)?c>)/g;
+    var cm;
+    while ((cm = cRe.exec(rm[1]))) {
+      var attrs = cm[1] || '';
+      var inner = cm[2] || '';
+      var rr = /\br="([^"]+)"/.exec(attrs);
+      var ci = amazonShelfColLettersToIndex_(rr ? rr[1] : '');
+      if (ci < 0) continue;
+      cells[ci] = amazonShelfCellValue_(attrs, inner, sst);
+    }
+    if (bnI < 0) {
+      for (var hi = 0; hi < cells.length; hi++) {
+        var hs = String(cells[hi] || '').trim();
+        var compact = hs.replace(/\s+/g, '');
+        if (hs === 'Browse Node' || compact.toLowerCase() === 'browsenode') bnI = hi;
+        if (compact.indexOf('BrowsePath') >= 0 || hs === 'Browse Path') bpI = hi;
+      }
+      continue;
+    }
+    var node = amazonShelfNormBrowseId_(cells[bnI]);
+    if (!node) continue;
+    out.push({
+      browseNodeId: node,
+      browsePath: (bpI >= 0 && cells[bpI] != null) ? String(cells[bpI]).trim() : '',
+      templateFile: templateFile,
+      templateUrl: '',
+      allowedProductTypes: meta.allowed.slice(),
+      preferredProductType: meta.preferred,
+      fingerprintSha: '',
+      columnMapPath: meta.columnMapPath || '',
+      extractedAt: extractedAt,
+      sourceSheet: 'データを閲覧する'
+    });
+  }
+  if (bnI < 0) throw new Error('Browse Node 列がありません');
+  return out;
+}
+
+function amazonShelfCopyTo06IfAbsent_(file09, drive04) {
+  var f06 = amazonShelfFindSiblingFolder_(drive04, '06.純正テンプレ原本');
+  if (!f06) {
+    Logger.log('[amazonShelfIngestDrive09_] 06 folder missing');
+    return false;
+  }
+  var name = file09.getName();
+  if (f06.getFilesByName(name).hasNext()) return false;
+  file09.makeCopy(name, f06);
+  Logger.log('[amazonShelfIngestDrive09_] copied_to_06 name=' + name);
+  return true;
+}
+
+/**
+ * E③ 直前: Drive 09 の未取込 xlsm を棚 registry に載せる（browseIndex＋entries）。
+ * 指紋は見ない。PACKAGED 列マップは B-T2。失敗してもゲートは旧棚で続行。
+ * @return {{ok:boolean, ingested?:number, skippedFiles?:number, addedBrowse?:number, reason?:string}}
+ */
+function amazonShelfIngestDrive09_() {
+  var fn = 'amazonShelfIngestDrive09_';
+  var out = { ok: true, ingested: 0, skippedFiles: 0, addedBrowse: 0 };
+  if (!getBoolScriptProperty_(AMAZON_SHELF_INGEST_09_PROP, true)) {
+    Logger.log('[' + fn + '] skip disabled');
+    out.skipped = true;
+    return out;
+  }
+  var fileId = String(PropertiesService.getScriptProperties()
+    .getProperty(AMAZON_SHELF_REGISTRY_FILE_ID_PROP) || '').trim();
+  if (!fileId) {
+    out.ok = false;
+    out.reason = 'registry fileId empty';
+    return out;
+  }
+  var regFile = DriveApp.getFileById(fileId);
+  var parents = regFile.getParents();
+  if (!parents.hasNext()) {
+    out.ok = false;
+    out.reason = 'registry parent missing';
+    return out;
+  }
+  var drive04 = parents.next();
+  var folder09 = amazonShelfFindSiblingFolder_(drive04, '09.SC純正バルク');
+  if (!folder09) {
+    Logger.log('[' + fn + '] 09 folder missing parent=' + drive04.getName());
+    return out;
+  }
+  var json = JSON.parse(regFile.getBlob().getDataAsString('UTF-8'));
+  var browseIndex = (json && json.browseIndex) ? json.browseIndex.slice() : [];
+  var entries = (json && json.entries) ? json.entries.slice() : [];
+  var indexed = {};
+  var ei;
+  for (ei = 0; ei < browseIndex.length; ei++) {
+    var tf0 = String((browseIndex[ei] && browseIndex[ei].templateFile) || '').trim();
+    if (tf0) indexed[tf0] = true;
+  }
+  var files = folder09.getFiles();
+  var pending = [];
+  while (files.hasNext()) {
+    var f = files.next();
+    var name = String(f.getName() || '');
+    if (!/\.xlsm$/i.test(name)) continue;
+    if (name.indexOf('~$') === 0) continue;
+    if (/processing-summary/i.test(name)) continue;
+    if (indexed[name]) {
+      out.skippedFiles++;
+      Logger.log('[' + fn + '] skip indexed name=' + name);
+      continue;
+    }
+    pending.push(f);
+  }
+  if (!pending.length) {
+    Logger.log('[' + fn + '] no new xlsm skipped=' + out.skippedFiles);
+    return out;
+  }
+  var changed = false;
+  for (var pi = 0; pi < pending.length; pi++) {
+    var file09 = pending[pi];
+    var tname = file09.getName();
+    try {
+      if (file09.getSize() > 40 * 1024 * 1024) {
+        Logger.log('[' + fn + '] skip oversized name=' + tname + ' size=' + file09.getSize());
+        out.skippedFiles++;
+        continue;
+      }
+      var known = AMAZON_SHELF_KNOWN_XLSM_[tname] || null;
+      var pt = known ? known.preferred : amazonShelfPtFromXlsmName_(tname);
+      var meta = {
+        allowed: known ? known.allowed.slice() : [pt],
+        preferred: pt,
+        columnMapPath: ''
+      };
+      var rows = amazonShelfExtractXlsmBrowseRows_(file09, tname, meta);
+      Logger.log('[' + fn + '] parsed name=' + tname + ' rows=' + rows.length + ' pt=' + pt);
+      if (!rows.length) {
+        out.skippedFiles++;
+        continue;
+      }
+      try { amazonShelfCopyTo06IfAbsent_(file09, drive04); } catch (eCp) {
+        Logger.log('[' + fn + '] copy06 err=' + String(eCp && eCp.message ? eCp.message : eCp));
+      }
+      var keep = [];
+      for (ei = 0; ei < browseIndex.length; ei++) {
+        if (String((browseIndex[ei] && browseIndex[ei].templateFile) || '') !== tname) {
+          keep.push(browseIndex[ei]);
+        }
+      }
+      browseIndex = keep.concat(rows);
+      out.addedBrowse += rows.length;
+      var hasPt = false;
+      for (ei = 0; ei < entries.length; ei++) {
+        if (String(entries[ei].productType || '').trim().toUpperCase() === pt) {
+          hasPt = true;
+          break;
+        }
+      }
+      if (!hasPt) {
+        entries.push({
+          productType: pt,
+          fingerprintSha256: '',
+          fingerprintRows: [3, 4, 5],
+          fingerprintMaxCol: 0,
+          preferredFileName: tname,
+          templateKind: known ? 'composite' : 'single',
+          columnMapPath: '',
+          fingerprintBaselinePath: '',
+          notes: 'E③ 09 ingest. GENERATED routing only. PACKAGED fingerprint is B-T2.'
+        });
+        Logger.log('[' + fn + '] entries_add pt=' + pt);
+      }
+      if (known) {
+        for (var ai = 0; ai < known.allowed.length; ai++) {
+          var apt = known.allowed[ai];
+          var foundA = false;
+          for (ei = 0; ei < entries.length; ei++) {
+            if (String(entries[ei].productType || '').trim().toUpperCase() === apt) {
+              foundA = true;
+              break;
+            }
+          }
+          if (!foundA) {
+            entries.push({
+              productType: apt,
+              fingerprintSha256: '',
+              fingerprintRows: [3, 4, 5],
+              fingerprintMaxCol: 0,
+              preferredFileName: tname,
+              templateKind: 'composite',
+              columnMapPath: '',
+              fingerprintBaselinePath: '',
+              notes: 'E③ 09 ingest (known composite).'
+            });
+          }
+        }
+      }
+      indexed[tname] = true;
+      out.ingested++;
+      changed = true;
+    } catch (eOne) {
+      out.skippedFiles++;
+      Logger.log('[' + fn + '] parse_fail name=' + tname + ' err=' +
+        String(eOne && eOne.message ? eOne.message : eOne));
+    }
+  }
+  if (changed) {
+    json.browseIndex = browseIndex;
+    json.entries = entries;
+    json.updatedAt = new Date().toISOString();
+    regFile.setContent(JSON.stringify(json));
+    Logger.log('[' + fn + '] registry_write ingested=' + out.ingested +
+      ' addedBrowse=' + out.addedBrowse + ' entries=' + entries.length);
+  }
+  return out;
+}
+
+/** ブラウズセルから人間向けの葉名（検索に使う）。 */
+function amazonShelfBrowseLeafName_(browseCell, nodeId) {
+  var s = String(browseCell || '').trim();
+  var nid = String(nodeId || '').trim();
+  s = s.replace(/\(\s*\d+\s*\)/g, '');
+  var parts = s.split('>');
+  var leaf = String(parts[parts.length - 1] || s).replace(/[()]/g, '').trim();
+  return leaf || nid || '（名前不明）';
+}
+
+/** 案内用。商品名ベース。無ければ商品名、最後に親SKU。 */
+function amazonShelfParentNameBase_(masterCtx, parent) {
+  var v = '';
+  if (typeof amazonApprovalLv4Cell_ === 'function' && parent && parent.parentRowIndex0 != null) {
+    v = amazonApprovalLv4Cell_(masterCtx, parent.parentRowIndex0, '商品名ベース');
+  }
+  v = String(v || '').trim();
+  if (v) return v;
+  v = String((parent && parent.itemName) || '').trim();
+  if (v) return v;
+  return String((parent && parent.parentSku) || '').trim();
+}
+
+/**
+ * 棚なし時の人間向けDL案内。上＝探すもの／下＝SC手順。
+ * @param {{names:string[], nodeId?:string, browseCell?:string, pt?:string}} rec
+ */
+function amazonShelfDlGuideHuman_(rec) {
+  rec = rec || {};
+  var names = rec.names || rec.skus || [];
+  var nodeId = String(rec.nodeId || '').trim();
+  var name = amazonShelfBrowseLeafName_(rec.browseCell, nodeId);
+  var lines = [];
+  lines.push('【探すもの】');
+  lines.push('対象（商品名ベース）: ' + names.join('、'));
+  if (rec.pt) lines.push('棚に無い商品タイプ: ' + rec.pt);
+  lines.push('ブラウズ名: ' + name + (nodeId ? '（' + nodeId + '）' : ''));
+  lines.push('SCで検索する名前: ' + name);
+  var f09 = amazonShelfFolder09Info_();
+  lines.push('保存先: ' + f09.winPath);
+  if (f09.url) lines.push('保存先を開く: ' + f09.url);
+  lines.push('09へ保存したら、この案内を閉じて E③ をもう一度押してください。');
+  lines.push('チャットへ返信する必要はありません。');
+  lines.push('');
+  lines.push('【セラーセントラルでの手順】');
+  lines.push('1. セラーセントラルを開く');
+  lines.push('2. カタログ → 商品を一括登録');
+  lines.push('3. 「ファイルをダウンロード」を選ぶ（アップロードではない）');
+  lines.push('4. 上の「検索する名前」で探し、そのブラウズを選んで xlsm をダウンロード');
+  lines.push('5. そのファイルを 09 フォルダへ保存する');
+  return lines.join('\n');
+}
+
+/**
+ * 新規レ点親の PT／Browse／棚ゲート。
+ * PTまたはBrowse空→P4b。P4b後もBrowse空→停止。棚なし／browseIndex未登録→停止＋DL指示。
+ * @return {{ok:boolean, reason?:string, parentPts?:Array, parentCount?:number, registryVersion?:string, p4b?:Object}}
+ */
 function batchExportAmazonNewPtShelfGate_(ss, masterCtx, newRows, logFn) {
   logFn = logFn || 'batchExportAmazonNewPtShelfGate_';
   var out = { ok: false, parentPts: [], parentCount: 0 };
+  try {
+    var ing = amazonShelfIngestDrive09_();
+    Logger.log('[' + logFn + '] ingest09 ingested=' + ((ing && ing.ingested) || 0) +
+      ' skippedFiles=' + ((ing && ing.skippedFiles) || 0) +
+      ' addedBrowse=' + ((ing && ing.addedBrowse) || 0) +
+      ' ok=' + !!(ing && ing.ok));
+  } catch (eIng) {
+    Logger.log('[' + logFn + '] ingest09 err=' + String(eIng && eIng.message ? eIng.message : eIng));
+  }
   if (typeof amazonP4bCollectCheckedParents_ !== 'function' ||
       typeof amazonP4bSuggestEmptyPtParentsForNewGate_ !== 'function') {
     out.reason = 'P4b関数がありません。AmazonCategoryPt.js の clasp push を確認してください。';
@@ -4762,6 +5613,16 @@ function batchExportAmazonNewPtShelfGate_(ss, masterCtx, newRows, logFn) {
   }
   var missing = [];
   var parentPts = [];
+  var dlByNode = {};
+  function addDlName_(rec) {
+    var label = amazonShelfParentNameBase_(masterCtx, parent);
+    if (!label) return;
+    var seen = rec.names;
+    for (var si = 0; si < seen.length; si++) {
+      if (seen[si] === label) return;
+    }
+    seen.push(label);
+  }
   for (var i = 0; i < parents.length; i++) {
     var parent = parents[i];
     var pt = String(masterCtx.values[parent.parentRowIndex0][colPt] || '').trim().toUpperCase();
@@ -4781,11 +5642,10 @@ function batchExportAmazonNewPtShelfGate_(ss, masterCtx, newRows, logFn) {
       var nodeId = amazonP4bExtractBrowseNodeId_(browseCell);
       var resolved = amazonP4bResolvePreferredPtFromBrowse_(nodeId, shelf);
       if (nodeId && !resolved) {
-        missing.push(
-          parent.parentSku + ': Browse Node ID=' + nodeId +
-          ' が SHELF 網羅（browseIndex）にありません。' +
-          '純正 xlsm を SC DL→09→B-T0／c1_shelf_browse_extract → Drive registry 同期後に再実行。'
-        );
+        if (!dlByNode[nodeId]) {
+          dlByNode[nodeId] = { nodeId: nodeId, browseCell: browseCell, names: [] };
+        }
+        addDlName_(dlByNode[nodeId]);
         parentPts.push({ parentSku: parent.parentSku, productType: pt, browseNodeId: nodeId });
         continue;
       }
@@ -4829,15 +5689,21 @@ function batchExportAmazonNewPtShelfGate_(ss, masterCtx, newRows, logFn) {
         : ''
     });
     if (!pt) {
-      missing.push(parent.parentSku + ': PT空（P4b後も未設定。競合ASIN／URLを確認）');
+      missing.push(amazonShelfParentNameBase_(masterCtx, parent) + ': 商品タイプが空です。同じE③をもう一度実行してください。');
       continue;
     }
-    if (!shelf.byPt[pt]) {
-      missing.push(
-        parent.parentSku + ': PT=' + pt + ' が棚にありません。' +
-        'Seller Central から該当純正テンプレを DL → Drive 06 配置 → ' +
-        'B-T0／SHELF抽出（shelf_registry.json を Drive 同期）後に同じ D を再実行。'
-      );
+    if (!shelf.byPt[pt] && pt === 'HERB' && shelf.byPt['SEASONING']) {
+      Logger.log('[' + logFn + '] herb_composite_alias parent=' + parent.parentSku +
+        ' pt=HERB via=SEASONING file=' + String(shelf.byPt['SEASONING'].preferredFileName || ''));
+    } else if (!shelf.byPt[pt]) {
+      var ptKey = 'pt:' + pt;
+      var nidPt = (typeof amazonP4bExtractBrowseNodeId_ === 'function')
+        ? (amazonP4bExtractBrowseNodeId_(browseCell) || '')
+        : '';
+      if (!dlByNode[ptKey]) {
+        dlByNode[ptKey] = { nodeId: nidPt, browseCell: browseCell, pt: pt, names: [] };
+      }
+      addDlName_(dlByNode[ptKey]);
     } else {
       Logger.log('[' + logFn + '] shelf_hit parent=' + parent.parentSku +
         ' pt=' + pt + ' preferred=' + String(shelf.byPt[pt].preferredFileName || '') +
@@ -4845,11 +5711,13 @@ function batchExportAmazonNewPtShelfGate_(ss, masterCtx, newRows, logFn) {
     }
   }
   out.parentPts = parentPts;
+  var dlKeys = Object.keys(dlByNode);
+  for (var di = 0; di < dlKeys.length; di++) {
+    missing.push(amazonShelfDlGuideHuman_(dlByNode[dlKeys[di]]));
+  }
   if (missing.length) {
-    out.reason = missing.join('\n') +
-      '\nregistry version=' + (shelf.version || '') +
-      ' file=' + (shelf.fileName || '') +
-      '\nProperty=' + AMAZON_SHELF_REGISTRY_FILE_ID_PROP;
+    out.reason = missing.join('\n\n');
+    out.needBulkDl = dlKeys.length > 0;
     return out;
   }
   out.ok = true;
@@ -5042,8 +5910,10 @@ function scheduleBatchExport(course, skipImageUpload, bestEffort) {
       .create();
     props.setProperty('BATCH_EXPORT_TRIGGER_ID', trigger.getUniqueId());
     console.log('[一括出品] 1分後の実行トリガーを作成しました');
+    logBatchExportProgress(ss, 'D予約OK course=' + course + ' skipImage=' + (skipImageUpload ? '1' : '0') + ' bestEffort=' + (bestEffort ? '1' : '0') + ' trigger=created');
   } catch (e) {
     console.warn('[一括出品] トリガー自動作成をスキップ: ' + e.message);
+    logBatchExportProgress(ss, 'D予約 course=' + course + ' trigger=create_failed msg=' + String(e.message || '').substring(0, 120));
     ss.toast('予約は保存しました。オーナーが「runBatchExportFromTrigger」を1分ごとに登録していれば、約1分以内に実行されます。', '一括出品', 10);
   }
 
@@ -5140,19 +6010,42 @@ function runBatchExportFromTriggerImpl(course, ssId, batchOpts) {
   }
 
   var errMsg = null;
+  var t0 = Date.now();
+  batchOpts = batchOpts || {};
   try {
+    logBatchExportProgress(
+      ssForToast,
+      'Dトリガー開始 course=' + course +
+        ' skipImage=' + (!!batchOpts.skipImageUpload ? '1' : '0') +
+        ' bestEffort=' + (!!batchOpts.bestEffort ? '1' : '0')
+    );
     // 防御: Amazon をトリガー経路に載せない（U3）
     if (batchExportIsAmazonImmediateCourse_(course)) {
       throw new Error('Amazonコースはトリガー実行対象外です（Dから即時実行してください）');
     }
-    runBatchExport(course, true, ssForToast, batchOpts || {});
+    runBatchExport(course, true, ssForToast, batchOpts);
     console.log('[一括出品] runBatchExport 完了');
   } catch (e) {
     errMsg = e.message;
     console.error('[一括出品] エラー: ' + errMsg);
     if (e.stack) console.error(e.stack);
+    try {
+      logBatchExportProgress(
+        ssForToast,
+        'Dエラー class=' + batchExportClassifyCabinetErr_(errMsg) +
+          ' msg=' + String(errMsg || '').substring(0, 300)
+      );
+    } catch (_) {}
   } finally {
     deleteOwnBatchExportTrigger();
+    // 時間切れで強制終了した場合は、この行が無い＝実行途中死の証拠
+    try {
+      logBatchExportProgress(
+        ssForToast,
+        'Dトリガー終了 sec=' + batchExportDiagSec_(t0) +
+          ' result=' + (errMsg ? 'FAILED' : 'OK')
+      );
+    } catch (_) {}
   }
 
   if (errMsg) {
@@ -5201,6 +6094,26 @@ function logBatchExportProgress(ss, message) {
   } catch (e) { console.warn('[一括出品ログ] 記録失敗: ' + e.message); }
 }
 
+/** 一括出品ログ用: 経過秒（秘密は載せない） */
+function batchExportDiagSec_(startedAtMs) {
+  return Math.max(0, Math.round((Date.now() - (startedAtMs || Date.now())) / 1000));
+}
+
+/**
+ * R-Cabinet / UrlFetch 失敗メッセージの分類（鍵・トークン値は出さない）
+ * @returns {string}
+ */
+function batchExportClassifyCabinetErr_(msg) {
+  var s = String(msg || '');
+  if (/Number of files is upper limit/i.test(s)) return 'CABINET_FILE_LIMIT';
+  if (s.indexOf('使用できないアドレス') >= 0) return 'URLFETCH_UNAVAILABLE';
+  if (/Capacity|Image size/i.test(s)) return 'SIZE_CAPACITY';
+  if (/Authorization|認証|ESA|401|403/i.test(s)) return 'AUTH';
+  if (/FileId not found|FileUrl not found/i.test(s)) return 'PARSE';
+  if (/タイムアウト|timeout|Exceeded maximum execution time/i.test(s)) return 'TIME';
+  return 'OTHER';
+}
+
 /**
  * 出品CK付き行に楽天メイン画像1（子は親行の画像でフォールバック）が揃っているか。
  * ヘッダー行は generateRakutenCSV と同様に ANCHOR_HEADER_NAME（ASINコード）行を使用。
@@ -5241,10 +6154,12 @@ function validateCheckedRowsHaveRakutenMainImage1_(ss) {
     }
   }
   var missingRows = [];
+  var checkedCount = 0;
   for (var j = masterHeaderRowIdx + 1; j < masterValues.length; j++) {
     var row2 = masterValues[j];
     var isChecked = row2[checkIdx] === true || String(row2[checkIdx]).toUpperCase() === 'TRUE';
     if (!isChecked) continue;
+    checkedCount++;
     var p2 = String(row2[parentSkuIdx]).trim();
     if (!p2) continue;
     var main = row2[mainIdx];
@@ -5254,6 +6169,7 @@ function validateCheckedRowsHaveRakutenMainImage1_(ss) {
   }
   return {
     ok: missingRows.length === 0,
+    checkedCount: checkedCount,
     reason: missingRows.length ? '出品CKの付いた行で楽天メイン画像1が空です（親のメイン画像を含むフォールバック後）' : '',
     rows: missingRows,
   };
@@ -5269,6 +6185,7 @@ function runBatchExportImageStepAndGate_(ss, batchOpts) {
   var bestEffort = !!batchOpts.bestEffort;
 
   if (!skipImage) {
+    logBatchExportProgress(ss, '画像ステップ開始 bestEffort=' + (bestEffort ? '1' : '0'));
     var up = executeRenameAndUploadFromMatrixProgrammatic_(ss, { skipConfirm: true });
     if (up.cancelled) throw new Error('【一括出品停止】画像アップロードがキャンセルされました');
     if (up.blocked === 'NO_MATRIX') {
@@ -5284,6 +6201,11 @@ function runBatchExportImageStepAndGate_(ss, batchOpts) {
       if (!bestEffort) throw new Error('【一括出品停止】画像マトリクスにデータがありません。');
       logBatchExportProgress(ss, '画像アップロード: マトリクスにデータなし（ベストエフォートで続行）');
     } else if (up.errorCount > 0 && !bestEffort) {
+      logBatchExportProgress(
+        ss,
+        '画像ステップ停止理由=R-Cabinet失敗件数 ng=' + up.errorCount +
+          ' ok=' + up.successCount + ' skip=' + up.skipCount
+      );
       throw new Error('【一括出品停止】R-Cabinet アップロードに失敗があります（失敗 ' + up.errorCount + ' 件）。画像マトリクスを確認してください。');
     } else if (!up.blocked && up.errorCount > 0 && bestEffort) {
       logBatchExportProgress(ss, '画像アップロード: 失敗' + up.errorCount + '件（ベストエフォートで続行）');
@@ -5297,10 +6219,16 @@ function runBatchExportImageStepAndGate_(ss, batchOpts) {
   var gate = validateCheckedRowsHaveRakutenMainImage1_(ss);
   if (!gate.ok && !bestEffort) {
     var rowMsg = gate.rows.length <= 10 ? gate.rows.join(', ') : gate.rows.slice(0, 10).join(', ') + '…他';
+    logBatchExportProgress(
+      ss,
+      '画像ゲート停止 未設定行数=' + gate.rows.length + ' 行例=' + rowMsg
+    );
     throw new Error('【一括出品停止】' + gate.reason + '（スプレッドシート行: ' + rowMsg + '）');
   }
   if (!gate.ok && bestEffort) {
     logBatchExportProgress(ss, '画像ゲート: 楽天メイン画像1 未設定あり（ベストエフォート） 行=' + gate.rows.slice(0, 20).join(','));
+  } else if (gate.ok) {
+    logBatchExportProgress(ss, '画像ゲートOK 楽天メイン画像1そろい');
   }
 }
 
@@ -5737,6 +6665,15 @@ function generateListingDataComparison() {
 // ==========================================
 // 4. マスタ同期機能 (変更なし)
 // ==========================================
+function mapCountInc_(map, key) {
+  if (!key) return;
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function isAiDescFishMixJoinEnabled_() {
+  return getBoolScriptProperty_(AI_DESC_FISH_MIX_JOIN_ENABLED_PROP, true);
+}
+
 function syncAiDataToMaster() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const aiSheet = ss.getSheetByName(TARGET_SHEET_NAME);
@@ -5783,6 +6720,9 @@ function syncAiDataToMaster() {
   const masterChildSkuIdx = masterColMap['子SKU'];
   // JAN/ASIN が空でも Z→1 で J にコピーした名前が入るブック用。AI側の商品名(D列)はこの列と同一マップで照合する。
   const masterNameBaseIdx = masterColMap['商品名ベース'];
+  const aiMakerIdx = aiColMap['メーカー名'];
+  const masterMakerIdx = masterColMap['メーカー名'];
+  const masterMakerBaseIdx = masterColMap['メーカー名ベース'];
 
   const targetColumns = [];
   COMPARE_ITEMS.forEach(item => {
@@ -5870,33 +6810,121 @@ function syncAiDataToMaster() {
     return notOverlap.join(' ') + (overlap.length ? ' ' + overlap.join(' ') : '');
   };
 
+  const joinV2 = isAiDescFishMixJoinEnabled_();
+  Logger.log('[syncAiDataToMaster] JOIN v2=' + joinV2 + ' prop=' + AI_DESC_FISH_MIX_JOIN_ENABLED_PROP);
+
+  function masterMakerOf_(mRow) {
+    var mm = '';
+    if (masterMakerIdx !== undefined && mRow[masterMakerIdx] != null) mm = normalize(mRow[masterMakerIdx]);
+    if (!mm && masterMakerBaseIdx !== undefined && mRow[masterMakerBaseIdx] != null) mm = normalize(mRow[masterMakerBaseIdx]);
+    return mm;
+  }
+
+  function aiMakerOf_(aiRow) {
+    if (aiMakerIdx === undefined || !aiRow) return '';
+    return normalize(aiRow[aiMakerIdx]);
+  }
+
+  function makerJoinOk_(mRow, aiRow) {
+    var mm = masterMakerOf_(mRow);
+    var am = aiMakerOf_(aiRow);
+    if (!mm || !am) return true;
+    return mm === am;
+  }
+
   const aiMapByAsin = new Map();
   const aiMapByJan = new Map();
   const aiMapByName = new Map();
+  const aiAsinCount = new Map();
+  const aiJanCount = new Map();
+  const aiNameCount = new Map();
+  const masterAsinCount = new Map();
+  const masterJanCount = new Map();
+  const masterNameBaseCount = new Map();
 
   for (let i = 1; i < aiData.length; i++) {
     const row = aiData[i];
     const asin = normalize(row[aiAsinIdx]);
     const jan = normalize(row[aiJanIdx]);
     const name = normalize(row[aiNameIdx]);
-    
-    if (asin) aiMapByAsin.set(asin, row);
-    if (jan) aiMapByJan.set(jan, row);
-    if (name) aiMapByName.set(name, row);
+    if (joinV2) {
+      mapCountInc_(aiAsinCount, asin);
+      mapCountInc_(aiJanCount, jan);
+      mapCountInc_(aiNameCount, name);
+    } else {
+      if (asin) aiMapByAsin.set(asin, row);
+      if (jan) aiMapByJan.set(jan, row);
+      if (name) aiMapByName.set(name, row);
+    }
+  }
+  if (joinV2) {
+    for (let i = 1; i < aiData.length; i++) {
+      const row = aiData[i];
+      const asin = normalize(row[aiAsinIdx]);
+      const jan = normalize(row[aiJanIdx]);
+      const name = normalize(row[aiNameIdx]);
+      if (asin && aiAsinCount.get(asin) === 1) aiMapByAsin.set(asin, row);
+      if (jan && aiJanCount.get(jan) === 1) aiMapByJan.set(jan, row);
+      if (name && aiNameCount.get(name) === 1) aiMapByName.set(name, row);
+    }
+    for (let pi = masterHeaderRowIndex + 1; pi < masterValues.length; pi++) {
+      const prow = masterValues[pi];
+      if (String(prow[masterChildSkuIdx] || '').trim() !== '') continue;
+      mapCountInc_(masterAsinCount, normalize(prow[masterAsinIdx]));
+      mapCountInc_(masterJanCount, normalize(prow[masterJanIdx]));
+      if (masterNameBaseIdx !== undefined) mapCountInc_(masterNameBaseCount, normalize(prow[masterNameBaseIdx]));
+    }
   }
 
-  /** マスタ行から AI情報取得data の行を解決する。順: ASIN → JAN → 商品名/商品名amazon → 商品名ベース（後者2つは aiMapByName） */
+  var joinHowMemo = new Map();
+  var joinSkipLogLeft = 30;
+
+  /** マスタ行から AI情報取得data の行を解決する。v2: 一意ASIN → 一意商品名ベース=AI商品名 → 一意JAN。メーカー両方非空なら一致必須。旧: ASIN → JAN後勝ち → 名前 → 商品名ベース */
   function resolveAiRowFromMasterRow_(mRow) {
+    if (joinHowMemo.has(mRow)) return joinHowMemo.get(mRow).row;
     var mAsin = normalize(mRow[masterAsinIdx]);
     var mJan = normalize(mRow[masterJanIdx]);
     var mName = normalize(mRow[masterNameIdx]);
     var mNameBase = masterNameBaseIdx !== undefined ? normalize(mRow[masterNameBaseIdx]) : '';
-    if (mAsin && aiMapByAsin.has(mAsin)) return aiMapByAsin.get(mAsin);
-    if (mJan && aiMapByJan.has(mJan)) return aiMapByJan.get(mJan);
-    if (mName && aiMapByName.has(mName)) return aiMapByName.get(mName);
-    if (mNameBase && aiMapByName.has(mNameBase)) return aiMapByName.get(mNameBase);
-    return null;
+    var rec = { row: null, how: 'unresolved' };
+    if (!joinV2) {
+      if (mAsin && aiMapByAsin.has(mAsin)) { rec = { row: aiMapByAsin.get(mAsin), how: 'ASIN' }; }
+      else if (mJan && aiMapByJan.has(mJan)) { rec = { row: aiMapByJan.get(mJan), how: 'JAN' }; }
+      else if (mName && aiMapByName.has(mName)) { rec = { row: aiMapByName.get(mName), how: 'NAME' }; }
+      else if (mNameBase && aiMapByName.has(mNameBase)) { rec = { row: aiMapByName.get(mNameBase), how: 'NAME_BASE' }; }
+      joinHowMemo.set(mRow, rec);
+      return rec.row;
+    }
+    if (mAsin && masterAsinCount.get(mAsin) === 1 && aiMapByAsin.has(mAsin)) {
+      rec = { row: aiMapByAsin.get(mAsin), how: 'ASIN' };
+    } else if (mNameBase && masterNameBaseCount.get(mNameBase) === 1 && aiMapByName.has(mNameBase)) {
+      rec = { row: aiMapByName.get(mNameBase), how: 'NAME_BASE' };
+    } else if (mJan && masterJanCount.get(mJan) === 1 && aiMapByJan.has(mJan)) {
+      rec = { row: aiMapByJan.get(mJan), how: 'JAN' };
+    }
+    if (rec.row && !makerJoinOk_(mRow, rec.row)) {
+      if (joinSkipLogLeft > 0) {
+        joinSkipLogLeft--;
+        Logger.log('[syncAiDataToMaster] JOIN skip maker_mismatch how=' + rec.how +
+          ' jan=' + mJan + ' base=' + String(mNameBase).substring(0, 40) +
+          ' masterMaker=' + masterMakerOf_(mRow) + ' aiMaker=' + aiMakerOf_(rec.row));
+      }
+      rec = { row: null, how: 'maker_mismatch' };
+    } else if (!rec.row && joinSkipLogLeft > 0) {
+      var why = 'no_unique_key';
+      if (mAsin && masterAsinCount.get(mAsin) > 1) why = 'asin_dup_master';
+      else if (mAsin && aiAsinCount.get(mAsin) > 1) why = 'asin_dup_ai';
+      else if (mNameBase && masterNameBaseCount.get(mNameBase) > 1) why = 'name_dup_master';
+      else if (mJan && masterJanCount.get(mJan) > 1) why = 'jan_dup_master';
+      else if (mJan && aiJanCount.get(mJan) > 1) why = 'jan_dup_ai';
+      joinSkipLogLeft--;
+      Logger.log('[syncAiDataToMaster] JOIN unresolved why=' + why +
+        ' jan=' + mJan + ' asin=' + mAsin + ' base=' + String(mNameBase).substring(0, 40));
+    }
+    joinHowMemo.set(mRow, rec);
+    return rec.row;
   }
+
 
   let totalUpdatedRows = 0;
   /** 作業エリア列名をマスタの列マップで解決する（括弧の全角・列名のゆれ・前後空白に対応）。 */
@@ -11254,7 +12282,9 @@ function amazonAiAdoptSearchKw150Trim_(masterSheet, masterValues, headerRowIdx, 
 }
 
 /**
- * バリエーション値（子・空欄）へ「バリエーション名 16文字まで」の表示値をコピー。
+ * バリエーション値（子・空欄）へ GR 参照式を入れる。
+ * 正: 子 HW=`=GRn`（表示値の直書き禁止）。親はテンプレの TEXTJOIN。
+ * GR の表示が空でも式は残す（後から GR が埋まれば追従）。
  */
 function amazonAiAdoptVariationValuesEmptyOnly_(masterSheet, masterValues, headerRowIdx, masterColMap, parentRows, stats) {
   var colVarVal = masterColMap['バリエーション値'];
@@ -11264,6 +12294,7 @@ function amazonAiAdoptVariationValuesEmptyOnly_(masterSheet, masterValues, heade
   var colUnit = masterColMap[COL_VARIATION_UNIT];
   var colContent = masterColMap[COL_CONTENT_PER_ITEM];
   if (colVarVal === undefined || childSkuIdx === undefined || parentSkuIdx === undefined) return;
+  if (colName16 === undefined) return;
 
   for (var p = 0; p < parentRows.length; p++) {
     var parentRow1 = parentRows[p];
@@ -11282,21 +12313,20 @@ function amazonAiAdoptVariationValuesEmptyOnly_(masterSheet, masterValues, heade
       var cParent = String(crow2[parentSkuIdx] != null ? crow2[parentSkuIdx] : '').trim();
       if (parentSkuVal && cParent !== parentSkuVal) break;
       var childRow1Based = ci + 1;
-      if (!amazonAiCellIsEmpty_(crow2[colVarVal])) continue;
-      var displayVal = '';
-      if (colName16 !== undefined) {
-        try {
-          displayVal = String(masterSheet.getRange(childRow1Based, colName16 + 1).getDisplayValue() || '').trim();
-        } catch (eD) {
-          displayVal = String(crow2[colName16] != null ? crow2[colName16] : '').trim();
-        }
+      var existingFormula = '';
+      try {
+        existingFormula = String(masterSheet.getRange(childRow1Based, colVarVal + 1).getFormula() || '').trim();
+      } catch (eF) {
+        existingFormula = '';
       }
-      if (!displayVal) {
-        amazonAiSetReviewFlag_(masterSheet, headerRowIdx, masterColMap, childRow1Based, 'バリ値', '16文字式の表示値が空', stats);
-        continue;
-      }
-      masterSheet.getRange(childRow1Based, colVarVal + 1).setValue(displayVal);
-      crow2[colVarVal] = displayVal;
+      // 既に =GR 参照なら触らない。直値・空だけ式を入れる（直値の上書きは復旧メニュー想定外のため空のみ）
+      if (existingFormula && /^[=＝]\s*GR\d+/i.test(existingFormula)) continue;
+      if (!amazonAiCellIsEmpty_(crow2[colVarVal]) && existingFormula) continue;
+      if (!amazonAiCellIsEmpty_(crow2[colVarVal]) && !existingFormula) continue;
+      var grLetter = columnToLetter(colName16 + 1);
+      var formula = '=' + grLetter + childRow1Based;
+      masterSheet.getRange(childRow1Based, colVarVal + 1).setFormula(formula);
+      crow2[colVarVal] = formula;
       stats.variationValueAdopted++;
     }
   }
@@ -12571,6 +13601,11 @@ const YAHOO_CDN_GUESS_SLEEP_MS = 100;
 const YAHOO_CDN_GUESS_MIN_BYTES = 256;
 /** 競合画像テスト（99-⑨）: 楽天画像 URL の _ex をこのサイズに統一（大きめサムネ・テスト用）。 */
 const RAKUTEN_COMPETITOR_IMAGE_EX_MAX = '600x600';
+/**
+ * B-③: ミックスレ点時にセット構成1〜5の単品親JANも取得対象へ含める。
+ * 未設定=true。切戻しは Script Properties で false。
+ */
+const B3_EXPAND_COMBO_PARENT_JANS_PROP = 'B3_EXPAND_COMBO_PARENT_JANS';
 /** 他セット数と比べて単価が高すぎるとみなす倍率（1.5＝1.5倍以上でメモ追記）。 */
 const CROSS_MALL_UNIT_PRICE_HIGH_RATIO = 1.5;
 
@@ -14795,57 +15830,159 @@ function menuApplyCrossMallResultToRakutenYahooMaster() {
 }
 
 /**
+ * B-③用: レ点行のJAN（＋任意でセット構成の単品親JAN）。
+ * @return {{jans: string[], byJan: Object.<string, {dataIdx: number, rowNum: number, sources: string[]}>}}
+ */
+function collectB3ImageTargetJansFromMaster_(masterValues, headerRowIdx, masterColMap) {
+  var colJan = masterColMap['JANコード'];
+  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
+  var colChild = masterColMap['子SKU'];
+  var colParent = masterColMap['親SKU'];
+  var byJan = {};
+  var jans = [];
+
+  function addJan_(jan, dataIdx, source) {
+    var j = String(jan || '').trim();
+    if (j.length < 8) return;
+    if (!byJan[j]) {
+      byJan[j] = { dataIdx: dataIdx, rowNum: dataIdx + 1, sources: [] };
+      jans.push(j);
+    }
+    if (source && byJan[j].sources.indexOf(source) === -1) {
+      byJan[j].sources.push(source);
+    }
+    if (colChild !== undefined && dataIdx >= 0) {
+      var childNow = String(masterValues[dataIdx][colChild] || '').trim();
+      var childPrev = String(masterValues[byJan[j].dataIdx][colChild] || '').trim();
+      if (!childNow && childPrev) {
+        byJan[j].dataIdx = dataIdx;
+        byJan[j].rowNum = dataIdx + 1;
+      }
+    }
+  }
+
+  var parentSkuToRow = {};
+  if (colParent !== undefined) {
+    for (var pr = headerRowIdx + 1; pr < masterValues.length; pr++) {
+      var pSku = String(masterValues[pr][colParent] || '').trim();
+      if (!pSku) continue;
+      if (colChild !== undefined && String(masterValues[pr][colChild] || '').trim() !== '') continue;
+      if (parentSkuToRow[pSku] === undefined) parentSkuToRow[pSku] = pr;
+    }
+  }
+
+  for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
+    if (!masterValues[mr][colCheckbox]) continue;
+    addJan_(masterValues[mr][colJan], mr, 'checked');
+  }
+
+  var expand = getBoolScriptProperty_(B3_EXPAND_COMBO_PARENT_JANS_PROP, true);
+  if (expand && colParent !== undefined) {
+    var comboAdded = 0;
+    var comboSkip = 0;
+    for (var cr = headerRowIdx + 1; cr < masterValues.length; cr++) {
+      if (!masterValues[cr][colCheckbox]) continue;
+      var parentRow = cr;
+      if (colChild !== undefined && String(masterValues[cr][colChild] || '').trim() !== '') {
+        parentRow = r12FindParentRowIdx_(masterValues, headerRowIdx, cr, colChild);
+        if (parentRow < 0) parentRow = cr;
+      }
+      if (!r12MasterIsComboParentRow_(masterValues[parentRow], masterColMap)) continue;
+      for (var ci = 1; ci <= 5; ci++) {
+        var cIdx = masterColMap['セット構成' + ci + '_親SKU'];
+        if (cIdx === undefined) continue;
+        var comboParentSku = String(masterValues[parentRow][cIdx] || '').trim();
+        if (!comboParentSku) continue;
+        var comboRow = parentSkuToRow[comboParentSku];
+        if (comboRow === undefined) {
+          comboSkip++;
+          Logger.log('[B-③] 構成' + ci + ' 単品親SKU未検出 sku=' + comboParentSku + '（ミックス行=' + (parentRow + 1) + '）');
+          continue;
+        }
+        var comboJan = colJan === undefined ? '' : String(masterValues[comboRow][colJan] || '').trim();
+        if (comboJan.length < 8) {
+          comboSkip++;
+          Logger.log('[B-③] 構成' + ci + ' JANなし sku=' + comboParentSku + ' 行=' + (comboRow + 1));
+          continue;
+        }
+        var before = jans.length;
+        addJan_(comboJan, comboRow, 'combo' + ci + ':' + comboParentSku);
+        if (jans.length > before) comboAdded++;
+      }
+    }
+    Logger.log(
+      '[B-③] JAN収集 expand=ON checked+combo total=' + jans.length +
+      ' comboNew≈' + comboAdded + ' skip=' + comboSkip
+    );
+  } else {
+    Logger.log('[B-③] JAN収集 expand=OFF total=' + jans.length);
+  }
+
+  return { jans: jans, byJan: byJan };
+}
+
+/**
  * マスタの出品CK行から、8桁以上の JAN を重複なく返す（B-③・モール横断欠け判定用）。
+ * ミックス時はセット構成の単品親JANも含む（B3_EXPAND_COMBO_PARENT_JANS）。
  * @param {Array.<Array<*>>} masterValues
  * @param {number} headerRowIdx
  * @param {Object.<string, number>} masterColMap
  * @return {string[]}
  */
 function getUniqueCheckedJansFromMasterForImage_(masterValues, headerRowIdx, masterColMap) {
-  var colJan = masterColMap['JANコード'];
-  var colCheckbox = masterColMap[CHECKBOX_HEADER_NAME];
-  var list = [];
-  var seen = {};
-  for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
-    if (!masterValues[mr][colCheckbox]) continue;
-    var j = String(masterValues[mr][colJan] || '').trim();
-    if (j.length >= 8 && !seen[j]) {
-      seen[j] = true;
-      list.push(j);
-    }
-  }
-  return list;
+  return collectB3ImageTargetJansFromMaster_(masterValues, headerRowIdx, masterColMap).jans;
 }
 
 /**
- * B-③: レ点JANがモール横断シートに無い場合、説明と了承を得て menuTestCrossMallSetCountJudge を実行する。
- * @return {boolean} false ＝キャンセル
+ * B-③: レ点＋構成展開JANがモール横断シートに無い場合、横断を実行する。
+ * 既定は自動（別メニュー不要）。opt.askConfirm=true のときだけ YES/NO。
+ * @param {Object} [opt]
+ * @param {boolean} [opt.askConfirm=false]
+ * @return {boolean} false ＝キャンセル／対象なし
  */
-function ensureCrossMallSheetCoversJansForB3_(ss, ui, checkedJans) {
+function ensureCrossMallSheetCoversJansForB3_(ss, ui, checkedJans, opt) {
+  opt = opt || {};
+  var askConfirm = opt.askConfirm === true;
   if (!checkedJans || checkedJans.length === 0) return false;
   var crossSheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
-  var needRun = false;
+  var missing = [];
   if (!crossSheet || crossSheet.getLastRow() < 2) {
-    needRun = true;
+    for (var i0 = 0; i0 < checkedJans.length; i0++) missing.push(String(checkedJans[i0]));
   } else {
     var crossValues = crossSheet.getDataRange().getValues();
     var crossFormulas = crossSheet.getDataRange().getFormulas();
     var parsed = parseCrossMallSheetToByJan_(crossValues, { excludeImageGuard: true, includeImageCells: true }, crossSheet, crossFormulas);
     var byJan = parsed.byJan;
     for (var i = 0; i < checkedJans.length; i++) {
-      if (!byJan[checkedJans[i]]) {
-        needRun = true;
-        break;
-      }
+      var j = String(checkedJans[i] || '').trim();
+      if (j.length >= 8 && !byJan[j]) missing.push(j);
     }
   }
-  if (!needRun) return true;
-  var msg =
-    'マスタで出品CK（レ点）を付けた商品のうち、シート「モール横断セット数判定」に該当JANがまだ含まれていないものがあります。\n\n' +
-    'これから「モール横断セット数統合判定」を実行し、楽天・Yahoo・Amazonの候補を集めて同シートを更新します（Gemini利用のため時間がかかる場合があります）。\n\n実行しますか？';
-  var r = ui.alert('B-③｜モール横断シートの更新', msg, ui.ButtonSet.YES_NO);
-  if (r !== ui.Button.YES) return false;
-  menuTestCrossMallSetCountJudge();
+  if (missing.length === 0) {
+    Logger.log('[B-③] モール横断 不足なし targetJAN=' + checkedJans.length);
+    return true;
+  }
+  Logger.log(
+    '[B-③] モール横断 不足JAN=' + missing.length + '/' + checkedJans.length +
+    ' → ' + (askConfirm ? '確認後実行' : '自動実行') +
+    ' missing=' + missing.slice(0, 20).join(',') + (missing.length > 20 ? '…' : '')
+  );
+  if (askConfirm) {
+    if (!ui) return false;
+    var msg =
+      'マスタで出品CK（レ点）・ミックス構成の単品JANのうち、シート「モール横断セット数判定」にまだ無いものがあります（' +
+      missing.length +
+      '件）。\n\n' +
+      'これからモール横断セット数統合判定を実行し、同シートを更新します（Gemini利用のため時間がかかる場合があります）。\n\n実行しますか？';
+    var r = ui.alert('B-③｜モール横断シートの更新', msg, ui.ButtonSet.YES_NO);
+    if (r !== ui.Button.YES) return false;
+  } else if (ui) {
+    try {
+      ui.toast('不足JANのモール横断を自動実行中…（' + missing.length + '件）', 'B-③', 12);
+    } catch (t0) {}
+  }
+  // 不足分だけでなく target 全体を渡す（構成展開JANも横断対象に含める）
+  menuTestCrossMallSetCountJudge(checkedJans);
   return true;
 }
 
@@ -14906,7 +16043,8 @@ function menuB4SubImageCursorPrompt() {
   }
   b4DiagLog_(fn, t0, 'AFTER_NAMES', 'nameKeys=' + nameKeys);
 
-  var imgInfo = listAmazonBaseTruthImageFiles_();
+  var b4Contexts = b4MasterContextsForJans_(info.jans);
+  var imgInfo = listAmazonBaseTruthImageFiles_(b5TruthListOptFromParents_(b4Contexts));
   b4DiagLog_(
     fn,
     t0,
@@ -14935,7 +16073,8 @@ function menuB4SubImageCursorPrompt() {
     files: imgInfo.files || [],
     folderOk: !!imgInfo.ok,
     folderError: imgInfo.error || '',
-    folderHint: imgInfo.hint || ''
+    folderHint: imgInfo.hint || '',
+    contexts: b4Contexts
   });
   // showModalDialog は非同期表示。ここまで来ればメニュー実行は完了扱い。
   b4DiagLog_(
@@ -14954,46 +16093,208 @@ function menuB4SubImageCursorPrompt() {
 }
 
 /**
- * B-④ 正本紐付けダイアログ（人間が JAN ↔ 01.amazon白抜きベース画像を対応付け）。
- * @param {Object} payload
+ * サブ正本画面用。採用JANのうち、出品レ点が付いた親だけを商品名ベースで返す。
+ * 同じJANのレ点なし親は出さない。
+ * @param {string[]} jans
+ * @return {Array.<{jan:string,parentSku:string,nameBase:string}>}
  */
+function b4MasterContextsForJans_(jans) {
+  var want = {};
+  for (var i = 0; i < (jans || []).length; i++) {
+    var key = String(jans[i] || '').trim();
+    if (key) want[key] = true;
+  }
+  var out = [];
+  var seen = {};
+  if (!Object.keys(want).length) return out;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) return out;
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) return out;
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = colMap['JANコード'];
+  var colChild = colMap['子SKU'];
+  var colParent = colMap['親SKU'];
+  var colCk = colMap[CHECKBOX_HEADER_NAME];
+  var colName = colMap['商品名ベース'] !== undefined ? colMap['商品名ベース'] : colMap['商品名'];
+  if (colJan === undefined || colCk === undefined) return out;
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    var jan = String(values[r][colJan] || '').trim();
+    if (!want[jan]) continue;
+    var isParent = colChild === undefined || b3IsParentMasterRow_(values[r], colChild);
+    if (!isParent) continue;
+    var ck = values[r][colCk];
+    if (!(ck === true || String(ck).toUpperCase() === 'TRUE')) continue;
+    var parentSku = colParent !== undefined ? String(values[r][colParent] || '').trim() : '';
+    var nameBase = colName !== undefined ? String(values[r][colName] || '').trim() : '';
+    if (!parentSku && !nameBase) continue;
+    var dedupe = jan + '\n' + normalizeBProductNameKey_(nameBase || parentSku);
+    if (seen[dedupe]) continue;
+    seen[dedupe] = true;
+    out.push({ jan: jan, parentSku: parentSku, nameBase: nameBase });
+  }
+  return out;
+}
+
+/**
+ * 正本ファイル名から親SKUを取る（ishi-…-oya3_ミックス.png → ishi-…-oya3）。
+ * @param {string} rel
+ * @return {string}
+ */
+function b4ParentSkuFromTruthRel_(rel) {
+  var base = String(rel || '')
+    .replace(/^.*[\\\/]/, '')
+    .replace(/\.[^.]+$/, '');
+  var suffixes = ['_単体', '_ミックス', '_mix', '_single'];
+  for (var i = 0; i < suffixes.length; i++) {
+    if (base.length > suffixes[i].length && base.slice(-suffixes[i].length) === suffixes[i]) {
+      return base.slice(0, -suffixes[i].length);
+    }
+  }
+  return base;
+}
+
+/** 共有の正本パスを、今の一覧の value に合わせる。移動後のファイル名も親SKUで1件なら取る。 */
+function b4PickTruthOption_(storedRel, parentSku, files) {
+  var stored = String(storedRel || '')
+    .trim()
+    .replace(/\//g, '\\');
+  var sku = String(parentSku || '')
+    .trim()
+    .toLowerCase();
+  var base = stored.replace(/^.*[\\\/]/, '');
+  var byName = [];
+  var bySku = [];
+  for (var i = 0; i < (files || []).length; i++) {
+    var rel = String(files[i].rel || files[i].name || '');
+    var relN = rel.replace(/\//g, '\\');
+    if (stored && relN === stored) return rel;
+    var bn = relN.replace(/^.*[\\\/]/, '');
+    if (base && bn === base) byName.push(rel);
+    if (sku) {
+      var name = bn.toLowerCase();
+      var at = name.indexOf(sku);
+      if (at >= 0) {
+        var next = name.charAt(at + sku.length);
+        if (!next || !/[a-z0-9]/.test(next)) bySku.push(rel);
+      }
+    }
+  }
+  if (byName.length === 1) return byName[0];
+  if (bySku.length === 1) return bySku[0];
+  return '';
+}
+
 function showB4PackageTruthBindDialog_(payload) {
+  try {
+    b5SeedMapsIfEmptyOnDialog_();
+  } catch (eSeed) {
+    Logger.log('[B4.TRUTH] seed ' + String(eSeed && eSeed.message ? eSeed.message : eSeed));
+  }
   var jans = payload.jans || [];
   var counts = payload.counts || {};
   var names = payload.names || {};
   var files = payload.files || [];
-  var optHtml = '<option value=\"\">（未選択＝このJANはスキップ）</option>';
-  for (var i = 0; i < files.length; i++) {
-    var rel = String(files[i].rel || files[i].name || '');
-    var label = String(files[i].rel || files[i].name || '');
-    optHtml +=
-      '<option value=\"' +
-      rel.replace(/"/g, '&quot;') +
-      '\">' +
-      label.replace(/</g, '&lt;') +
-      '</option>';
+  var savedNb = loadB5PackageTruthByNameBase_();
+  var contexts = payload.contexts && payload.contexts.length ? payload.contexts : b4MasterContextsForJans_(jans);
+  var preTruthN = 0;
+
+  function b4TruthOptionsHtml_(fileList, selectedRel) {
+    var selNorm = String(selectedRel || '')
+      .trim()
+      .replace(/\//g, '\\');
+    var html = '<option value=\"\">（未選択＝このJANはスキップ）</option>';
+    var list = fileList || [];
+    for (var i = 0; i < list.length; i++) {
+      var rel = String(list[i].rel || list[i].name || '');
+      var relNorm = rel.replace(/\//g, '\\');
+      var sel = selNorm && relNorm === selNorm ? ' selected' : '';
+      html +=
+        '<option value=\"' +
+        rel.replace(/"/g, '&quot;') +
+        '\"' +
+        sel +
+        '>' +
+        rel.replace(/</g, '&lt;') +
+        '</option>';
+    }
+    return html;
   }
 
+  var thumbMap = {};
   var rowsHtml = '';
-  for (var j = 0; j < jans.length; j++) {
-    var jan = jans[j];
-    var pname = names[jan] || '';
+  var preList = [];
+  var shownTotal = 0;
+  for (var j = 0; j < contexts.length; j++) {
+    var ctx = contexts[j];
+    var jan = ctx.jan;
+    var nameBase = ctx.nameBase || '';
     var cnt = counts[jan] || 0;
+    var preRel = resolveTruthRelForNameBase_(nameBase, files, {
+      savedNameBase: savedNb
+    });
+    var pickedRel = b4PickTruthOption_(preRel, ctx.parentSku, files);
+    if (pickedRel) preTruthN++;
+    preList.push(pickedRel || '');
+    var shownFiles = b5TruthFilesForParent_(files, ctx.parentSku, pickedRel || preRel, 12);
+    shownTotal += shownFiles.length;
+    for (var ti = 0; ti < shownFiles.length; ti++) {
+      var tRel = String(shownFiles[ti].rel || shownFiles[ti].name || '');
+      var tId = String(shownFiles[ti].id || '');
+      if (tRel && tId && !thumbMap[tRel]) thumbMap[tRel] = b5DriveThumbUrl_(tId, 80);
+    }
+    var nameAttr = nameBase.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    var nameHtml = nameBase
+      ? nameBase.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      : String(names[jan] || '').replace(/</g, '&lt;').slice(0, 40);
+    var skuAttr = String(ctx.parentSku || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;');
     rowsHtml +=
       '<tr data-jan=\"' +
       jan +
+      '\" data-name=\"' +
+      nameAttr +
+      '\" data-sku=\"' +
+      skuAttr +
       '\">' +
       '<td style=\"padding:6px;font-size:12px;\"><b>' +
       jan +
-      '</b><br/><span style=\"color:#555;\">' +
-      String(pname).replace(/</g, '&lt;').slice(0, 40) +
+      '</b><br/><span style=\"color:#333;\">' +
+      nameHtml +
       '</span><br/><span style=\"color:#888;\">採用 ' +
       cnt +
-      ' 枚</span></td>' +
+      ' 枚</span>' +
+      (pickedRel
+        ? '<br/><span style=\"font-size:11px;color:#2e7d32;\">共有の正本を選択済み</span>'
+        : '') +
+      '</td>' +
       '<td style=\"padding:6px;\"><select class=\"truth-sel\" style=\"width:100%;font-size:12px;\">' +
-      optHtml +
-      '</select></td></tr>';
+      b4TruthOptionsHtml_(shownFiles, pickedRel) +
+      '</select>' +
+      '<img class=\"truth-prev\" alt=\"選択中の袋\" style=\"display:none;max-width:160px;max-height:160px;margin-top:6px;border:1px solid #ddd;background:#fff;\"/>' +
+      '<div class=\"truth-prev-note\" style=\"font-size:11px;color:#666;\"></div></td></tr>';
   }
+  Logger.log(
+    '[B4.TRUTH] preselect=' +
+      preTruthN +
+      '/' +
+      contexts.length +
+      ' shownOpts=' +
+      shownTotal +
+      ' driveFiles=' +
+      files.length +
+      ' thumbs=' +
+      Object.keys(thumbMap).length
+  );
 
   var warn =
     payload.folderOk && files.length
@@ -15006,8 +16307,8 @@ function showB4PackageTruthBindDialog_(payload) {
   var html =
     '<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head><body style=\"font-family:sans-serif;padding:14px;\">' +
     '<div id=\"bindPanel\">' +
-    '<h3 style=\"margin-top:0;\">B-④ PACKAGE_TRUTH 紐付け</h3>' +
-    '<p style=\"font-size:13px;\">B-③の JAN と、<code>01.amazon白抜きベース</code> のメイン素材（ファイル名にJAN/SKU不要）を対応付けてください。未選択のJANは合成スキップ。</p>' +
+    '<h3 style=\"margin-top:0;\">B-⑤ サブ画像 — 正本紐付け</h3>' +
+    '<p style=\"font-size:13px;\">出品レ点が付いた商品名ベースだけ出します。同じJANでもレ点のない商品は出しません。未選択の行は合成スキップ。</p>' +
     warn +
     '<p style=\"font-size:12px;color:#555;\">' +
     String(payload.folderHint || '') +
@@ -15031,10 +16332,22 @@ function showB4PackageTruthBindDialog_(payload) {
     '</select><br/>' +
     '<span style=\"font-size:11px;color:#666;\">背景・カード・余白のみ変更。PACKAGE_TRUTH の商品色は変えません（tools/set_main_image/tonmana_palette.py と同期）。</span></p>' +
     '<p style=\"margin-top:14px;\">' +
-    '<button id=\"go\" style=\"padding:8px 14px;\">紐付けを確定して指示を表示</button> ' +
+    '<button id=\"go\" style=\"padding:8px 14px;\">紐付けを確定してテーマ案</button> ' +
     '<button onclick=\"google.script.host.close();\">キャンセル</button></p>' +
     '<p id=\"st\" style=\"font-size:12px;color:#333;white-space:pre-wrap;\"></p>' +
-    '<p style=\"font-size:11px;color:#888;\">診断: メニュー実行はダイアログ表示で完了。確定後は実行ログに <code>finishB4AfterTruthBind</code> が出ます。</p>' +
+    '<p style=\"font-size:11px;color:#888;\">診断: メニュー実行はダイアログ表示で完了。テーマ案のあと <code>finishB4AfterTruthBind</code> が出ます。</p>' +
+    '</div>' +
+    '<div id=\"proposePanel\" style=\"display:none;\">' +
+    '<h3 style=\"margin-top:0;\">テーマ案 — チェックした分だけ作ります</h3>' +
+    '<p style=\"font-size:12px;color:#333;\">概要・キャッチ・補足は直せます。袋は出すテーマだけチェック。悩みとベネフィットは外しません。<br/>閉じても前回案があれば再利用します。直すときはレ点を外して要望を書き、「レ点を外したテーマを再作成」。</p>' +
+    '<div id=\"proposeBox\" style=\"max-height:560px;overflow:auto;\"></div>' +
+    '<p style=\"margin-top:10px;font-size:12px;\">再作成の要望（レ点を外したテーマ向け）</p>' +
+    '<textarea id=\"remakeNote\" style=\"width:100%;height:48px;font-size:12px;\" placeholder=\"例: チーズとおだしの両方を感じるキャッチに\"></textarea>' +
+    '<p style=\"margin-top:12px;\">' +
+    '<button id=\"backBind\">← 紐付けに戻る</button> ' +
+    '<button id=\"remakeUnchecked\" style=\"padding:8px 12px;\">レ点を外したテーマを再作成</button> ' +
+    '<button id=\"goPrompt\" style=\"padding:8px 14px;font-weight:bold;\">チェック分で指示を表示</button></p>' +
+    '<p id=\"stPropose\" style=\"font-size:12px;color:#333;white-space:pre-wrap;\"></p>' +
     '</div>' +
     '<div id=\"promptPanel\" style=\"display:none;\">' +
     '<h3 style=\"margin-top:0;\">B-④ サブ画像作成 — Cursor／Agent 指示</h3>' +
@@ -15049,16 +16362,24 @@ function showB4PackageTruthBindDialog_(payload) {
     '<button id=\"toReview\" style=\"padding:8px 14px;font-weight:bold;\">次へ：compose後の目視チェック（必須）</button></p>' +
     '</div>' +
     '<div id=\"reviewPanel\" style=\"display:none;\">' +
-    '<h3 style=\"margin-top:0;\">B-④ 目視チェック（忘れ防止・必須）</h3>' +
-    '<p style=\"font-size:13px;background:#ffebee;border:1px solid #c62828;padding:8px;\">' +
-    '<b>compose 完了後にこのチェックを実施</b>。未実施のまま閉じないでください。</p>' +
+    '<h3 style=\"margin-top:0;\">サブ画像の確認</h3>' +
+    '<div style=\"font-size:13px;background:#e3f2fd;border:1px solid #1565c0;padding:10px;margin-bottom:10px;\">' +
+    '<b>いまやること</b>' +
+    '<ol style=\"margin:6px 0 0;padding-left:20px;\">' +
+    '<li>一つ前の画面の長い文を、絵を作るときにチャットへ貼ります。貼ったあとは、絵ができるまで待ちます。</li>' +
+    '<li>下の短い文は、絵ができたあとに使います。確認ページが開いているときは、貼りません。</li>' +
+    '<li>確認ページで絵を見ます。直す絵だけレ点とメモを書いて、再生成のボタンを押します。</li>' +
+    '<li>残す絵だけ採用のレ点を付け、確認フォルダへ出すボタンを押します。</li>' +
+    '<li>ここまで終わってから、下の確認にレ点を付けて閉じます。</li>' +
+    '</ol></div>' +
+    '<p style=\"font-size:12px;margin:8px 0 4px;\"><b>終わったことの確認</b></p>' +
     '<ol style=\"font-size:13px;padding-left:20px;\">' +
-    '<li><label><input type=\"checkbox\" id=\"ck1\"/> 楽天目視フォルダを開いた（上のパス）</label></li>' +
-    '<li><label><input type=\"checkbox\" id=\"ck2\"/> 品番キー×最大10枚を確認した</label></li>' +
-    '<li><label><input type=\"checkbox\" id=\"ck3\"/> Agent に review_loop 起動を依頼した／自分で起動した</label></li>' +
-    '<li><label><input type=\"checkbox\" id=\"ck4\"/> ブラウザで NG にチェック＋要望（テンプレ可）→再生成 or チェック0で完了</label></li>' +
+    '<li><label><input type=\"checkbox\" id=\"ck1\"/> 確認ページで絵を見た</label></li>' +
+    '<li><label><input type=\"checkbox\" id=\"ck2\"/> 直す絵は再生成した。直す絵が無いときは、このままでよい</label></li>' +
+    '<li><label><input type=\"checkbox\" id=\"ck3\"/> 残す絵を確認フォルダへ出した</label></li>' +
+    '<li><label><input type=\"checkbox\" id=\"ck4\"/> この画面を閉じてよい</label></li>' +
     '</ol>' +
-    '<p style=\"font-size:12px;margin:8px 0 4px;\"><b>Agentへのレビュー指示（compose後に貼る）</b></p>' +
+    '<p style=\"font-size:12px;margin:8px 0 4px;\"><b>確認ページが開いていないときだけ、この文をチャットに貼る</b></p>' +
     '<textarea id=\"rt\" style=\"width:100%;height:160px;font-size:11px;font-family:Consolas,monospace;\"></textarea>' +
     '<p style=\"margin:6px 0;\">' +
     '<button onclick=\"var el=document.getElementById(\'rt\');el.focus();el.select();\">レビュー指示を全選択</button></p>' +
@@ -15066,11 +16387,27 @@ function showB4PackageTruthBindDialog_(payload) {
     '<div id=\"tplBox\" style=\"font-size:11px;max-height:160px;overflow:auto;border:1px solid #ccc;padding:8px;background:#fff;\"></div>' +
     '<p id=\"reviewSt\" style=\"font-size:12px;color:#c62828;\"></p>' +
     '<p style=\"margin-top:12px;\">' +
-    '<button id=\"backPrompt\">← 合成指示に戻る</button> ' +
-    '<button id=\"deferClose\">compose前：レビュー指示を渡して仮閉じ</button> ' +
-    '<button id=\"closeReview\" style=\"padding:8px 14px;\">4項目チェック済みで閉じる</button></p>' +
+    '<button id=\"backPrompt\">← 一つ前の画面に戻る</button> ' +
+    '<button id=\"deferClose\">絵ができる前に閉じる</button> ' +
+    '<button id=\"closeReview\" style=\"padding:8px 14px;\">確認が終わったら閉じる</button></p>' +
     '</div>' +
     '<script>' +
+    'var B4_PRE_LIST=' +
+    JSON.stringify(preList) +
+    ';' +
+    'var B4_THUMB=' +
+    JSON.stringify(thumbMap) +
+    ';' +
+    'function b4ApplyThumb_(sel){' +
+    ' var img=sel.parentNode.querySelector(\"img.truth-prev\");' +
+    ' var note=sel.parentNode.querySelector(\".truth-prev-note\");' +
+    ' if(!img) return;' +
+    ' var rel=String(sel.value||\"\").trim();' +
+    ' var url=rel&&B4_THUMB[rel]?B4_THUMB[rel]:\"\";' +
+    ' if(url){ img.src=url; img.style.display=\"block\"; if(note) note.textContent=\"選択中の袋\"; }' +
+    ' else { img.style.display=\"none\"; img.removeAttribute(\"src\"); if(note) note.textContent=rel?\"見本を出せませんでした\":\"\"; }' +
+    '}' +
+    '(function(){ var sels=document.querySelectorAll(\"select.truth-sel\"); for(var i=0;i<sels.length;i++){ var pre=B4_PRE_LIST[i]||\"\"; if(pre) sels[i].value=pre; b4ApplyThumb_(sels[i]); sels[i].onchange=function(){ b4ApplyThumb_(this); }; } })();' +
     'function b4ClientNow_(){ var d=new Date(); return (\"0\"+d.getHours()).slice(-2)+\":\"+(\"0\"+d.getMinutes()).slice(-2)+\":\"+(\"0\"+d.getSeconds()).slice(-2); }' +
     'function b4FillTemplates_(list){' +
     ' var box=document.getElementById(\"tplBox\"); if(!box) return;' +
@@ -15087,9 +16424,11 @@ function showB4PackageTruthBindDialog_(payload) {
     ' var bindings=[];' +
     ' for(var i=0;i<rows.length;i++){' +
     '  var jan=rows[i].getAttribute(\"data-jan\");' +
+    '  var nameBase=rows[i].getAttribute(\"data-name\")||\"\";' +
+    '  var parentSku=rows[i].getAttribute(\"data-sku\")||\"\";' +
     '  var sel=rows[i].querySelector(\".truth-sel\");' +
     '  var rel=sel?String(sel.value||\"\").trim():\"\";' +
-    '  if(rel) bindings.push({jan:jan,rel:rel});' +
+    '  if(rel) bindings.push({jan:jan,rel:rel,nameBase:nameBase,parentSku:parentSku});' +
     ' }' +
     ' var man=document.getElementById(\"manual\");' +
     ' if(man&&man.value){' +
@@ -15102,28 +16441,259 @@ function showB4PackageTruthBindDialog_(payload) {
     ' if(!bindings.length){ document.getElementById(\"st\").textContent=\"1件以上紐付けてください\"; return; }' +
     ' var bcEl=document.getElementById(\"baseColor\");' +
     ' var baseColor=bcEl?String(bcEl.value||\"beige\"):\"beige\";' +
-    ' document.getElementById(\"st\").textContent=\"[\"+b4ClientNow_()+\"] サーバへ送信中… bindings=\"+bindings.length+\" baseColor=\"+baseColor;' +
+    ' window.__b4Bindings=bindings; window.__b4BaseColor=baseColor;' +
+    ' document.getElementById(\"st\").textContent=\"[\"+b4ClientNow_()+\"] テーマ案を作成中… bindings=\"+bindings.length;' +
     ' document.getElementById(\"go\").disabled=true;' +
     ' google.script.run' +
     '.withSuccessHandler(function(res){' +
     '  var waited=Math.round(Date.now()-tClick);' +
-    '  if(!res||!res.ok){ document.getElementById(\"st\").textContent=\"[\"+b4ClientNow_()+\"] FAIL ms=\"+waited+\"\\n\"+((res&&res.error)||\"失敗\"); document.getElementById(\"go\").disabled=false; return; }' +
+    '  document.getElementById(\"go\").disabled=false;' +
+    '  if(!res||!res.ok){ document.getElementById(\"st\").textContent=\"[\"+b4ClientNow_()+\"] FAIL ms=\"+waited+\"\\n\"+((res&&res.error)||\"失敗\"); return; }' +
+    '  b4FillPropose_(res.items||[]);' +
     '  document.getElementById(\"bindPanel\").style.display=\"none\";' +
-    '  document.getElementById(\"promptPanel\").style.display=\"block\";' +
-    '  document.getElementById(\"outDirLabel\").textContent=res.outDir||\"\";' +
-    '  document.getElementById(\"bindSummary\").innerHTML=\"<b>PACKAGE_TRUTH</b>: 人間紐付け \"+String(res.bindCount||0)+\" 件。\"' +
-    '   +\" <b>ベース色</b>: \"+String(res.baseColorLabel||res.baseColor||\"beige\")+\". compose後は必ず目視チェックへ。\";' +
-    '  document.getElementById(\"t\").value=res.prompt||\"\";' +
-    '  document.getElementById(\"rt\").value=res.reviewPrompt||\"\";' +
-    '  b4FillTemplates_(res.feedbackTemplates||[]);' +
-    '  document.getElementById(\"diagOk\").textContent=\"[診断 OK] ms=\"+waited+\" @ \"+b4ClientNow_();' +
+    '  document.getElementById(\"proposePanel\").style.display=\"block\";' +
+    '  var ru=Number(res.reusedCount||0); var fr=Number(res.freshCount||0);' +
+    '  document.getElementById(\"stPropose\").textContent=\"[診断 OK] ms=\"+waited+\" 再利用=\"+ru+\" 新規=\"+fr+\" @ \"+b4ClientNow_();' +
     ' })' +
     '.withFailureHandler(function(e){' +
     '  var waited=Math.round(Date.now()-tClick);' +
     '  document.getElementById(\"st\").textContent=\"[\"+b4ClientNow_()+\"] EXCEPTION ms=\"+waited+\"\\n\"+String(e&&e.message?e.message:e);' +
     '  document.getElementById(\"go\").disabled=false;' +
     ' })' +
-    '.finishB4AfterTruthBind({bindings:bindings,baseColor:baseColor,source:' +
+    '.buildB4ThemeOverviewsForBindings({bindings:bindings,baseColor:baseColor,source:' +
+    JSON.stringify(String(payload.source || '')) +
+    ',totalImages:' +
+    Number(payload.totalImages || 0) +
+    '});' +
+    '};' +
+    'function b4FillPropose_(items){' +
+    ' var box=document.getElementById(\"proposeBox\"); if(!box) return; box.innerHTML=\"\";' +
+    ' (items||[]).forEach(function(it){' +
+    '  var wrap=document.createElement(\"div\"); wrap.style.marginBottom=\"14px\";' +
+    '  wrap.setAttribute(\"data-jan\", it.jan||\"\"); wrap.setAttribute(\"data-name\", it.nameBase||it.productName||\"\");' +
+    '  wrap.setAttribute(\"data-sku\", it.parentSku||\"\");' +
+    '  var title=document.createElement(\"b\"); title.textContent=String(it.productName||it.jan||\"\"); wrap.appendChild(title);' +
+    '  var note=document.createElement(\"div\"); note.style.cssText=\"font-size:11px;color:#555;margin:4px 0\";' +
+    '  note.textContent=\"MAIN参考: \"+String(it.mainNote||\"\")+(it.materialError?(\" ／ \"+it.materialError):\"\"); wrap.appendChild(note);' +
+    '  (it.proposals||[]).forEach(function(pr){' +
+    '   var row=document.createElement(\"div\"); row.style.cssText=\"margin:8px 0;padding:6px;border:1px solid #ddd\";' +
+    '   var lab=document.createElement(\"label\"); lab.style.fontSize=\"13px\";' +
+    '   var ck=document.createElement(\"input\"); ck.type=\"checkbox\"; ck.className=\"theme-ck\"; ck.setAttribute(\"data-theme\", String(pr.themeId));' +
+    '   var on=pr.selected; if(on===undefined||on===null) on=pr.checkedDefault; if(on===undefined||on===null) on=true;' +
+    '   ck.checked=!!on; lab.appendChild(ck);' +
+    '   lab.appendChild(document.createTextNode(\" T\"+pr.themeId+\" \"+String(pr.name||\"\"))); row.appendChild(lab);' +
+    '   function addTa(cls,label,val,h){ var p=document.createElement(\"div\"); p.style.cssText=\"font-size:11px;margin-top:4px\"; p.textContent=label; var ta=document.createElement(\"textarea\"); ta.className=cls; ta.setAttribute(\"data-theme\", String(pr.themeId)); ta.style.cssText=\"width:100%;height:\"+h+\"px;font-size:12px;\"; ta.value=val||\"\"; ta.oninput=function(){ b4ScheduleDraftSave_(); }; row.appendChild(p); row.appendChild(ta); }' +
+    '   addTa(\"theme-axis\",\"訴求軸（画像には出さない）\", pr.appealAxis||\"\", 22);' +
+    '   addTa(\"theme-ov\",\"概要\", pr.overview, 52);' +
+    '   addTa(\"theme-catch\",\"キャッチ\", pr.catch, 28);' +
+    '   addTa(\"theme-subs\",\"補足（1行1つ）\", (pr.subs||[]).join(\"\\n\"), 36);' +
+    '   var pk=document.createElement(\"label\"); pk.style.fontSize=\"12px\";' +
+    '   var pcb=document.createElement(\"input\"); pcb.type=\"checkbox\"; pcb.className=\"theme-pkg\"; pcb.setAttribute(\"data-theme\", String(pr.themeId));' +
+    '   if(pr.needPackage) pcb.checked=true; pcb.onchange=function(){ b4ScheduleDraftSave_(); }; pk.appendChild(pcb); pk.appendChild(document.createTextNode(\" 袋を画面に出す\")); row.appendChild(pk);' +
+    '   ck.onchange=function(){ b4ScheduleDraftSave_(); };' +
+    '   var tog=document.createElement(\"button\"); tog.type=\"button\"; tog.textContent=\"▼ このテーマだけ作り直す\"; tog.style.cssText=\"display:block;margin-top:6px;font-size:12px;\";' +
+    '   var boxR=document.createElement(\"div\"); boxR.style.display=\"none\"; boxR.style.cssText=\"margin-top:4px;padding:6px;background:#f7f7f7;border:1px solid #ddd;\";' +
+    '   var hint=document.createElement(\"div\"); hint.style.cssText=\"font-size:11px;color:#444\"; hint.textContent=\"指示（例: 卵かけご飯をシズルの主役に）\";' +
+    '   var noteTa=document.createElement(\"textarea\"); noteTa.className=\"theme-reprop-note\"; noteTa.setAttribute(\"data-theme\", String(pr.themeId)); noteTa.style.cssText=\"width:100%;height:48px;font-size:12px;\";' +
+    '   var goBtn=document.createElement(\"button\"); goBtn.type=\"button\"; goBtn.textContent=\"再提案\"; goBtn.style.cssText=\"margin-top:4px;font-size:12px;\";' +
+    '   var stR=document.createElement(\"span\"); stR.style.cssText=\"margin-left:8px;font-size:11px;color:#555;\";' +
+    '   boxR.appendChild(hint); boxR.appendChild(noteTa); boxR.appendChild(goBtn); boxR.appendChild(stR);' +
+    '   row.appendChild(tog); row.appendChild(boxR);' +
+    '   (function(rowEl, themePr, togEl, boxEl, noteEl, goEl, statusEl){' +
+    '     togEl.onclick=function(){ var on=boxEl.style.display===\"none\"; boxEl.style.display=on?\"block\":\"none\"; togEl.textContent=on?\"▲ 閉じる\":\"▼ このテーマだけ作り直す\"; };' +
+    '     goEl.onclick=function(){' +
+    '       var note=String(noteEl.value||\"\").trim();' +
+    '       if(!note){ statusEl.textContent=\"指示を入れてください\"; return; }' +
+    '       var wrapEl=rowEl.parentNode;' +
+    '       var ovEl=rowEl.querySelector(\"textarea.theme-ov\");' +
+    '       var caEl=rowEl.querySelector(\"textarea.theme-catch\");' +
+    '       var suEl=rowEl.querySelector(\"textarea.theme-subs\");' +
+    '       var pkgEl=rowEl.querySelector(\"input.theme-pkg\");' +
+    '       goEl.disabled=true; statusEl.textContent=\"再提案中…\";' +
+    '       google.script.run.withSuccessHandler(function(res){' +
+    '         goEl.disabled=false;' +
+    '         if(!res||!res.ok){ statusEl.textContent=(res&&res.error)||\"失敗\"; return; }' +
+    '         if(ovEl) ovEl.value=res.overview||\"\";' +
+    '         if(caEl) caEl.value=res.catch||\"\";' +
+    '         if(suEl) suEl.value=(res.subs||[]).join(\"\\n\");' +
+    '         var axEl=rowEl.querySelector(\"textarea.theme-axis\"); if(axEl&&res.appealAxis) axEl.value=res.appealAxis;' +
+    '         if(pkgEl&&typeof res.needPackage===\"boolean\") pkgEl.checked=!!res.needPackage;' +
+    '         var ckEl=rowEl.querySelector(\"input.theme-ck\"); if(ckEl) ckEl.checked=true;' +
+    '         statusEl.textContent=\"更新しました\";' +
+    '         b4SaveDraftNow_();' +
+    '       }).withFailureHandler(function(e){ goEl.disabled=false; statusEl.textContent=String(e&&e.message?e.message:e); })' +
+    '       .republishB4ThemeOverview({jan:wrapEl.getAttribute(\"data-jan\")||\"\",nameBase:wrapEl.getAttribute(\"data-name\")||\"\",parentSku:wrapEl.getAttribute(\"data-sku\")||\"\",themeId:Number(themePr.themeId),themeName:String(themePr.name||\"\"),kind:String(themePr.kind||\"fact\"),note:note});' +
+    '     };' +
+    '   })(row, pr, tog, boxR, noteTa, goBtn, stR);' +
+    '   wrap.appendChild(row);' +
+    '  }); box.appendChild(wrap);' +
+    ' });' +
+    ' b4SaveDraftNow_();' +
+    '}' +
+    'function b4ReadProposalFromRow_(wrap, ck){' +
+    '  var tid=String(ck.getAttribute(\"data-theme\"));' +
+    '  var ax=wrap.querySelector(\"textarea.theme-axis[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '  var ov=wrap.querySelector(\"textarea.theme-ov[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '  var ca=wrap.querySelector(\"textarea.theme-catch[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '  var su=wrap.querySelector(\"textarea.theme-subs[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '  var pkg=wrap.querySelector(\"input.theme-pkg[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '  var subs=String(su&&su.value||\"\").split(/\\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;}).slice(0,2);' +
+    '  var nameEl=ck.parentNode?ck.parentNode.textContent:\"\";' +
+    '  return {themeId:Number(tid),name:String(nameEl||\"\").replace(/^\\s*T\\d+\\s*/,\"\").trim(),appealAxis:ax?String(ax.value||\"\").trim():\"\",overview:ov?ov.value:\"\",catch:ca?ca.value:\"\",subs:subs,needPackage:!!(pkg&&pkg.checked),selected:!!ck.checked,checkedDefault:!!ck.checked};' +
+    '}' +
+    'function b4EachNode_(list, fn){ var arr=list||[]; for(var i=0;i<arr.length;i++){ fn(arr[i], i); } }' +
+    'function b4SetProposeStatus_(msg){ var el=document.getElementById(\"stPropose\"); if(el) el.textContent=String(msg||\"\"); }' +
+    'function b4CollectAllByWrap_(){' +
+    ' var out=[];' +
+    ' var wraps=document.querySelectorAll(\"#proposeBox > div[data-jan]\");' +
+    ' b4EachNode_(wraps, function(wrap){' +
+    '  var jan=wrap.getAttribute(\"data-jan\"); var nameBase=wrap.getAttribute(\"data-name\")||\"\"; var parentSku=wrap.getAttribute(\"data-sku\")||\"\";' +
+    '  var proposals=[];' +
+    '  var cks=wrap.querySelectorAll(\"input.theme-ck\");' +
+    '  b4EachNode_(cks, function(ck){ proposals.push(b4ReadProposalFromRow_(wrap, ck)); });' +
+    '  out.push({jan:jan,nameBase:nameBase,parentSku:parentSku,proposals:proposals});' +
+    ' });' +
+    ' return out;' +
+    '}' +
+    'function b4CollectChecked_(){' +
+    ' var out=[];' +
+    ' var wraps=document.querySelectorAll(\"#proposeBox > div[data-jan]\");' +
+    ' b4EachNode_(wraps, function(wrap){' +
+    '  var jan=wrap.getAttribute(\"data-jan\"); var nameBase=wrap.getAttribute(\"data-name\")||\"\";' +
+    '  var cks=wrap.querySelectorAll(\".theme-ck:checked\");' +
+    '  b4EachNode_(cks, function(ck){' +
+    '   var row=b4ReadProposalFromRow_(wrap, ck);' +
+    '   out.push({jan:jan,nameBase:nameBase,themeId:row.themeId,name:row.name,overview:row.overview,catch:row.catch,subs:row.subs,needPackage:row.needPackage});' +
+    '  });' +
+    ' });' +
+    ' return out;' +
+    '}' +
+    'function b4CollectBatchRemakeNote_(){' +
+    ' var top=document.getElementById(\"remakeNote\");' +
+    ' var note=String(top&&top.value||\"\").trim();' +
+    ' if(note) return note;' +
+    ' var parts=[];' +
+    ' var wraps=document.querySelectorAll(\"#proposeBox > div[data-jan]\");' +
+    ' b4EachNode_(wraps, function(wrap){' +
+    '  var cks=wrap.querySelectorAll(\"input.theme-ck\");' +
+    '  b4EachNode_(cks, function(ck){' +
+    '   if(ck.checked) return;' +
+    '   var tid=String(ck.getAttribute(\"data-theme\")||\"\");' +
+    '   var nEl=wrap.querySelector(\"textarea.theme-reprop-note[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '   var n=String(nEl&&nEl.value||\"\").trim();' +
+    '   if(n) parts.push(\"T\"+tid+\": \"+n);' +
+    '  });' +
+    ' });' +
+    ' return parts.join(\" ／ \");' +
+    '}' +
+    'var __b4DraftTimer=null;' +
+    'function b4ScheduleDraftSave_(){ if(__b4DraftTimer) clearTimeout(__b4DraftTimer); __b4DraftTimer=setTimeout(function(){ b4SaveDraftNow_(); }, 800); }' +
+    'function b4SaveDraftNow_(){' +
+    ' var items=b4CollectAllByWrap_(); var baseColor=window.__b4BaseColor||\"beige\";' +
+    ' for(var si=0; si<items.length; si++){' +
+    '  var it=items[si];' +
+    '  if(!(it.proposals||[]).length) continue;' +
+    '  google.script.run.withFailureHandler(function(){}).saveB4ThemeDraft({jan:it.jan,nameBase:it.nameBase,parentSku:it.parentSku,proposals:it.proposals,baseColor:baseColor});' +
+    ' }' +
+    '}' +
+    'document.getElementById(\"backBind\").onclick=function(){' +
+    ' b4SaveDraftNow_();' +
+    ' document.getElementById(\"proposePanel\").style.display=\"none\";' +
+    ' document.getElementById(\"bindPanel\").style.display=\"block\";' +
+    '};' +
+    'document.getElementById(\"remakeUnchecked\").onclick=function(){' +
+    ' try {' +
+    '  var note=b4CollectBatchRemakeNote_();' +
+    '  if(!note){ b4SetProposeStatus_(\"まとめて再作成には要望が必要です。下の要望欄か、外したテーマの『このテーマだけ作り直す』指示欄に書いてください\"); return; }' +
+    '  var groups=b4CollectAllByWrap_();' +
+    '  var targets=[];' +
+    '  for(var gi=0; gi<groups.length; gi++){' +
+    '   var g0=groups[gi]; var hasOff=false;' +
+    '   var props=g0.proposals||[];' +
+    '   for(var pi=0; pi<props.length; pi++){ if(!props[pi].selected){ hasOff=true; break; } }' +
+    '   if(hasOff) targets.push(g0);' +
+    '  }' +
+    '  if(!targets.length){ b4SetProposeStatus_(\"レ点を外したテーマがありません。直すテーマのチェックを外してから押してください\"); return; }' +
+    '  var btn=document.getElementById(\"remakeUnchecked\"); if(btn) btn.disabled=true;' +
+    '  b4SetProposeStatus_(\"レ点なしテーマを再作成中…（\"+targets.length+\"商品）\");' +
+    '  var pending=targets.length; var errs=[];' +
+    '  for(var ti=0; ti<targets.length; ti++){' +
+    '   (function(g){' +
+    '    google.script.run.withSuccessHandler(function(res){' +
+    '     pending--;' +
+    '     if(!res||!res.ok){ errs.push((res&&res.error)||\"失敗\"); }' +
+    '     else {' +
+    '      var wrap=null;' +
+    '      var wraps=document.querySelectorAll(\"#proposeBox > div[data-jan]\");' +
+    '      b4EachNode_(wraps, function(w){' +
+    '        if(w.getAttribute(\"data-jan\")===g.jan && (w.getAttribute(\"data-name\")||\"\")===String(g.nameBase||\"\")) wrap=w;' +
+    '      });' +
+    '      if(wrap&&res.proposals){' +
+    '       for(var ri=0; ri<res.proposals.length; ri++){' +
+    '        var pr=res.proposals[ri];' +
+    '        var tid=String(pr.themeId);' +
+    '        var ck=wrap.querySelector(\"input.theme-ck[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        var ax=wrap.querySelector(\"textarea.theme-axis[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        var ov=wrap.querySelector(\"textarea.theme-ov[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        var ca=wrap.querySelector(\"textarea.theme-catch[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        var su=wrap.querySelector(\"textarea.theme-subs[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        var pkg=wrap.querySelector(\"input.theme-pkg[data-theme=\\\"\"+tid+\"\\\"]\");' +
+    '        if(ck) ck.checked=true;' +
+    '        if(ax&&pr.appealAxis) ax.value=pr.appealAxis;' +
+    '        if(ov) ov.value=pr.overview||\"\";' +
+    '        if(ca) ca.value=pr.catch||\"\";' +
+    '        if(su) su.value=(pr.subs||[]).join(\"\\n\");' +
+    '        if(pkg&&typeof pr.needPackage===\"boolean\") pkg.checked=!!pr.needPackage;' +
+    '       }' +
+    '      }' +
+    '     }' +
+    '     if(pending<=0){' +
+    '      if(btn) btn.disabled=false;' +
+    '      b4SetProposeStatus_(errs.length?errs.join(\"／\"):\"再作成しました（レ点を戻しています）\");' +
+    '      b4SaveDraftNow_();' +
+    '     }' +
+    '    }).withFailureHandler(function(e){' +
+    '     pending--; errs.push(String(e&&e.message?e.message:e));' +
+    '     if(pending<=0){ if(btn) btn.disabled=false; b4SetProposeStatus_(errs.join(\"／\")); }' +
+    '    }).remakeB4UncheckedThemes({jan:g.jan,nameBase:g.nameBase,parentSku:g.parentSku,note:note,proposals:g.proposals,baseColor:window.__b4BaseColor||\"beige\"});' +
+    '   })(targets[ti]);' +
+    '  }' +
+    ' } catch(err){' +
+    '  var b2=document.getElementById(\"remakeUnchecked\"); if(b2) b2.disabled=false;' +
+    '  b4SetProposeStatus_(\"まとめて再作成エラー: \"+String(err&&err.message?err.message:err));' +
+    ' }' +
+    '};' +
+    'document.getElementById(\"goPrompt\").onclick=function(){' +
+    ' var checked=b4CollectChecked_();' +
+    ' var bindings=window.__b4Bindings||[]; var baseColor=window.__b4BaseColor||\"beige\";' +
+    ' if(!checked.length){ document.getElementById(\"stPropose\").textContent=\"1つ以上チェックしてください\"; return; }' +
+    ' var by={};' +
+    ' checked.forEach(function(c){ var k=String(c.jan)+\"\\n\"+String(c.nameBase||\"\"); by[k]=by[k]||[]; by[k].push(Number(c.themeId)); });' +
+    ' var keys=Object.keys(by);' +
+    ' for(var i=0;i<keys.length;i++){' +
+    '  var ids=by[keys[i]];' +
+    '  if(ids.indexOf(1)<0||ids.indexOf(2)<0){ document.getElementById(\"stPropose\").textContent=\"悩み（1）とベネフィット（2）は外さないでください\"; return; }' +
+    '  if(ids.length>10){ document.getElementById(\"stPropose\").textContent=\"1商品あたり10件までです\"; return; }' +
+    ' }' +
+    ' document.getElementById(\"goPrompt\").disabled=true;' +
+    ' document.getElementById(\"stPropose\").textContent=\"指示を作成中…\";' +
+    ' google.script.run' +
+    '.withSuccessHandler(function(res){' +
+    '  document.getElementById(\"goPrompt\").disabled=false;' +
+    '  if(!res||!res.ok){ document.getElementById(\"stPropose\").textContent=((res&&res.error)||\"失敗\"); return; }' +
+    '  document.getElementById(\"proposePanel\").style.display=\"none\";' +
+    '  document.getElementById(\"promptPanel\").style.display=\"block\";' +
+    '  document.getElementById(\"outDirLabel\").textContent=res.outDir||\"\";' +
+    '  document.getElementById(\"bindSummary\").innerHTML=\"<b>チェック済み</b>: \"+String(checked.length)+\" テーマ。ベース色 \"+String(res.baseColorLabel||res.baseColor||\"beige\");' +
+    '  document.getElementById(\"t\").value=res.prompt||\"\";' +
+    '  document.getElementById(\"rt\").value=res.reviewPrompt||\"\";' +
+    '  b4FillTemplates_(res.feedbackTemplates||[]);' +
+    ' })' +
+    '.withFailureHandler(function(e){' +
+    '  document.getElementById(\"goPrompt\").disabled=false;' +
+    '  document.getElementById(\"stPropose\").textContent=String(e&&e.message?e.message:e);' +
+    ' })' +
+    '.finishB4AfterTruthBind({bindings:bindings,baseColor:baseColor,checkedThemes:checked,source:' +
     JSON.stringify(String(payload.source || '')) +
     ',totalImages:' +
     Number(payload.totalImages || 0) +
@@ -15139,19 +16709,18 @@ function showB4PackageTruthBindDialog_(payload) {
     '};' +
     'document.getElementById(\"closeReview\").onclick=function(){' +
     ' var ok=document.getElementById(\"ck1\").checked&&document.getElementById(\"ck2\").checked&&document.getElementById(\"ck3\").checked&&document.getElementById(\"ck4\").checked;' +
-    ' if(!ok){ document.getElementById(\"reviewSt\").textContent=\"compose後は4項目すべてチェックしてから閉じてください。compose前なら「仮閉じ」を使ってください。\"; return; }' +
+    ' if(!ok){ document.getElementById(\"reviewSt\").textContent=\"上の4つにレ点を付けてから閉じてください。絵ができる前なら「絵ができる前に閉じる」を使ってください。\"; return; }' +
     ' google.script.host.close();' +
     '};' +
     'document.getElementById(\"deferClose\").onclick=function(){' +
-    ' var el=document.getElementById(\"rt\"); if(el){ el.focus(); el.select(); }' +
-    ' document.getElementById(\"reviewSt\").textContent=\"レビュー指示を選択済み。Agentに貼り『compose完了後に必ずreview_loop』と伝えてください。\";' +
+    ' document.getElementById(\"reviewSt\").textContent=\"絵を作る文は、一つ前の画面の長い文です。この短い文は貼らなくてよいです。\";' +
     ' setTimeout(function(){ google.script.host.close(); }, 900);' +
     '};' +
     '</script></body></html>';
 
   SpreadsheetApp.getUi().showModalDialog(
-    HtmlService.createHtmlOutput(html).setWidth(840).setHeight(720),
-    'B-④ PACKAGE_TRUTH 紐付け → 目視チェック'
+    HtmlService.createHtmlOutput(html).setWidth(840).setHeight(860),
+    'B-⑤ サブ画像 — 正本紐付け'
   );
 }
 
@@ -15216,6 +16785,1734 @@ function b4NormalizeBaseColor_(raw) {
 }
 
 /**
+ * P-align-2b: LPテーマカタログ（sub_image_lp_themes.LP_THEMES と id/name/phase 同期）。
+ * @return {Array<{id:number,phaseOrder:number,phase:string,name:string,hint:string}>}
+ */
+function b4LpThemeCatalog_() {
+  return [
+    { id: 1, phaseOrder: 1, phase: 'フック', name: 'ターゲットの悩みへの共感', hint: '不満・痛みの代弁。短く。' },
+    { id: 2, phaseOrder: 1, phase: 'フック', name: '理想の未来（ベネフィット）の提示', hint: '購入後の最高体験を短く。' },
+    { id: 3, phaseOrder: 1, phase: 'フック', name: '視覚的なシズル感のアピール', hint: '湯気・照り。文字は最小。' },
+    { id: 4, phaseOrder: 2, phase: 'プロダクト理解', name: '味の正しいアピール（期待値調整）', hint: '期待値調整を簡潔に。' },
+    { id: 5, phaseOrder: 2, phase: 'プロダクト理解', name: '圧倒的なこだわり・開発秘話', hint: 'ストーリーは要点のみ。' },
+    { id: 6, phaseOrder: 2, phase: 'プロダクト理解', name: '素材・産地の証明', hint: '素材スペックを短く。' },
+    { id: 7, phaseOrder: 2, phase: 'プロダクト理解', name: '製法・技術の独自性', hint: '製法の強みを図解寄り。' },
+    { id: 8, phaseOrder: 2, phase: 'プロダクト理解', name: '生産者の顔・想い', hint: '人の顔・メッセージは短文。' },
+    { id: 9, phaseOrder: 3, phase: 'ライフスタイル', name: '健康的価値・栄養素のアピール', hint: '栄養訴求。事実のみ。' },
+    { id: 10, phaseOrder: 3, phase: 'ライフスタイル', name: '一番美味しい食べ方・作り方', hint: '手順は3〜5ステップ。' },
+    { id: 11, phaseOrder: 3, phase: 'ライフスタイル', name: '飽きさせないアレンジレシピ集', hint: 'アレンジは最大3案。' },
+    { id: 12, phaseOrder: 3, phase: 'ライフスタイル', name: '日常への組み込み提案（利用シーン）', hint: 'シーンをビジュアル中心。' },
+    { id: 13, phaseOrder: 3, phase: 'ライフスタイル', name: '誰と楽しむか（ギフト・シェア）', hint: 'ギフト／シェアを簡潔に。' },
+    { id: 14, phaseOrder: 4, phase: '信頼獲得', name: '実績アピール（ランキング・販売数）', hint: '数字は材料にあるもののみ。' },
+    { id: 15, phaseOrder: 4, phase: '信頼獲得', name: 'お客様のリアルな声（レビュー・UGC）', hint: '口コミは2〜3件まで。' },
+    { id: 16, phaseOrder: 4, phase: '信頼獲得', name: 'メディア掲載・プロの推薦', hint: '第三者権威は短文のみ。' },
+    { id: 17, phaseOrder: 4, phase: '信頼獲得', name: '安全・安心への取り組み', hint: '一般表現のみ。数字の発明禁止。' },
+    { id: 18, phaseOrder: 4, phase: '信頼獲得', name: 'よくある質問（Q&A）', hint: 'Q&Aは最大3組。' },
+    { id: 19, phaseOrder: 5, phase: 'クロージング', name: '価格の妥当性・コスパの提示', hint: '価格は競合にある数字のみ。煽り禁止。' },
+    { id: 20, phaseOrder: 5, phase: 'クロージング', name: 'セット内容・バリエーションと購入導線', hint: '価格禁止。カートUIを描かない。' }
+  ];
+}
+
+/** sub_image_lp_themes.INVENTED_DEFAULT_BY_PHASE と同期 */
+function b4InventedDefaultByPhase_() {
+  return { 1: 2, 2: 6, 3: 12, 4: 17, 5: 20 };
+}
+
+/**
+ * B-③サブ採用CK行の 参照themeId 集計。
+ * @return {Object<string, Object<string, number>>}
+ */
+function collectB3ThemeIdsByJan_() {
+  var out = {};
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var b3 = ss.getSheetByName(COMPETITOR_IMAGE_B3_OUTPUT_SHEET_NAME);
+  if (!b3 || b3.getLastRow() < 2) return out;
+  var values = b3.getDataRange().getValues();
+  var header = values[0];
+  var iJan = header.indexOf('JAN');
+  var iUrl = header.indexOf('画像URL');
+  var iCk = header.indexOf(B3_SUB_ADOPT_CK_HEADER);
+  var iTheme = header.indexOf('参照themeId');
+  if (iJan < 0 || iCk < 0 || iTheme < 0) return out;
+  for (var i = 1; i < values.length; i++) {
+    var ck = values[i][iCk];
+    var on = ck === true || String(ck).toUpperCase() === 'TRUE';
+    if (!on) continue;
+    var jan = String(values[i][iJan] || '').trim();
+    if (!jan) continue;
+    if (iUrl >= 0) {
+      var url = String(values[i][iUrl] || '').trim();
+      if (url && url.indexOf('http') !== 0) continue;
+    }
+    var tid = parseInt(String(values[i][iTheme] || '').trim(), 10);
+    if (!tid || tid < 1 || tid > 20) continue;
+    if (!out[jan]) out[jan] = {};
+    out[jan][String(tid)] = (out[jan][String(tid)] || 0) + 1;
+  }
+  return out;
+}
+
+/**
+ * MAIN compose の採用テーマ概要（判断材料。完全一致は不要）。
+ * @param {string} jan
+ * @return {Array<{themeId:string,themeName:string,catch:string}>}
+ */
+/**
+ * MAIN参考キャッチ。親SKUがあればそれを優先（JANだけの取り違え防止）。
+ * @param {string} jan
+ * @param {string=} parentSkuOpt
+ * @param {string=} nameBaseOpt
+ */
+function b4LoadMainThemeHintsForJan_(jan, parentSkuOpt, nameBaseOpt) {
+  var hints = [];
+  jan = String(jan || '').trim();
+  var wantSku = String(parentSkuOpt || '').trim();
+  var wantNb = b4NormNameBaseKey_(nameBaseOpt || '');
+  if (!jan && !wantSku) return hints;
+  try {
+    var rootInfo = resolveB5ComposeRootFolderDetailed_();
+    if (!rootInfo.folder) return hints;
+    var runs = b5ScanComposeRuns_(rootInfo.folder);
+    var best = null;
+    var bestN = -1;
+    for (var r = 0; r < runs.length; r++) {
+      var run = runs[r] || {};
+      var runJan = String(run.jan || '').trim();
+      var runSku = String(run.parentSku || '').trim();
+      var runNb = b4NormNameBaseKey_(run.nameBase || run.name || '');
+      if (wantSku) {
+        if (runSku && runSku !== wantSku) continue;
+        if (!runSku && jan && runJan !== jan) continue;
+      } else if (jan && runJan !== jan) {
+        continue;
+      }
+      if (wantNb && runNb && runNb !== wantNb) continue;
+      var imgs = b5ListCompareImages_(run.folder);
+      // 親SKU一致を枚数より優先
+      var score = imgs.length;
+      if (wantSku && runSku === wantSku) score += 1000;
+      if (wantNb && runNb === wantNb) score += 100;
+      if (score > bestN) {
+        bestN = score;
+        best = run;
+      }
+    }
+    if (!best) return hints;
+    var metaFile = b5FindFileInFolder_(best.folder, 'b5_proposals.json');
+    if (!metaFile) return hints;
+    var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+    // meta の親SKUが明示的に違うなら捨てる
+    var metaSku = String(meta.parentSku || '').trim();
+    if (wantSku && metaSku && metaSku !== wantSku) return hints;
+    var adoptedKeys = null;
+    try {
+      var rak = resolveB5RakutenBaseFolderDetailed_();
+      var sku = wantSku || metaSku;
+      if (rak.folder && sku) {
+        var mapFile = b5FindFileInFolder_(rak.folder, sku + '_set_base_map.json');
+        if (mapFile) {
+          var mapObj = JSON.parse(mapFile.getBlob().getDataAsString('UTF-8'));
+          adoptedKeys = mapObj.adopted || null;
+        }
+      }
+    } catch (eMap) {
+      adoptedKeys = null;
+    }
+    var props = meta.proposals || [];
+    for (var i = 0; i < props.length; i++) {
+      var p = props[i] || {};
+      var tid = String(p.themeId || '').trim();
+      if (!tid) continue;
+      if (adoptedKeys) {
+        var okKey = false;
+        for (var ak in adoptedKeys) {
+          if (!Object.prototype.hasOwnProperty.call(adoptedKeys, ak)) continue;
+          if (ak === tid || String(ak).indexOf(tid) === 0 || String(tid).indexOf(ak) === 0) {
+            okKey = true;
+            break;
+          }
+        }
+        if (!okKey) continue;
+      }
+      hints.push({
+        themeId: tid,
+        themeName: String(p.themeName || tid),
+        catch: String(p.catch || '').slice(0, 40)
+      });
+    }
+  } catch (e) {
+    Logger.log('[b4LoadMainThemeHintsForJan_] ' + e);
+  }
+  return hints;
+}
+
+function b4MaterialBlob_(materials) {
+  materials = materials || {};
+  return [
+    materials.name || '',
+    materials.maker || '',
+    materials.feats || '',
+    materials.kw || '',
+    materials.yahoo || '',
+    materials.rakuten || '',
+    materials.desc || '',
+    (materials.bullets || []).join(' ')
+  ].join('\n');
+}
+
+function b4NeedleHits_(blob, needles) {
+  var found = [];
+  for (var i = 0; i < (needles || []).length; i++) {
+    if (needles[i] && blob.indexOf(needles[i]) >= 0) found.push(needles[i]);
+  }
+  return found;
+}
+
+/**
+ * 材料門。1・2は毎回。ほか最大8。合計上限10。8/18は根拠があるときだけ。
+ * @return {Array<Object>}
+ */
+function b4JudgeLpThemesFromMaterials_(materials, b3Counts) {
+  var blob = b4MaterialBlob_(materials);
+  var foodish = /おだし|かつお|まぐろ|ぶり|食品|食べ|だし/.test(blob);
+  var catalog = b4LpThemeCatalog_();
+  var gates = {
+    1: { mode: 'always_imagine', needles: ['面倒', '悩み', '忙しい', '手間', 'とらず', 'だしをとらず'] },
+    2: { mode: 'always', needles: ['時短', 'すぐ', 'さっと', 'だしをとらず', '一品', '手軽', 'そのまま食べる'] },
+    3: { mode: 'food', needles: ['食感', '旨', 'うま', '湯気', '照り', 'だし'] },
+    4: { mode: 'need', needles: ['味', '旨', 'うま', 'しっとり', '甘', '塩', '濃い', '味付き'] },
+    5: { mode: 'need', needles: ['開発', '秘話', '試作'] },
+    6: { mode: 'need', needles: ['国産', '産地', '原料', 'かつお節', '本枯', '枕崎', '鹿児島'] },
+    7: { mode: 'need', needles: ['製法', '独自技術', '工程'] },
+    8: { mode: 'skip_unless', needles: ['生産者', '職人', '漁師', '顔写真'] },
+    9: { mode: 'need', needles: ['栄養成分', 'kcal'] },
+    10: { mode: 'need', needles: ['お茶漬け', '振る', 'かける', '食べ方', '作り方', 'ご飯', 'のせる', 'トッピング', '冷奴'] },
+    11: { mode: 'need', needles: ['おつまみ', 'アレンジ', 'レシピ', '両用'] },
+    12: { mode: 'need', needles: ['朝', '夜', '晩酌', 'お茶漬け', 'デスク', '食卓'] },
+    13: { mode: 'need', needles: ['ギフト', '贈', 'シェア', 'ご褒美'] },
+    14: { mode: 'need', needles: ['受賞', '金賞', '累計', '突破', 'ランキング', '億粒', '万袋', '万枚'] },
+    15: { mode: 'need', needles: ['レビュー', '口コミ', 'お客様の声', '星'] },
+    16: { mode: 'need', needles: ['メディア', '雑誌', 'テレビ', 'TV', '推薦'] },
+    17: { mode: 'need', needles: ['無添加', '検査', '工場認証', '安心安全'] },
+    18: { mode: 'skip_unless', needles: ['よくある', 'Q&A', 'アレルギー', '保存方法'] },
+    19: { mode: 'need', needles: ['円', 'コスパ', '1食あたり', '価格'] },
+    20: { mode: 'need', needles: ['セット内容', 'バリエーション', '種類一覧'] }
+  };
+  var rows = [];
+  for (var c = 0; c < catalog.length; c++) {
+    var meta = catalog[c];
+    var tid = meta.id;
+    var g = gates[tid] || { mode: 'need', needles: [] };
+    var ev = b4NeedleHits_(blob, g.needles);
+    if (tid === 5 && blob.indexOf('こだわり') >= 0 && blob.indexOf('製法') >= 0) ev.push('こだわり+製法');
+    if (tid === 9) {
+      if (/\d+\s*(kcal|キロカロリー|カロリー)/i.test(blob)) ev.push('数字カロリー');
+      else if (blob.indexOf('低カロリー') >= 0 || blob.indexOf('高タンパク') >= 0 || blob.indexOf('低糖質') >= 0) ev = [];
+    }
+    var propose = false;
+    var kind = 'skip';
+    if (g.mode === 'always_imagine' || g.mode === 'always') {
+      propose = true;
+      kind = ev.length ? 'fact' : 'imagine';
+    } else if (g.mode === 'food') {
+      propose = !!(foodish || ev.length);
+      kind = ev.length ? 'fact' : propose ? 'food_ok' : 'skip';
+    } else if (g.mode === 'skip_unless') {
+      propose = ev.length > 0;
+      kind = propose ? 'fact' : 'skip_default';
+    } else {
+      propose = ev.length > 0;
+      kind = propose ? 'fact' : 'skip';
+    }
+    rows.push({
+      themeId: tid,
+      name: meta.name,
+      phase: meta.phase,
+      phaseOrder: meta.phaseOrder,
+      propose: propose,
+      kind: kind,
+      evidence: ev,
+      hint: meta.hint,
+      b3: (b3Counts && b3Counts[String(tid)]) || 0
+    });
+  }
+  return b4CapLpThemeRows_(rows);
+}
+
+function b4CapLpThemeRows_(rows) {
+  var MUST = { 1: true, 2: true };
+  var EXTRA_CAP = 8;
+  for (var i = 0; i < rows.length; i++) {
+    if (MUST[rows[i].themeId]) {
+      rows[i].propose = true;
+      if (rows[i].kind === 'skip' || rows[i].kind === 'skip_default') rows[i].kind = 'imagine';
+    }
+  }
+  var extras = rows.filter(function (r) {
+    return r.propose && !MUST[r.themeId];
+  });
+  extras.sort(function (a, b) {
+    return (b.b3 || 0) - (a.b3 || 0) || (b.evidence.length || 0) - (a.evidence.length || 0) || a.phaseOrder - b.phaseOrder || a.themeId - b.themeId;
+  });
+  var picked = [];
+  var seenPo = {};
+  var e;
+  for (e = 0; e < extras.length && picked.length < EXTRA_CAP; e++) {
+    if (seenPo[extras[e].phaseOrder]) continue;
+    picked.push(extras[e]);
+    seenPo[extras[e].phaseOrder] = true;
+  }
+  for (e = 0; e < extras.length && picked.length < EXTRA_CAP; e++) {
+    if (picked.indexOf(extras[e]) >= 0) continue;
+    picked.push(extras[e]);
+  }
+  var keep = { 1: true, 2: true };
+  for (var p = 0; p < picked.length; p++) keep[picked[p].themeId] = true;
+  for (var r = 0; r < rows.length; r++) {
+    if (MUST[rows[r].themeId]) continue;
+    if (!keep[rows[r].themeId]) {
+      if (rows[r].propose) rows[r].kind = 'capped';
+      rows[r].propose = false;
+    }
+  }
+  return rows;
+}
+
+/** テーマ別新規: パッケージを既定で載せる themeId（ギフト・素材・実績・メディア等） */
+function b4PackageDefaultOnThemeIds_() {
+  return { 6: true, 13: true, 14: true, 16: true };
+}
+
+/** P3-W: 個包装訴求テーマ（LP1..20外）。切戻し B4_WRAP_APPEAL_THEME=false */
+var B4_THEME_ID_WRAP_APPEAL_ = 21;
+
+function b4WrapAppealThemeEnabled_() {
+  return getBoolScriptProperty_('B4_WRAP_APPEAL_THEME', true);
+}
+
+/**
+ * WRAP確定の正は親SKU → 商品名ベース → JAN（欠けると片方だけ+1になる）。
+ * @param {string} jan
+ * @param {string=} parentSku
+ * @param {string=} nameBase
+ * @return {boolean}
+ */
+function b4JanHasConfirmedWrap_(jan, parentSku, nameBase) {
+  var read = readB5FoodCanonStatusDoc_();
+  var doc = (read && read.doc) || {};
+  var bySku = doc.byParentSku || {};
+  var byNb = doc.byNameBase || {};
+  var byJan = doc.byJan || {};
+  var sku = String(parentSku || '').trim();
+  var nb = String(nameBase || '').trim();
+  var j = String(jan || '').trim();
+  var row = null;
+  if (sku && bySku[sku]) row = bySku[sku];
+  else if (nb && byNb[nb]) row = byNb[nb];
+  else if (j && byJan[j]) row = byJan[j];
+  if (!row) return false;
+  if (row.hasWrap === true) return true;
+  if (row.hasWrap === false) return false;
+  var wn = String(row.wrapName || row.wrapPath || '').trim();
+  return !!wn && wn !== '__none__';
+}
+
+function b4MechanicalWrapAppealProposal_() {
+  return {
+    themeId: B4_THEME_ID_WRAP_APPEAL_,
+    name: '個包装アピール',
+    phase: 'プロダクト理解',
+    phaseOrder: 2,
+    source: 'wrap_asset',
+    kind: 'wrap_appeal',
+    evidence: 'FOOD_UNIT_WRAP',
+    appealAxis: '個包装の便利さ',
+    overview:
+      '個包装の真空パックを主役に、食べたい分だけ取り出せる便利さと持ち運びやすさを伝える。手元や卓上で個包装がはっきり見える。明るい白〜生成り。植物の緑はぼけて少し。大袋カタログ並べは主役にしない。',
+    catch: '個包装で、好きな分だけ',
+    subs: ['真空パックで鮮度をキープ', '持ち運びにも便利'],
+    needPackage: false,
+    checkedDefault: true,
+    selected: true,
+    wrapAppeal: true
+  };
+}
+
+/**
+ * WRAPありなら themeId=21 を末尾+1（通常枠は最大10のまま。合計最大11）。
+ * @param {Array<Object>} proposals
+ * @param {boolean} hasWrap
+ * @return {Array<Object>}
+ */
+function b4MergeWrapAppealTheme_(proposals, hasWrap) {
+  var out = [];
+  var i;
+  for (i = 0; i < (proposals || []).length; i++) {
+    if (proposals[i]) out.push(proposals[i]);
+  }
+  if (!b4WrapAppealThemeEnabled_() || !hasWrap) return out;
+  for (i = 0; i < out.length; i++) {
+    if (parseInt(String(out[i].themeId || ''), 10) === B4_THEME_ID_WRAP_APPEAL_) return out;
+    if (out[i].wrapAppeal === true) return out;
+  }
+  var base = [];
+  for (i = 0; i < out.length; i++) {
+    if (parseInt(String(out[i].themeId || ''), 10) !== B4_THEME_ID_WRAP_APPEAL_) base.push(out[i]);
+  }
+  if (base.length > 10) base = base.slice(0, 10);
+  base.push(b4MechanicalWrapAppealProposal_());
+  return base;
+}
+
+function b4DefaultNeedPackage_(themeId, explicit) {
+  if (explicit === true || explicit === false) return explicit;
+  if (explicit === 'true' || explicit === '1') return true;
+  if (explicit === 'false' || explicit === '0') return false;
+  var tid = parseInt(String(themeId || ''), 10);
+  if (tid === B4_THEME_ID_WRAP_APPEAL_) return false;
+  var on = b4PackageDefaultOnThemeIds_();
+  return !!on[tid];
+}
+
+/**
+ * テーマ別新規パス（概要＋訴求＋パッケージ任意）。切戻し: B5_THEME_NEW_PATH=false → 従来競合 compose 指示。
+ * @return {boolean}
+ */
+function b4FallbackOverview_(row) {
+  var ev = (row.evidence || []).slice(0, 3).join('／') || '材料の言い回しのみ';
+  var kind = row.kind === 'imagine' ? '【想像】' : '';
+  return (
+    kind +
+    row.name +
+    'のシーン。パッケージは必要なときだけ。' +
+    ev +
+    'を短く。'
+  ).slice(0, 140);
+}
+
+function b4FallbackCatch_(row) {
+  return String(row.name || '訴求').slice(0, 28);
+}
+
+/**
+ * P2第1スライス 文門。切戻し B4_THEME_TEXT_GATE=false。
+ * 正本: B45 §4.5.8 / tools/set_main_image/b4_theme_text_rules.py
+ */
+function b4ThemeTextGateEnabled_() {
+  return getBoolScriptProperty_('B4_THEME_TEXT_GATE', true);
+}
+
+var B4_THEME_TEXT_AUTO_RETRY_MAX_ = 3;
+
+function b4ThemeTextBannedWords_() {
+  return [
+    '効能',
+    '健康',
+    '栄養',
+    '成長',
+    '糖質',
+    'ダイエット',
+    '血圧',
+    '免疫',
+    '高タンパク',
+    'ヘルシー',
+    'お得',
+    '最安',
+    '激安',
+    'コスパ最強',
+    '最強',
+    '受賞',
+    '金賞',
+    'No.1',
+    'ナンバーワン',
+    '累計'
+  ];
+}
+
+function b4ThemeTextProcedureWords_() {
+  return ['開けて', 'のせて', '並べて', '混ぜて', '手順', 'まず', '次に', 'してから'];
+}
+
+function b4ThemeTextFindWords_(text, words) {
+  var t = String(text || '');
+  var hit = [];
+  for (var i = 0; i < words.length; i++) {
+    if (words[i] && t.indexOf(words[i]) >= 0) hit.push(words[i]);
+  }
+  return hit;
+}
+
+function b4ThemeTextHasBrackets_(text) {
+  var t = String(text || '');
+  return t.indexOf('【') >= 0 || t.indexOf('】') >= 0;
+}
+
+function b4ThemeTextCatchEqSub_(pr) {
+  var catchTxt = String((pr && pr.catch) || '').trim();
+  if (!catchTxt) return false;
+  var subs = (pr && pr.subs) || [];
+  for (var i = 0; i < subs.length; i++) {
+    if (String(subs[i] || '').trim() === catchTxt) return true;
+  }
+  return false;
+}
+
+function b4ThemeTextNormToken_(s) {
+  return String(s || '').replace(/\s+/g, '');
+}
+
+function b4ThemeTextDistinctiveChunks_(text) {
+  var t = b4ThemeTextNormToken_(text);
+  var minLen = 4;
+  if (!t) return [];
+  if (t.length < minLen) return [];
+  var out = [];
+  if (t.length <= 12) {
+    out.push(t);
+  } else {
+    out.push(t.substring(0, 8));
+    out.push(t.substring(t.length - 8));
+    var mid = Math.floor(t.length / 2);
+    out.push(t.substring(mid - 4, mid + 4));
+  }
+  var seen = {};
+  var uniq = [];
+  for (var i = 0; i < out.length; i++) {
+    if (out[i].length >= minLen && !seen[out[i]]) {
+      seen[out[i]] = true;
+      uniq.push(out[i]);
+    }
+  }
+  return uniq;
+}
+
+function b4ThemeTextReusePairs_(proposals) {
+  var indexed = [];
+  for (var i = 0; i < (proposals || []).length; i++) {
+    var pr = proposals[i] || {};
+    var lines = [String(pr.catch || '')];
+    var subs = pr.subs || [];
+    for (var s = 0; s < subs.length; s++) lines.push(String(subs[s] || ''));
+    for (var li = 0; li < lines.length; li++) {
+      var line = String(lines[li] || '').trim();
+      if (!line) continue;
+      var chunks = b4ThemeTextDistinctiveChunks_(line);
+      for (var c = 0; c < chunks.length; c++) indexed.push({ i: i, ch: chunks[c] });
+    }
+  }
+  var hits = [];
+  var seen = {};
+  for (var a = 0; a < indexed.length; a++) {
+    for (var b = a + 1; b < indexed.length; b++) {
+      if (indexed[a].i === indexed[b].i) continue;
+      if (indexed[a].ch !== indexed[b].ch) continue;
+      var lo = Math.min(indexed[a].i, indexed[b].i);
+      var hi = Math.max(indexed[a].i, indexed[b].i);
+      var key = lo + ':' + hi + ':' + indexed[a].ch;
+      if (seen[key]) continue;
+      seen[key] = true;
+      hits.push({ a: lo, b: hi, chunk: indexed[a].ch });
+    }
+  }
+  return hits;
+}
+
+function b4ThemeTextMarkNeedles_(mark) {
+  var m = String(mark || '').trim();
+  if (!m) return [];
+  var groups = [
+    ['かつお', 'カツオ', '鰹'],
+    ['まぐろ', 'マグロ', '鮪'],
+    ['ぶり', 'ブリ', '鰤'],
+    ['さば', 'サバ', '鯖'],
+    ['いわし', 'イワシ', '鰯'],
+    ['チーズ', 'ちーず']
+  ];
+  var out = [m];
+  for (var g = 0; g < groups.length; g++) {
+    if (groups[g].indexOf(m) >= 0) {
+      for (var i = 0; i < groups[g].length; i++) {
+        if (out.indexOf(groups[g][i]) < 0) out.push(groups[g][i]);
+      }
+      break;
+    }
+  }
+  return out;
+}
+
+function b4ThemeTextMarkAppears_(text, mark) {
+  var t = String(text || '');
+  var needles = b4ThemeTextMarkNeedles_(mark);
+  for (var i = 0; i < needles.length; i++) {
+    if (needles[i] && t.indexOf(needles[i]) >= 0) return true;
+  }
+  return false;
+}
+
+function b4ThemeTextMixOneSided_(text, marks) {
+  var list = [];
+  for (var i = 0; i < (marks || []).length; i++) {
+    var m = String(marks[i] || '').trim();
+    if (m) list.push(m);
+  }
+  if (list.length < 2) return false;
+  var hit = 0;
+  for (var j = 0; j < list.length; j++) {
+    if (b4ThemeTextMarkAppears_(text, list[j])) hit++;
+  }
+  return hit === 1;
+}
+
+function b4ThemeTextGateProposal_(pr, mixMarks) {
+  var errs = [];
+  var catchTxt = String((pr && pr.catch) || '');
+  var subsBlob = ((pr && pr.subs) || []).join('\n');
+  var ov = String((pr && pr.overview) || '');
+  var surface = catchTxt + '\n' + subsBlob;
+  var allText = ov + '\n' + surface;
+  var banned = b4ThemeTextFindWords_(allText, b4ThemeTextBannedWords_());
+  if (banned.length) errs.push('T2:' + banned.join(','));
+  if (b4ThemeTextHasBrackets_(surface)) errs.push('T5:bracket');
+  if (b4ThemeTextCatchEqSub_(pr)) errs.push('T5:catch=subs');
+  var proc = b4ThemeTextFindWords_(surface, b4ThemeTextProcedureWords_());
+  if (proc.length) errs.push('T15:' + proc.join(','));
+  // T4: 概要も含む＋表記ゆれ同一視（過剰落とし緩和）
+  if (mixMarks && b4ThemeTextMixOneSided_(allText, mixMarks)) errs.push('T4:one_sided');
+  return errs;
+}
+
+function b4ThemeTextGateProposals_(proposals, mixMarks) {
+  var per = [];
+  var failMap = {};
+  for (var i = 0; i < (proposals || []).length; i++) {
+    var errs = b4ThemeTextGateProposal_(proposals[i], mixMarks);
+    per.push({ index: i, themeId: (proposals[i] || {}).themeId, errors: errs });
+    if (errs.length) failMap[i] = true;
+  }
+  var reuse = b4ThemeTextReusePairs_(proposals);
+  for (var r = 0; r < reuse.length; r++) {
+    failMap[reuse[r].a] = true;
+    failMap[reuse[r].b] = true;
+    var chunk = reuse[r].chunk;
+    for (var p = 0; p < per.length; p++) {
+      if (per[p].index === reuse[r].a || per[p].index === reuse[r].b) {
+        per[p].errors = (per[p].errors || []).concat(['T3:' + chunk]);
+      }
+    }
+  }
+  var failIndexes = [];
+  for (var k in failMap) {
+    if (Object.prototype.hasOwnProperty.call(failMap, k)) failIndexes.push(parseInt(k, 10));
+  }
+  failIndexes.sort(function (a, b) {
+    return a - b;
+  });
+  return { ok: !failIndexes.length, failIndexes: failIndexes, perProposal: per, reusePairs: reuse };
+}
+
+function b4ThemeTextRetryNote_(errs, baseNote) {
+  var parts = [
+    '門の不合格を直してください。煽り・効能・お得・最強・受賞は書かない。',
+    'キャッチと補足を同文にしない。【】と手順（開けて／のせて等）をキャッチ・補足に書かない。',
+    '他テーマと同じキャッチ語を使い回さない。',
+    'ミックスなら構成の区別語が片方だけ主役にならないようにする。'
+  ];
+  if (errs && errs.length) parts.push('今回の指摘: ' + errs.join('／'));
+  var bn = String(baseNote || '').trim();
+  if (bn) parts.push('人の指示も維持: ' + bn.slice(0, 300));
+  return parts.join('\n');
+}
+
+/**
+ * 門不合格のテーマだけ最大3回 Gemini 直し。proposals を破壊的に更新。
+ * @return {{proposals:Array, attempts:number, lastGate:Object}}
+ */
+function b4RefineProposalsWithTextGate_(materials, proposals, baseNote) {
+  var props = proposals || [];
+  if (!b4ThemeTextGateEnabled_() || !props.length) {
+    return { proposals: props, attempts: 0, lastGate: { ok: true, failIndexes: [] } };
+  }
+  var marks = b5MixMarks_(materials || {});
+  if (materials) materials.mixMarks = marks;
+  var lastGate = b4ThemeTextGateProposals_(props, marks);
+  var attempts = 0;
+  while (!lastGate.ok && attempts < B4_THEME_TEXT_AUTO_RETRY_MAX_) {
+    var failIdx = lastGate.failIndexes || [];
+    if (!failIdx.length) break;
+    var rows = [];
+    var errByTid = {};
+    for (var fi = 0; fi < failIdx.length; fi++) {
+      var pr = props[failIdx[fi]] || {};
+      rows.push({
+        themeId: pr.themeId,
+        name: pr.name || 'T' + pr.themeId,
+        kind: pr.kind || 'fact',
+        evidence: pr.evidence || []
+      });
+      var per = (lastGate.perProposal || [])[failIdx[fi]];
+      errByTid[String(pr.themeId)] = (per && per.errors) || [];
+    }
+    var noteParts = [];
+    for (var ti = 0; ti < rows.length; ti++) {
+      var e = errByTid[String(rows[ti].themeId)] || [];
+      if (e.length) noteParts.push('T' + rows[ti].themeId + '=' + e.join(','));
+    }
+    var gem = b4GeminiOverviewsForThemes_(
+      materials,
+      rows,
+      b4ThemeTextRetryNote_(noteParts, baseNote)
+    );
+    for (var fj = 0; fj < failIdx.length; fj++) {
+      var ix = failIdx[fj];
+      var base = props[ix] || {};
+      var tid = base.themeId;
+      var g = gem[tid] || {};
+      var rowFb = { themeId: tid, name: base.name, kind: base.kind || 'fact', evidence: [] };
+      if (g.overview) base.overview = g.overview;
+      else if (!base.overview) base.overview = b4FallbackOverview_(rowFb);
+      if (g.catch) base.catch = g.catch;
+      else if (!base.catch) base.catch = b4FallbackCatch_(rowFb);
+      if (g.subs) base.subs = g.subs;
+      if (g.appealAxis) base.appealAxis = g.appealAxis;
+      if (typeof g.needPackage === 'boolean') {
+        base.needPackage = b4DefaultNeedPackage_(tid, g.needPackage);
+      }
+      props[ix] = base;
+    }
+    attempts++;
+    lastGate = b4ThemeTextGateProposals_(props, marks);
+    Logger.log(
+      '[b4RefineProposalsWithTextGate_] attempt=' +
+        attempts +
+        ' fail=' +
+        (lastGate.failIndexes || []).length
+    );
+  }
+  return { proposals: props, attempts: attempts, lastGate: lastGate };
+}
+
+/**
+ * P2第2スライス つなぎ・軸・買う人。切戻し B4_THEME_COHESION_GATE=false。
+ * 正本: B45 §4.5.9 / tools/set_main_image/b4_theme_cohesion_rules.py
+ */
+function b4ThemeCohesionGateEnabled_() {
+  return getBoolScriptProperty_('B4_THEME_COHESION_GATE', true);
+}
+
+function b4CohesionNormalizeAxis_(s) {
+  return String(s || '')
+    .replace(/\s+/g, '')
+    .replace(/　/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function b4CohesionStopWords_() {
+  return {
+    する: 1,
+    して: 1,
+    した: 1,
+    いる: 1,
+    ある: 1,
+    なる: 1,
+    こと: 1,
+    もの: 1,
+    ため: 1,
+    よう: 1,
+    これ: 1,
+    それ: 1,
+    など: 1,
+    また: 1,
+    です: 1,
+    ます: 1,
+    ない: 1
+  };
+}
+
+function b4CohesionContentTokens_(text) {
+  var t = String(text || '');
+  var out = [];
+  var seen = {};
+  var stop = b4CohesionStopWords_();
+  var re = /[一-龥ぁ-んァ-ヶーa-zA-Z0-9]{2,}/g;
+  var m;
+  while ((m = re.exec(t))) {
+    var w = m[0];
+    if (stop[w] || seen[w]) continue;
+    seen[w] = true;
+    out.push(w);
+  }
+  return out;
+}
+
+function b4CohesionAxisTokens_(axis) {
+  var base = b4CohesionContentTokens_(axis);
+  var out = [];
+  var seen = {};
+  var stop = b4CohesionStopWords_();
+  for (var i = 0; i < base.length; i++) {
+    var parts = String(base[i] || '').split(/[のをおにへとはもで・×x/／]/);
+    parts.push(base[i]);
+    for (var j = 0; j < parts.length; j++) {
+      var p = String(parts[j] || '').trim();
+      if (p.length < 2 || stop[p] || seen[p]) continue;
+      seen[p] = true;
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+function b4CohesionHitCount_(pr) {
+  var axis = String((pr && (pr.appealAxis || pr.errand)) || '');
+  var toks = b4CohesionAxisTokens_(axis);
+  if (!toks.length) return 0;
+  var subs = (pr && pr.subs) || [];
+  var fields = [
+    String((pr && pr.overview) || ''),
+    String((pr && pr.catch) || ''),
+    subs.length ? String(subs[0] || '') : ''
+  ];
+  var hit = 0;
+  for (var f = 0; f < fields.length; f++) {
+    var blob = fields[f];
+    for (var t = 0; t < toks.length; t++) {
+      if (toks[t] && blob.indexOf(toks[t]) >= 0) {
+        hit++;
+        break;
+      }
+    }
+  }
+  return hit;
+}
+
+function b4CohesionDishSceneOk_(pr) {
+  var dish = String((pr && pr.dishName) || '').trim();
+  if (!dish) return true;
+  var blob = String((pr && pr.overview) || '') + '\n' + String((pr && pr.catch) || '');
+  if (blob.indexOf(dish) >= 0) return true;
+  var cues = ['食', '皿', 'ご飯', '丼', '麺', '鍋', 'おかず', 'つまみ', '晩酌', '朝食', 'お弁当'];
+  for (var i = 0; i < cues.length; i++) {
+    if (blob.indexOf(cues[i]) >= 0) return true;
+  }
+  return false;
+}
+
+function b4CohesionFaceHandoffWords_() {
+  return ['手渡し', '手渡す', '直接渡', '玄関で渡', '相手の手に', '渡す瞬間', '渡しながら'];
+}
+
+function b4CohesionGateProposal_(pr) {
+  var errs = [];
+  var axis = String((pr && (pr.appealAxis || pr.errand)) || '').trim();
+  if (!b4CohesionNormalizeAxis_(axis)) errs.push('T6:no_axis');
+  else if (b4CohesionHitCount_(pr) < 2) errs.push('T6:cohesion');
+  if (!b4CohesionDishSceneOk_(pr)) errs.push('T6:dish_scene');
+  var subs = (pr && pr.subs) || [];
+  var surface = String((pr && pr.catch) || '') + '\n' + (subs.length ? String(subs[0] || '') : '');
+  var hands = b4ThemeTextFindWords_(surface, b4CohesionFaceHandoffWords_());
+  if (hands.length) errs.push('T13:' + hands.join(','));
+  return errs;
+}
+
+function b4CohesionGateProposals_(proposals) {
+  var per = [];
+  var failMap = {};
+  for (var i = 0; i < (proposals || []).length; i++) {
+    var errs = b4CohesionGateProposal_(proposals[i]);
+    per.push({ index: i, themeId: (proposals[i] || {}).themeId, errors: errs });
+    if (errs.length) failMap[i] = true;
+  }
+  var normToIdx = {};
+  for (var j = 0; j < (proposals || []).length; j++) {
+    var ax = b4CohesionNormalizeAxis_(
+      String((proposals[j] && (proposals[j].appealAxis || proposals[j].errand)) || '')
+    );
+    if (!ax) continue;
+    if (normToIdx[ax] === undefined) normToIdx[ax] = j;
+    else {
+      failMap[normToIdx[ax]] = true;
+      failMap[j] = true;
+      for (var p = 0; p < per.length; p++) {
+        if (per[p].index === normToIdx[ax] || per[p].index === j) {
+          per[p].errors = (per[p].errors || []).concat(['T7:dup_axis']);
+        }
+      }
+    }
+  }
+  var failIndexes = [];
+  for (var k in failMap) {
+    if (Object.prototype.hasOwnProperty.call(failMap, k)) failIndexes.push(parseInt(k, 10));
+  }
+  failIndexes.sort(function (a, b) {
+    return a - b;
+  });
+  return { ok: !failIndexes.length, failIndexes: failIndexes, perProposal: per };
+}
+
+function b4CohesionRetryNote_(errs, baseNote) {
+  var parts = [
+    '訴求軸(appealAxis)を短く書き、概要・キャッチ・補足の先頭が同じ用事でつながるように直す。',
+    '同親の他テーマと同じ訴求軸にしない。',
+    'キャッチ・補足に手渡し／対面で渡す表現は書かない（ネットで買う人向け）。'
+  ];
+  if (errs && errs.length) parts.push('今回の指摘: ' + errs.join('／'));
+  var bn = String(baseNote || '').trim();
+  if (bn) parts.push('人の指示も維持: ' + bn.slice(0, 300));
+  return parts.join('\n');
+}
+
+function b4RefineProposalsWithCohesionGate_(materials, proposals, baseNote) {
+  var props = proposals || [];
+  if (!b4ThemeCohesionGateEnabled_() || !props.length) {
+    return { proposals: props, attempts: 0, lastGate: { ok: true, failIndexes: [] } };
+  }
+  var lastGate = b4CohesionGateProposals_(props);
+  var attempts = 0;
+  while (!lastGate.ok && attempts < B4_THEME_TEXT_AUTO_RETRY_MAX_) {
+    var failIdx = lastGate.failIndexes || [];
+    if (!failIdx.length) break;
+    var rows = [];
+    var errByTid = {};
+    for (var fi = 0; fi < failIdx.length; fi++) {
+      var pr = props[failIdx[fi]] || {};
+      rows.push({
+        themeId: pr.themeId,
+        name: pr.name || 'T' + pr.themeId,
+        kind: pr.kind || 'fact',
+        evidence: pr.evidence || []
+      });
+      var per = (lastGate.perProposal || [])[failIdx[fi]];
+      errByTid[String(pr.themeId)] = (per && per.errors) || [];
+    }
+    var noteParts = [];
+    for (var ti = 0; ti < rows.length; ti++) {
+      var e = errByTid[String(rows[ti].themeId)] || [];
+      if (e.length) noteParts.push('T' + rows[ti].themeId + '=' + e.join(','));
+    }
+    var gem = b4GeminiOverviewsForThemes_(
+      materials,
+      rows,
+      b4CohesionRetryNote_(noteParts, baseNote)
+    );
+    for (var fj = 0; fj < failIdx.length; fj++) {
+      var ix = failIdx[fj];
+      var base = props[ix] || {};
+      var tid = base.themeId;
+      var g = gem[tid] || {};
+      var rowFb = { themeId: tid, name: base.name, kind: base.kind || 'fact', evidence: [] };
+      if (g.overview) base.overview = g.overview;
+      else if (!base.overview) base.overview = b4FallbackOverview_(rowFb);
+      if (g.catch) base.catch = g.catch;
+      else if (!base.catch) base.catch = b4FallbackCatch_(rowFb);
+      if (g.subs) base.subs = g.subs;
+      if (g.appealAxis) base.appealAxis = g.appealAxis;
+      else if (!base.appealAxis) base.appealAxis = String(base.name || '').slice(0, 20);
+      if (typeof g.needPackage === 'boolean') {
+        base.needPackage = b4DefaultNeedPackage_(tid, g.needPackage);
+      }
+      props[ix] = base;
+    }
+    attempts++;
+    lastGate = b4CohesionGateProposals_(props);
+    Logger.log(
+      '[b4RefineProposalsWithCohesionGate_] attempt=' +
+        attempts +
+        ' fail=' +
+        (lastGate.failIndexes || []).length
+    );
+  }
+  return { proposals: props, attempts: attempts, lastGate: lastGate };
+}
+
+/** 第1門のあと第2門。 */
+function b4RefineProposalsWithAllGates_(materials, proposals, baseNote) {
+  var r1 = b4RefineProposalsWithTextGate_(materials, proposals, baseNote);
+  var r2 = b4RefineProposalsWithCohesionGate_(materials, r1.proposals || proposals, baseNote);
+  return {
+    proposals: r2.proposals,
+    attempts: (r1.attempts || 0) + (r2.attempts || 0),
+    lastGate: r2.lastGate,
+    textGate: r1.lastGate,
+    cohesionGate: r2.lastGate
+  };
+}
+
+/**
+ * 概要＋訴求＋needPackage を一括提案（テーマ別新規）。
+ * @return {Object<number,{overview:string,catch:string,subs:Array<string>,needPackage:boolean,appealAxis?:string}>}
+ */
+function b4GeminiOverviewsForThemes_(materials, rows, humanNote) {
+  var byId = {};
+  if (!rows || !rows.length) return byId;
+  if (!isB5ProposeGeminiEnabled_()) {
+    Logger.log('[b4GeminiOverviewsForThemes_] skipped prop=off');
+    return byId;
+  }
+  if (!getGeminiApiKey()) {
+    Logger.log('[b4GeminiOverviewsForThemes_] skipped no key');
+    return byId;
+  }
+  var themes = [];
+  for (var i = 0; i < rows.length; i++) {
+    themes.push({
+      themeId: rows[i].themeId,
+      name: rows[i].name,
+      kind: rows[i].kind,
+      evidence: rows[i].evidence || []
+    });
+  }
+  var note = String(humanNote || '').trim().slice(0, 500);
+  var prompt =
+    '食品ECのサブ画像用。購入動線のための「概要」と「訴求メッセージ」を分ける。商品カタログ写真にしない。\n' +
+    '買う人はネットで注文する人。キャッチに手渡し・対面で渡す表現は書くな。\n' +
+    '各テーマ:\n' +
+    '- appealAxis: 短い訴求軸（用事方向）1本。画像に焼かない。テーマごとに違う軸。概要・キャッチ・補足先頭と同じ用事でつなぐ。\n' +
+    '- overview: 本文2文・だいたい80〜140字（160字超禁止）。1文目=シーンと主役。2文目=刺す訴求の方向（材料の語）。概要文面を画像内にそのまま書かせない前提。\n' +
+    '- catch: 画像内主キャッチ 12〜28字。必須。\n' +
+    '- subs: 補足0〜2本。各8〜20字。\n' +
+    '- needPackage: 商品パッケージ（袋）を画面に載せるなら true。基本 false。ギフト・素材証明・実績数字の提示など袋が訴求に必要なときだけ true。\n' +
+    '【パッケージ】全テーマで袋を残すな。needPackage=false が既定。\n' +
+    '【最重要・テーマ一致】themeIdごとに核が違う。全テーマで「手元で食べる」構図に収束させるな。\n' +
+    'T1悩み=不便・焦りはキャッチ側。人物を出すなら明るい安堵顔（苦悩顔禁止）。\n' +
+    'T2ベネフィット=購入後の良い感情。T3シズル=湯気・照り。T4=味の輪郭。T10=手順。T11=2〜3用法。T12=時間帯・場面。\n' +
+    '材料に無い賞・累計・効能・価格・認証・数字は書くな。kind=imagine のときだけ overview 文頭【想像】。\n' +
+    'MAINと同文・同構図にしない。地の文「〜を訴求します」禁止。\n' +
+    (note
+      ? '【人の作り直し指示・最優先】次の指示を対象テーマに反映せよ。指示と矛盾する旧シーンは捨てる。新しい型名を人手で増やさず、指示どおり機械が組む。\n指示: ' +
+        note +
+        '\n'
+      : '') +
+    'JSONのみ: {"items":[{"themeId":1,"appealAxis":"…","overview":"…","catch":"…","subs":["…"],"needPackage":false}]}\n\n' +
+    '商品材料:\n' +
+    b5MaterialsPromptBlock_(materials) +
+    '\n\n対象テーマ:\n' +
+    JSON.stringify(themes);
+  var raw = callGeminiForCPO(prompt);
+  try {
+    var t = String(raw || '').trim();
+    var fence = t.indexOf('```');
+    if (fence >= 0) {
+      var fence2 = t.indexOf('```', fence + 3);
+      t = (fence2 > fence ? t.substring(fence + 3, fence2) : t.substring(fence + 3)).replace(/^json\s*/i, '').trim();
+    }
+    var a = t.indexOf('{');
+    var b = t.lastIndexOf('}');
+    if (a >= 0 && b > a) t = t.substring(a, b + 1);
+    var obj = JSON.parse(t);
+    var items = (obj && obj.items) || [];
+    for (var k = 0; k < items.length; k++) {
+      var tid = parseInt(String(items[k].themeId || ''), 10);
+      var ov = String(items[k].overview || '').trim();
+      var catchTxt = String(items[k].catch || items[k].catchCopy || '').trim();
+      var subsRaw = items[k].subs || [];
+      var subs = [];
+      if (subsRaw && subsRaw.length) {
+        for (var si = 0; si < subsRaw.length && subs.length < 2; si++) {
+          var s1 = String(subsRaw[si] || '').trim();
+          if (s1) subs.push(s1.slice(0, 28));
+        }
+      }
+      if (!tid) continue;
+      var axis = String(items[k].appealAxis || items[k].errand || '').trim();
+      byId[tid] = {
+        appealAxis: axis ? axis.slice(0, 40) : '',
+        overview: ov ? ov.slice(0, 160) : '',
+        catch: catchTxt ? catchTxt.slice(0, 40) : '',
+        subs: subs,
+        needPackage: b4DefaultNeedPackage_(tid, items[k].needPackage)
+      };
+    }
+  } catch (e) {
+    Logger.log('[b4GeminiOverviewsForThemes_] parse ' + e);
+  }
+  return byId;
+}
+
+/**
+ * テーマ確認画面: 1 themeId だけ概要・訴求を作り直し。単品・ミックス同じ。末尾 _ 禁止。
+ * @param {{jan:string,nameBase?:string,themeId:number,themeName?:string,kind?:string,note:string}} payload
+ * @return {{ok:boolean,overview?:string,catch?:string,subs?:Array<string>,needPackage?:boolean,error?:string}}
+ */
+/**
+ * B-⑤テーマ案下書き（P1）。切戻し B4_THEME_DRAFT_REUSE=false。
+ * 正本: B45 §4.5.7 / tools/set_main_image/b4_theme_draft_rules.py
+ */
+function b4ThemeDraftReuseEnabled_() {
+  return getBoolScriptProperty_('B4_THEME_DRAFT_REUSE', true);
+}
+
+function b4ThemeDraftSafeName_(s) {
+  return String(s || '')
+    .trim()
+    .replace(/[\\\/:\*\?"<>\|]/g, '_');
+}
+
+function b4ThemeDraftStem_(parentSku, jan, nameBase) {
+  var sku = String(parentSku || '').trim();
+  if (sku) return b4ThemeDraftSafeName_(sku);
+  var j = String(jan || '').trim();
+  var nb = String(nameBase || '').trim();
+  if (j && nb) return b4ThemeDraftSafeName_(j + '__' + nb);
+  if (j) return b4ThemeDraftSafeName_(j);
+  if (nb) return b4ThemeDraftSafeName_(nb);
+  return '';
+}
+
+function b4ThemeDraftFileName_(parentSku, jan, nameBase) {
+  var stem = b4ThemeDraftStem_(parentSku, jan, nameBase);
+  return stem ? stem + '.json' : '';
+}
+
+function b4ResolveThemeDraftFolder_() {
+  try {
+    var work = b5ResolveSetMainWorkFolder_();
+    if (!work) return null;
+    var name = 'b4_theme_drafts';
+    var it = work.getFoldersByName(name);
+    if (it.hasNext()) return it.next();
+    return work.createFolder(name);
+  } catch (e) {
+    Logger.log('[b4ResolveThemeDraftFolder_] ' + e);
+    return null;
+  }
+}
+
+function b4ThemeProposalIsFull_(pr) {
+  if (!pr) return false;
+  var tid = pr.themeId;
+  if (tid === undefined || tid === null || String(tid).trim() === '') return false;
+  var ov = String(pr.overview || '').trim();
+  var catchText = String(pr.catch || '').trim();
+  if (!ov && !catchText) return false;
+  if (catchText && pr.overview === undefined && pr.subs === undefined && pr.needPackage === undefined) {
+    return false;
+  }
+  return true;
+}
+
+function b4ThemeDraftReusable_(draft) {
+  if (!draft || !draft.proposals || !draft.proposals.length) return false;
+  for (var i = 0; i < draft.proposals.length; i++) {
+    if (b4ThemeProposalIsFull_(draft.proposals[i])) return true;
+  }
+  return false;
+}
+
+function b4NormNameBaseKey_(s) {
+  return String(s || '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+/**
+ * 下書きと紐付けの親SKU／JAN／商品名ベースが一致するか。
+ * 不一致なら再利用しない（別商品のキャッチ混入防止）。
+ */
+function b4ThemeDraftMatchesBinding_(draft, parentSku, jan, nameBase) {
+  if (!draft) return false;
+  var bSku = String(parentSku || '').trim();
+  var dSku = String(draft.parentSku || '').trim();
+  if (bSku) {
+    if (!dSku || dSku !== bSku) return false;
+  }
+  var bJan = String(jan || '').trim();
+  var dJan = String(draft.jan || '').trim();
+  if (bJan && dJan && dJan !== bJan) return false;
+  var bNb = b4NormNameBaseKey_(nameBase);
+  var dNb = b4NormNameBaseKey_(draft.nameBase);
+  if (bNb) {
+    if (!dNb || dNb !== bNb) return false;
+  }
+  return true;
+}
+
+function b4NormalizeThemeSelected_(proposals, forceAllOn) {
+  var out = [];
+  var list = proposals || [];
+  for (var i = 0; i < list.length; i++) {
+    var row = list[i] || {};
+    var copy = {};
+    for (var k in row) {
+      if (Object.prototype.hasOwnProperty.call(row, k)) copy[k] = row[k];
+    }
+    if (forceAllOn) {
+      copy.selected = true;
+      copy.checkedDefault = true;
+    } else {
+      var sel = copy.selected;
+      if (sel === undefined || sel === null) sel = copy.checkedDefault;
+      if (sel === undefined || sel === null) sel = true;
+      copy.selected = !!sel;
+      copy.checkedDefault = !!sel;
+    }
+    out.push(copy);
+  }
+  return out;
+}
+
+function b4ThemeDuplicateCatchIndexes_(proposals) {
+  var seen = {};
+  var dups = [];
+  var list = proposals || [];
+  for (var i = 0; i < list.length; i++) {
+    var c = String((list[i] && list[i].catch) || '').trim();
+    if (!c) continue;
+    if (seen[c]) dups.push(i);
+    else seen[c] = true;
+  }
+  return dups;
+}
+
+function b4LoadThemeDraftFromDrive_(parentSku, jan, nameBase) {
+  var fname = b4ThemeDraftFileName_(parentSku, jan, nameBase);
+  if (!fname) return null;
+  var folders = [];
+  try {
+    var primary = b4ResolveThemeDraftFolder_();
+    if (primary) folders.push(primary);
+  } catch (eA) {
+    /* ignore */
+  }
+  try {
+    var testOut = resolveB5TestOutputFolderDetailed_();
+    if (testOut && testOut.folder) {
+      var itD = testOut.folder.getFoldersByName('b4_theme_drafts');
+      if (itD.hasNext()) folders.push(itD.next());
+    }
+  } catch (eB) {
+    /* ignore */
+  }
+  for (var fi = 0; fi < folders.length; fi++) {
+    try {
+      var f = b5FindFileInFolder_(folders[fi], fname);
+      if (!f) continue;
+      var raw = f.getBlob().getDataAsString('UTF-8');
+      var obj = JSON.parse(raw);
+      if (b4ThemeDraftReusable_(obj)) {
+        Logger.log('[b4LoadThemeDraft] HIT ' + fname + ' n=' + (obj.proposals || []).length);
+        return obj;
+      }
+    } catch (eC) {
+      Logger.log('[b4LoadThemeDraft] ' + eC);
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {{parentSku?:string,jan?:string,nameBase?:string,proposals?:Array,baseColor?:string}} item
+ */
+function b4SaveThemeDraftToDrive_(item) {
+  if (!item) return { ok: false, error: 'empty' };
+  var props = item.proposals || [];
+  if (!props.length) return { ok: false, error: 'proposals empty' };
+  for (var i = 0; i < props.length; i++) {
+    if (!b4ThemeProposalIsFull_(props[i])) {
+      return { ok: false, error: '部分overlay禁止（overview/catch/subs/needPackageの丸ごと）' };
+    }
+  }
+  var fname = b4ThemeDraftFileName_(item.parentSku, item.jan, item.nameBase);
+  if (!fname) return { ok: false, error: 'stem empty' };
+  var payload = {
+    schema: 'b4_theme_draft_v1',
+    parentSku: String(item.parentSku || '').trim(),
+    jan: String(item.jan || '').trim(),
+    nameBase: String(item.nameBase || '').trim(),
+    baseColor: String(item.baseColor || '').trim(),
+    proposals: b4NormalizeThemeSelected_(props, false),
+    updatedAt: new Date().toISOString()
+  };
+  var body = JSON.stringify(payload, null, 2);
+  var folders = [];
+  try {
+    var primary = b4ResolveThemeDraftFolder_();
+    if (primary) folders.push(primary);
+  } catch (eA) {
+    /* ignore */
+  }
+  try {
+    var testOut = resolveB5TestOutputFolderDetailed_();
+    if (testOut && testOut.folder) {
+      var itD = testOut.folder.getFoldersByName('b4_theme_drafts');
+      if (itD.hasNext()) folders.push(itD.next());
+      else folders.push(testOut.folder.createFolder('b4_theme_drafts'));
+    }
+  } catch (eB) {
+    /* ignore */
+  }
+  var saved = 0;
+  for (var fi = 0; fi < folders.length; fi++) {
+    try {
+      var existing = b5FindFileInFolder_(folders[fi], fname);
+      if (existing) existing.setContent(body);
+      else folders[fi].createFile(fname, body, MimeType.PLAIN_TEXT);
+      saved++;
+    } catch (eC) {
+      Logger.log('[b4SaveThemeDraft] ' + eC);
+    }
+  }
+  Logger.log('[b4SaveThemeDraft] ' + fname + ' folders=' + saved + ' n=' + props.length);
+  return { ok: saved > 0, file: fname, n: props.length };
+}
+
+/** google.script.run 用。UIから下書き保存。 */
+function saveB4ThemeDraft(payload) {
+  try {
+    return b4SaveThemeDraftToDrive_(payload || {});
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * レ点なしテーマだけ再作成。正本 §4.5.7 U2。
+ * @param {{jan:string,nameBase?:string,parentSku?:string,note:string,proposals:Array,baseColor?:string}} payload
+ */
+function remakeB4UncheckedThemes(payload) {
+  var fn = 'remakeB4UncheckedThemes';
+  try {
+    var jan = String((payload && payload.jan) || '').trim();
+    var nameBase = String((payload && payload.nameBase) || '').trim();
+    var parentSku = String((payload && payload.parentSku) || '').trim();
+    var note = String((payload && payload.note) || '').trim();
+    var proposals = (payload && payload.proposals) || [];
+    if (!jan) return { ok: false, error: 'JANが空です' };
+    if (!note) return { ok: false, error: '要望を入れてください' };
+    if (!proposals.length) return { ok: false, error: '案が空です' };
+    var remakeIdx = [];
+    for (var i = 0; i < proposals.length; i++) {
+      var sel = proposals[i].selected;
+      if (sel === undefined || sel === null) sel = proposals[i].checkedDefault;
+      if (sel === undefined || sel === null) sel = true;
+      if (!sel) remakeIdx.push(i);
+    }
+    if (!remakeIdx.length) return { ok: false, error: 'レ点を外したテーマがありません' };
+    var loaded = nameBase
+      ? b5LoadMaterialsForParent_(jan, nameBase)
+      : { materials: {}, error: '商品名ベースが空' };
+    var materials = (loaded && loaded.materials) || {};
+    if (nameBase) materials.name = nameBase;
+    var rows = [];
+    for (var r = 0; r < remakeIdx.length; r++) {
+      var pr0 = proposals[remakeIdx[r]] || {};
+      rows.push({
+        themeId: pr0.themeId,
+        name: pr0.name || 'T' + pr0.themeId,
+        kind: pr0.kind || 'fact',
+        evidence: pr0.evidence || []
+      });
+    }
+    var gem = b4GeminiOverviewsForThemes_(materials, rows, note);
+    var out = [];
+    for (var j = 0; j < proposals.length; j++) {
+      var base = proposals[j] || {};
+      var copy = {};
+      for (var k in base) {
+        if (Object.prototype.hasOwnProperty.call(base, k)) copy[k] = base[k];
+      }
+      if (remakeIdx.indexOf(j) >= 0) {
+        var tid = base.themeId;
+        var g = gem[tid] || {};
+        var row = { themeId: tid, name: base.name, kind: base.kind || 'fact', evidence: [] };
+        copy.overview = g.overview || b4FallbackOverview_(row);
+        copy.catch = g.catch || b4FallbackCatch_(row);
+        copy.subs = g.subs || [];
+        copy.appealAxis = g.appealAxis || copy.appealAxis || String(base.name || '').slice(0, 20);
+        copy.needPackage = b4DefaultNeedPackage_(tid, g.needPackage);
+        copy.selected = true;
+        copy.checkedDefault = true;
+      }
+      out.push(copy);
+    }
+    materials = b5EnrichMaterialsMeta_(materials, parentSku, jan);
+    var refinedR = b4RefineProposalsWithAllGates_(materials, out, note);
+    out = refinedR.proposals || out;
+    out = b4NormalizeThemeSelected_(out, false);
+    b4SaveThemeDraftToDrive_({
+      parentSku: parentSku,
+      jan: jan,
+      nameBase: nameBase,
+      proposals: out,
+      baseColor: (payload && payload.baseColor) || ''
+    });
+    Logger.log(
+      '[' +
+        fn +
+        '] DONE remade=' +
+        remakeIdx.length +
+        ' total=' +
+        out.length +
+        ' textGateAttempts=' +
+        (refinedR.attempts || 0)
+    );
+    return { ok: true, proposals: out, remadeIndexes: remakeIdx };
+  } catch (e) {
+    Logger.log('[' + fn + '] ' + e);
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+function republishB4ThemeOverview(payload) {
+  var fn = 'republishB4ThemeOverview';
+  try {
+    var jan = String((payload && payload.jan) || '').trim();
+    var nameBase = String((payload && payload.nameBase) || '').trim();
+    var parentSku = String((payload && payload.parentSku) || '').trim();
+    var themeId = parseInt(String((payload && payload.themeId) || ''), 10);
+    var note = String((payload && payload.note) || '').trim();
+    var themeName = String((payload && payload.themeName) || '').trim() || 'T' + themeId;
+    var kind = String((payload && payload.kind) || 'fact').trim() || 'fact';
+    Logger.log(
+      '[' + fn + '] PENDING jan=' + jan + ' name=' + nameBase + ' T' + themeId + ' noteLen=' + note.length
+    );
+    if (!jan || !themeId) return { ok: false, error: 'JANまたはthemeIdが空です' };
+    if (!note) return { ok: false, error: '指示を入れてください' };
+    var loaded = nameBase
+      ? b5LoadMaterialsForParent_(jan, nameBase)
+      : { materials: {}, error: '商品名ベースが空' };
+    var materials = (loaded && loaded.materials) || {};
+    if (nameBase) materials.name = nameBase;
+    var row = { themeId: themeId, name: themeName, kind: kind, evidence: [] };
+    var gem = b4GeminiOverviewsForThemes_(materials, [row], note);
+    var g = gem[themeId] || {};
+    if (!g.overview && !g.catch) {
+      Logger.log('[' + fn + '] FAILED empty gemini');
+      return {
+        ok: false,
+        error: '再提案に失敗しました（Gemini空）。B5提案Geminiまたはキーを確認'
+      };
+    }
+    var out = {
+      ok: true,
+      overview: g.overview || b4FallbackOverview_(row),
+      catch: g.catch || b4FallbackCatch_(row),
+      subs: g.subs || [],
+      appealAxis: g.appealAxis || String(themeName || '').slice(0, 20),
+      needPackage: b4DefaultNeedPackage_(themeId, g.needPackage)
+    };
+    materials = b5EnrichMaterialsMeta_(materials, parentSku, jan);
+    // 下書きがあれば差し替え→門（T3横断）→当該 themeId を返す（P1 U3＋P2）
+    try {
+      var draft = b4LoadThemeDraftFromDrive_(parentSku, jan, nameBase);
+      var merged = [];
+      if (draft && draft.proposals && draft.proposals.length) {
+        for (var di = 0; di < draft.proposals.length; di++) {
+          var dpr = draft.proposals[di] || {};
+          if (String(dpr.themeId) === String(themeId)) {
+            merged.push({
+              themeId: themeId,
+              name: themeName,
+              kind: kind,
+              overview: out.overview,
+              catch: out.catch,
+              subs: out.subs,
+              needPackage: out.needPackage,
+              selected: true,
+              checkedDefault: true,
+              phase: dpr.phase,
+              phaseOrder: dpr.phaseOrder,
+              source: dpr.source,
+              evidence: dpr.evidence
+            });
+          } else {
+            merged.push(dpr);
+          }
+        }
+      } else {
+        merged.push({
+          themeId: themeId,
+          name: themeName,
+          kind: kind,
+          overview: out.overview,
+          catch: out.catch,
+          subs: out.subs,
+          needPackage: out.needPackage,
+          selected: true,
+          checkedDefault: true
+        });
+      }
+      var refinedOne = b4RefineProposalsWithAllGates_(materials, merged, note);
+      merged = refinedOne.proposals || merged;
+      for (var mi = 0; mi < merged.length; mi++) {
+        if (String((merged[mi] || {}).themeId) === String(themeId)) {
+          out.overview = merged[mi].overview;
+          out.catch = merged[mi].catch;
+          out.subs = merged[mi].subs || [];
+          out.needPackage = merged[mi].needPackage;
+          out.appealAxis = merged[mi].appealAxis || '';
+          break;
+        }
+      }
+      b4SaveThemeDraftToDrive_({
+        parentSku: parentSku,
+        jan: jan,
+        nameBase: nameBase,
+        proposals: merged
+      });
+    } catch (eSave) {
+      Logger.log('[' + fn + '] draftSave ' + eSave);
+    }
+    Logger.log('[' + fn + '] DONE T' + themeId + ' ovLen=' + String(out.overview || '').length);
+    return out;
+  } catch (e) {
+    Logger.log('[' + fn + '] EXCEPTION ' + e);
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * 正本紐付け後のテーマ案。商品名ベースごとに材料を読む。末尾 _ 禁止。
+ * @param {{bindings:Array<{jan:string,rel:string,nameBase?:string}>, baseColor?:string}} payload
+ * @return {{ok:boolean, items?:Array, error?:string, baseColor?:string, baseColorLabel?:string}}
+ */
+function buildB4ThemeOverviewsForBindings(payload) {
+  var fn = 'buildB4ThemeOverviewsForBindings';
+  var t0 = Date.now();
+  try {
+    var bindings = (payload && payload.bindings) || [];
+    var ton = b4NormalizeBaseColor_((payload && payload.baseColor) || 'beige');
+    var forceFull = !!(payload && payload.forceFull);
+    var reuseOn = b4ThemeDraftReuseEnabled_() && !forceFull;
+    Logger.log(
+      '[' +
+        fn +
+        '] PENDING bindings=' +
+        bindings.length +
+        ' baseColor=' +
+        ton.id +
+        ' reuse=' +
+        reuseOn
+    );
+    if (!bindings.length) return { ok: false, error: '紐付けが空です' };
+    // 再利用だけのときは B3／マスタ／MAIN compose 走査をしない（ここが分単位の主因だった）
+    var themeCounts = null;
+    var getThemeCounts_ = function () {
+      if (!themeCounts) themeCounts = collectB3ThemeIdsByJan_();
+      return themeCounts;
+    };
+    var items = [];
+    var seen = {};
+    var reusedCount = 0;
+    var freshCount = 0;
+    for (var i = 0; i < bindings.length; i++) {
+      var jan = String(bindings[i].jan || '').trim();
+      var rel = String(bindings[i].rel || '').trim();
+      var nameBase = String(bindings[i].nameBase || '').trim();
+      var parentSku = String(bindings[i].parentSku || '').trim();
+      var key = jan + '\n' + nameBase;
+      if (!jan || !rel || seen[key]) continue;
+      seen[key] = true;
+      var proposals = [];
+      var reused = false;
+      var mainNote = '';
+      var materialError = '';
+      var productName = nameBase || '';
+      if (!parentSku) {
+        Logger.log('[' + fn + '] WARN parentSku empty jan=' + jan + ' name=' + nameBase);
+      }
+      if (reuseOn) {
+        var draft = b4LoadThemeDraftFromDrive_(parentSku, jan, nameBase);
+        if (
+          draft &&
+          draft.proposals &&
+          draft.proposals.length &&
+          b4ThemeDraftMatchesBinding_(draft, parentSku, jan, nameBase)
+        ) {
+          proposals = b4NormalizeThemeSelected_(draft.proposals, false);
+          // 再利用時も WRAP 確定済みなら個包装訴求欠落を機械で足す
+          proposals = b4MergeWrapAppealTheme_(
+            proposals,
+            b4JanHasConfirmedWrap_(jan, parentSku, nameBase)
+          );
+          reused = true;
+          reusedCount++;
+          mainNote = '（前回テーマ案を再利用）';
+        } else if (draft && draft.proposals && draft.proposals.length) {
+          Logger.log(
+            '[' +
+              fn +
+              '] DRAFT_SKIP mismatch sku=' +
+              parentSku +
+              ' name=' +
+              nameBase +
+              ' draftSku=' +
+              String(draft.parentSku || '') +
+              ' draftName=' +
+              String(draft.nameBase || '')
+          );
+        }
+      }
+      if (!reused) {
+        var mainHints = b4LoadMainThemeHintsForJan_(jan, parentSku, nameBase);
+        mainNote = mainHints.length
+          ? mainHints
+              .map(function (h) {
+                return h.themeId + ' ' + h.themeName + (h.catch ? '「' + h.catch + '」' : '');
+              })
+              .join('／')
+          : '（MAIN採用テーマ未検出。サブは独自で選んでよい）';
+        var loaded = nameBase
+          ? b5LoadMaterialsForParent_(jan, nameBase)
+          : { materials: {}, error: '商品名ベースが空' };
+        var materials = (loaded && loaded.materials) || {};
+        if (nameBase) materials.name = nameBase;
+        materialError = (loaded && loaded.error) || '';
+        productName = nameBase || String((materials && materials.name) || '');
+        var judged = b4JudgeLpThemesFromMaterials_(materials, getThemeCounts_()[jan] || {});
+        var hits = judged.filter(function (r) {
+          return r.propose;
+        });
+        if (hits.length > 10) hits = hits.slice(0, 10);
+        var gem = b4GeminiOverviewsForThemes_(materials, hits);
+        for (var h = 0; h < hits.length; h++) {
+          var row = hits[h];
+          var src = row.kind === 'imagine' ? 'imagine' : row.b3 ? 'competitor' : 'material';
+          var g = gem[row.themeId] || {};
+          var ov =
+            (g && g.overview) ||
+            (typeof gem[row.themeId] === 'string' ? gem[row.themeId] : '') ||
+            b4FallbackOverview_(row);
+          proposals.push({
+            themeId: row.themeId,
+            name: row.name,
+            phase: row.phase,
+            phaseOrder: row.phaseOrder,
+            source: src,
+            kind: row.kind,
+            evidence: (row.evidence || []).join('／'),
+            appealAxis: (g && g.appealAxis) || String(row.name || '').slice(0, 20),
+            overview: ov,
+            catch: (g && g.catch) || b4FallbackCatch_(row),
+            subs: (g && g.subs) || [],
+            needPackage: b4DefaultNeedPackage_(row.themeId, g && g.needPackage),
+            checkedDefault: true,
+            selected: true
+          });
+        }
+        // P3-W: WRAPありなら個包装訴求を+1（合計最大11）。判定は親SKU→商品名ベース→JAN
+        var hasWrapFresh = b4JanHasConfirmedWrap_(jan, parentSku, nameBase);
+        proposals = b4MergeWrapAppealTheme_(proposals, hasWrapFresh);
+        if (hasWrapFresh) {
+          Logger.log(
+            '[' +
+              fn +
+              '] wrapAppeal +1 sku=' +
+              parentSku +
+              ' name=' +
+              nameBase +
+              ' jan=' +
+              jan +
+              ' n=' +
+              proposals.length
+          );
+        }
+        // U10: 同文 catch の後案を1回直し
+        var dups = b4ThemeDuplicateCatchIndexes_(proposals);
+        if (dups.length) {
+          var dupRows = [];
+          for (var d = 0; d < dups.length; d++) {
+            var prD = proposals[dups[d]];
+            dupRows.push({
+              themeId: prD.themeId,
+              name: prD.name,
+              kind: prD.kind || 'fact',
+              evidence: []
+            });
+          }
+          var gemDup = b4GeminiOverviewsForThemes_(
+            materials,
+            dupRows,
+            '同じキャッチと被らない別の短いキャッチにしてください'
+          );
+          for (var d2 = 0; d2 < dups.length; d2++) {
+            var ix = dups[d2];
+            var g2 = gemDup[proposals[ix].themeId] || {};
+            if (g2.catch && String(g2.catch).trim() !== String(proposals[ix].catch || '').trim()) {
+              proposals[ix].catch = g2.catch;
+              if (g2.overview) proposals[ix].overview = g2.overview;
+              if (g2.subs) proposals[ix].subs = g2.subs;
+            }
+          }
+        }
+        // P2 §4.5.8〜9: 文門＋つなぎ門（切戻し TEXT / COHESION）
+        materials = b5EnrichMaterialsMeta_(materials, parentSku, jan);
+        var refined = b4RefineProposalsWithAllGates_(materials, proposals, '');
+        proposals = refined.proposals || proposals;
+        if (refined.attempts) {
+          Logger.log(
+            '[' +
+              fn +
+              '] textGate attempts=' +
+              refined.attempts +
+              ' stillFail=' +
+              ((refined.lastGate && refined.lastGate.failIndexes) || []).length
+          );
+        }
+        b4SaveThemeDraftToDrive_({
+          parentSku: parentSku,
+          jan: jan,
+          nameBase: nameBase,
+          proposals: proposals,
+          baseColor: ton.id
+        });
+        freshCount++;
+      }
+      items.push({
+        jan: jan,
+        rel: rel,
+        nameBase: nameBase,
+        parentSku: parentSku,
+        productName: productName,
+        mainNote: mainNote,
+        materialError: materialError,
+        reused: reused,
+        proposals: proposals
+      });
+      Logger.log(
+        '[' +
+          fn +
+          '] JAN=' +
+          jan +
+          ' name=' +
+          nameBase +
+          ' n=' +
+          proposals.length +
+          ' reused=' +
+          reused
+      );
+    }
+    if (!items.length) return { ok: false, error: '有効なJANがありません' };
+    var diagMs = Date.now() - t0;
+    Logger.log(
+      '[' +
+        fn +
+        '] DONE items=' +
+        items.length +
+        ' reused=' +
+        reusedCount +
+        ' fresh=' +
+        freshCount +
+        ' ms=' +
+        diagMs
+    );
+    return {
+      ok: true,
+      items: items,
+      baseColor: ton.id,
+      baseColorLabel: ton.label,
+      reusedCount: reusedCount,
+      freshCount: freshCount,
+      diagMs: diagMs
+    };
+  } catch (e) {
+    Logger.log('[' + fn + '] FAIL ' + e);
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+
+/**
  * 正本紐付け確定後、Cursor／Agent 指示文を返す（google.script.run 用。UIダイアログは開かない）。
  * ※ 末尾アンダースコア無し必須（_ 付きは private で google.script.run から呼べず「送信中」のまま固まる）。
  * @param {{bindings:Array<{jan:string,rel:string}>, baseColor?:string, source?:string, totalImages?:number}} payload
@@ -15255,17 +18552,49 @@ function finishB4AfterTruthBind(payload) {
     var truthFlags = [];
     var janListLines = [];
     var seen = {};
+    var byJan = {};
+    var janOrder = [];
     for (var i = 0; i < bindings.length; i++) {
       var jan = String(bindings[i].jan || '').trim();
       var rel = String(bindings[i].rel || '')
         .trim()
         .replace(/\//g, '\\');
-      if (!jan || !rel || seen[jan]) continue;
-      seen[jan] = true;
-      var full = baseLocal + '\\' + rel;
-      janFlags.push('--jan ' + jan);
-      truthFlags.push('--package-truth "' + jan + '=' + full + '"');
-      janListLines.push('- ' + jan + ' ← ' + rel);
+      var nameBase = String(bindings[i].nameBase || '').trim();
+      var parentSku = String(bindings[i].parentSku || '').trim();
+      if (!jan || !rel) continue;
+      var key = jan + '\n' + nameBase + '\n' + rel;
+      if (seen[key]) continue;
+      seen[key] = true;
+      if (!byJan[jan]) {
+        byJan[jan] = [];
+        janOrder.push(jan);
+      }
+      byJan[jan].push({
+        rel: rel,
+        nameBase: nameBase,
+        parentSku: parentSku,
+        full: baseLocal + '\\' + rel
+      });
+    }
+    for (var ji = 0; ji < janOrder.length; ji++) {
+      var janKey = janOrder[ji];
+      var group = byJan[janKey];
+      var rels = {};
+      var ri;
+      for (ri = 0; ri < group.length; ri++) rels[group[ri].rel] = group[ri].full;
+      var relKeys = Object.keys(rels);
+      janFlags.push('--jan ' + janKey);
+      if (relKeys.length === 1) {
+        truthFlags.push('--package-truth "' + janKey + '=' + rels[relKeys[0]] + '"');
+      }
+      for (ri = 0; ri < group.length; ri++) {
+        var label = group[ri].nameBase ? ' / ' + group[ri].nameBase : '';
+        var note =
+          relKeys.length === 1
+            ? ''
+            : '（同じJANの別商品。この行の袋は --package-truth に入れない）';
+        janListLines.push('- ' + janKey + label + ' ← ' + group[ri].rel + note);
+      }
     }
     b4DiagLog_(
       fn,
@@ -15295,7 +18624,167 @@ function finishB4AfterTruthBind(payload) {
       janOnly.push(String(janFlags[ji]).replace(/^--jan\s+/, ''));
     }
 
-    var prompt =
+    var themeNew = true;
+    try {
+      themeNew = isB5ThemeNewPathEnabled_();
+    } catch (eTn) {
+      themeNew = true;
+    }
+    var checkedThemes = (payload && payload.checkedThemes) || [];
+    var checkedByKey = {};
+    var cti;
+    for (cti = 0; cti < checkedThemes.length; cti++) {
+      var ct = checkedThemes[cti] || {};
+      var cJan = String(ct.jan || '').trim();
+      var cName = String(ct.nameBase || '').trim();
+      var cTid = parseInt(String(ct.themeId || ''), 10);
+      if (!cJan || !cTid) continue;
+      var cKey = cJan + '\n' + cName;
+      if (!checkedByKey[cKey]) checkedByKey[cKey] = [];
+      checkedByKey[cKey].push(ct);
+    }
+    var screenBlocks = [];
+    var themeCmds = [];
+    for (var tji = 0; tji < janOrder.length; tji++) {
+      var tJan = janOrder[tji];
+      var tGroup = byJan[tJan];
+      var tNames = {};
+      var tni;
+      for (tni = 0; tni < tGroup.length; tni++) {
+        var nbOne = String(tGroup[tni].nameBase || '').trim();
+        if (!tNames[nbOne]) tNames[nbOne] = [];
+        tNames[nbOne].push(tGroup[tni]);
+      }
+      var tNameKeys = Object.keys(tNames);
+      var tsi;
+      for (tsi = 0; tsi < tNameKeys.length; tsi++) {
+        var sliceName = tNameKeys[tsi];
+        var slice = tNames[sliceName];
+        var sRels = {};
+        var sri;
+        for (sri = 0; sri < slice.length; sri++) sRels[slice[sri].rel] = true;
+        var sRelKeys = Object.keys(sRels);
+        var sHint = '';
+        if (sRelKeys.length === 1) {
+          var sFile = String(sRelKeys[0]).split('\\').pop();
+          sHint = ' --truth-hint "' + sFile + '"';
+        }
+        var sNameArg = '';
+        if (sliceName) {
+          sNameArg = ' --name-base "' + String(sliceName).replace(/"/g, '') + '"';
+        }
+        var sliceSku = '';
+        var ski;
+        for (ski = 0; ski < slice.length; ski++) {
+          var skuOne = String(slice[ski].parentSku || '').trim();
+          if (skuOne) {
+            sliceSku = skuOne;
+            break;
+          }
+        }
+        if (!sliceSku && sRelKeys.length === 1) {
+          sliceSku = b4ParentSkuFromTruthRel_(sRelKeys[0]);
+        }
+        var sSkuArg = '';
+        if (sliceSku) {
+          sSkuArg = ' --parent-sku "' + String(sliceSku).replace(/"/g, '') + '"';
+        }
+        var sliceChecked = checkedByKey[tJan + '\n' + sliceName] || [];
+        var themeArg = ' --image-themes ""';
+        if (sliceChecked.length) {
+          var ids = [];
+          var rowsOut = [];
+          var sci;
+          for (sci = 0; sci < sliceChecked.length; sci++) {
+            var sc = sliceChecked[sci];
+            var sid = parseInt(String(sc.themeId || ''), 10);
+            if (!sid) continue;
+            ids.push(String(sid));
+            rowsOut.push({
+              themeId: sid,
+              name: String(sc.name || ''),
+              overview: String(sc.overview || ''),
+              catch: String(sc.catch || ''),
+              subs: sc.subs || [],
+              note: 'screen',
+              needPackage: sc.needPackage === true
+            });
+          }
+          var msgRel = '_out/screen_checked_' + tJan + '_' + tsi + '.json';
+          screenBlocks.push(
+            'ファイル: ' +
+              msgRel +
+              '\n' +
+              JSON.stringify({ jan: tJan, productName: sliceName, rows: rowsOut }, null, 2)
+          );
+          themeArg =
+            ' --image-themes ' + ids.join(',') + ' --messages-json "' + msgRel + '" --auto-export';
+        }
+        themeCmds.push(
+          'python dry_sub_overview_copy_test.py --jan ' +
+            tJan +
+            ' --base-color ' +
+            ton.id +
+            ' --text-color auto' +
+            themeArg +
+            sNameArg +
+            sSkuArg +
+            sHint
+        );
+      }
+    }
+    b4DiagLog_(fn, t0, 'PATH', themeNew ? 'theme_new' : 'competitor');
+
+    var prompt = themeNew
+      ? '【サブ画像・テーマ別新規（本線）・楽天出口】概要と訴求を分けて OpenAI medium で作り、楽天アップロードフォルダへ出してください。\n' +
+        'GASは合成しません。人間が目視するフォルダは次の1つだけです:\n' +
+        outDir +
+        '\n（00.テスト出力は作業用。人間は開かない）\n\n' +
+        '【二系統】この指示はテーマから新規に作る道です。競合の絵を真似て組む道は、人がその道を明示したときだけです。\n' +
+        '競合写真はレイアウトの参考です。構図・人物・文字の完全な複製は禁止です。\n' +
+        '悩み（T1）とベネフィット（T2）の人物は、詳細な新規の人物です。顔のコピーはしません。\n' +
+        '袋は、訴求に必要なテーマだけ画面に出します。それ以外は色の参照だけです。\n' +
+        '個品は、人間が確定した主見本だけを中身の正にします。機械が競合写真から選び直してはいけません。未確定のJANは見本ゲートで止めて、生成しません。\n' +
+        '副見本は盛り方だけに使い、色と厚みには使いません。\n' +
+        '【ベース色】' +
+        ton.label +
+        '（--base-color ' +
+        ton.id +
+        '）。背景とカードだけ。商品パッケージの色は変えません。\n' +
+        '文字の強調色は --text-color auto（親SKUごとの共有色。各コマンドの --parent-sku を使う）。\n' +
+        '写真の実写ルールは tools/set_main_image/photo_realism_rules.py を毎回読みます。\n\n' +
+        '対象JAN（正本紐付け済み）:\n' +
+        janListLines.join('\n') +
+        '\n\n' +
+        (screenBlocks.length
+          ? '【画面で確定したテーマと文面】このJSONを、書いてあるファイル名で保存する。文面を作り直さない。番号を聞き直さない。\n\n' +
+            screenBlocks.join('\n\n') +
+            '\n\n手順:\n' +
+            '1) 個品が未確定のJANだけ、見本ゲートを開く。人間確定済みのJANは開かない。\n' +
+            '   python sub_image_food_canon_launch.py ' +
+            janFlags.join(' ') +
+            ' --no-wait\n' +
+            '2) 上のJSONを保存してから、下のコマンドを実行する。\n' +
+            themeCmds.join('\n') +
+            '\n' +
+            '3) できた画像は上の楽天フォルダだけを目視する。\n\n'
+          : '手順:\n' +
+            '1) 個品が未確定のJANだけ、見本ゲートを開く。人間確定済みのJANは開かない。\n' +
+            '   python sub_image_food_canon_launch.py ' +
+            janFlags.join(' ') +
+            ' --no-wait\n' +
+            '2) 下のコマンドで場面文だけ出す。人がテーマと文面を確認するまで、画像は作らない。\n' +
+            themeCmds.join('\n') +
+            '\n' +
+            '3) 人が選んだ themeId だけを --image-themes に入れて、同じコマンドを --auto-export 付きで再実行する。番号が無いあいだは画像を作らない。\n' +
+            '4) できた画像は上の楽天フォルダだけを目視する。\n\n') +
+        '実行ディレクトリ:\ncd "' +
+        toolDir +
+        '"\n\n' +
+        '正本: docs/org/D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md\n' +
+        '競合の道へ戻すときは Script Property B5_THEME_NEW_PATH=false\n'
+      : '';
+    if (!themeNew) prompt =
       '【サブ画像コース・楽天出口・1話完結】B-③採用参照から OpenAI medium で合成し、自動で楽天アップロードフォルダへ export まで進めてください。\n' +
       'GASは合成しません。人間が目視するフォルダは次の1つだけです:\n' +
       outDir +
@@ -15366,6 +18855,16 @@ function finishB4AfterTruthBind(payload) {
       'チェック0になるまで繰り返す。再生成後は楽天目視フォルダへ再exportされる。\n\n' +
       '【再生成コメント・テンプレ】\n' +
       templatesBlock;
+    if (themeNew) {
+      reviewPrompt =
+        '【テーマ別新規・確認ページ】\n' +
+        '絵は既にあります。確認ページを開いてください。全部は作り直しません。\n' +
+        '目視フォルダ: ' +
+        outDir +
+        '\n\n対象:\n' +
+        janListLines.join('\n') +
+        '\n\n直すテーマがあるときだけ、その番号を --image-themes に入れて作り直します。\n';
+    }
 
     var diagMs = Math.round(Date.now() - t0);
     b4DiagLog_(
@@ -15409,6 +18908,12 @@ function finishB4AfterTruthBind(payload) {
  */
 function getB4ReviewFeedbackTemplates_() {
   return [
+    {
+      id: 'piece_vs_specimen',
+      label: '個品が見本と違う',
+      text:
+        '個品の色・厚み・1片の大きさが、確認済みの見本と違う。種類ごとに、その見本の色・厚み・1片のまま描き直す。見本に無い炙り、別の切り方、別の色は足さない。文言、配置、包材は変えない。'
+    },
     {
       id: 'cutout_edges',
       label: '切り抜き輪郭が硬い',
@@ -15455,13 +18960,16 @@ function getB4ReviewFeedbackTemplates_() {
 
 /**
  * 01.amazon白抜きベース（Drive）の正本候補画像一覧。
+ * 既定: 01直下全件＋処理済みは親SKU／保存 rel だけ（全件なめしない）。
  * Property SET_MAIN_AMAZON_BASE_FOLDER_ID があれば優先。無ければフォルダ名検索。
- * @return {{ok:boolean, files:Array<{name:string,rel:string}>, error?:string, hint?:string}}
+ * @param {{parentSkus?:string[], extraRels?:string[]}=} opt
+ * @return {{ok:boolean, files:Array<{name:string,rel:string,id?:string}>, error?:string, hint?:string}}
  */
-function listAmazonBaseTruthImageFiles_() {
+function listAmazonBaseTruthImageFiles_(opt) {
   var fn = 'listAmazonBaseTruthImageFiles_';
   var t0 = Date.now();
   var out = { ok: false, files: [], error: '', hint: '' };
+  opt = opt || {};
   try {
     var resolved = resolveAmazonBaseTruthFolderDetailed_();
     b4DiagLog_(
@@ -15480,23 +18988,150 @@ function listAmazonBaseTruthImageFiles_() {
     }
     out.hint = 'Drive: ' + folder.getName() + ' (via=' + resolved.via + ')';
     var files = [];
+    var seen = {};
     collectImageFilesFromFolder_(folder, '', files);
+    for (var si = 0; si < files.length; si++) {
+      seen[String(files[si].rel || '')] = true;
+    }
     var nRoot = files.length;
-    var processed = folder.getFoldersByName('処理済み');
     var nProc = 0;
+    var processed = folder.getFoldersByName('処理済み');
     if (processed.hasNext()) {
-      collectImageFilesFromFolder_(processed.next(), '処理済み/', files);
-      nProc = files.length - nRoot;
+      var procFolder = processed.next();
+      var wantNames = {};
+      var skus = opt.parentSkus || [];
+      for (var i = 0; i < skus.length; i++) {
+        var sku = String(skus[i] || '').trim();
+        if (!sku) continue;
+        var suffixes = ['_単体', '_ミックス', ''];
+        var exts = ['.png', '.jpg', '.jpeg', '.webp'];
+        for (var a = 0; a < suffixes.length; a++) {
+          for (var b = 0; b < exts.length; b++) {
+            wantNames[sku + suffixes[a] + exts[b]] = true;
+          }
+        }
+      }
+      var extras = opt.extraRels || [];
+      for (var e = 0; e < extras.length; e++) {
+        var er = String(extras[e] || '')
+          .trim()
+          .replace(/\\/g, '/');
+        if (er.indexOf('処理済み/') !== 0) continue;
+        var base = er.replace(/^.*\//, '');
+        if (base) wantNames[base] = true;
+      }
+      for (var wn in wantNames) {
+        if (!Object.prototype.hasOwnProperty.call(wantNames, wn)) continue;
+        var pit = procFolder.getFilesByName(wn);
+        while (pit.hasNext()) {
+          var pf = pit.next();
+          var pn = pf.getName();
+          var prel = '処理済み/' + pn;
+          if (seen[prel]) continue;
+          seen[prel] = true;
+          files.push({ name: pn, rel: prel, id: String(pf.getId() || '') });
+          nProc++;
+        }
+      }
     }
     out.files = files;
     out.ok = true;
-    b4DiagLog_(fn, t0, 'DONE', 'root=' + nRoot + ' processed=' + nProc + ' total=' + files.length);
+    b4DiagLog_(
+      fn,
+      t0,
+      'DONE',
+      'root=' + nRoot + ' processed=' + nProc + ' total=' + files.length + ' slim=1'
+    );
     return out;
   } catch (e) {
     out.error = String(e);
     b4DiagLog_(fn, t0, 'EXCEPTION', String(e).slice(0, 160));
     return out;
   }
+}
+
+/**
+ * ダイアログ起動時の Drive シード。共有マップが空のときだけ実行（毎回全走査しない）。
+ * @return {{seedColor:boolean, seedTruth:boolean}}
+ */
+function b5SeedMapsIfEmptyOnDialog_() {
+  var mapSku = loadB5PackageTruthByParent_();
+  var mapNb = loadB5PackageTruthByNameBase_();
+  var mapTc = loadB5TextColorByParent_();
+  var truthEmpty = !Object.keys(mapSku).length && !Object.keys(mapNb).length;
+  var tcEmpty = !Object.keys(mapTc).length;
+  var did = { seedColor: false, seedTruth: false };
+  if (tcEmpty) {
+    try {
+      b5SeedTextColorSharedFromMaps_();
+      did.seedColor = true;
+    } catch (eSeed) {
+      Logger.log('[B5.SEED] color ' + String(eSeed && eSeed.message ? eSeed.message : eSeed));
+    }
+  } else {
+    Logger.log('[B5.SEED] skip_color maps_nonempty n=' + Object.keys(mapTc).length);
+  }
+  if (truthEmpty) {
+    try {
+      b5SeedPackageTruthFromCompose_();
+      did.seedTruth = true;
+    } catch (eSeed2) {
+      Logger.log('[B5.SEED] truth ' + String(eSeed2 && eSeed2.message ? eSeed2.message : eSeed2));
+    }
+  } else {
+    Logger.log(
+      '[B5.SEED] skip_truth maps_nonempty sku=' +
+        Object.keys(mapSku).length +
+        ' nb=' +
+        Object.keys(mapNb).length
+    );
+  }
+  return did;
+}
+
+/**
+ * 正本一覧用: 親SKU配列と保存 rel から opt を組む。
+ * @param {Array<{parentSku?:string,nameBase?:string}>|string[]} rowsOrSkus
+ * @return {{parentSkus:string[], extraRels:string[]}}
+ */
+function b5TruthListOptFromParents_(rowsOrSkus) {
+  var skus = [];
+  var seenSku = {};
+  var rows = rowsOrSkus || [];
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var sku =
+      typeof row === 'string'
+        ? String(row || '').trim()
+        : String((row && row.parentSku) || '').trim();
+    if (sku && !seenSku[sku]) {
+      seenSku[sku] = true;
+      skus.push(sku);
+    }
+  }
+  var extraRels = [];
+  var seenRel = {};
+  var mapSku = loadB5PackageTruthByParent_();
+  var mapNb = loadB5PackageTruthByNameBase_();
+  for (var s = 0; s < skus.length; s++) {
+    var relS = String(mapSku[skus[s]] || '').trim();
+    if (relS && !seenRel[relS]) {
+      seenRel[relS] = true;
+      extraRels.push(relS);
+    }
+  }
+  for (var j = 0; j < rows.length; j++) {
+    var r2 = rows[j];
+    if (!r2 || typeof r2 === 'string') continue;
+    var nb = normalizeBProductNameKey_(r2.nameBase || '');
+    if (!nb) continue;
+    var relN = String(mapNb[nb] || '').trim();
+    if (relN && !seenRel[relN]) {
+      seenRel[relN] = true;
+      extraRels.push(relN);
+    }
+  }
+  return { parentSkus: skus, extraRels: extraRels };
 }
 
 /**
@@ -15651,62 +19286,73 @@ function menuB3MasterCheckedCompetitorImages() {
     return;
   }
   if (!ensureCrossMallSheetCoversJansForB3_(ss, ui, checkedJans)) {
-    ui.alert('モール横断シートの更新がキャンセルされたか、未実行です。レ点・JAN・モール横断を確認してから再度 B-③ を実行してください。');
+    ui.alert('モール横断の自動補完に失敗しました。レ点・JAN・APIキーを確認してから再度 B-③ を実行してください。');
     return;
   }
 
-  var ryMsg =
-    '楽天・Yahoo! の競合画像のみ取得しますか？\n\n' +
-    '「はい」＝Amazon(Keepa)の画像は出力しません。\n' +
-    '「いいえ」＝Amazon も含めます（追加の確認があります）。';
-  var ryResp = ui.alert('B-③', ryMsg, ui.ButtonSet.YES_NO);
-  if (ryResp !== ui.Button.YES && ryResp !== ui.Button.NO) {
-    return;
-  }
-  var ryOnly = ryResp === ui.Button.YES;
-
-  if (!ryOnly) {
-    var reviewedMsg =
-      'Amazon(Keepa)用の評価「◎」の内容を目視確認済みですか？\n\n' +
-      '「はい」＝「' + TARGET_SHEET_NAME + '」・ASIN貼り付けの確認に進みます（精査済みルート）。\n' +
-      '「いいえ」＝Keepa取得（全件）を自動実行したうえで、そのまま画像一覧の出力に進みます（◎の誤り等は運用側の責任です）。';
-    var revResp = ui.alert('B-③｜Amazon', reviewedMsg, ui.ButtonSet.YES_NO);
-    if (revResp !== ui.Button.YES && revResp !== ui.Button.NO) {
+  // 既定: 確認なしで最後まで（Amazon込み・Keepa全件はしない。既存◎→貼付→マスタで解決）。
+  // 旧ダイアログに戻す: Script Properties B3_IMAGE_ASK_MALL_MODE=true
+  var askMall = getBoolScriptProperty_('B3_IMAGE_ASK_MALL_MODE', false);
+  var ryOnly = false;
+  if (askMall) {
+    var ryMsg =
+      '楽天・Yahoo! の競合画像のみ取得しますか？\n\n' +
+      '「はい」＝Amazon(Keepa)の画像は出力しません。\n' +
+      '「いいえ」＝Amazon も含めます（追加の確認があります）。';
+    var ryResp = ui.alert('B-③', ryMsg, ui.ButtonSet.YES_NO);
+    if (ryResp !== ui.Button.YES && ryResp !== ui.Button.NO) {
       return;
     }
-    if (revResp === ui.Button.NO) {
-      var discMsg =
-        'Keepa取得（全件）後、評価◎は自動付与される場合があります。誤った候補が混ざるリスクを理解したうえで、自動実行により画像一覧の出力まで進めますか？';
-      if (ui.alert('B-③｜運用免責', discMsg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+    ryOnly = ryResp === ui.Button.YES;
+
+    if (!ryOnly) {
+      var reviewedMsg =
+        'Amazon(Keepa)用の評価「◎」の内容を目視確認済みですか？\n\n' +
+        '「はい」＝「' + TARGET_SHEET_NAME + '」・ASIN貼り付けの確認に進みます（精査済みルート）。\n' +
+        '「いいえ」＝Keepa取得（全件）を自動実行したうえで、そのまま画像一覧の出力に進みます（◎の誤り等は運用側の責任です）。';
+      var revResp = ui.alert('B-③｜Amazon', reviewedMsg, ui.ButtonSet.YES_NO);
+      if (revResp !== ui.Button.YES && revResp !== ui.Button.NO) {
         return;
       }
-      try {
-        runKeepaFetchAsinPasteSheet(0);
-      } catch (eKeepa) {
-        return;
-      }
-    } else {
-      var q1Msg =
-        '「' + TARGET_SHEET_NAME + '」に、画像取得対象の JAN を入力済みですか？\n（該当JANの ASIN貼り付け用ブロック作成の前提になります）';
-      if (ui.alert('B-③｜準備①', q1Msg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
-        return;
-      }
-      var q2Msg =
-        '「' + ASIN_PASTE_SHEET_NAME + '」に当該 JAN のブロックがあり、Keepa 取得済みで対象品と判断された行（評価「◎」）の ASIN が含まれる状態を確認しましたか？\n（◎は通常Keepa取得後に自動付与。内容の精査は人が行います）';
-      if (ui.alert('B-③｜準備②', q2Msg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
-        var prepMsg =
-          'メニュー「A → 3. Keepa取得（全件）」相当の処理（全件取得）を実行しますか？\n\n実行後、シート上の◎を精査し、改めて B-③ を実行してください。';
-        if (ui.alert('B-③｜Keepa取得', prepMsg, ui.ButtonSet.YES_NO) === ui.Button.YES) {
-          try {
-            runKeepaFetchAsinPasteSheet(0);
-          } catch (ePrep) {
-            return;
-          }
+      if (revResp === ui.Button.NO) {
+        var discMsg =
+          'Keepa取得（全件）後、評価◎は自動付与される場合があります。誤った候補が混ざるリスクを理解したうえで、自動実行により画像一覧の出力まで進めますか？';
+        if (ui.alert('B-③｜運用免責', discMsg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+          return;
         }
-        ui.alert('◎の精査が終わったら、再度「B-③ マスタレ点行の競合画像取得」を実行してください。');
-        return;
+        try {
+          runKeepaFetchAsinPasteSheet(0);
+        } catch (eKeepa) {
+          return;
+        }
+      } else {
+        var q1Msg =
+          '「' + TARGET_SHEET_NAME + '」に、画像取得対象の JAN を入力済みですか？\n（該当JANの ASIN貼り付け用ブロック作成の前提になります）';
+        if (ui.alert('B-③｜準備①', q1Msg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+          return;
+        }
+        var q2Msg =
+          '「' + ASIN_PASTE_SHEET_NAME + '」に当該 JAN のブロックがあり、Keepa 取得済みで対象品と判断された行（評価「◎」）の ASIN が含まれる状態を確認しましたか？\n（◎は通常Keepa取得後に自動付与。内容の精査は人が行います）';
+        if (ui.alert('B-③｜準備②', q2Msg, ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+          var prepMsg =
+            'メニュー「A → 3. Keepa取得（全件）」相当の処理（全件取得）を実行しますか？\n\n実行後、シート上の◎を精査し、改めて B-③ を実行してください。';
+          if (ui.alert('B-③｜Keepa取得', prepMsg, ui.ButtonSet.YES_NO) === ui.Button.YES) {
+            try {
+              runKeepaFetchAsinPasteSheet(0);
+            } catch (ePrep) {
+              return;
+            }
+          }
+          ui.alert('◎の精査が終わったら、再度「B-③ マスタレ点行の競合画像取得」を実行してください。');
+          return;
+        }
       }
     }
+  } else {
+    Logger.log('[B-③] 連続実行 mode=Amazon込み自動 askMall=OFF Keepa全件なし');
+    try {
+      ui.toast('B-③ 連続実行（Amazon込み・確認なし）', 'B-③', 8);
+    } catch (tB3) {}
   }
 
   menuTestCompetitorImageUrlsOutputImpl_({
@@ -15734,17 +19380,6 @@ function menuTestCompetitorImageUrlsOutputImpl_(opt) {
     ui.alert('▼商品マスタ(人間作業用) シートが見つかりません。');
     return;
   }
-  var crossSheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
-  if (!crossSheet) {
-    ui.alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」が見つかりません。先にモール横断セット数統合判定を実行してください。');
-    return;
-  }
-  var crossValues = crossSheet.getDataRange().getValues();
-  var crossFormulas = crossSheet.getDataRange().getFormulas();
-  if (crossValues.length < 2) {
-    ui.alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」にデータがありません。');
-    return;
-  }
   var masterValues = masterSheet.getDataRange().getValues();
   var headerRowIdx = -1;
   for (var hr = 0; hr < Math.min(masterValues.length, 20); hr++) {
@@ -15752,6 +19387,23 @@ function menuTestCompetitorImageUrlsOutputImpl_(opt) {
   }
   if (headerRowIdx === -1) {
     ui.alert('マスタのヘッダー行が見つかりません。');
+    return;
+  }
+  var masterColMapEarly = getColumnIndexMap(masterValues[headerRowIdx]);
+  var targetJansForCross = getUniqueCheckedJansFromMasterForImage_(masterValues, headerRowIdx, masterColMapEarly);
+  // ミックス構成展開JAN込みで不足時はモール横断を自動実行（別メニュー不要）
+  if (targetJansForCross.length > 0) {
+    ensureCrossMallSheetCoversJansForB3_(ss, ui, targetJansForCross);
+  }
+  var crossSheet = ss.getSheetByName(CROSS_MALL_SET_COUNT_SHEET_NAME);
+  if (!crossSheet) {
+    ui.alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」が見つかりません。B-③内のモール横断自動実行を確認してください。');
+    return;
+  }
+  var crossValues = crossSheet.getDataRange().getValues();
+  var crossFormulas = crossSheet.getDataRange().getFormulas();
+  if (crossValues.length < 2) {
+    ui.alert('シート「' + CROSS_MALL_SET_COUNT_SHEET_NAME + '」にデータがありません。B-③内のモール横断自動実行を確認してください。');
     return;
   }
   var masterColMap = getColumnIndexMap(masterValues[headerRowIdx]);
@@ -15780,17 +19432,35 @@ function menuTestCompetitorImageUrlsOutputImpl_(opt) {
   var byJan = parsedCross.byJan;
   Logger.log('[競合画像テスト] モール横断パース完了（不明セット許容） シート行(values)=' + crossValues.length + ' (formulas)=' + (crossFormulas ? crossFormulas.length : 0) + ' JANブロック数=' + Object.keys(byJan).length);
 
+  var b3Targets = collectB3ImageTargetJansFromMaster_(masterValues, headerRowIdx, masterColMap);
   var targetRows = [];
+  var seenJanForCombo_ = {};
   for (var mr = headerRowIdx + 1; mr < masterValues.length; mr++) {
     var rowJan = String(masterValues[mr][colJan] || '').trim();
     if (!masterValues[mr][colCheckbox]) continue;
     if (!byJan[rowJan]) continue;
     targetRows.push({ rowNum: mr + 1, jan: rowJan, dataIdx: mr });
+    seenJanForCombo_[rowJan] = true;
+  }
+  for (var tj = 0; tj < b3Targets.jans.length; tj++) {
+    var janCombo = b3Targets.jans[tj];
+    if (seenJanForCombo_[janCombo]) continue;
+    if (!byJan[janCombo]) {
+      Logger.log('[競合画像テスト] 構成展開JANがモール横断に無い → スキップ JAN=' + janCombo +
+        ' sources=' + ((b3Targets.byJan[janCombo] && b3Targets.byJan[janCombo].sources) || []).join('|'));
+      continue;
+    }
+    var metaC = b3Targets.byJan[janCombo];
+    targetRows.push({ rowNum: metaC.rowNum, jan: janCombo, dataIdx: metaC.dataIdx });
+    seenJanForCombo_[janCombo] = true;
+    Logger.log('[競合画像テスト] 構成展開で追加 JAN=' + janCombo + ' マスタ行=' + metaC.rowNum +
+      ' sources=' + (metaC.sources || []).join('|'));
   }
   if (targetRows.length === 0) {
-    ui.alert('出品CK（レ点）が付き、かつモール横断シートにデータがあるJANの行がありません。');
+    ui.alert('出品CK（レ点）が付き、かつモール横断シートにデータがあるJANの行がありません。\n（ミックス構成の単品JANも含めます）');
     return;
   }
+  Logger.log('[競合画像テスト] 画像取得対象行=' + targetRows.length + '（構成展開JAN込み）');
 
   var asinPasteSheet = ss.getSheetByName(ASIN_PASTE_SHEET_NAME);
   var amazonResolved = { byJan: {}, keepaMap: {} };
@@ -18563,6 +22233,24 @@ function evalRakutenItemNameMatchScore(expectedMaker, expectedProductName, hitIt
  * @param {string} title
  * @return {number[]} 抽出した数値の配列（重複除く・1以上）。0件なら []
  */
+/**
+ * 袋×ケース（例: 10袋入×(2ケース) → 20）。
+ * ×10袋 だけ拾う誤りを防ぐ。① prParseBagTimesCaseFromTitle_ と同式。
+ * @param {string} title
+ * @return {number|null}
+ */
+function parseBagTimesCaseFromTitle_(title) {
+  if (!title || typeof title !== 'string') return null;
+  var s = String(title).replace(/[０-９]/g, function (ch) {
+    return String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30);
+  });
+  var m = s.match(/(\d+)\s*袋入?\s*[×xXｘ]\s*[\(（]?\s*(\d+)\s*ケース/);
+  if (!m) return null;
+  var n = parseInt(m[1], 10) * parseInt(m[2], 10);
+  if (!isNaN(n) && n >= 1 && n <= 999) return n;
+  return null;
+}
+
 function extractSetCountCandidatesFromTitle(title) {
   if (!title || typeof title !== 'string') return [];
   var numMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '１': 1, '２': 2, '３': 3, '４': 4, '５': 5, '６': 6, '７': 7, '８': 8, '９': 9 };
@@ -18611,6 +22299,8 @@ function extractSetCountCandidatesFromTitle(title) {
  * @return {number|null} 抽出できれば数値、できなければ null
  */
 function extractSetCountFromTitle(title) {
+  var bagCase = parseBagTimesCaseFromTitle_(title);
+  if (bagCase != null) return bagCase;
   var candidates = extractSetCountCandidatesFromTitle(title);
   return candidates.length > 0 ? candidates[0] : null;
 }
@@ -34679,6 +38369,15 @@ const SHEET_NAME_MATRIX = '★画像AIマッチング(操作用)';
 const RAKUTEN_CABINET_MAX_IMAGE_BYTES = 1900000;
 /** ログでデプロイ内容を識別（本番が旧版かどうかの切り分け用） */
 const RAKUTEN_CABINET_IMAGE_PIPELINE_TAG = 'RCabinet-pipeline v2-jpeg-1900000';
+/** R-Cabinet フォルダ自動切替（上限時）。未設定=OFF。docs/org/D_MENU_RAKUTEN_CABINET_AUTO_FOLDER_REQUIREMENTS.md */
+var RAKUTEN_CABINET_AUTO_FOLDER_ENABLED_PROP = 'RAKUTEN_CABINET_AUTO_FOLDER_ENABLED';
+/** 残り枚数がこの値以下なら予防切替（未設定=50） */
+var RAKUTEN_CABINET_AUTO_FOLDER_REMAIN_THRESHOLD_PROP = 'RAKUTEN_CABINET_AUTO_FOLDER_REMAIN_THRESHOLD';
+/**
+ * UrlFetch 切り分けログ用コンテキスト（一括出品ログへ transient／recovered／final を出す）
+ * @type {{ss?: GoogleAppsScript.Spreadsheet.Spreadsheet, t0?: number, folderId?: string, parent?: string, child?: string, slot?: string, name?: string, newUploadStreak?: number, row?: number, col?: number}|null}
+ */
+var RAKUTEN_CABINET_URLFETCH_DIAG_ = null;
 /**
  * Drive から小さい画像を取る方法。不具合時は 'legacy' に戻す。
  * - 'thumbnailLink' … files.get で thumbnailLink を取得してからダウンロード（公式の流れ／404 の旧URLを避ける）
@@ -34704,6 +38403,8 @@ const RAKUTEN_IMAGE_COLS = [
 ];
 /** 未設定=true。ファイル名に子SKU → 楽天メイン1／_subN→サブN 自動投入。false でオフ */
 var RAKUTEN_IMAGE_MAIN_AUTOBIND_PROP = 'RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED';
+/** 未設定=true。他セットのメインを右へ、親へ最少セットを写す。false でその写しだけ止める */
+var RAKUTEN_MATRIX_LAYOUT_EXPAND_PROP = 'RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED';
 
 // --- メニュー --- (重複のためコメントアウト: 80行目のonOpenを使用)
 // function onOpen() {
@@ -34742,6 +38443,7 @@ function rakutenMatrixAutobindByFilename_(displayRows, fileList, runId) {
     sub: 0,
     skippedExisting: 0,
     candidateOnly: 0,
+    janSub: 0,
     skippedOff: false
   };
   if (!getBoolScriptProperty_(RAKUTEN_IMAGE_MAIN_AUTOBIND_PROP, true)) {
@@ -34768,6 +38470,36 @@ function rakutenMatrixAutobindByFilename_(displayRows, fileList, runId) {
     var norm = rakutenImageNormalize_(fileName);
     var child = rakutenImageFindChildRow_(childRows, norm);
     if (!child) {
+      var subNJan = rakutenImageParseSubSlot_(fileName);
+      if (subNJan !== null) {
+        var janParent = rakutenMatrixFindUniqueJanParent_(displayRows, fileName);
+        if (janParent) {
+          var imageUrlJ =
+            'https://drive.google.com/uc?export=view&id=' + file.getId();
+          var formulaJ = '=IMAGE("' + imageUrlJ + '", 2)';
+          var janIdx = subNJan - 1;
+          if (janParent.assignedSubs[janIdx]) {
+            out.skippedExisting++;
+            if (pushToEmptySlot(janParent.assignedCandidates, formulaJ)) {
+              out.candidateOnly++;
+            }
+          } else {
+            janParent.assignedSubs[janIdx] = formulaJ;
+            out.janSub++;
+          }
+          out.usedIds[file.getId()] = true;
+          continue;
+        }
+        if (rakutenImageFindJanTokens_(fileName).length) {
+          Logger.log(
+            '[rakutenJanSubBind] runId=' +
+              runId +
+              ' state=SKIP file=' +
+              fileName +
+              ' reason=jan_not_unique'
+          );
+        }
+      }
       var parentHit = rakutenImageFindParentRow_(displayRows, norm);
       if (parentHit) {
         var imageUrlP =
@@ -34785,19 +38517,54 @@ function rakutenMatrixAutobindByFilename_(displayRows, fileList, runId) {
     var formula = '=IMAGE("' + imageUrl + '", 2)';
     var subN = rakutenImageParseSubSlot_(fileName);
 
+    // サブは親行のみ（子SKU付きファイル名でも親へ）。L2で全子へ同一 fileId を配る。
     if (subN !== null) {
       var subIdx = subN - 1;
-      if (child.assignedSubs[subIdx]) {
+      var subParent = null;
+      var spi;
+      for (spi = 0; spi < displayRows.length; spi++) {
+        if (
+          displayRows[spi].type === 'Parent' &&
+          displayRows[spi].pCode === child.pCode
+        ) {
+          subParent = displayRows[spi];
+          break;
+        }
+      }
+      if (!subParent) {
+        Logger.log(
+          '[rakutenFilenameAutobind] runId=' +
+            runId +
+            ' state=SKIP file=' +
+            fileName +
+            ' reason=sub_parent_missing pCode=' +
+            child.pCode
+        );
+        continue;
+      }
+      if (subParent.assignedSubs[subIdx]) {
         out.skippedExisting++;
-        if (pushToEmptySlot(child.assignedCandidates, formula)) {
+        if (pushToEmptySlot(subParent.assignedCandidates, formula)) {
           out.candidateOnly++;
         }
         out.usedIds[file.getId()] = true;
         continue;
       }
-      child.assignedSubs[subIdx] = formula;
+      subParent.assignedSubs[subIdx] = formula;
       out.sub++;
       out.usedIds[file.getId()] = true;
+      Logger.log(
+        '[rakutenFilenameAutobind] runId=' +
+          runId +
+          ' state=SUB_TO_PARENT file=' +
+          fileName +
+          ' parent=' +
+          subParent.pCode +
+          ' slot=' +
+          (subIdx + 1) +
+          ' viaChild=' +
+          child.cCode
+      );
       continue;
     }
 
@@ -34826,6 +38593,8 @@ function rakutenMatrixAutobindByFilename_(displayRows, fileList, runId) {
       out.skippedExisting +
       ' candidateOnly=' +
       out.candidateOnly +
+      ' janSub=' +
+      out.janSub +
       ' used=' +
       Object.keys(out.usedIds).length
   );
@@ -34876,6 +38645,211 @@ function rakutenImageFindParentRow_(displayRows, normalizedName) {
   return null;
 }
 
+/** ファイル名の10〜13桁。より長い数字の途中は品番にしない */
+function rakutenImageFindJanTokens_(fileName) {
+  var runs = String(fileName || '').match(/\d+/g) || [];
+  var out = [];
+  var i;
+  for (i = 0; i < runs.length; i++) {
+    if (runs[i].length >= 10 && runs[i].length <= 13) out.push(runs[i]);
+  }
+  return out;
+}
+
+/** 出品対象の親のうち、品番を含む親がちょうど1件のときだけ返す */
+function rakutenMatrixFindUniqueJanParent_(displayRows, fileName) {
+  var jans = rakutenImageFindJanTokens_(fileName);
+  var hits = [];
+  var seen = {};
+  var a;
+  var i;
+  for (a = 0; a < jans.length; a++) {
+    for (i = 0; i < displayRows.length; i++) {
+      if (displayRows[i].type !== 'Parent') continue;
+      var pCode = displayRows[i].pCode;
+      if (seen[pCode]) continue;
+      var key = rakutenImageNormalize_(pCode);
+      if (key && key.indexOf(jans[a]) >= 0) {
+        seen[pCode] = true;
+        hits.push(displayRows[i]);
+      }
+    }
+  }
+  if (hits.length === 1) return hits[0];
+  return null;
+}
+
+/** 総個数 → バリエーション名の先頭の整数 → 不明は末尾 */
+function rakutenMatrixResolveSetCount_(qtyCell, varName) {
+  var raw = String(qtyCell == null ? '' : qtyCell).replace(/,/g, '').trim();
+  if (raw !== '') {
+    var q = parseFloat(raw);
+    if (!isNaN(q) && q > 0) return q;
+  }
+  var m = String(varName || '').match(/^\s*(\d+)/);
+  if (m) {
+    var n = parseInt(m[1], 10);
+    if (!isNaN(n) && n > 0) return n;
+  }
+  return 1e15;
+}
+
+function rakutenMatrixSetCount_(child) {
+  var n = child && child.setCount;
+  if (typeof n === 'number' && !isNaN(n) && n > 0) return n;
+  return 1e15;
+}
+
+/**
+ * 親サブが全空のとき、最少セット子のサブを親へ昇格（消してから配る事故防止）。
+ */
+function rakutenMatrixEnsureParentSubsFromMinChild_(parent, children) {
+  var k;
+  for (k = 0; k < 10; k++) {
+    if (parent.assignedSubs[k]) return;
+  }
+  if (!children || !children.length) return;
+  var minChild = children[0];
+  var minCount = rakutenMatrixSetCount_(minChild);
+  var j;
+  for (j = 1; j < children.length; j++) {
+    var cCount = rakutenMatrixSetCount_(children[j]);
+    if (cCount < minCount) {
+      minCount = cCount;
+      minChild = children[j];
+    }
+  }
+  for (k = 0; k < 10; k++) {
+    parent.assignedSubs[k] = minChild.assignedSubs[k] || '';
+  }
+}
+
+/**
+ * 親のサブ1〜10を全子へ同一 fileId で配る（上書き。空きのみにしない）。
+ * 親が空の枠は子も空にする（子だけの別IDを残さない）。
+ */
+function rakutenMatrixShareSubsForce_(parent, children, out) {
+  var j;
+  var k;
+  for (j = 0; j < children.length; j++) {
+    for (k = 0; k < 10; k++) {
+      var pSub = parent.assignedSubs[k] || '';
+      if (children[j].assignedSubs[k] === pSub) continue;
+      children[j].assignedSubs[k] = pSub;
+      out.l2++;
+    }
+  }
+}
+
+/**
+ * L1 他セットのメインを右の空きへ（セット数の少ない順・自分除外）。
+ * L2 親サブを全子へ同一 fileId で上書き共有（L3後にも再実行）。
+ * L3 親のメインとサブを、最少セットの子と同じにする。
+ * 数式だけ写す。Driveのファイルは増やさない。
+ */
+function rakutenMatrixLayoutExpand_(displayRows, runId) {
+  var out = { skippedOff: false, l1: 0, l2: 0, l3: 0, parents: 0 };
+  if (!getBoolScriptProperty_(RAKUTEN_MATRIX_LAYOUT_EXPAND_PROP, true)) {
+    out.skippedOff = true;
+    Logger.log('[rakutenMatrixLayoutExpand] runId=' + runId + ' state=SKIP prop_off');
+    return out;
+  }
+  var i;
+  for (i = 0; i < displayRows.length; i++) {
+    if (displayRows[i].type !== 'Parent') continue;
+    var parent = displayRows[i];
+    var children = parent.children || [];
+    if (!children.length) continue;
+    out.parents++;
+    var j;
+    var k;
+    for (j = 0; j < children.length; j++) {
+      var child = children[j];
+      var others = [];
+      for (k = 0; k < children.length; k++) {
+        if (k === j) continue;
+        var src = children[k].assignedMains[0];
+        if (!src) continue;
+        others.push({
+          formula: src,
+          setCount: rakutenMatrixSetCount_(children[k]),
+          ord: k
+        });
+      }
+      others.sort(function (a, b) {
+        if (a.setCount !== b.setCount) return a.setCount - b.setCount;
+        return a.ord - b.ord;
+      });
+      var slot = 1;
+      var oi = 0;
+      while (slot < 10 && oi < others.length) {
+        if (child.assignedMains[slot]) {
+          slot++;
+          continue;
+        }
+        var formula = others[oi].formula;
+        oi++;
+        var dup = false;
+        var d;
+        for (d = 0; d < 10; d++) {
+          if (child.assignedMains[d] === formula) {
+            dup = true;
+            break;
+          }
+        }
+        if (dup) continue;
+        child.assignedMains[slot] = formula;
+        out.l1++;
+        slot++;
+      }
+    }
+    // L2: 親サブが空なら最少子から昇格 → 全子へ上書き共有
+    rakutenMatrixEnsureParentSubsFromMinChild_(parent, children);
+    rakutenMatrixShareSubsForce_(parent, children, out);
+    var minChild = children[0];
+    var minCount = rakutenMatrixSetCount_(minChild);
+    for (j = 1; j < children.length; j++) {
+      var cCount = rakutenMatrixSetCount_(children[j]);
+      if (cCount < minCount) {
+        minCount = cCount;
+        minChild = children[j];
+      }
+    }
+    for (k = 0; k < 10; k++) {
+      parent.assignedMains[k] = minChild.assignedMains[k] || '';
+      parent.assignedSubs[k] = minChild.assignedSubs[k] || '';
+    }
+    out.l3++;
+    // L3で親が最少子に寄ったあと、再度全子へ同一サブを配る
+    rakutenMatrixShareSubsForce_(parent, children, out);
+    Logger.log(
+      '[rakutenMatrixLayoutExpand] runId=' +
+        runId +
+        ' parent=' +
+        parent.pCode +
+        ' minChild=' +
+        minChild.cCode +
+        ' setCount=' +
+        (minCount >= 1e15 ? 'unknown' : minCount) +
+        ' l2slots=' +
+        out.l2
+    );
+  }
+  Logger.log(
+    '[rakutenMatrixLayoutExpand] runId=' +
+      runId +
+      ' state=DONE parents=' +
+      out.parents +
+      ' l1=' +
+      out.l1 +
+      ' l2=' +
+      out.l2 +
+      ' l3=' +
+      out.l3
+  );
+  return out;
+}
+
 function generateAiImageMatrix() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
@@ -34897,6 +38871,7 @@ function generateAiImageMatrix() {
   const idxC = colMap[COL_NAME_CHILD_SKU];
   const idxName = colMap[COL_NAME_ITEM_NAME];
   const idxVar = colMap[COL_NAME_VAR_NAME];
+  const idxQty = colMap['総個数'];
   const idxRef = colMap['▼マスタ(参考情報(画像URL))'] !== undefined ? colMap['▼マスタ(参考情報(画像URL))'] : -1;
   const idxCheck = colMap[COL_NAME_CHECK];
 
@@ -34940,7 +38915,11 @@ function generateAiImageMatrix() {
       parentMeta[pCode].children.push({
         cCode: cCode,
         varName: (idxVar !== undefined) ? String(row[idxVar]).trim() : '',
-        checked: isMasterCheckTrue_(row[idxCheck])
+        checked: isMasterCheckTrue_(row[idxCheck]),
+        setCount: rakutenMatrixResolveSetCount_(
+          idxQty !== undefined ? row[idxQty] : '',
+          idxVar !== undefined ? row[idxVar] : ''
+        )
       });
     }
   }
@@ -34967,6 +38946,7 @@ function generateAiImageMatrix() {
       cCode: ch.cCode,
       name: parentObj.name,
       varName: ch.varName,
+      setCount: ch.setCount,
       refImg: '',
       assignedMains: new Array(10).fill(''),
       assignedSubs: new Array(10).fill(''),
@@ -35031,7 +39011,11 @@ function generateAiImageMatrix() {
   const files = sourceFolder.getFiles();
   const fileList = [];
   let limitCounter = 0;
-  const PROCESS_LIMIT = 50; 
+  const PROCESS_LIMIT = Math.max(
+    1,
+    getNumberScriptProperty_('RAKUTEN_IMAGE_MATRIX_FILE_LIMIT', 200)
+  );
+  Logger.log('[generateAiImageMatrix] fileLimit=' + PROCESS_LIMIT); 
 
   while (files.hasNext()) {
     if (limitCounter >= PROCESS_LIMIT) break;
@@ -35195,6 +39179,8 @@ function generateAiImageMatrix() {
       skuBind.skippedOff
   );
 
+  const layoutExpand = rakutenMatrixLayoutExpand_(displayRows, runId);
+
   // --- 5. 出力 ---
   const outputRows = displayRows.map(row => {
     let refFunc = '';
@@ -35241,11 +39227,18 @@ function generateAiImageMatrix() {
       '（既存スキップ ' +
       skuBind.skippedExisting +
       '）\n' +
+      '・他セットのメインを右へ: ' +
+      layoutExpand.l1 +
+      ' 枠。親へ最少セット: ' +
+      layoutExpand.l3 +
+      ' 行' +
+      (layoutExpand.skippedOff ? '（拡張オフ）' : '') +
+      '\n' +
       '・青枠内：アップロード対象（楽天）\n' +
       '・右側のグレー枠：候補・未整理\n' +
       '・列76以降：Amazon MAIN/PT（U2・Property有効時）\n\n' +
       '必要な画像を右側から枠内へドラッグ移動してください。\n' +
-      '戻し: RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED=false'
+      '戻し: RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED=false または RAKUTEN_IMAGE_MAIN_AUTOBIND_ENABLED=false'
   );
 }
 
@@ -35326,13 +39319,68 @@ function executeRenameAndUploadFromMatrixProgrammatic_(ss, options) {
   let skipCount = 0;
   const processedFileIds = new Set();
   const uploadedUrlMap = new Map();
+  var tImg0 = Date.now();
+  var lastBeatMs = tImg0;
+  var lastLoggedParent = '';
+  var errSheetLogged = 0;
+  var ERR_SHEET_LOG_MAX = 20;
+  var autoFolderCreatedCount = 0;
+  var autoFolderOn = rakutenCabinetAutoFolderEnabled_();
+  var esaKeysOk = !!(getRakutenServiceSecret() && getRakutenLicenseKey());
+  var newUploadStreak = 0;
+  RAKUTEN_CABINET_URLFETCH_DIAG_ = { ss: ss, t0: tImg0, folderId: rcabinetId, newUploadStreak: 0 };
+  logBatchExportProgress(
+    ss,
+    '画像UP開始 matrixRows=' + formulas.length +
+      ' esaKeys=' + (esaKeysOk ? 'あり' : 'なし') +
+      ' folderId=' + rcabinetId +
+      ' autoFolder=' + (autoFolderOn ? 'ON' : 'OFF')
+  );
 
+  try {
   for (let r = 0; r < formulas.length; r++) {
     const pCode = String(values[r][0]).trim();
     const cCode = String(values[r][1]).trim();
     if (!pCode) {
       console.log('行' + (r + 3) + ': 親SKUがないためスキップ');
       continue;
+    }
+
+    if (pCode !== lastLoggedParent) {
+      if (lastLoggedParent) {
+        logBatchExportProgress(
+          ss,
+          '画像UP 親終了 parent=' + lastLoggedParent +
+            ' ok=' + successCount + ' ng=' + errorCount + ' skip=' + skipCount +
+            ' sec=' + batchExportDiagSec_(tImg0)
+        );
+      }
+      lastLoggedParent = pCode;
+      logBatchExportProgress(
+        ss,
+        '画像UP 親開始 parent=' + pCode +
+          ' sheetRow=' + (r + 3) +
+          ' sec=' + batchExportDiagSec_(tImg0) +
+          ' folderId=' + rcabinetId
+      );
+      if (autoFolderOn) {
+        var prevSw = rakutenCabinetAutoMaybePreventiveSwitch_(
+          ss,
+          settingSheet,
+          rcabinetId,
+          pCode,
+          r + 3,
+          autoFolderCreatedCount
+        );
+        if (prevSw.stopped) {
+          throw new Error('【一括出品停止】' + (prevSw.stopMessage || 'R-Cabinet予防切替不可'));
+        }
+        if (prevSw.switched && prevSw.newFolderId) {
+          rcabinetId = prevSw.newFolderId;
+          autoFolderCreatedCount = 1;
+          rakutenCabinetUrlFetchDiagSet_({ folderId: rcabinetId });
+        }
+      }
     }
 
     const isChild = cCode !== '';
@@ -35379,38 +39427,46 @@ function executeRenameAndUploadFromMatrixProgrammatic_(ss, options) {
 
         if (uploadedUrlMap.has(fileId)) {
           imageUrl = uploadedUrlMap.get(fileId);
+          newUploadStreak = 0;
           console.log('   ♻️ キャッシュ利用(アップロード省略): ' + imageUrl);
         } else {
+          newUploadStreak++;
+          rakutenCabinetUrlFetchDiagSet_({
+            ss: ss,
+            t0: tImg0,
+            folderId: rcabinetId,
+            parent: pCode,
+            child: cCode || '-',
+            slot: targetColName,
+            name: targetFileName,
+            newUploadStreak: newUploadStreak,
+            row: r + 3,
+            col: c + 1,
+          });
           file.setName(targetFileName);
-          var blobToSend = prepareBlobForRakutenCabinetUpload_(file, targetFileName);
-          console.log(
-            '   [R-Cabinet送信/初回] bytes=' +
-              blobToSend.getBytes().length +
-              ' ct=' +
-              (blobToSend.getContentType() || '') +
-              ' name=' +
-              targetFileName
-          );
-          var res = callRCabinetInsertFile(blobToSend, targetFileName, rcabinetId);
-          if (!res.success && rakutenCabinetUploadShouldRetryWithShrunk_(res.message)) {
-            var capList = [1600, 1280, 1024, 800, 640, 480];
-            for (var capI = 0; capI < capList.length; capI++) {
-              var capPx = capList[capI];
-              var blobRetry = tryFetchDriveThumbnailBlobForRakuten_(
-                file.getId(),
-                targetFileName,
-                RAKUTEN_CABINET_MAX_IMAGE_BYTES,
-                capPx
-              );
-              if (!blobRetry) continue;
-              console.log(
-                '   🔁 再試行: サムネ capLongEdgePx=長辺≤' +
-                  capPx +
-                  ' JPEG bytes=' +
-                  blobRetry.getBytes().length
-              );
-              res = callRCabinetInsertFile(blobRetry, targetFileName, rcabinetId);
-              if (res.success) break;
+          var res = rakutenCabinetUploadBlobWithShrinkRetry_(file, targetFileName, rcabinetId);
+
+          if (
+            !res.success &&
+            autoFolderOn &&
+            rakutenCabinetIsFileLimitMsg_(res.message)
+          ) {
+            var limSw = rakutenCabinetAutoSwitchFolder_(ss, settingSheet, {
+              oldFolderId: rcabinetId,
+              reason: '上限エラー',
+              parentSku: pCode,
+              sheetRow: r + 3,
+              failMsg: res.message,
+              createdCount: autoFolderCreatedCount,
+            });
+            if (limSw.stopped) {
+              throw new Error('【一括出品停止】' + (limSw.stopMessage || 'R-Cabinet上限切替不可'));
+            }
+            if (limSw.switched && limSw.newFolderId) {
+              rcabinetId = limSw.newFolderId;
+              autoFolderCreatedCount = 1;
+              rakutenCabinetUrlFetchDiagSet_({ folderId: rcabinetId });
+              res = rakutenCabinetUploadBlobWithShrinkRetry_(file, targetFileName, rcabinetId);
             }
           }
 
@@ -35419,6 +39475,18 @@ function executeRenameAndUploadFromMatrixProgrammatic_(ss, options) {
             matrixSheet.getRange(r + 3, c + 1).setBackground('#f4cccc');
             matrixSheet.getRange(r + 3, c + 1).setNote(res.message);
             errorCount++;
+            if (errSheetLogged < ERR_SHEET_LOG_MAX) {
+              logBatchExportProgress(
+                ss,
+                '画像UP失敗 class=' + batchExportClassifyCabinetErr_(res.message) +
+                  ' row=' + (r + 3) + ' col=' + (c + 1) +
+                  ' parent=' + pCode + ' child=' + (cCode || '-') +
+                  ' slot=' + targetColName +
+                  ' folderId=' + rcabinetId +
+                  ' msg=' + String(res.message || '').substring(0, 180)
+              );
+              errSheetLogged++;
+            }
             continue;
           }
 
@@ -35456,18 +39524,56 @@ function executeRenameAndUploadFromMatrixProgrammatic_(ss, options) {
         matrixSheet.getRange(r + 3, c + 1).setBackground('#d9ead3');
         successCount++;
 
+        if (Date.now() - lastBeatMs >= 30000) {
+          logBatchExportProgress(
+            ss,
+            '画像UP心拍 sec=' + batchExportDiagSec_(tImg0) +
+              ' ok=' + successCount + ' ng=' + errorCount + ' skip=' + skipCount +
+              ' parent=' + pCode + ' row=' + (r + 3)
+          );
+          lastBeatMs = Date.now();
+        }
+
         if (isNewUpload) Utilities.sleep(200);
       } catch (e) {
         console.error('   ❌ システムエラー: ' + e.message);
         matrixSheet.getRange(r + 3, c + 1).setBackground('#f4cccc');
         errorCount++;
+        if (errSheetLogged < ERR_SHEET_LOG_MAX) {
+          logBatchExportProgress(
+            ss,
+            '画像UP失敗 class=' + batchExportClassifyCabinetErr_(e && e.message) +
+              ' row=' + (r + 3) + ' col=' + (c + 1) +
+              ' parent=' + pCode + ' child=' + (cCode || '-') +
+              ' slot=' + targetColName +
+              ' msg=' + String((e && e.message) || '').substring(0, 180)
+          );
+          errSheetLogged++;
+        }
       }
     }
   }
 
+  if (lastLoggedParent) {
+    logBatchExportProgress(
+      ss,
+      '画像UP 親終了 parent=' + lastLoggedParent +
+        ' ok=' + successCount + ' ng=' + errorCount + ' skip=' + skipCount +
+        ' sec=' + batchExportDiagSec_(tImg0)
+    );
+  }
   const resultMsg = '処理完了\n成功: ' + successCount + ' 件\n失敗: ' + errorCount + ' 件\nスキップ(ID取得不可など): ' + skipCount + ' 件';
   console.log(resultMsg);
+  logBatchExportProgress(
+    ss,
+    '画像UPループ完了 ok=' + successCount + ' ng=' + errorCount + ' skip=' + skipCount +
+      ' sec=' + batchExportDiagSec_(tImg0) +
+      ' errLogged=' + errSheetLogged
+  );
   return { cancelled: false, blocked: null, successCount: successCount, errorCount: errorCount, skipCount: skipCount };
+  } finally {
+    RAKUTEN_CABINET_URLFETCH_DIAG_ = null;
+  }
 }
 
 /**
@@ -35958,90 +40064,764 @@ function rakutenCabinetUploadShouldRetryWithShrunk_(message) {
   return /size|Capacity|capacity|Image|image|容量|サイズ/i.test(String(message));
 }
 
+function rakutenCabinetAutoFolderEnabled_() {
+  return getBoolScriptProperty_(RAKUTEN_CABINET_AUTO_FOLDER_ENABLED_PROP, false);
+}
+
+function rakutenCabinetAutoFolderRemainThreshold_() {
+  var n = Number(PropertiesService.getScriptProperties().getProperty(RAKUTEN_CABINET_AUTO_FOLDER_REMAIN_THRESHOLD_PROP) || '');
+  if (!(n >= 0) || isNaN(n)) n = 50;
+  return n;
+}
+
+function rakutenCabinetIsFileLimitMsg_(msg) {
+  return /Number of files is upper limit/i.test(String(msg || ''));
+}
+
+function rakutenCabinetAuthHeaders_() {
+  return {
+    Authorization: 'ESA ' + Utilities.base64Encode(String(getRakutenServiceSecret() || '') + ':' + String(getRakutenLicenseKey() || '')),
+  };
+}
+
+function rakutenCabinetUsageSummary_(usage) {
+  if (!usage) return 'usage=なし';
+  return (
+    'FileMax=' + (usage.fileMax != null ? usage.fileMax : '?') +
+    ' fileCount=' + (usage.folderFileCount != null ? usage.folderFileCount : '?') +
+    ' remain=' + (usage.remain != null ? usage.remain : '?') +
+    ' AvailFolderCount=' + (usage.availFolderCount != null ? usage.availFolderCount : '?') +
+    ' AvailSpace=' + (usage.availSpace != null ? usage.availSpace : '?')
+  );
+}
+
 /**
- * 楽天R-Cabinetへの画像アップロード関数 (完全版)
- * 1. マルチパート形式でアップロード
- * 2. 返却されたFileIdを使って検索APIを叩く
- * 3. 画像URL(FileUrl)を取得して返す
+ * cabinet.usage.get
+ * @returns {{ ok: boolean, fileMax?: number, availFolderCount?: number, availSpace?: number, message?: string }}
  */
-
-function callRCabinetInsertFile(blob, name, folderId) {
-  const authKey = Utilities.base64Encode(`${getRakutenServiceSecret()}:${getRakutenLicenseKey()}`);
-  const headers = { 'Authorization': `ESA ${authKey}` };
-
-  // Step 1. 画像のアップロード
-  const uploadUrl = 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/file/insert';
-  
-  const uploadXml = `<?xml version="1.0" encoding="UTF-8"?>
-<request>
-  <fileInsertRequest>
-    <file>
-      <fileName>${name}</fileName>
-      <folderId>${folderId}</folderId>
-      <overWrite>true</overWrite>
-    </file>
-  </fileInsertRequest>
-</request>`;
-
-  const uploadPayload = { "xml": uploadXml, "file": blob };
-  let fileId = "";
-
+function callRCabinetUsageGet_() {
+  var url = 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/usage/get';
   try {
-    const res = UrlFetchApp.fetch(uploadUrl, {
-      method: 'post',
-      headers: headers,
-      payload: uploadPayload,
-      muteHttpExceptions: true
+    var res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: rakutenCabinetAuthHeaders_(),
+      muteHttpExceptions: true,
     });
-    
-    const text = res.getContentText();
-    const code = res.getResponseCode();
-
-    if (code === 200 && text.includes('<resultCode>0</resultCode>')) {
-      const match = text.match(/<FileId>(\d+)<\/FileId>/);
-      if (match) fileId = match[1];
-      else return { success: false, message: "Upload OK but FileId not found" };
-    } else {
-      const errMatch = text.match(/<message>(.*?)<\/message>/) || text.match(/<faultstring>(.*?)<\/faultstring>/);
-      return { success: false, message: errMatch ? errMatch[1] : text };
+    var text = res.getContentText() || '';
+    var code = res.getResponseCode();
+    if (code !== 200) {
+      return { ok: false, message: 'usage HTTP ' + code + ' ' + text.substring(0, 120) };
     }
-
+    function xmlNum_(tag) {
+      var m = text.match(new RegExp('<' + tag + '>([^<]*)</' + tag + '>', 'i'));
+      if (!m) return null;
+      var n = Number(String(m[1]).trim());
+      return isNaN(n) ? null : n;
+    }
+    return {
+      ok: true,
+      fileMax: xmlNum_('FileMax'),
+      availFolderCount: xmlNum_('AvailFolderCount'),
+      availSpace: xmlNum_('AvailSpace'),
+      folderMax: xmlNum_('FolderMax'),
+      useFolderCount: xmlNum_('UseFolderCount'),
+    };
   } catch (e) {
-    return { success: false, message: "Upload Error: " + e.message };
+    return { ok: false, message: String((e && e.message) || e) };
+  }
+}
+
+/**
+ * cabinet.folder.files.get — フォルダ内件数（取れる範囲）
+ * @returns {number} 不明時は -1
+ */
+function callRCabinetFolderFileCount_(folderId) {
+  var fid = String(folderId || '').trim();
+  if (!fid || fid === '0') return -1;
+  var url =
+    'https://api.rms.rakuten.co.jp/es/1.0/cabinet/folder/files/get?folderId=' +
+    encodeURIComponent(fid) +
+    '&offset=1&limit=1';
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: rakutenCabinetAuthHeaders_(),
+      muteHttpExceptions: true,
+    });
+    var text = res.getContentText() || '';
+    if (res.getResponseCode() !== 200) return -1;
+    var m =
+      text.match(/<fileAllCount>([^<]*)<\/fileAllCount>/i) ||
+      text.match(/<FileAllCount>([^<]*)<\/FileAllCount>/i);
+    if (!m) return -1;
+    var n = Number(String(m[1]).trim());
+    return isNaN(n) ? -1 : n;
+  } catch (e) {
+    return -1;
+  }
+}
+
+/**
+ * cabinet.folder.insert — ルート直下に新規フォルダ
+ * @returns {{ success: boolean, folderId?: string, folderName?: string, message?: string }}
+ */
+function callRCabinetFolderInsertRoot_(folderName) {
+  var name = String(folderName || '').trim().substring(0, 50);
+  if (!name) return { success: false, message: 'folderName empty' };
+  var url = 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/folder/insert';
+  var xml =
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<request><folderInsertRequest><folder>' +
+    '<folderName>' + name.replace(/[<>&]/g, '') + '</folderName>' +
+    '</folder></folderInsertRequest></request>';
+  try {
+    var hdr = rakutenCabinetAuthHeaders_();
+    hdr['Content-Type'] = 'application/xml; charset=UTF-8';
+    var res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      headers: hdr,
+      payload: xml,
+      muteHttpExceptions: true,
+    });
+    var text = res.getContentText() || '';
+    var code = res.getResponseCode();
+    if (code === 200 && /<resultCode>0<\/resultCode>/i.test(text)) {
+      var m = text.match(/<FolderId>(\d+)<\/FolderId>/i) || text.match(/<folderId>(\d+)<\/folderId>/i);
+      if (m) return { success: true, folderId: m[1], folderName: name };
+      return { success: false, message: 'folder insert OK but FolderId missing' };
+    }
+    var errMatch = text.match(/<message>(.*?)<\/message>/i) || text.match(/<faultstring>(.*?)<\/faultstring>/i);
+    return { success: false, message: errMatch ? errMatch[1] : ('HTTP ' + code + ' ' + text.substring(0, 160)) };
+  } catch (e) {
+    return { success: false, message: String((e && e.message) || e) };
+  }
+}
+
+function rakutenCabinetWriteFolderIdToB9_(settingSheet, folderId) {
+  if (!settingSheet) return;
+  try {
+    settingSheet.getRange('B9').setValue(String(folderId));
+  } catch (e) {
+    console.warn('[R-Cabinet] B9更新失敗: ' + (e && e.message));
+  }
+}
+
+/**
+ * 上限時／予防でルート直下に1フォルダ作り B9 更新。1実行あたり最大1回。
+ * @returns {{ switched: boolean, stopped: boolean, newFolderId?: string, stopMessage?: string, usage?: object }}
+ */
+function rakutenCabinetAutoSwitchFolder_(ss, settingSheet, opt) {
+  opt = opt || {};
+  var oldId = String(opt.oldFolderId || '');
+  var createdCount = Number(opt.createdCount || 0);
+  var reason = String(opt.reason || '上限エラー');
+  var parentSku = String(opt.parentSku || '-');
+  var sheetRow = opt.sheetRow != null ? opt.sheetRow : '-';
+  var failMsg = String(opt.failMsg || '').substring(0, 180);
+
+  if (createdCount >= 1) {
+    var capMsg =
+      '停止理由=AUTO_FOLDER_CAP folderId=' + oldId +
+      ' parent=' + parentSku + ' row=' + sheetRow +
+      ' 人がやること=RMSで容量を空けるか不要画像を減らす';
+    logBatchExportProgress(ss, capMsg);
+    return { switched: false, stopped: true, stopMessage: 'R-Cabinet: 1実行あたり新フォルダは最大1つ。' + capMsg };
+  }
+
+  var usage = callRCabinetUsageGet_();
+  if (usage.ok) {
+    usage.folderFileCount = callRCabinetFolderFileCount_(oldId);
+    if (usage.fileMax != null && usage.folderFileCount >= 0) {
+      usage.remain = usage.fileMax - usage.folderFileCount;
+    }
+  }
+
+  if (!usage.ok) {
+    logBatchExportProgress(
+      ss,
+      '停止理由=USAGE_FAIL folderId=' + oldId +
+        ' parent=' + parentSku + ' row=' + sheetRow +
+        ' msg=' + String(usage.message || '').substring(0, 120) +
+        ' 人がやること=ESA鍵とRMSキャビネットAPIを確認'
+    );
+    return {
+      switched: false,
+      stopped: true,
+      stopMessage: 'R-Cabinet usage取得失敗: ' + String(usage.message || ''),
+      usage: usage,
+    };
+  }
+
+  if (usage.availFolderCount != null && usage.availFolderCount <= 0) {
+    var fc =
+      '停止理由=FOLDER_COUNT_MAX folderId=' + oldId +
+      ' parent=' + parentSku + ' row=' + sheetRow +
+      ' ' + rakutenCabinetUsageSummary_(usage) +
+      ' 人がやること=RMSでフォルダ数を減らすかプランを確認';
+    logBatchExportProgress(ss, fc);
+    return { switched: false, stopped: true, stopMessage: 'R-Cabinet: フォルダ数上限。' + fc, usage: usage };
+  }
+
+  if (usage.availSpace != null && Number(usage.availSpace) <= 0) {
+    var sp =
+      '停止理由=STORE_SPACE_FULL folderId=' + oldId +
+      ' parent=' + parentSku + ' row=' + sheetRow +
+      ' ' + rakutenCabinetUsageSummary_(usage) +
+      ' 人がやること=RMSで容量を空ける／不要画像を減らす';
+    logBatchExportProgress(ss, sp);
+    return { switched: false, stopped: true, stopMessage: 'R-Cabinet: 店舗容量不足。' + sp, usage: usage };
+  }
+
+  var folderName = 'auto_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm');
+  var ins = callRCabinetFolderInsertRoot_(folderName);
+  if (!ins.success) {
+    var fail =
+      '停止理由=FOLDER_INSERT_FAIL folderId=' + oldId +
+      ' parent=' + parentSku + ' row=' + sheetRow +
+      ' msg=' + String(ins.message || '').substring(0, 160) +
+      ' ' + rakutenCabinetUsageSummary_(usage) +
+      ' 人がやること=RMSでフォルダ作成可否を確認';
+    logBatchExportProgress(ss, fail);
+    return { switched: false, stopped: true, stopMessage: 'R-Cabinet: フォルダ作成失敗。' + fail, usage: usage };
+  }
+
+  rakutenCabinetWriteFolderIdToB9_(settingSheet, ins.folderId);
+  logBatchExportProgress(
+    ss,
+    'キャビネット切替 reason=' + reason +
+      ' oldFolderId=' + oldId +
+      ' newFolderId=' + ins.folderId +
+      ' folderName=' + ins.folderName +
+      ' parent=' + parentSku +
+      ' row=' + sheetRow +
+      ' failMsg=' + failMsg +
+      ' ' + rakutenCabinetUsageSummary_(usage)
+  );
+  return { switched: true, stopped: false, newFolderId: String(ins.folderId), usage: usage };
+}
+
+/**
+ * 残り枚数がしきい値以下なら予防切替（1実行1回まで）。
+ */
+function rakutenCabinetAutoMaybePreventiveSwitch_(ss, settingSheet, folderId, parentSku, sheetRow, createdCount) {
+  if (!rakutenCabinetAutoFolderEnabled_()) {
+    return { switched: false, stopped: false };
+  }
+  if (createdCount >= 1) return { switched: false, stopped: false };
+
+  var usage = callRCabinetUsageGet_();
+  if (!usage.ok) {
+    logBatchExportProgress(ss, '画像UP予防 usage取得スキップ msg=' + String(usage.message || '').substring(0, 120));
+    return { switched: false, stopped: false };
+  }
+  var fileCount = callRCabinetFolderFileCount_(folderId);
+  usage.folderFileCount = fileCount;
+  if (usage.fileMax != null && fileCount >= 0) {
+    usage.remain = usage.fileMax - fileCount;
+  } else {
+    return { switched: false, stopped: false };
+  }
+  var th = rakutenCabinetAutoFolderRemainThreshold_();
+  if (usage.remain > th) {
+    return { switched: false, stopped: false };
+  }
+  logBatchExportProgress(
+    ss,
+    '画像UP予防しきい値 remain=' + usage.remain + ' th=' + th + ' ' + rakutenCabinetUsageSummary_(usage)
+  );
+  return rakutenCabinetAutoSwitchFolder_(ss, settingSheet, {
+    oldFolderId: folderId,
+    reason: '予防',
+    parentSku: parentSku,
+    sheetRow: sheetRow,
+    failMsg: 'remain<=' + th,
+    createdCount: createdCount,
+  });
+}
+
+/**
+ * insert＋容量系ならサムネ再試行まで。
+ */
+function rakutenCabinetUploadBlobWithShrinkRetry_(file, targetFileName, folderId) {
+  var blobToSend = prepareBlobForRakutenCabinetUpload_(file, targetFileName);
+  console.log(
+    '   [R-Cabinet送信] bytes=' +
+      blobToSend.getBytes().length +
+      ' ct=' +
+      (blobToSend.getContentType() || '') +
+      ' name=' +
+      targetFileName +
+      ' folderId=' +
+      folderId
+  );
+  var res = callRCabinetInsertFile(blobToSend, targetFileName, folderId);
+  // insert 済み fileId がある Search 失敗は、縮小再アップせず search のみもう一巡
+  if (!res.success) {
+    var fidResume = res.fileId || rakutenCabinetParseFileIdFromMsg_(res.message);
+    if (fidResume && /Search Error|FileUrl not found/i.test(String(res.message || ''))) {
+      rakutenCabinetUrlFetchDiagLog_(
+        'R-Cabinet UrlFetch search_only_resume fileId=' + fidResume
+      );
+      res = rakutenCabinetSearchFileUrlById_(
+        fidResume,
+        rakutenCabinetEsaHeaders_(),
+        rakutenCabinetUrlFetchMaxAttempts_()
+      );
+    }
+  }
+  if (!res.success && rakutenCabinetUploadShouldRetryWithShrunk_(res.message)) {
+    var capList = [1600, 1280, 1024, 800, 640, 480];
+    for (var capI = 0; capI < capList.length; capI++) {
+      var capPx = capList[capI];
+      var blobRetry = tryFetchDriveThumbnailBlobForRakuten_(
+        file.getId(),
+        targetFileName,
+        RAKUTEN_CABINET_MAX_IMAGE_BYTES,
+        capPx
+      );
+      if (!blobRetry) continue;
+      console.log(
+        '   🔁 再試行: サムネ capLongEdgePx=長辺≤' +
+          capPx +
+          ' JPEG bytes=' +
+          blobRetry.getBytes().length
+      );
+      res = callRCabinetInsertFile(blobRetry, targetFileName, folderId);
+      if (res.success) break;
+    }
+  }
+  return res;
+}
+
+/**
+ * R-Cabinet UrlFetch 一時失敗判定（Yahoo._post と同系統）
+ * @returns {boolean}
+ */
+function rakutenCabinetIsTransientUrlFetchMsg_(msg) {
+  return /使用できないアドレス|address.*unavailable|timed?\s*out|timeout|temporar|service.*unavailable/i.test(
+    String(msg || '')
+  );
+}
+
+/**
+ * R-Cabinet UrlFetch 再試行回数。Prop `RAKUTEN_CABINET_URLFETCH_RETRY_ENABLED` 未設定=ON（最大3）。false で1回のみ。
+ * @returns {number}
+ */
+function rakutenCabinetUrlFetchMaxAttempts_() {
+  if (!getBoolScriptProperty_('RAKUTEN_CABINET_URLFETCH_RETRY_ENABLED', true)) return 1;
+  return 3;
+}
+
+/** @param {Object} partial */
+function rakutenCabinetUrlFetchDiagSet_(partial) {
+  if (!RAKUTEN_CABINET_URLFETCH_DIAG_) RAKUTEN_CABINET_URLFETCH_DIAG_ = {};
+  if (!partial) return;
+  var k;
+  for (k in partial) {
+    if (Object.prototype.hasOwnProperty.call(partial, k)) {
+      RAKUTEN_CABINET_URLFETCH_DIAG_[k] = partial[k];
+    }
+  }
+}
+
+function rakutenCabinetUrlFetchDiagCtxSuffix_() {
+  var d = RAKUTEN_CABINET_URLFETCH_DIAG_;
+  if (!d) return '';
+  var parts = [];
+  if (d.folderId) parts.push('folderId=' + d.folderId);
+  if (d.newUploadStreak != null) parts.push('newUpStreak=' + d.newUploadStreak);
+  if (d.t0) parts.push('sec=' + batchExportDiagSec_(d.t0));
+  if (d.parent) parts.push('parent=' + d.parent);
+  if (d.child) parts.push('child=' + d.child);
+  if (d.slot) parts.push('slot=' + d.slot);
+  if (d.row != null) parts.push('row=' + d.row);
+  if (d.col != null) parts.push('col=' + d.col);
+  if (d.name) parts.push('name=' + d.name);
+  return parts.length ? ' ' + parts.join(' ') : '';
+}
+
+/** 一括出品ログ＋実行ログ（切り分け用。鍵は出さない） */
+function rakutenCabinetUrlFetchDiagLog_(message) {
+  var line = String(message || '') + rakutenCabinetUrlFetchDiagCtxSuffix_();
+  console.warn(line);
+  try {
+    var d = RAKUTEN_CABINET_URLFETCH_DIAG_;
+    if (d && d.ss) logBatchExportProgress(d.ss, line);
+  } catch (eIgn) {}
+}
+
+/**
+ * 最終失敗直後の同一ホスト疎通。戻り値はログ用要約。
+ * @returns {string}
+ */
+function rakutenCabinetLogHostProbe_(headers, step, fileId) {
+  var probeUrl = fileId
+    ? 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/files/search?fileId=' + fileId
+    : 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/usage/get';
+  var t0 = Date.now();
+  var summary = '';
+  try {
+    var res = UrlFetchApp.fetch(probeUrl, {
+      method: 'get',
+      headers: headers,
+      muteHttpExceptions: true,
+    });
+    summary = 'http=' + res.getResponseCode() + ' ms=' + (Date.now() - t0);
+  } catch (e) {
+    summary =
+      'throw=' +
+      String((e && e.message) || e).substring(0, 120) +
+      ' ms=' +
+      (Date.now() - t0);
+  }
+  rakutenCabinetUrlFetchDiagLog_(
+    'R-Cabinet UrlFetch host_probe step=' + step + ' fileId=' + (fileId || '-') + ' ' + summary
+  );
+  return summary;
+}
+
+/** @returns {Object} */
+function rakutenCabinetEsaHeaders_() {
+  var authKey = Utilities.base64Encode(getRakutenServiceSecret() + ':' + getRakutenLicenseKey());
+  return { Authorization: 'ESA ' + authKey };
+}
+
+/**
+ * fileId 確定後の URL 取得のみ（insert は呼ばない）。
+ * 一時通信・HTTP 429/5xx・FileUrl欠落は search だけ再試行。
+ * @returns {{success:boolean, imageUrl?:string, message?:string, fileId:string}}
+ */
+function rakutenCabinetSearchFileUrlById_(fileId, headers, maxAttempts) {
+  fileId = String(fileId || '').trim();
+  if (!fileId) {
+    return { success: false, message: 'Search Error: fileId empty', fileId: '' };
+  }
+  if (!headers) headers = rakutenCabinetEsaHeaders_();
+  if (!(maxAttempts >= 1)) maxAttempts = rakutenCabinetUrlFetchMaxAttempts_();
+
+  var searchUrl = 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/files/search?fileId=' + fileId;
+  var lastSearchErr = '';
+
+  for (var seAttempt = 1; seAttempt <= maxAttempts; seAttempt++) {
+    var tSe = Date.now();
+    try {
+      var resSe = UrlFetchApp.fetch(searchUrl, {
+        method: 'get',
+        headers: headers,
+        muteHttpExceptions: true,
+      });
+      var textSe = resSe.getContentText();
+      var codeSe = resSe.getResponseCode();
+      var seMs = Date.now() - tSe;
+
+      if (codeSe === 429 || codeSe >= 500) {
+        lastSearchErr = 'HTTP ' + codeSe + ' ' + String(textSe).substring(0, 120);
+        if (seAttempt < maxAttempts) {
+          rakutenCabinetUrlFetchDiagLog_(
+            'R-Cabinet UrlFetch transient step=search policy=search_only kind=http' +
+              codeSe +
+              ' attempt=' +
+              seAttempt +
+              '/' +
+              maxAttempts +
+              ' fileId=' +
+              fileId +
+              ' ms=' +
+              seMs
+          );
+          Utilities.sleep(1000 * seAttempt);
+          continue;
+        }
+        var probeHttp = rakutenCabinetLogHostProbe_(headers, 'search', fileId);
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch final_fail step=search policy=search_only attempts=' +
+            seAttempt +
+            ' fileId=' +
+            fileId +
+            ' lastMs=' +
+            seMs +
+            ' probe=' +
+            probeHttp +
+            ' msg=' +
+            lastSearchErr.substring(0, 120)
+        );
+        return {
+          success: false,
+          fileId: fileId,
+          message:
+            'Search Error: ' +
+            lastSearchErr +
+            ' (searchAttempts=' +
+            seAttempt +
+            ' lastMs=' +
+            seMs +
+            ' fileId=' +
+            fileId +
+            ')',
+        };
+      }
+
+      var matchUrl = textSe.match(/<FileUrl>(.*?)<\/FileUrl>/);
+      if (matchUrl) {
+        var url = matchUrl[1];
+        if (url.indexOf('/cabinet/') >= 0) {
+          url = url.substring(url.indexOf('/cabinet/') + 8);
+        }
+        if (seAttempt > 1) {
+          rakutenCabinetUrlFetchDiagLog_(
+            'R-Cabinet UrlFetch recovered step=search policy=search_only attempt=' +
+              seAttempt +
+              '/' +
+              maxAttempts +
+              ' fileId=' +
+              fileId +
+              ' ms=' +
+              seMs
+          );
+        }
+        return { success: true, imageUrl: url, fileId: fileId };
+      }
+
+      lastSearchErr = 'FileUrl not found http=' + codeSe;
+      if (seAttempt < maxAttempts) {
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch transient step=search policy=search_only kind=noFileUrl attempt=' +
+            seAttempt +
+            '/' +
+            maxAttempts +
+            ' fileId=' +
+            fileId +
+            ' ms=' +
+            seMs
+        );
+        Utilities.sleep(1000 * seAttempt);
+        continue;
+      }
+      return {
+        success: false,
+        fileId: fileId,
+        message: 'Search OK but FileUrl not found (fileId=' + fileId + ' http=' + codeSe + ')',
+      };
+    } catch (eSe) {
+      lastSearchErr = eSe && eSe.message ? String(eSe.message) : String(eSe);
+      var seMs2 = Date.now() - tSe;
+      if (rakutenCabinetIsTransientUrlFetchMsg_(lastSearchErr) && seAttempt < maxAttempts) {
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch transient step=search policy=search_only kind=throw attempt=' +
+            seAttempt +
+            '/' +
+            maxAttempts +
+            ' fileId=' +
+            fileId +
+            ' ms=' +
+            seMs2 +
+            ' msg=' +
+            lastSearchErr.substring(0, 160)
+        );
+        Utilities.sleep(1000 * seAttempt);
+        continue;
+      }
+      if (seAttempt >= maxAttempts) {
+        var probeSe = rakutenCabinetLogHostProbe_(headers, 'search', fileId);
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch final_fail step=search policy=search_only attempts=' +
+            seAttempt +
+            ' fileId=' +
+            fileId +
+            ' lastMs=' +
+            seMs2 +
+            ' probe=' +
+            probeSe +
+            ' msg=' +
+            lastSearchErr.substring(0, 160)
+        );
+      }
+      return {
+        success: false,
+        fileId: fileId,
+        message:
+          'Search Error: ' +
+          lastSearchErr +
+          ' (searchAttempts=' +
+          seAttempt +
+          ' lastMs=' +
+          seMs2 +
+          ' fileId=' +
+          fileId +
+          ')',
+      };
+    }
+  }
+
+  return {
+    success: false,
+    fileId: fileId,
+    message:
+      'Search Error: ' +
+      (lastSearchErr || 'unknown') +
+      ' (searchAttempts=' +
+      maxAttempts +
+      ' fileId=' +
+      fileId +
+      ')',
+  };
+}
+
+/**
+ * insert のみ（URL取得はしない）。fileId 無しの一時失敗だけ insert を再試行。
+ * @returns {{success:boolean, fileId?:string, message?:string}}
+ */
+function rakutenCabinetInsertFileOnly_(blob, name, folderId, headers, maxAttempts) {
+  if (!headers) headers = rakutenCabinetEsaHeaders_();
+  if (!(maxAttempts >= 1)) maxAttempts = rakutenCabinetUrlFetchMaxAttempts_();
+
+  var uploadUrl = 'https://api.rms.rakuten.co.jp/es/1.0/cabinet/file/insert';
+  var uploadXml =
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<request><fileInsertRequest><file>' +
+    '<fileName>' +
+    name +
+    '</fileName>' +
+    '<folderId>' +
+    folderId +
+    '</folderId>' +
+    '<overWrite>true</overWrite>' +
+    '</file></fileInsertRequest></request>';
+  var uploadPayload = { xml: uploadXml, file: blob };
+  var lastUploadErr = '';
+
+  for (var upAttempt = 1; upAttempt <= maxAttempts; upAttempt++) {
+    var tUp = Date.now();
+    try {
+      var resUp = UrlFetchApp.fetch(uploadUrl, {
+        method: 'post',
+        headers: headers,
+        payload: uploadPayload,
+        muteHttpExceptions: true,
+      });
+      var textUp = resUp.getContentText();
+      var codeUp = resUp.getResponseCode();
+      var upMs = Date.now() - tUp;
+
+      if (codeUp === 200 && textUp.indexOf('<resultCode>0</resultCode>') >= 0) {
+        var matchId = textUp.match(/<FileId>(\d+)<\/FileId>/);
+        if (matchId) {
+          if (upAttempt > 1) {
+            rakutenCabinetUrlFetchDiagLog_(
+              'R-Cabinet UrlFetch recovered step=insert policy=insert_only attempt=' +
+                upAttempt +
+                '/' +
+                maxAttempts +
+                ' fileId=' +
+                matchId[1] +
+                ' ms=' +
+                upMs
+            );
+          }
+          return { success: true, fileId: matchId[1] };
+        }
+        return { success: false, message: 'Upload OK but FileId not found' };
+      }
+
+      var errMatch =
+        textUp.match(/<message>(.*?)<\/message>/) || textUp.match(/<faultstring>(.*?)<\/faultstring>/);
+      lastUploadErr = errMatch ? errMatch[1] : textUp;
+      if ((codeUp === 429 || codeUp >= 500) && upAttempt < maxAttempts) {
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch transient step=insert policy=insert_only kind=http' +
+            codeUp +
+            ' attempt=' +
+            upAttempt +
+            '/' +
+            maxAttempts +
+            ' ms=' +
+            upMs +
+            ' msg=' +
+            String(lastUploadErr).substring(0, 120)
+        );
+        Utilities.sleep(1000 * upAttempt);
+        continue;
+      }
+      return {
+        success: false,
+        message:
+          lastUploadErr +
+          (maxAttempts > 1 ? ' (insertAttempts=' + upAttempt + ' lastMs=' + upMs + ')' : ''),
+      };
+    } catch (eUp) {
+      lastUploadErr = eUp && eUp.message ? String(eUp.message) : String(eUp);
+      var upMs2 = Date.now() - tUp;
+      if (rakutenCabinetIsTransientUrlFetchMsg_(lastUploadErr) && upAttempt < maxAttempts) {
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch transient step=insert policy=insert_only kind=throw attempt=' +
+            upAttempt +
+            '/' +
+            maxAttempts +
+            ' ms=' +
+            upMs2 +
+            ' msg=' +
+            lastUploadErr.substring(0, 160)
+        );
+        Utilities.sleep(1000 * upAttempt);
+        continue;
+      }
+      if (upAttempt >= maxAttempts) {
+        var probeIns = rakutenCabinetLogHostProbe_(headers, 'insert', '');
+        rakutenCabinetUrlFetchDiagLog_(
+          'R-Cabinet UrlFetch final_fail step=insert policy=insert_only attempts=' +
+            upAttempt +
+            ' lastMs=' +
+            upMs2 +
+            ' probe=' +
+            probeIns +
+            ' msg=' +
+            lastUploadErr.substring(0, 160)
+        );
+      }
+      return {
+        success: false,
+        message:
+          'Upload Error: ' +
+          lastUploadErr +
+          ' (insertAttempts=' +
+          upAttempt +
+          ' lastMs=' +
+          upMs2 +
+          ')',
+      };
+    }
+  }
+
+  return {
+    success: false,
+    message: 'Upload Error: ' + (lastUploadErr || 'unknown') + ' (insertAttempts=' + maxAttempts + ')',
+  };
+}
+
+/**
+ * 失敗メッセージから fileId を拾う（search のみ再開用）
+ * @returns {string}
+ */
+function rakutenCabinetParseFileIdFromMsg_(msg) {
+  var m = String(msg || '').match(/fileId[=:]?\s*(\d+)/i);
+  return m ? m[1] : '';
+}
+
+/**
+ * 楽天R-Cabinetへの画像アップロード
+ * 方針: fileId 無しの失敗 → insert のみ再試行。fileId あり → search のみ再試行（insert しない）
+ */
+function callRCabinetInsertFile(blob, name, folderId) {
+  var headers = rakutenCabinetEsaHeaders_();
+  var maxAttempts = rakutenCabinetUrlFetchMaxAttempts_();
+
+  var ins = rakutenCabinetInsertFileOnly_(blob, name, folderId, headers, maxAttempts);
+  if (!ins.success) {
+    return { success: false, message: ins.message || 'Upload Error', fileId: '' };
   }
 
   Utilities.sleep(500);
-
-  // Step 2. URLの取得
-  const searchUrl = `https://api.rms.rakuten.co.jp/es/1.0/cabinet/files/search?fileId=${fileId}`;
-
-  try {
-    const res = UrlFetchApp.fetch(searchUrl, {
-      method: 'get',
-      headers: headers,
-      muteHttpExceptions: true
-    });
-
-    const text = res.getContentText();
-    const match = text.match(/<FileUrl>(.*?)<\/FileUrl>/);
-
-    if (match) {
-      let url = match[1];
-      
-      // ★修正箇所: /cabinet/ は消すが、先頭のスラッシュは残すため「+8」にする
-      // 例: https://.../cabinet/123/img.jpg -> /123/img.jpg
-      if (url.includes('/cabinet/')) {
-        url = url.substring(url.indexOf('/cabinet/') + 8); 
-      }
-      
-      return { success: true, imageUrl: url };
-    } else {
-      return { success: false, message: "Search OK but FileUrl not found" };
-    }
-
-  } catch (e) {
-    return { success: false, message: "Search Error: " + e.message };
-  }
+  return rakutenCabinetSearchFileUrlById_(ins.fileId, headers, maxAttempts);
 }
 
 
@@ -37603,9 +42383,2337 @@ var B5_PACKAGE_TRUTH_BY_PARENT_PROP = 'B5_PACKAGE_TRUTH_BY_PARENT';
  * Drive ミラー: 05.画像生成（セットMAIN）/_b5_text_color_by_parent.json
  */
 var B5_TEXT_COLOR_BY_PARENT_PROP = 'B5_TEXT_COLOR_BY_PARENT';
+/** 親SKU → 人が直した／前回確定の catch・sales（themeId キー）。戻る全作り直し廃止の復元用。 */
+var B5_PROPOSAL_COPY_BY_PARENT_PROP = 'B5_PROPOSAL_COPY_BY_PARENT';
 var B5_TEXT_COLOR_SHARED_FILE_NAME = '_b5_text_color_by_parent.json';
 /** 親共有まとめ（正本・色・個品サマリ）Drive ミラー */
 var B5_PARENT_SHARED_FILE_NAME = '_b5_parent_shared.json';
+/**
+ * 公式商品ページURLキャッシュ（JANキー）。メディア・モールは保存しない。
+ * 値: {version, byKey:{ "jan:…": {url, savedAt, source, name} }}
+ */
+var B5_OFFICIAL_URL_CACHE_PROP = 'B5_OFFICIAL_URL_CACHE_JSON';
+/** 公式URLキャッシュTTL（ms）。既定30日 */
+var B5_OFFICIAL_URL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * @return {{version:number, byKey:Object}}
+ */
+function b5LoadOfficialUrlCache_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(B5_OFFICIAL_URL_CACHE_PROP);
+    if (!raw) return { version: 1, byKey: {} };
+    var data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return { version: 1, byKey: {} };
+    if (!data.byKey || typeof data.byKey !== 'object') data.byKey = {};
+    return data;
+  } catch (e) {
+    Logger.log('[B5.OFFICIAL_URL] load_fail ' + String(e && e.message ? e.message : e));
+    return { version: 1, byKey: {} };
+  }
+}
+
+/**
+ * @param {{version:number, byKey:Object}} data
+ */
+function b5SaveOfficialUrlCache_(data) {
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      B5_OFFICIAL_URL_CACHE_PROP,
+      JSON.stringify(data || { version: 1, byKey: {} })
+    );
+  } catch (e) {
+    Logger.log('[B5.OFFICIAL_URL] save_fail ' + String(e && e.message ? e.message : e));
+  }
+}
+
+/**
+ * モール／雑誌は公式キャッシュにしない。
+ * @param {string} url
+ * @return {boolean}
+ */
+function b5IsWeakOrMediaOfficialUrl_(url) {
+  var u = String(url || '').toLowerCase();
+  if (!u) return true;
+  var bad = [
+    'store.shopping.yahoo.co.jp',
+    'shopping.yahoo.co.jp',
+    'item.rakuten.co.jp',
+    'amazon.co.jp',
+    'auctions.yahoo',
+    'hpplus.jp',
+    'baila.',
+    'note.com',
+    'ameblo.jp',
+    'getnavi.jp',
+    'grounding-api-redirect',
+    'vertexaisearch'
+  ];
+  for (var i = 0; i < bad.length; i++) {
+    if (u.indexOf(bad[i]) >= 0) return true;
+  }
+  return false;
+}
+
+/**
+ * @param {string} jan
+ * @return {string} キャッシュURL（TTL内・弱URLでない）。無ければ空
+ */
+function b5GetOfficialUrlCached_(jan) {
+  var digits = b5JanDigits_(jan);
+  if (digits.length < 8) return '';
+  var key = 'jan:' + digits.slice(-13);
+  var pack = b5LoadOfficialUrlCache_();
+  var row = pack.byKey[key];
+  if (!row || !row.url) return '';
+  var url = String(row.url || '').trim();
+  if (b5IsWeakOrMediaOfficialUrl_(url)) {
+    delete pack.byKey[key];
+    b5SaveOfficialUrlCache_(pack);
+    Logger.log('[B5.OFFICIAL_URL] drop_weak key=' + key);
+    return '';
+  }
+  var saved = Number(row.savedAt || 0);
+  if (saved && Date.now() - saved > B5_OFFICIAL_URL_TTL_MS) {
+    Logger.log('[B5.OFFICIAL_URL] ttl_expired key=' + key + ' (keep until revalidate)');
+  }
+  Logger.log('[B5.OFFICIAL_URL] hit key=' + key + ' url=' + url.slice(0, 100));
+  return url;
+}
+
+/**
+ * 商品名ゲート通過後だけ呼ぶ。弱URLは保存しない。
+ * @param {string} jan
+ * @param {string} url
+ * @param {string} source
+ * @param {string=} name
+ * @return {boolean}
+ */
+function b5PutOfficialUrlCache_(jan, url, source, name) {
+  var digits = b5JanDigits_(jan);
+  var u = String(url || '').trim();
+  if (digits.length < 8 || !u || b5IsWeakOrMediaOfficialUrl_(u)) {
+    Logger.log('[B5.OFFICIAL_URL] skip_save jan=' + digits + ' url=' + u.slice(0, 80));
+    return false;
+  }
+  var key = 'jan:' + digits.slice(-13);
+  var pack = b5LoadOfficialUrlCache_();
+  pack.byKey[key] = {
+    url: u,
+    savedAt: Date.now(),
+    source: String(source || 'search'),
+    name: String(name || '').slice(0, 80)
+  };
+  b5SaveOfficialUrlCache_(pack);
+  Logger.log('[B5.OFFICIAL_URL] save key=' + key + ' source=' + source + ' url=' + u.slice(0, 100));
+  return true;
+}
+
+/**
+ * 404等で無効化。
+ * @param {string} jan
+ */
+function b5DropOfficialUrlCache_(jan) {
+  var digits = b5JanDigits_(jan);
+  if (digits.length < 8) return;
+  var key = 'jan:' + digits.slice(-13);
+  var pack = b5LoadOfficialUrlCache_();
+  if (pack.byKey[key]) {
+    delete pack.byKey[key];
+    b5SaveOfficialUrlCache_(pack);
+    Logger.log('[B5.OFFICIAL_URL] drop key=' + key);
+  }
+}
+
+/**
+ * ダイアログから公式URLキャッシュを捨てて再取得させるとき用（google.script.run）。
+ * @param {{jan:string}} payload
+ * @return {{ok:boolean}}
+ */
+function b5RefreshOfficialUrlCache(payload) {
+  b5DropOfficialUrlCache_((payload && payload.jan) || '');
+  return { ok: true };
+}
+
+/** 場面レイアウト候補（案ごとにばらけ。virt _SCENE_LAYOUTS と同型） */
+var B5_SCENE_LAYOUTS_ = [
+  '食卓の俯瞰。個品見本の小皿と添える料理が並ぶ',
+  '右下に個品見本の小皿、左に添える料理',
+  '手前に個品見本の小皿、奥に添える料理と包材',
+  '木のトレー上。個品見本と添える料理を左右に',
+  '和食器の一角。個品見本は小皿、添える料理は丼または茶碗',
+  '晩酌の卓。個品見本の小皿と添える料理、酒器は小さく',
+  '中央に添える料理、手前右に個品見本の小皿',
+  '奥に添える料理、手前に個品見本の小皿'
+];
+
+/** 食べ方種（正規名＋別名）。一件専用にしない */
+var B5_DISH_SEED_ALIASES_ = [
+  ['茶漬け', 'お茶漬け'],
+  ['冷奴', '冷や奴', '冷ややっこ'],
+  ['うどん', 'おうどん'],
+  ['そば', 'おそば'],
+  ['おにぎり'],
+  ['サラダ'],
+  ['チャーハン', '炒飯'],
+  ['味噌汁', 'お味噌汁'],
+  ['卵かけご飯', '卵かけ', 'TKG'],
+  ['パスタ'],
+  ['丼'],
+  ['おやつ']
+];
+
+/**
+ * @param {string} dish
+ * @return {boolean}
+ */
+function b5DishNameBanned_(dish) {
+  return /盛り|小皿|厚削|身を盛|個品|見本|パッケージ|袋だけ/.test(String(dish || ''));
+}
+
+/**
+ * @param {string} raw
+ * @return {string}
+ */
+function b5NormalizeDishName_(raw) {
+  var t = String(raw || '').trim();
+  if (!t) return '';
+  var i, j, aliases, canon;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    canon = aliases[0];
+    for (j = 0; j < aliases.length; j++) {
+      if (aliases[j] === t || t.indexOf(aliases[j]) >= 0) return canon;
+    }
+  }
+  return t;
+}
+
+/**
+ * @param {string} errand
+ * @return {boolean}
+ */
+function b5StockErrand_(errand) {
+  return /ストック|気分で選|常備|棚に|買い置き/.test(String(errand || ''));
+}
+
+/** 届ける・渡す・贈る。場面は包んだ箱を商品の横に置く。 */
+function b5GiftErrand_(errand) {
+  return /届ける|渡す|贈る|喜ばれる|手土産|差し入れ|贈り物|贈答/.test(String(errand || ''));
+}
+
+function b5DishOptionalForErrand_(errand) {
+  return b5StockErrand_(errand) || b5GiftErrand_(errand);
+}
+
+function b5PersonBlob_(p) {
+  p = p || {};
+  return [p.appealWho, p.personaShort, p.appealTrouble, p.errand, p.personaErrand, p.appealPolicy, p.whyAppeal].join('\n');
+}
+
+function b5UseClassNorm_(v) {
+  var s = String(v || '').trim().toLowerCase();
+  if (s === 'gift' || s === 'stock' || s === 'table') return s;
+  return '';
+}
+
+function b5ProposalIsGift_(p) {
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+    var c = b5UseClassNorm_((p && p.useClass) || '');
+    if (c === 'gift') return true;
+    if (c === 'stock' || c === 'table') return false;
+  }
+  return b5GiftErrand_(b5PersonBlob_(p));
+}
+
+function b5ProposalIsStock_(p) {
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+    var c = b5UseClassNorm_((p && p.useClass) || '');
+    if (c === 'stock') {
+      var errStock = b5ErrandOf_(p);
+      if (b5StockErrand_(errStock)) return true;
+      if (b5MealErrand_(errStock)) {
+        Logger.log('[b5UseClass_] stock ignored meal errand=' + String(errStock || '').replace(/[\r\n]+/g, ' ').substring(0, 40));
+        return false;
+      }
+      return true;
+    }
+    if (c === 'gift' || c === 'table') return false;
+  }
+  return b5StockErrand_(b5PersonBlob_(p));
+}
+
+function b5GeminiObjectArray_(prompt, tag) {
+  try {
+    var raw = String(callGeminiForCPO(prompt) || '');
+    var a = raw.indexOf('[');
+    var b = raw.lastIndexOf(']');
+    if (a < 0 || b <= a) {
+      Logger.log('[' + tag + '] no_array');
+      return [];
+    }
+    var got = JSON.parse(raw.substring(a, b + 1));
+    if (Object.prototype.toString.call(got) !== '[object Array]') return [];
+    return got;
+  } catch (eArr) {
+    Logger.log('[' + tag + '] ' + eArr);
+    return [];
+  }
+}
+
+function b5GeminiFlags_(prompt, tag) {
+  try {
+    var raw = String(callGeminiForCPO(prompt) || '');
+    var a = raw.indexOf('{');
+    var b = raw.lastIndexOf('}');
+    if (a < 0 || b <= a) {
+      Logger.log('[' + tag + '] no_object');
+      return null;
+    }
+    return JSON.parse(raw.substring(a, b + 1));
+  } catch (eObj) {
+    Logger.log('[' + tag + '] ' + eObj);
+    return null;
+  }
+}
+
+/** 親と同じ主材料で、料理名がその組み合わせか。欄が埋まっているだけでは残さない。 */
+function b5RemakeAlignOk_(parent, ingredient, method, dishName) {
+  if (!getBoolScriptProperty_('B5_CAUSE_FIX', true)) return true;
+  if (!parent || !ingredient || !method || !dishName) return false;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return false;
+  var got = b5GeminiFlags_(
+    '親の料理と、作り直した料理が同じ主材料かを返す。JSONだけ。\n' +
+      '{"sameIngredient":true,"nameMatches":true}\n' +
+      'sameIngredientは、書いた主材料が親の料理の主材料と同じときだけ true。\n' +
+      'nameMatchesは、料理名がその主材料と、変えた作り方の組み合わせのときだけ true。用途の言い換えだけは false。\n' +
+      '親:' + parent + '\n主材料:' + ingredient + '\n作り方:' + method + '\n料理名:' + dishName,
+    'b5RemakeAlign_'
+  );
+  var same = !!(got && (got.sameIngredient === true || got.sameIngredient === 'true'));
+  var nameOk = !!(got && (got.nameMatches === true || got.nameMatches === 'true'));
+  Logger.log(
+    '[b5RemakeAlign_] parent=' + parent + ' ingredient=' + ingredient + ' dish=' + dishName + ' ok=' + (same && nameOk)
+  );
+  return same && nameOk;
+}
+
+/** 場面が、作り直しで書いた主材料を描いているか。 */
+function b5SceneUsesIngredient_(ingredient, scene) {
+  if (!getBoolScriptProperty_('B5_CAUSE_FIX', true)) return true;
+  if (!ingredient) return true;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return false;
+  var got = b5GeminiFlags_(
+    '場面が、指定の主材料を描いているかを返す。JSONだけ。\n' +
+      '{"ok":true}\n' +
+      '別の食材なら false。主材料が場面に無いときも false。\n' +
+      '主材料:' + ingredient + '\n場面:' + String(scene || ''),
+    'b5SceneAlign_'
+  );
+  var ok = !!(got && (got.ok === true || got.ok === 'true'));
+  Logger.log('[b5SceneAlign_] ingredient=' + ingredient + ' ok=' + ok);
+  return ok;
+}
+
+function b5DishOptionalForProposal_(p) {
+  return b5ProposalIsGift_(p) || b5ProposalIsStock_(p);
+}
+
+/**
+ * @param {string} errand
+ * @param {string} dish
+ * @return {number}
+ */
+function b5ErrandDishAffinity_(errand, dish, appealText) {
+  return 0;
+}
+
+/** 商品名にその料理名が含まれる（添え料理の禁止では落とさない）。 */
+function b5ProductNamesDish_(materials, dish) {
+  var name = String((materials && materials.name) || '');
+  var dn = b5NormalizeDishName_(dish);
+  if (!name || !dn) return false;
+  if (name.indexOf(dn) >= 0) return true;
+  var i, j, aliases;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    if (aliases[0] !== dn && aliases.indexOf(dn) < 0) continue;
+    for (j = 0; j < aliases.length; j++) {
+      if (aliases[j] && name.indexOf(aliases[j]) >= 0) return true;
+    }
+  }
+  return false;
+}
+
+function b5DishAllowed_(judged, materials, dish) {
+  var dn = b5NormalizeDishName_(dish);
+  if (!dn) return false;
+  if (b5ProductNamesDish_(materials, dn)) return true;
+  var fits = (judged && judged.fits) || {};
+  return fits[dn] === true;
+}
+
+/**
+ * 案ごとに1回。訴求と商品名と候補を見て、隣に置けるかを返す。料理名の一覧は使わない。
+ * @return {{ok:boolean,fits:Object,order:string[],skip?:string}}
+ */
+function b5JudgeDishFits_(materials, p, pool, usedDishes) {
+  var fits = {};
+  var rest = {};
+  var order = [];
+  var err = b5ErrandOf_(p);
+  if (b5DishOptionalForProposal_(p)) {
+    Logger.log('[b5JudgeDishFits_] skip=no_dish who=' + (b5ProposalIsGift_(p) ? 'gift' : 'stock'));
+    return { ok: true, fits: fits, rest: rest, order: order, skip: 'no_dish', derived: null };
+  }
+  if (!pool || !pool.length) return { ok: false, fits: fits, rest: rest, order: order, derived: null };
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) {
+    return { ok: false, fits: fits, rest: rest, order: order, derived: null };
+  }
+  var lines = '';
+  var i;
+  for (i = 0; i < pool.length && i < 12; i++) {
+    lines += i + 1 + '. ' + String(pool[i].dishName || '') + '\n';
+    order.push(b5NormalizeDishName_(pool[i].dishName));
+  }
+  var prompt =
+    '添える料理を1つ決める。次のJSONだけ返す。説明は付けない。\n' +
+    '{"place":"fit","dishName":"","parent":"","mainIngredient":"","methodChange":""}\n' +
+    'placeは fit / remake / empty だけ。\n' +
+    'fit＝その人の得たい結果が、その料理の一枚で見える。dishNameは候補の名前そのもの。1つ。\n' +
+    '隣に置けるだけでは fit にしない。候補の番号、一覧の先頭、前の案の次の名前では決めない。\n' +
+    'remake＝候補のどれも一枚で見せられないときだけ。parentは候補の名前。dishNameは新しい名前。mainIngredientは親と同じ主材料。methodChangeは変えた作り方か和洋中。どちらかが空なら place を empty にする。用途の言い換えだけは作らない。\n' +
+    'empty＝料理なし。\n' +
+    '使用済みの名前は dishName にしない。商品名にその料理名が含まれるときは、その料理を fit にする。\n' +
+    '商品名:' +
+    String((materials && materials.name) || '') +
+    '\n訴求:' +
+    String((p && p.appealPolicy) || '') +
+    '\n用事:' +
+    String(err || '') +
+    '\nキャッチ:' +
+    String((p && p.catch) || '') +
+    '\nセールス:' +
+    String((p && p.salesTalk) || '') +
+    '\n使用済み:' +
+    (usedDishes && usedDishes.length ? usedDishes.join('、') : 'なし') +
+    '\n候補:\n' +
+    lines;
+  function poolRow(name) {
+    var dn = b5NormalizeDishName_(name);
+    var ri;
+    for (ri = 0; ri < pool.length; ri++) {
+      if (b5NormalizeDishName_(pool[ri].dishName) === dn) return pool[ri];
+    }
+    return null;
+  }
+  var raw = '';
+  var place = 'empty';
+  var dishName = '';
+  var parentName = '';
+  var ingredient = '';
+  var method = '';
+  var derived = null;
+  try {
+    raw = String(callGeminiForCPO(prompt) || '');
+    var a = raw.indexOf('{');
+    var b = raw.lastIndexOf('}');
+    if (a >= 0 && b > a) {
+      var got = JSON.parse(raw.substring(a, b + 1));
+      place = String((got && got.place) || '').toLowerCase();
+      dishName = String((got && got.dishName) || '').trim();
+      parentName = b5NormalizeDishName_((got && got.parent) || '');
+      ingredient = String((got && got.mainIngredient) || '').trim();
+      method = String((got && got.methodChange) || '').trim();
+    }
+  } catch (eFit) {
+    place = 'empty';
+    Logger.log('[b5JudgeDishFits_] parse fail ' + eFit);
+  }
+  var named = '';
+  for (i = 0; i < pool.length; i++) {
+    var pn = b5NormalizeDishName_(pool[i].dishName);
+    if (pn && b5ProductNamesDish_(materials, pn) && !b5DishAlreadyUsed_(pn, usedDishes || [])) {
+      named = pn;
+      break;
+    }
+  }
+  if (named) {
+    place = 'fit';
+    dishName = named;
+    parentName = '';
+  }
+  var canonDish = b5NormalizeDishName_(dishName);
+  var dishIsExactPool = !!(canonDish && dishName === canonDish && poolRow(dishName));
+  var parentRow = poolRow(parentName);
+  if (place === 'fit' && dishIsExactPool && !b5DishAlreadyUsed_(canonDish, usedDishes || []) && !b5DishNameBanned_(canonDish)) {
+    fits[canonDish] = true;
+    dishName = poolRow(dishName).dishName;
+    derived = null;
+  } else if (
+    place === 'remake' &&
+    parentRow &&
+    dishName &&
+    dishName !== parentRow.dishName &&
+    !dishIsExactPool &&
+    !b5DishNameBanned_(dishName) &&
+    !b5DishAlreadyUsed_(dishName, usedDishes || []) &&
+    ingredient &&
+    method &&
+    b5RemakeAlignOk_(parentRow.dishName, ingredient, method, dishName)
+  ) {
+    derived = {
+      dishName: dishName,
+      sourceUrl: parentRow.sourceUrl || '',
+      sourceTier: parentRow.sourceTier || 'pool',
+      evidence: parentRow.evidence || '',
+      parent: parentRow.dishName,
+      mainIngredient: ingredient,
+      methodChange: method
+    };
+    place = 'remake';
+  } else if (place === 'remake' && dishIsExactPool && !b5DishAlreadyUsed_(canonDish, usedDishes || [])) {
+    fits[canonDish] = true;
+    place = 'fit';
+    dishName = poolRow(dishName).dishName;
+    derived = null;
+  } else {
+    place = 'empty';
+    dishName = '';
+    derived = null;
+  }
+  Logger.log(
+    '[b5JudgeDishFits_] place=' +
+      place +
+      ' dish=' +
+      (dishName || '-') +
+      (place === 'remake' ? ' parent=' + (parentName || '-') + ' ingredient=' + (ingredient || '-') + ' method=' + (method || '-') : '')
+  );
+  return { ok: true, fits: fits, rest: rest, order: order, derived: derived };
+}
+
+/** 文中に、料理の別名がある。 */
+function b5TextHasDishAlias_(text) {
+  var t = String(text || '');
+  if (!t) return false;
+  var i, j, aliases, a;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    for (j = 0; j < aliases.length; j++) {
+      a = aliases[j];
+      if (a && t.indexOf(a) >= 0) return true;
+    }
+  }
+  return false;
+}
+
+/** 使い方が料理名そのものだけか。文の途中に料理名があるときは残す。 */
+function b5ErrandIsDishNameOnly_(text) {
+  var t = String(text || '').replace(/[\s　・、,，/／。．.「」『』（）()【】\[\]！!？?～〜]+/g, '');
+  if (!t) return false;
+  var names = [];
+  var i, j, aliases, a;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    for (j = 0; j < aliases.length; j++) {
+      a = aliases[j];
+      if (a) names.push(a);
+    }
+  }
+  names.sort(function(x, y) {
+    return y.length - x.length;
+  });
+  var left = t;
+  var hit = false;
+  var guard = 0;
+  var found;
+  while (left && guard < 12) {
+    guard++;
+    found = '';
+    for (i = 0; i < names.length; i++) {
+      if (left.indexOf(names[i]) >= 0) {
+        found = names[i];
+        break;
+      }
+    }
+    if (!found) break;
+    hit = true;
+    left = left.split(found).join('');
+  }
+  return hit && !left;
+}
+
+/** 文中に、その料理の正規名か別名がある。 */
+function b5CopyMentionsDish_(text, dish) {
+  var t = String(text || '');
+  var dn = b5NormalizeDishName_(dish);
+  if (!t || !dn) return false;
+  var i, j, aliases;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    if (aliases[0] !== dn && aliases.indexOf(dn) < 0) continue;
+    for (j = 0; j < aliases.length; j++) {
+      if (aliases[j] && t.indexOf(aliases[j]) >= 0) return true;
+    }
+    return false;
+  }
+  return t.indexOf(dn) >= 0;
+}
+
+/** 使い方の語を含む。原料名や料理名だけではない。 */
+function b5FactIsPurpose_(fact) {
+  var p = String(fact || '');
+  var marks = b5LadderPurposeMarks_();
+  var i;
+  for (i = 0; i < marks.length; i++) {
+    if (p.indexOf(marks[i]) >= 0) return true;
+  }
+  return false;
+}
+
+/** 買う人の文が落ちる理由。空文字なら残してよい。 */
+function b5BuyerWhoReason_(who, materials, errand) {
+  var t = String(who || '').trim();
+  if (!t) return 'empty';
+  var parts = t.split('・');
+  if (parts.length < 3) return 'parts';
+  if (b5ZenkakuLen_(t) < 8) return 'short';
+  if (b5ErrandIsIdentity_(t, materials)) return 'identity';
+  if (b5TextHasDishAlias_(t)) return 'dish';
+  var e = String(errand || '').trim();
+  if (e && (t === e || t === e + 'を使う人')) return 'errand';
+  var i;
+  for (i = 0; i < parts.length; i++) {
+    if (b5ZenkakuLen_(parts[i]) < 2) return 'part_short';
+  }
+  return '';
+}
+
+/** 買う人の文か。原料名・料理名・「語を使う人」は不可。 */
+function b5BuyerWhoOk_(who, materials, errand) {
+  return !b5BuyerWhoReason_(who, materials, errand);
+}
+
+/** いつ・困り・料理の方向が落ちる理由。空文字なら残してよい。重複はここでは見ない。 */
+function b5PersonaSlotReason_(text, errand, kind) {
+  var t = String(text || '').trim();
+  var f = String(errand || '').trim();
+  if (!t) return 'empty';
+  var min = kind === 'trouble' ? 6 : 4;
+  if (b5ZenkakuLen_(t) < min) return 'short';
+  var suffix = kind === 'when' ? 'のとき' : kind === 'trouble' ? 'が足りない' : 'に添える';
+  if (t === f || t === f + suffix) return 'fact';
+  if (b5TextHasDishAlias_(t)) return 'dish';
+  return '';
+}
+
+/** 枠ログ。残った／空／落ちた理由。 */
+function b5KeptLog_(kept, before, why) {
+  if (kept) return 'keep';
+  if (!before) return 'empty';
+  return 'drop:' + (why || 'dup');
+}
+
+/**
+ * @param {Object} materials
+ * @return {string[]}
+ */
+function b5ProductMatchTokens_(materials) {
+  var name = String((materials && materials.name) || '').trim();
+  var toks = [];
+  var head = name.split(/[（(]/)[0] || '';
+  head = String(head).trim();
+  if (head && head.length >= 3) toks.push(head);
+  if (name.indexOf('食べるおだし') >= 0) toks.push('食べるおだし');
+  if (name.indexOf('石原') >= 0 || /ishi/i.test(String((materials && materials.parentSku) || ''))) {
+    toks.push('石原');
+  }
+  var marks = (materials && materials.mixMarks) || [];
+  var i;
+  for (i = 0; i < Math.min(2, marks.length); i++) {
+    if (marks[i] && toks.indexOf(marks[i]) < 0) toks.push(String(marks[i]));
+  }
+  return toks;
+}
+
+/**
+ * @param {Object} materials
+ * @return {string[]}
+ */
+function b5UrlsInMaterials_(materials) {
+  var blob = b5MaterialsBlob_(materials);
+  var found = String(blob || '').match(/https?:\/\/[^\s<>"')\]]+/g) || [];
+  var out = [];
+  var i;
+  for (i = 0; i < found.length; i++) {
+    var u = String(found[i] || '').replace(/[.,;）)]+$/, '');
+    if (u && out.indexOf(u) < 0 && !b5IsWeakOrMediaOfficialUrl_(u)) out.push(u);
+  }
+  return out;
+}
+
+/** モール販売URL。公式候補から先に外す */
+function b5IsMallUrl_(url) {
+  var u = String(url || '').toLowerCase();
+  if (!u) return false;
+  var bad = ['store.shopping.yahoo.co.jp', 'shopping.yahoo.co.jp', 'item.rakuten.co.jp', 'amazon.co.jp', 'auctions.yahoo'];
+  var i;
+  for (i = 0; i < bad.length; i++) {
+    if (u.indexOf(bad[i]) >= 0) return true;
+  }
+  return false;
+}
+
+function b5IsGroundingUrl_(url) {
+  var u = String(url || '').toLowerCase();
+  return u.indexOf('grounding-api-redirect') >= 0 || u.indexOf('vertexaisearch') >= 0;
+}
+
+function b5OfficialNote_(materials, msg) {
+  if (!materials) return;
+  if (!materials._officialNotes) materials._officialNotes = [];
+  if (materials._officialNotes.length >= 14) return;
+  materials._officialNotes.push(String(msg || '').slice(0, 160));
+}
+
+function b5OfficialWhyBump_(materials, why, rank) {
+  if (!materials) return;
+  if (rank >= Number(materials._officialWhyRank || 0)) {
+    materials._officialWhyRank = rank;
+    materials._officialWhy = why;
+  }
+}
+
+/** canonical / og:url。リダイレクト解除後の実ページ */
+function b5HtmlPreferredUrl_(html) {
+  var h = String(html || '');
+  var m =
+    h.match(/<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)["']/i) ||
+    h.match(/<link[^>]+href=["']([^"']+)["'][^>]*rel=["']canonical["']/i) ||
+    h.match(/<meta[^>]+property=["']og:url["'][^>]*content=["']([^"']+)["']/i) ||
+    h.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:url["']/i);
+  return m ? String(m[1] || '').trim() : '';
+}
+
+/**
+ * @param {string} url
+ * @return {{code:number,text:string,html:string,err:string}}
+ */
+function b5FetchPageProbe_(url) {
+  var out = { code: 0, text: '', html: '', err: '' };
+  if (!url) {
+    out.err = 'empty_url';
+    return out;
+  }
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; B5GAS/1.0)' }
+    });
+    out.code = res.getResponseCode();
+    var html = String(res.getContentText() || '');
+    out.html = html.slice(0, 180000);
+    if (out.code >= 400) {
+      out.err = 'http';
+      return out;
+    }
+    var text = html.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+    text = text.replace(/<style[\s\S]*?<\/style>/gi, ' ');
+    text = text.replace(/<[^>]+>/g, ' ');
+    out.text = text.replace(/\s+/g, ' ').slice(0, 80000);
+  } catch (eProbe) {
+    out.err = String(eProbe && eProbe.message ? eProbe.message : eProbe).slice(0, 80);
+  }
+  return out;
+}
+
+/**
+ * @param {string} url
+ * @return {string}
+ */
+function b5FetchPageText_(url) {
+  if (!url || b5IsWeakOrMediaOfficialUrl_(url)) return '';
+  var probe = b5FetchPageProbe_(url);
+  if (probe.err || probe.code >= 400 || !probe.text) {
+    Logger.log(
+      '[b5FetchPageText_] code=' + probe.code + ' err=' + (probe.err || '-') + ' url=' + String(url).slice(0, 80)
+    );
+    return '';
+  }
+  return probe.text;
+}
+
+/** 公式URLの成否を ▼ログ(システム用) に1行。次の実行で原因を見る */
+function b5WriteOfficialDiagSheet_(materials) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('▼ログ(システム用)');
+    if (!sh) return;
+    var why = String((materials && materials._officialWhy) || 'unknown');
+    var official = String((materials && materials._officialUrl) || '');
+    var names = String((materials && materials._recipeNames) || '');
+    var notes = ((materials && materials._officialNotes) || []).join(' / ');
+    sh.appendRow([
+      new Date(),
+      'B5公式',
+      String((materials && materials.jan) || ''),
+      why + ' official=' + official.slice(0, 140) + ' dishes=' + names.slice(0, 80),
+      notes.slice(0, 900)
+    ]);
+    Logger.log('[B5公式] why=' + why + ' official=' + official.slice(0, 80) + ' ' + notes.slice(0, 240));
+  } catch (eLog) {
+    Logger.log('[b5WriteOfficialDiagSheet_] ' + String(eLog && eLog.message ? eLog.message : eLog));
+  }
+}
+
+/** ペルソナの受け取りを、実行の最後と▼ログ(システム用)に残す。先頭のログは切れる。 */
+function b5PersonaReceiptLines_(materials, proposals) {
+  var lines = [];
+  var asks = (materials && materials._personaAsks) || [];
+  var rows = (materials && materials._personaRows) || [];
+  var i;
+  lines.push('ask=' + (asks.join(' || ') || 'none'));
+  for (i = 0; i < rows.length; i++) lines.push(rows[i]);
+  for (i = 0; i < (proposals || []).length; i++) {
+    var p = proposals[i] || {};
+    lines.push(
+      'end i=' +
+        i +
+        ' drop=' +
+        String(p.personaDrop || '-') +
+        ' who=' +
+        String(p.appealWho || '').replace(/[\r\n]+/g, ' ').substring(0, 40) +
+        ' class=' +
+        String(p.useClass || '-')
+    );
+  }
+  return lines;
+}
+
+function b5ReasonReceiptLines_(proposals) {
+  var lines = [];
+  var i;
+  for (i = 0; i < (proposals || []).length; i++) {
+    var p = proposals[i] || {};
+    var catchText = String(p.catch || '').replace(/[\r\n]+/g, ' ');
+    lines.push(
+      'i=' +
+        i +
+        ' catchN=' +
+        b5ZenkakuLen_(catchText) +
+        ' catch=' +
+        catchText.substring(0, 40) +
+        ' lenWhy=' +
+        String(p.catchLenWhy || '-')
+    );
+    lines.push('i=' + i + ' sitWhy=' + String(p.situationLinkWhy || '-'));
+    lines.push('i=' + i + ' sceneWhy=' + String(p.sceneLinkWhy || '-'));
+  }
+  return lines;
+}
+
+function b5WritePersonaReceipt_(materials, proposals) {
+  var lines = b5PersonaReceiptLines_(materials, proposals);
+  var reasons = b5ReasonReceiptLines_(proposals);
+  var jan = String((materials && materials.jan) || '');
+  var i;
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss && ss.getSheetByName('▼ログ(システム用)');
+    if (sh) {
+      for (i = 0; i < lines.length; i++) {
+        sh.appendRow([new Date(), 'B5ペルソナ', jan, String(lines[i]).slice(0, 450), '']);
+      }
+      for (i = 0; i < reasons.length; i++) {
+        sh.appendRow([new Date(), 'B5理由', jan, String(reasons[i]).slice(0, 450), '']);
+      }
+    }
+  } catch (eRec) {
+    Logger.log('[b5WritePersonaReceipt_] ' + String(eRec && eRec.message ? eRec.message : eRec));
+  }
+  return { persona: lines, reason: reasons };
+}
+
+/**
+ * @param {string} url
+ * @param {string[]} tokens
+ * @return {boolean}
+ */
+/**
+ * product/products と末尾スラッシュの揺れ。一件のスラッグは作らない。
+ * @param {string} url
+ * @return {string[]}
+ */
+function b5UrlPathFallbacks_(url) {
+  var u = String(url || '').trim();
+  if (!u) return [];
+  var cands = [u];
+  if (u.indexOf('/product/') >= 0 && u.indexOf('/products/') < 0) {
+    cands.push(u.replace('/product/', '/products/'));
+  }
+  if (u.indexOf('/products/') >= 0) cands.push(u.replace('/products/', '/product/'));
+  cands.push(u.charAt(u.length - 1) === '/' ? u.replace(/\/+$/, '') : u + '/');
+  var out = [];
+  var i;
+  for (i = 0; i < cands.length; i++) {
+    if (cands[i] && out.indexOf(cands[i]) < 0) out.push(cands[i]);
+  }
+  return out;
+}
+
+/**
+ * grounding リダイレクトを実URLへ（最大4段）。
+ * @param {string} url
+ * @return {string}
+ */
+function b5UnwrapRedirectUrl_(url) {
+  var u = String(url || '').trim();
+  var hop;
+  for (hop = 0; hop < 4; hop++) {
+    if (!u || (u.indexOf('grounding-api-redirect') < 0 && u.indexOf('vertexaisearch') < 0)) return u;
+    try {
+      var res = UrlFetchApp.fetch(u, {
+        muteHttpExceptions: true,
+        followRedirects: false,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; B5GAS/1.0)' }
+      });
+      var loc = '';
+      var headers = res.getHeaders() || {};
+      loc = String(headers.Location || headers.location || '');
+      if (!loc) return '';
+      u = loc;
+    } catch (eUn) {
+      return '';
+    }
+  }
+  return u;
+}
+
+/**
+ * 検索応答から本文とグラウンディングURL。
+ * @param {string} prompt
+ * @return {{text:string,urls:string[]}}
+ */
+function b5GeminiSearchPack_(prompt) {
+  var pack = { text: '', urls: [] };
+  var key = getGeminiApiKey();
+  if (!key) return pack;
+  try {
+    var url =
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+      MODEL_GEMINI +
+      ':generateContent?key=' +
+      encodeURIComponent(key);
+    var res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      muteHttpExceptions: true,
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }]
+      })
+    });
+    if (res.getResponseCode() !== 200) return pack;
+    var json = JSON.parse(res.getContentText() || '{}');
+    var cand = json.candidates && json.candidates[0];
+    var parts = cand && cand.content && cand.content.parts;
+    pack.text = parts && parts[0] ? String(parts[0].text || '') : '';
+    var gm = cand && (cand.groundingMetadata || cand.grounding_metadata);
+    var chunks = (gm && (gm.groundingChunks || gm.grounding_chunks)) || [];
+    var i;
+    for (i = 0; i < chunks.length; i++) {
+      var web = chunks[i] && (chunks[i].web || {});
+      var rawU = String(web.uri || web.url || '');
+      var u = b5UnwrapRedirectUrl_(rawU) || rawU;
+      if (/^https?:\/\//i.test(u) && pack.urls.indexOf(u) < 0 && !b5IsMallUrl_(u)) {
+        pack.urls.push(u);
+      }
+    }
+  } catch (ePack) {
+    Logger.log('[b5GeminiSearchPack_] ' + String(ePack && ePack.message ? ePack.message : ePack));
+  }
+  return pack;
+}
+
+/**
+ * 候補を開き、商品手がかりがある本文のURLを返す。ページ本文は materials に残す。
+ * @param {string[]} candidates
+ * @param {string[]} tokens
+ * @param {Object=} materials
+ * @return {string}
+ */
+function b5FirstLiveProductUrl_(candidates, tokens, materials) {
+  var tried = {};
+  var best = { score: -999, url: '', text: '' };
+  var ci, pi, u, probe, score, strong, ok, si, landed;
+  for (ci = 0; ci < (candidates || []).length; ci++) {
+    var raw = String(candidates[ci] || '').trim();
+    if (!raw) continue;
+    if (b5IsMallUrl_(raw)) {
+      b5OfficialNote_(materials, 'mall ' + raw.slice(0, 70));
+      b5OfficialWhyBump_(materials, 'mall', 1);
+      continue;
+    }
+    var paths = b5UrlPathFallbacks_(b5UnwrapRedirectUrl_(raw) || raw);
+    for (pi = 0; pi < paths.length; pi++) {
+      u = paths[pi];
+      if (!u || tried[u]) continue;
+      tried[u] = true;
+      probe = b5FetchPageProbe_(u);
+      if (!probe.text) {
+        b5OfficialNote_(materials, 'empty code=' + probe.code + ' err=' + (probe.err || '-') + ' ' + u.slice(0, 70));
+        b5OfficialWhyBump_(materials, 'empty_body', 2);
+        continue;
+      }
+      strong = [];
+      for (si = 0; si < (tokens || []).length; si++) {
+        if (tokens[si] === '食べるおだし' || String(tokens[si]).indexOf('おだし') >= 0) strong.push(tokens[si]);
+      }
+      ok = false;
+      if (strong.length) {
+        for (si = 0; si < strong.length; si++) {
+          if (probe.text.indexOf(strong[si]) >= 0) ok = true;
+        }
+      } else {
+        for (si = 0; si < (tokens || []).length; si++) {
+          if (tokens[si] && probe.text.indexOf(tokens[si]) >= 0) ok = true;
+        }
+      }
+      if (!ok) {
+        b5OfficialNote_(materials, 'no_token len=' + probe.text.length + ' code=' + probe.code + ' ' + u.slice(0, 70));
+        b5OfficialWhyBump_(materials, 'no_token', 3);
+        continue;
+      }
+      landed = u;
+      if (b5IsGroundingUrl_(u)) {
+        var pref = b5HtmlPreferredUrl_(probe.html);
+        if (pref && /^https?:\/\//i.test(pref) && !b5IsMallUrl_(pref) && !b5IsGroundingUrl_(pref)) {
+          landed = pref;
+          b5OfficialNote_(materials, 'canonical ' + pref.slice(0, 90));
+        } else {
+          b5OfficialNote_(materials, 'redirect_unresolved ' + u.slice(0, 70));
+          b5OfficialWhyBump_(materials, 'redirect_unresolved', 4);
+          continue;
+        }
+      }
+      score = 0;
+      if (String(landed).toLowerCase().indexOf('/product') >= 0) score += 3;
+      if (b5IsWeakOrMediaOfficialUrl_(landed)) score -= 5;
+      b5OfficialNote_(materials, 'token_ok score=' + score + ' ' + String(landed).slice(0, 90));
+      if (score > best.score) best = { score: score, url: landed, text: probe.text };
+    }
+  }
+  if (!best.url) return '';
+  if (best.score < 0 || b5IsWeakOrMediaOfficialUrl_(best.url)) {
+    b5OfficialNote_(materials, 'weak_only ' + best.url.slice(0, 90));
+    b5OfficialWhyBump_(materials, 'weak_only', 4);
+    return '';
+  }
+  if (materials) materials._officialPageText = best.text;
+  b5OfficialWhyBump_(materials, 'hit', 5);
+  Logger.log('[b5FirstLiveProductUrl_] url=' + best.url.slice(0, 120) + ' score=' + best.score);
+  return best.url;
+}
+
+function b5UrlMentionsProduct_(url, tokens) {
+  if (!url || !tokens || !tokens.length) return false;
+  if (b5IsWeakOrMediaOfficialUrl_(url)) return false;
+  var text = b5FetchPageText_(url);
+  if (!text) return false;
+  var strong = [];
+  var i;
+  for (i = 0; i < tokens.length; i++) {
+    if (tokens[i] === '食べるおだし' || String(tokens[i]).indexOf('おだし') >= 0) strong.push(tokens[i]);
+  }
+  if (strong.length) {
+    for (i = 0; i < strong.length; i++) {
+      if (text.indexOf(strong[i]) >= 0) return true;
+    }
+    return false;
+  }
+  for (i = 0; i < tokens.length; i++) {
+    if (tokens[i] && text.indexOf(tokens[i]) >= 0) return true;
+  }
+  return false;
+}
+
+/**
+ * @param {string} blob
+ * @param {string} evidence
+ * @param {string} sourceTier
+ * @param {string=} sourceUrl
+ * @return {Array<Object>}
+ */
+function b5DishesFromTextBlob_(blob, evidence, sourceTier, sourceUrl) {
+  var out = [];
+  var seen = {};
+  var text = String(blob || '');
+  var i, j, aliases, canon;
+  for (i = 0; i < B5_DISH_SEED_ALIASES_.length; i++) {
+    aliases = B5_DISH_SEED_ALIASES_[i];
+    canon = aliases[0];
+    if (seen[canon] || b5DishNameBanned_(canon)) continue;
+    for (j = 0; j < aliases.length; j++) {
+      if (aliases[j] && text.indexOf(aliases[j]) >= 0) {
+        seen[canon] = true;
+        out.push({
+          dishName: canon,
+          evidence: evidence,
+          errandFit: '',
+          sourceUrl: String(sourceUrl || ''),
+          sourceTier: sourceTier
+        });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * 公式商品ページURLを汎用解決（キャッシュ→材料URL→検索）。
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5ResolveOfficialProductPage_(materials) {
+  materials = materials || {};
+  if (materials._officialUrl) return String(materials._officialUrl);
+  var tokens = b5ProductMatchTokens_(materials);
+  var jan = String(materials.jan || '');
+  var cached = b5GetOfficialUrlCached_(jan);
+  b5OfficialNote_(materials, cached ? 'cache ' + cached.slice(0, 80) : 'cache_miss');
+  var liveCached = cached ? b5FirstLiveProductUrl_([cached], tokens, materials) : '';
+  if (liveCached) {
+    materials._officialUrl = liveCached;
+    materials._officialUrlSource = 'cache';
+    return liveCached;
+  }
+  if (cached) {
+    b5DropOfficialUrlCache_(jan);
+    b5OfficialNote_(materials, 'cache_dropped');
+  }
+  var matUrls = b5UrlsInMaterials_(materials);
+  b5OfficialNote_(materials, 'materials_urls=' + matUrls.length);
+  var liveMats = b5FirstLiveProductUrl_(matUrls, tokens, materials);
+  if (liveMats) {
+    materials._officialUrl = liveMats;
+    materials._officialUrlSource = 'materials';
+    b5PutOfficialUrlCache_(jan, liveMats, 'materials', materials.name);
+    return liveMats;
+  }
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) {
+    materials._officialUrl = '';
+    b5OfficialWhyBump_(materials, 'no_gemini', 1);
+    b5OfficialNote_(materials, 'search_skipped');
+    return '';
+  }
+  try {
+    var basePrompt =
+      'ウェブ検索して、次の商品のメーカー公式（またはブランド公式）の商品紹介ページのhttps URLを返す。' +
+      'モール店（Yahoo/楽天/Amazon）は禁止。雑誌記事よりメーカー公式を優先。必ず実在しブラウザで開けるURLにすること。\n' +
+      'メーカー:' +
+      String(materials.maker || '（不明）') +
+      '\n商品名:' +
+      String(materials.name || '') +
+      '\nJSONのみ: {"url":"https://…"}\n';
+    var failedNote = '';
+    var seenDomains = [];
+    var attempt;
+    for (attempt = 0; attempt < 2; attempt++) {
+      var prompt = basePrompt + failedNote;
+      if (attempt === 1 && seenDomains.length) {
+        prompt =
+          'ウェブ検索: site:' +
+          seenDomains[0] +
+          ' 「' +
+          String(materials.name || '') +
+          '」の商品紹介ページ。\nモール禁止。実在するhttpsだけ。雑誌記事よりメーカー公式を優先。\nJSONのみ: {"url":"https://…"}\n';
+      }
+      var pack = b5GeminiSearchPack_(prompt);
+      var text = String(pack.text || '');
+      var cands = (pack.urls || []).slice();
+      var m = text.match(/\{[\s\S]*\}/);
+      if (m) {
+        try {
+          var d = JSON.parse(m[0]);
+          if (d && d.url) cands.unshift(String(d.url));
+        } catch (e1) {}
+      }
+      var um = text.match(/https?:\/\/[^\s<>"')\]]+/g) || [];
+      var k;
+      for (k = 0; k < um.length; k++) cands.push(String(um[k]).replace(/[.,;）)]+$/, ''));
+      for (k = 0; k < cands.length; k++) {
+        var dm = String(cands[k] || '').match(/^https?:\/\/([^\/]+)\//i);
+        if (!dm) continue;
+        var host = String(dm[1] || '').toLowerCase();
+        if (
+          host.indexOf('google.') >= 0 ||
+          host.indexOf('gstatic.') >= 0 ||
+          host.indexOf('yahoo.') >= 0 ||
+          host.indexOf('rakuten.') >= 0 ||
+          host.indexOf('amazon.') >= 0
+        ) {
+          continue;
+        }
+        if (seenDomains.indexOf(host) < 0) seenDomains.push(host);
+      }
+      b5OfficialNote_(
+        materials,
+        'search' + (attempt + 1) + ' cands=' + cands.length + ' host=' + (seenDomains[0] || '-')
+      );
+      var live = b5FirstLiveProductUrl_(cands, tokens, materials);
+      if (live) {
+        materials._officialUrl = live;
+        materials._officialUrlSource = 'search';
+        b5PutOfficialUrlCache_(jan, live, 'search', materials.name);
+        Logger.log('[b5ResolveOfficialProductPage_] hit url=' + live.slice(0, 100) + ' attempt=' + (attempt + 1));
+        return live;
+      }
+      failedNote = '\n前回の候補は404または商品名なしだった。別の公式商品ページURLを探し直せ。\n';
+    }
+  } catch (eRes) {
+    b5OfficialNote_(materials, 'search_exception ' + String(eRes && eRes.message ? eRes.message : eRes).slice(0, 80));
+    Logger.log('[b5ResolveOfficialProductPage_] ' + String(eRes && eRes.message ? eRes.message : eRes));
+  }
+  if (!materials._officialWhy) b5OfficialWhyBump_(materials, 'no_candidate', 1);
+  materials._officialUrl = '';
+  return '';
+}
+
+/**
+ * 公式／材料から食べ方プールを作る（Google検索は不足時のみ1回）。
+ * @param {Object} materials
+ * @return {Array<Object>}
+ */
+/**
+ * レシピ行に構成品タグを付与（ミックス振り分け用）。
+ * @param {Array<Object>} pool
+ * @param {{parentSku?:string,nameBase?:string,jan?:string}} part
+ * @return {Array<Object>}
+ */
+function b5TagRecipePoolWithPart_(pool, part) {
+  var out = [];
+  var i;
+  for (i = 0; i < (pool || []).length; i++) {
+    var row = pool[i] || {};
+    out.push({
+      dishName: row.dishName,
+      evidence: row.evidence,
+      errandFit: row.errandFit,
+      sourceUrl: row.sourceUrl,
+      sourceTier: row.sourceTier,
+      partSku: String((part && part.parentSku) || ''),
+      partNameBase: String((part && part.nameBase) || ''),
+      partJan: String((part && part.jan) || '')
+    });
+  }
+  return out;
+}
+
+/**
+ * ミックス: セット構成ごとの材料で食べ方プールを作り、案へ振り分ける種にする。
+ * 単品: 従来どおり親1本のプール。
+ * @param {Object} materials
+ * @return {Array<Object>}
+ */
+function b5BuildMixAwareRecipePool_(materials) {
+  var parts = (materials && materials.comboParts) || [];
+  if (!parts || parts.length < 2) {
+    return b5BuildRecipePool_(materials);
+  }
+  var merged = [];
+  var seen = {};
+  var pi;
+  for (pi = 0; pi < parts.length; pi++) {
+    var part = parts[pi] || {};
+    var pName = String(part.nameBase || '').trim();
+    var pJan = String(part.jan || '').trim();
+    if (!pName && !pJan) continue;
+    var loaded = b5LoadMaterialsForParent_(pJan, pName || pJan);
+    var pm = (loaded && loaded.materials) || {};
+    pm.name = pName || pm.name || '';
+    pm.jan = pJan || pm.jan || '';
+    if (materials && materials.category) pm.category = materials.category;
+    var pool = [];
+    try {
+      pool = b5BuildRecipePool_(pm);
+    } catch (ePart) {
+      Logger.log(
+        '[b5MixPool_] partFail sku=' +
+          String(part.parentSku || '') +
+          ' ' +
+          String(ePart && ePart.message ? ePart.message : ePart).slice(0, 80)
+      );
+      continue;
+    }
+    var tagged = b5TagRecipePoolWithPart_(pool, part);
+    var ti;
+    for (ti = 0; ti < tagged.length; ti++) {
+      var dn = b5NormalizeDishName_(tagged[ti].dishName);
+      if (!dn || seen[dn]) continue;
+      seen[dn] = true;
+      merged.push(tagged[ti]);
+    }
+  }
+  var dishNames = [];
+  for (pi = 0; pi < merged.length; pi++) dishNames.push(merged[pi].dishName);
+  if (materials) materials._recipeNames = dishNames.join(',');
+  Logger.log(
+    '[b5MixPool_] parts=' + parts.length + ' n=' + merged.length + ' names=' + dishNames.join('/')
+  );
+  return merged;
+}
+
+function b5BuildRecipePool_(materials) {
+  var out = [];
+  var seen = {};
+  var tokens = b5ProductMatchTokens_(materials);
+  var official = b5ResolveOfficialProductPage_(materials);
+  if (official && materials._officialPageText == null) {
+    materials._officialPageText = b5FetchPageText_(official);
+  }
+  function accept(row, requireUrl) {
+    var dn = b5NormalizeDishName_(row.dishName);
+    var url = String(row.sourceUrl || '').trim();
+    if (!dn || b5DishNameBanned_(dn) || seen[dn]) return;
+    if (requireUrl) {
+      if (!/^https?:\/\//i.test(url) || b5IsWeakOrMediaOfficialUrl_(url)) return;
+      if (row.sourceTier !== 'official_page' && !b5UrlMentionsProduct_(url, tokens)) return;
+    }
+    seen[dn] = true;
+    out.push({
+      dishName: dn,
+      evidence: String(row.evidence || ''),
+      errandFit: String(row.errandFit || ''),
+      sourceUrl: url,
+      sourceTier: String(row.sourceTier || '')
+    });
+  }
+  var i;
+  var fromMats = b5DishesFromTextBlob_(
+    b5MaterialsBlob_(materials),
+    'マスタの文に食べ方の記述あり',
+    'materials',
+    ''
+  );
+  for (i = 0; i < fromMats.length; i++) accept(fromMats[i], false);
+  var fromOfficial = b5DishesFromTextBlob_(
+    materials._officialPageText || '',
+    '公式商品ページ本文に食べ方の記述あり',
+    'official_page',
+    official
+  );
+  for (i = 0; i < fromOfficial.length; i++) {
+    var dnOff = fromOfficial[i].dishName;
+    var existed = false;
+    var ei;
+    for (ei = 0; ei < out.length; ei++) {
+      if (out[ei].dishName === dnOff) {
+        existed = true;
+        if (!out[ei].sourceUrl && official) {
+          out[ei].sourceUrl = official;
+          out[ei].evidence = 'マスタと公式ページの両方に食べ方の記述あり';
+        }
+        break;
+      }
+    }
+    if (!existed) accept(fromOfficial[i], true);
+  }
+  // S16: マスタ→公式のあと、足りないときだけ検索（アレンジ／レシピ／食べ方）。
+  var beforeSearch = out.length;
+  if (beforeSearch < 4 && isB5ProposeGeminiEnabled_() && getGeminiApiKey()) {
+    try {
+      var makerHint = String(
+        (materials && (materials.maker || materials.brand || materials.makerName)) || ''
+      ).trim();
+      var productHint = String((materials && materials.name) || '').trim();
+      var qCore = (makerHint ? makerHint + ' ' : '') + productHint;
+      var prompt =
+        '分岐: マスタと公式ページの食べ方が不足（いま' +
+        beforeSearch +
+        '件）。補助検索のみ。\n' +
+        '検索語の例: 「' +
+        qCore +
+        ' アレンジ」「' +
+        qCore +
+        ' レシピ」「' +
+        qCore +
+        ' 食べ方」。\n' +
+        '採用: その商品そのものを載せる／添える食べ方（トッピング・おつまみ等）。sourceUrlはhttps。ページ本文に商品名。\n' +
+        '不採用: 家で似たものを作る再現、別メーカーの代替レシピ、モール販売・競合販売、空想の料理名。\n' +
+        'JSON配列のみ（最大8件）: [{"dishName":"食べ方または完成料理名","evidence":"要約","errandFit":"用事","sourceUrl":"https://…"}]\n';
+      var gpack = b5GeminiSearchPack_(prompt);
+      var text = String(gpack.text || '');
+      var am = text.match(/\[[\s\S]*\]/);
+      if (am) {
+        var rows = JSON.parse(am[0]);
+        if (rows && rows.length) {
+          for (i = 0; i < rows.length; i++) {
+            var rowG = rows[i] || {};
+            var banBlob =
+              String(rowG.dishName || '') + ' ' + String(rowG.evidence || '');
+            if (/再現|マネマネ|おうちで作|家庭で作|イメージした|代替レシピ/.test(banBlob)) {
+              b5OfficialNote_(materials, 'google_ban_recreate ' + String(rowG.dishName || '').slice(0, 40));
+              continue;
+            }
+            var src = String(rowG.sourceUrl || '');
+            if (!src && gpack.urls && gpack.urls[0]) src = gpack.urls[0];
+            var liveSrc = src ? b5FirstLiveProductUrl_([src], tokens, null) : '';
+            if (src && !liveSrc) b5OfficialNote_(materials, 'google_drop ' + src.slice(0, 70));
+            accept(
+              {
+                dishName: rowG.dishName,
+                evidence: rowG.evidence,
+                errandFit: rowG.errandFit,
+                sourceUrl: liveSrc || (official && materials._officialPageText ? official : src),
+                sourceTier: 'google'
+              },
+              true
+            );
+          }
+        }
+      }
+      Logger.log(
+        '[b5BuildRecipePool_] search_branch before=' +
+          beforeSearch +
+          ' after=' +
+          out.length +
+          ' name=' +
+          productHint.slice(0, 40)
+      );
+    } catch (ePool) {
+      Logger.log('[b5BuildRecipePool_] google ' + String(ePool && ePool.message ? ePool.message : ePool));
+    }
+  } else if (beforeSearch < 4) {
+    Logger.log(
+      '[b5BuildRecipePool_] search_skip before=' +
+        beforeSearch +
+        ' gemini=' +
+        (isB5ProposeGeminiEnabled_() ? '1' : '0')
+    );
+  }
+  var dishNames = [];
+  for (i = 0; i < out.length; i++) dishNames.push(out[i].dishName);
+  materials._recipeNames = dishNames.join(',');
+  if (!materials._officialWhy) materials._officialWhy = official ? 'hit' : 'no_candidate';
+  b5OfficialNote_(materials, 'pool=' + out.length + ' official=' + String(official || '').slice(0, 80));
+  b5WriteOfficialDiagSheet_(materials);
+  Logger.log('[b5BuildRecipePool_] n=' + out.length + ' why=' + materials._officialWhy + ' official=' + String(official || '').slice(0, 80));
+  return out;
+}
+
+/**
+ * @param {Array<Object>} pool
+ * @param {string} errand
+ * @param {string[]} used
+ * @return {Object|null}
+ */
+function b5PickRecipeForErrand_(pool, errand, used, copyText, materials, judged) {
+  if (!pool || !pool.length) return null;
+  if (b5DishOptionalForErrand_(errand)) return null;
+  used = used || [];
+  var fits = (judged && judged.fits) || {};
+  var order = (judged && judged.order) || [];
+  function rowByName(name) {
+    var dn = b5NormalizeDishName_(name);
+    var i;
+    for (i = 0; i < pool.length; i++) {
+      if (b5NormalizeDishName_(pool[i].dishName) === dn) return pool[i];
+    }
+    return null;
+  }
+  function okRow(row) {
+    if (!row) return false;
+    var dn = b5NormalizeDishName_(row.dishName);
+    if (!dn || b5DishAlreadyUsed_(dn, used)) return false;
+    var srcUrl = String(row.sourceUrl || '');
+    var masterDish = row.sourceTier === 'materials';
+    if (!masterDish && !/^https?:\/\//i.test(srcUrl)) return false;
+    if (/^https?:\/\//i.test(srcUrl) && b5IsWeakOrMediaOfficialUrl_(srcUrl)) return false;
+    if (b5ProductNamesDish_(materials, dn)) return true;
+    return fits[dn] === true;
+  }
+  var i;
+  for (i = 0; i < order.length; i++) {
+    var hit = rowByName(order[i]);
+    if (okRow(hit)) return hit;
+  }
+  for (i = 0; i < pool.length; i++) {
+    if (okRow(pool[i])) return pool[i];
+  }
+  return null;
+}
+
+/**
+ * fitが無い食べ方案だけ。ヒットを親に、同じ主材料で作り方か和洋中を変える。届ける案では呼ばない。
+ * @return {Object|null}
+ */
+function b5DeriveDishFromHit_(materials, p, pool, used) {
+  if (!pool || !pool.length) return null;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return null;
+  var lines = '';
+  var i;
+  for (i = 0; i < pool.length && i < 12; i++) {
+    lines += i + 1 + '. ' + String(pool[i].dishName || '') + '\n';
+  }
+  var prompt =
+    'ヒットした料理を親にして、同じ主材料のまま、作り方か和洋中だけを変えた料理名を1つ。JSONだけ返す。\n' +
+    '{"parent":"","dishName":""}\n' +
+    '親は候補の名前そのもの。材料がつながらない料理は作らず、parentとdishNameを空にする。\n' +
+    '訴求:' +
+    String((p && p.appealPolicy) || '') +
+    '\n用事:' +
+    String(b5ErrandOf_(p) || '') +
+    '\n候補:\n' +
+    lines;
+  try {
+    var raw = String(callGeminiForCPO(prompt) || '');
+    var a = raw.indexOf('{');
+    var b = raw.lastIndexOf('}');
+    if (a < 0 || b <= a) {
+      Logger.log('[b5DeriveDishFromHit_] empty');
+      return null;
+    }
+    var got = JSON.parse(raw.substring(a, b + 1));
+    var parentName = b5NormalizeDishName_((got && got.parent) || '');
+    var dishName = String((got && got.dishName) || '').trim();
+    var parent = null;
+    for (i = 0; i < pool.length; i++) {
+      if (b5NormalizeDishName_(pool[i].dishName) === parentName) parent = pool[i];
+    }
+    if (!parent || !dishName || b5NormalizeDishName_(dishName) === parentName || b5DishNameBanned_(dishName)) {
+      Logger.log('[b5DeriveDishFromHit_] empty parent=' + (parentName || '-'));
+      return null;
+    }
+    if (b5DishAlreadyUsed_(dishName, used || [])) {
+      Logger.log('[b5DeriveDishFromHit_] used ' + dishName);
+      return null;
+    }
+    Logger.log('[b5DeriveDishFromHit_] parent=' + parent.dishName + ' dish=' + dishName);
+    return {
+      dishName: dishName,
+      sourceUrl: parent.sourceUrl || '',
+      sourceTier: parent.sourceTier || 'pool',
+      evidence: parent.evidence || '',
+      parent: parent.dishName
+    };
+  } catch (eDer) {
+    Logger.log('[b5DeriveDishFromHit_] ' + String(eDer && eDer.message ? eDer.message : eDer));
+    return null;
+  }
+}
+
+/** 空の案へ回す余った候補。矛盾しないと判定されたものだけ。 */
+function b5PickRestDish_(pool, used, materials, judged) {
+  if (!pool || !pool.length) return null;
+  if (!judged || judged.ok !== true) return null;
+  var rest = judged.rest || {};
+  var order = judged.order || [];
+  function rowByName(name) {
+    var dn = b5NormalizeDishName_(name);
+    var i;
+    for (i = 0; i < pool.length; i++) {
+      if (b5NormalizeDishName_(pool[i].dishName) === dn) return pool[i];
+    }
+    return null;
+  }
+  function okRest(row) {
+    if (!row) return false;
+    var dn = b5NormalizeDishName_(row.dishName);
+    if (!dn || !rest[dn] || b5DishAlreadyUsed_(dn, used)) return false;
+    var srcUrl = String(row.sourceUrl || '');
+    var masterDish = row.sourceTier === 'materials';
+    if (!masterDish && !/^https?:\/\//i.test(srcUrl)) return false;
+    if (/^https?:\/\//i.test(srcUrl) && b5IsWeakOrMediaOfficialUrl_(srcUrl)) return false;
+    return true;
+  }
+  var i;
+  var names = order.length ? order : [];
+  for (i = 0; i < names.length; i++) {
+    var hit = rowByName(names[i]);
+    if (okRest(hit)) return hit;
+  }
+  for (i = 0; i < pool.length; i++) {
+    if (okRest(pool[i])) return pool[i];
+  }
+  return null;
+}
+
+function b5RemakeDishOnce_(materials, p, pool, usedDishes) {
+  if (!pool || !pool.length || b5DishOptionalForProposal_(p)) return null;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return null;
+  var lines = '';
+  var i;
+  for (i = 0; i < pool.length && i < 12; i++) {
+    lines += i + 1 + '. ' + String(pool[i].dishName || '') + '\n';
+  }
+  var prompt =
+    '候補では得たい結果の一枚にならない。親を1つ選び、同じ主材料のまま作り方か和洋中だけ変えた料理を1つ。JSONだけ返す。\n' +
+    '{"parent":"","dishName":"","mainIngredient":"","methodChange":""}\n' +
+    'parentは候補の名前。mainIngredientは親と同じ主材料。methodChangeは変えた作り方か和洋中。どちらか書けなければ全部空。用途の言い換えだけは作らない。\n' +
+    '訴求:' +
+    String((p && p.appealPolicy) || '') +
+    '\n用事:' +
+    String(b5ErrandOf_(p) || '') +
+    '\n使用済み:' +
+    (usedDishes && usedDishes.length ? usedDishes.join('、') : 'なし') +
+    '\n候補:\n' +
+    lines;
+  try {
+    var raw = String(callGeminiForCPO(prompt) || '');
+    var a = raw.indexOf('{');
+    var b = raw.lastIndexOf('}');
+    if (a < 0 || b <= a) {
+      Logger.log('[b5RemakeDishOnce_] empty');
+      return null;
+    }
+    var got = JSON.parse(raw.substring(a, b + 1));
+    var parentName = b5NormalizeDishName_((got && got.parent) || '');
+    var dishName = String((got && got.dishName) || '').trim();
+    var ingredient = String((got && got.mainIngredient) || '').trim();
+    var method = String((got && got.methodChange) || '').trim();
+    var parent = null;
+    for (i = 0; i < pool.length; i++) {
+      if (b5NormalizeDishName_(pool[i].dishName) === parentName) parent = pool[i];
+    }
+    var canon = b5NormalizeDishName_(dishName);
+    var exact = !!(canon && dishName === canon && parent && b5NormalizeDishName_(parent.dishName) === canon);
+    if (!parent || !dishName || !ingredient || !method || exact || dishName === parent.dishName || b5DishNameBanned_(dishName) || b5DishAlreadyUsed_(dishName, usedDishes || []) || !b5RemakeAlignOk_(parent.dishName, ingredient, method, dishName)) {
+      Logger.log('[b5RemakeDishOnce_] empty parent=' + (parentName || '-') + ' ingredient=' + (ingredient || '-') + ' method=' + (method || '-'));
+      return null;
+    }
+    Logger.log('[b5RemakeDishOnce_] parent=' + parent.dishName + ' dish=' + dishName + ' ingredient=' + ingredient + ' method=' + method);
+    return {
+      dishName: dishName,
+      sourceUrl: parent.sourceUrl || '',
+      sourceTier: parent.sourceTier || 'pool',
+      evidence: parent.evidence || '',
+      parent: parent.dishName,
+      mainIngredient: ingredient,
+      methodChange: method
+    };
+  } catch (eOnce) {
+    Logger.log('[b5RemakeDishOnce_] ' + String(eOnce && eOnce.message ? eOnce.message : eOnce));
+    return null;
+  }
+}
+
+/**
+ * フォールバック場面（袋手前禁止）。
+ * @param {Object} p
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5SituationOf_(p) {
+  return String((p && p.situation) || '').trim();
+}
+
+function b5SceneFromPersona_(p, materials) {
+  var dish = String((p && (p.dishName || p.dish)) || '').trim();
+  if (dish && b5DishNameBanned_(dish)) dish = '';
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+    var sit = b5SituationOf_(p);
+    var head = sit ? '場は' + sit + '。' : '商品そのもの。';
+    var dishBit = dish ? '添える料理は' + dish + '。' : '';
+    var box = b5ProposalIsGift_(p) ? '包んだ箱を商品の横に置く。' : '';
+    return b5AppendSceneDrawRules_(head + dishBit + box);
+  }
+  if (b5ProposalIsGift_(p) && !dish) {
+    var giftLayout = String((p && p.sceneLayout) || '').trim();
+    if (!giftLayout) {
+      var gidx = (parseInt((p && p.sellRank) || 1, 10) || 1) % B5_SCENE_LAYOUTS_.length;
+      giftLayout = B5_SCENE_LAYOUTS_[gidx];
+    }
+    return giftLayout + '。包んだ品を手渡す一枚。料理は描かない。';
+  }
+  var marks = (materials && materials.mixMarks) || [];
+  var both = marks.length >= 2 ? marks[0] + 'と' + marks[1] : '';
+  var layout = String((p && p.sceneLayout) || '').trim();
+  if (!layout) {
+    var idx = (parseInt((p && p.sellRank) || 1, 10) || 1) % B5_SCENE_LAYOUTS_.length;
+    layout = B5_SCENE_LAYOUTS_[idx];
+  }
+  var base = dish
+    ? layout + '。添える料理は' + dish + '。小皿の中身は商品の個品見本（料理ではない）。包材は盛り付けの後ろ。'
+    : layout + '。小皿の中身は商品の個品見本（料理ではない）。包材は盛り付けの後ろ。';
+  if (both && base.indexOf(both) < 0) base += '個品見本で' + both + 'が分かる。';
+  return base;
+}
+
+/**
+ * Geminiで場面のみ生成（catch/salesは触らない）。
+ * @return {Object|null}
+ */
+function b5LockedDishFromJudged_(judged, pool) {
+  if (judged && judged.derived && judged.derived.dishName) return judged.derived;
+  var fits = (judged && judged.fits) || {};
+  var name = '';
+  var k;
+  for (k in fits) {
+    if (fits[k]) {
+      name = k;
+      break;
+    }
+  }
+  if (!name) return null;
+  var row = null;
+  var i;
+  for (i = 0; i < (pool || []).length; i++) {
+    if (b5NormalizeDishName_(pool[i].dishName) === b5NormalizeDishName_(name)) row = pool[i];
+  }
+  return {
+    dishName: row ? row.dishName : name,
+    sourceUrl: row ? row.sourceUrl || '' : '',
+    sourceTier: row ? row.sourceTier || '' : '',
+    evidence: row ? row.evidence || '' : '',
+    parent: '',
+    partSku: row ? String(row.partSku || '') : String((judged && judged.derived && judged.derived.partSku) || ''),
+    partNameBase: row
+      ? String(row.partNameBase || '')
+      : String((judged && judged.derived && judged.derived.partNameBase) || ''),
+    partJan: row ? String(row.partJan || '') : String((judged && judged.derived && judged.derived.partJan) || '')
+  };
+}
+
+function b5GeminiSceneDish_(materials, p, recipePool, usedDishes, usedLayouts, judged) {
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return null;
+  var marks = (materials && materials.mixMarks) || [];
+  var both = marks.length >= 2 ? marks.slice(0, 2).join('・') : '';
+  var err = b5ErrandOf_(p) || 'すぐ使える';
+  var gift = b5ProposalIsGift_(p);
+  var dishOpt = b5DishOptionalForProposal_(p);
+  usedDishes = usedDishes || [];
+  usedLayouts = usedLayouts || [];
+  var picked =
+    getBoolScriptProperty_('B5_CAUSE_FIX', true) || !dishOpt
+      ? b5LockedDishFromJudged_(judged, recipePool)
+      : null;
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true) && dishOpt && picked && picked.dishName) {
+    b5ReqLog_('料理', (p && p._candI) || '-', 'ok', 'gift_kept', picked.dishName);
+  }
+  var layoutCandidates = [];
+  var li;
+  for (li = 0; li < B5_SCENE_LAYOUTS_.length; li++) {
+    if (usedLayouts.indexOf(B5_SCENE_LAYOUTS_[li]) < 0) layoutCandidates.push(B5_SCENE_LAYOUTS_[li]);
+  }
+  if (!layoutCandidates.length) layoutCandidates = B5_SCENE_LAYOUTS_.slice();
+  var layout = layoutCandidates[0];
+  var poolLines = '';
+  if (recipePool && recipePool.length && !dishOpt && !(picked && picked.dishName)) {
+    poolLines = '実在レシピ候補:\n';
+    for (li = 0; li < Math.min(12, recipePool.length); li++) {
+      var poolOwner = String(recipePool[li].partNameBase || '').trim();
+      poolLines +=
+        li +
+        1 +
+        '. ' +
+        recipePool[li].dishName +
+        (poolOwner ? '（構成:' + poolOwner + '）' : '') +
+        ' ／ ' +
+        (recipePool[li].evidence || '') +
+        '\n';
+    }
+  }
+  var prefer = picked ? picked.dishName : '';
+  var cause = getBoolScriptProperty_('B5_CAUSE_FIX', true);
+  var situation = b5SituationOf_(p);
+  var dishOwner =
+    String((p && p.dishPartName) || (picked && picked.partNameBase) || '').trim();
+  var dishRule = cause
+    ? (picked && picked.dishName
+        ? '- dishNameは「' + picked.dishName + '」。別の料理名に変えない。新しい名前は作らない。\n'
+        : '- dishNameは空。新しい料理名は作らない。\n')
+    : gift
+      ? '- dishName: 空。sceneHintは包んだ品を手渡す一枚。料理は描かない。\n'
+      : dishOpt
+        ? '- dishName: この用事は袋・構成の話なので空文字でよい。\n'
+        : picked && picked.dishName
+          ? '- dishNameは「' + picked.dishName + '」。別の料理名に変えない。\n'
+          : '- dishNameは空。料理は描かない。\n';
+  var wrapRule =
+    '- 小皿の個品は見本どおり開封後の中身だけ。個包装・小袋・包み紙を新たに描くな。包装見本が無いときは包装を描くな。「個包装から出した」と書くな。\n';
+  var ownerRule =
+    dishOwner && both
+      ? '- 添える料理に載せるのは構成「' +
+        dishOwner +
+        '」だけ。他の構成は小皿の見本のみ。料理の上に他の構成を足すな。\n'
+      : '';
+  var prompt =
+    '食品ECのメイン画像用。次のJSONだけ返す。\n' +
+    '{"sceneHint":"","dishName":"","dishEvidence":"","linkWhy":""}\n' +
+    'linkWhyは、状況のどの場を、絵のどの物に結び付けたか。\n' +
+    '商品名:' +
+    String((materials && materials.name) || '') +
+    '\n用事:' +
+    err +
+    '\n提案キャッチ:' +
+    String((p && p.catch) || '') +
+    '\n提案セールス:' +
+    String((p && p.salesTalk) || '') +
+    '\nペルソナ短文:' +
+    String((p && p.personaShort) || '') +
+    '\nペルソナ詳細:\n' +
+    String((p && p.personaDetail) || '') +
+    '\nミックス:' +
+    (both || 'なし') +
+    '\n推奨レイアウト（必ず使う）:' +
+    layout +
+    '\n推奨料理名:' +
+    (prefer || (dishOpt ? '空でよい' : '候補から選ぶ')) +
+    '\n料理は決めた名前のまま。選び直さない:' +
+    (prefer || '空') +
+    '\n' +
+    (dishOwner ? '料理に載せる構成:' + dishOwner + '\n' : '') +
+    (getBoolScriptProperty_('B5_CAUSE_FIX', true) && picked && picked.mainIngredient
+      ? '主材料は「' + picked.mainIngredient + '」。場面はこの主材料だけ。別の食材に変えない。\n'
+      : '') +
+    '使用済み料理:' +
+    (usedDishes.length ? usedDishes.join('／') : 'なし') +
+    '\n' +
+    poolLines +
+    dishRule +
+    wrapRule +
+    ownerRule +
+    (cause
+      ? '- 状況: ' + (situation || '空') + '\n' +
+        '- sceneHintは1〜3文。状況の場が絵で特定できるところまで。商品の見本を前に置く。包材は見本の後ろ。袋を並べて主役にしない。組み合わせでも個品は種類が分かればよい。顔と手渡す手元は出さない。描く物はその案の状況の場だけ。選んだ食べ方と別の食べ物は足さない。状況の文は画像の文字にしない。保管を棚の一種類にしない。買い置きを理由に棚にしない。状況が空なら商品そのもの。\n' +
+        (gift ? '- 包んだ箱を商品の横に置く。手渡す手元は使わない。\n' : '') +
+        (picked && picked.dishName ? '- 添える料理は選んだ名前。\n' : '- 料理は描かない。\n')
+      : '- 小皿に盛った商品の身＝個品見本であり料理名ではない。\n' +
+        '- sceneHint: 写真指示2文まで。売文禁止。①推奨レイアウトを具体化 ' +
+        (dishOpt
+          ? gift
+            ? '②包んだ品を手渡す一枚。料理は描かない'
+            : '②料理は描かない（袋と個品見本中心）'
+          : '②添える料理は{dishName}') +
+        ' ③小皿は個品見本（料理ではない）④包材は盛り付けの後ろ。\n' +
+        '「袋を手前」は禁止。案ごとに背景・器・配置を変える。\n');
+  try {
+    var text = String(callGeminiForCPO(prompt) || '');
+    var m = text.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    var data = JSON.parse(m[0]);
+    var dish = '';
+    var src = '';
+    var tier = '';
+    if (cause && picked && picked.dishName) {
+      dish = picked.dishName;
+      src = String(picked.sourceUrl || '');
+    } else if (dishOpt || !picked || !picked.dishName) {
+      dish = '';
+    } else {
+      dish = picked.dishName;
+      src = String(picked.sourceUrl || '');
+      tier = String(picked.sourceTier || '');
+      if (src && b5IsWeakOrMediaOfficialUrl_(src)) src = '';
+      var masterDish = tier === 'materials';
+      if (!masterDish && !/^https?:\/\//i.test(src)) {
+        Logger.log('[b5GeminiSceneDish_] url empty');
+        dish = '';
+        src = '';
+      }
+    }
+    var sceneLinkWhy = String((data && data.linkWhy) || '')
+      .replace(/[\r\n]+/g, ' ')
+      .substring(0, 180);
+    var scene = String((data && data.sceneHint) || '').trim();
+    if (!scene) return null;
+    scene = scene.replace(/袋を手前に/g, '包材は盛り付けの後ろ').replace(/袋を手前/g, '包材は盛り付けの後ろ');
+    if (cause) {
+      if (scene.indexOf('包材') < 0) scene += '包材は後ろ。';
+      if (gift && scene.indexOf('箱') < 0) scene += '包んだ箱を商品の横に置く。';
+      scene = scene.replace(/手渡す手元/g, '包んだ箱').replace(/顔は出す/g, '');
+    } else {
+      if (!gift && scene.indexOf('包材は盛り付けの後ろ') < 0) scene = scene.replace(/。$/, '') + '。包材は盛り付けの後ろ。';
+      if (!gift && scene.indexOf('個品見本') < 0) scene = scene.replace(/。$/, '') + '。小皿は個品見本（料理ではない）。';
+    }
+    if (dish && scene.indexOf(dish) < 0) scene = '添える料理は' + dish + '。' + scene;
+    if (cause) scene = b5AppendSceneDrawRules_(scene);
+    if (dish && picked && picked.mainIngredient && !b5SceneUsesIngredient_(picked.mainIngredient, scene)) {
+      Logger.log('[b5RemakeAlign_] scene empty ingredient=' + picked.mainIngredient);
+      dish = '';
+      src = '';
+      var bare = {};
+      var bk;
+      for (bk in p) {
+        if (Object.prototype.hasOwnProperty.call(p, bk)) bare[bk] = p[bk];
+      }
+      bare.dishName = '';
+      bare.dish = '';
+      scene = b5SceneFromPersona_(bare, materials);
+    }
+    return {
+      sceneHint: scene,
+      sceneLinkWhy: sceneLinkWhy,
+      dishName: dish,
+      dishEvidence: dish
+        ? String((data && data.dishEvidence) || (picked && picked.evidence) || '')
+        : '',
+      dishSourceUrl: dish ? src : '',
+      sceneLayout: layout,
+      dishSource: dish ? (picked && picked.sourceTier) || 'pool' : '',
+      dishPartSku: dish
+        ? String((p && p.dishPartSku) || (picked && picked.partSku) || '')
+        : '',
+      dishPartName: dish
+        ? String((p && p.dishPartName) || (picked && picked.partNameBase) || '')
+        : '',
+      dishPartJan: dish
+        ? String((p && p.dishPartJan) || (picked && picked.partJan) || '')
+        : ''
+    };
+  } catch (eSc) {
+    Logger.log('[b5GeminiSceneDish_] ' + String(eSc && eSc.message ? eSc.message : eSc));
+    return null;
+  }
+}
+
+/** 得たい結果が食事か。買い置きの語は見ない。 */
+function b5MealErrand_(errand) {
+  return /晩酌|食事|一皿|食卓|朝食|昼食|夕食|夜食|軽食|つまみ|肴/.test(String(errand || ''));
+}
+
+/** 個品の素材。商品名の括弧内。売り文句（高タンパク等）は素材にしない。 */
+function b5PieceMarks_(materials) {
+  var name = String((materials && materials.name) || '');
+  var m = name.match(/[（(]([^）)]+)[）)]/);
+  var raw = m ? m[1] : '';
+  var bits = raw.split(/[・／/、,，\s　]+/);
+  var drop = ['高タンパク', '低糖質', 'しっとり', 'ソフト削り', 'ソフト', 'ヘルシー', '食感', '低カロリー', '無添加', '使用', '国産'];
+  var out = [];
+  var seen = {};
+  var i;
+  var j;
+  for (i = 0; i < bits.length; i++) {
+    var rest = String(bits[i] || '').trim();
+    for (j = 0; j < drop.length; j++) rest = rest.split(drop[j]).join('');
+    rest = rest.replace(/^[なの・]+|[なの・]+$/g, '');
+    if (b5ZenkakuLen_(rest) < 2 || seen[rest]) continue;
+    seen[rest] = true;
+    out.push(rest);
+  }
+  Logger.log('[b5Piece_] marks=' + (out.join('、') || '-'));
+  return out;
+}
+
+function b5TextHasAllPieces_(text, marks) {
+  var t = String(text || '');
+  var i;
+  if (!marks || !marks.length) return false;
+  for (i = 0; i < marks.length; i++) {
+    if (!marks[i] || t.indexOf(marks[i]) < 0) return false;
+  }
+  return true;
+}
+
+/** マスタか公式ページにある食べ方だけ。新しい料理名は作らない。 */
+function b5DishCandidatesForRequest_(materials, p, pool) {
+  var out = [];
+  var i;
+  for (i = 0; i < (pool || []).length; i++) {
+    var name = String(pool[i].dishName || '').trim();
+    if (!name || b5DishNameBanned_(name)) continue;
+    var partName = String(pool[i].partNameBase || '').trim();
+    out.push({
+      kind: 'pool',
+      dishName: name,
+      sourceUrl: String(pool[i].sourceUrl || ''),
+      usedPieces: '',
+      partSku: String(pool[i].partSku || ''),
+      partNameBase: partName,
+      partJan: String(pool[i].partJan || '')
+    });
+    Logger.log(
+      '[b5DishCand_] i=' +
+        (p && p._candI != null ? p._candI : '-') +
+        ' kind=pool dish=' +
+        name +
+        (partName ? ' part=' + partName : '')
+    );
+  }
+  return out;
+}
+
+/** 空の料理選択（フィールドそろえ用）。 */
+function b5EmptyDishPick_() {
+  return { dishName: '', sourceUrl: '', partSku: '', partNameBase: '', partJan: '' };
+}
+
+/**
+ * 画面初期の案レ点をONにする（再作成用に外した selected=false の残りを消す）。
+ * @param {Array} proposals
+ * @return {Array}
+ */
+function b5MarkProposalsSelectedForUi_(proposals) {
+  if (!proposals || !proposals.length) return proposals || [];
+  for (var i = 0; i < proposals.length; i++) {
+    if (!proposals[i]) continue;
+    proposals[i].selected = true;
+  }
+  return proposals;
+}
+
+/**
+ * 画面の料理ラジオ用。候補が空の案へプールから付け直す（再作成・再利用で欠ける対策）。
+ * 料理名は変えない。候補リストだけ補う。
+ * @param {Object} materials
+ * @param {Array} proposals
+ * @return {Array}
+ */
+function b5EnsureDishCandidatesOnProposals_(materials, proposals) {
+  if (!proposals || !proposals.length) return proposals || [];
+  if (!b5IsFoodMaterials_(materials)) return proposals;
+  var need = false;
+  var i;
+  for (i = 0; i < proposals.length; i++) {
+    if (!((proposals[i] || {}).dishCandidates || []).length) {
+      need = true;
+      break;
+    }
+  }
+  if (!need) return proposals;
+  var pool = materials._recipePoolUi;
+  if (!pool) {
+    try {
+      pool = b5BuildMixAwareRecipePool_(materials) || [];
+    } catch (ePool) {
+      pool = [];
+      Logger.log(
+        '[b5EnsureDishCand_] pool ' + String(ePool && ePool.message ? ePool.message : ePool)
+      );
+    }
+    materials._recipePoolUi = pool;
+  }
+  for (i = 0; i < proposals.length; i++) {
+    var p = proposals[i] || {};
+    if ((p.dishCandidates || []).length) continue;
+    p._candI = i;
+    var cands = b5DishCandidatesForRequest_(materials, p, pool) || [];
+    var dn = String(p.dishName || p.dish || '').trim();
+    if (dn) {
+      var found = false;
+      var k;
+      for (k = 0; k < cands.length; k++) {
+        if (String((cands[k] || {}).dishName || '').trim() === dn) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        cands.unshift({
+          kind: 'keep',
+          dishName: dn,
+          sourceUrl: String(p.dishSourceUrl || ''),
+          usedPieces: '',
+          partSku: String(p.dishPartSku || ''),
+          partNameBase: String(p.dishPartName || ''),
+          partJan: String(p.dishPartJan || '')
+        });
+      }
+    }
+    p.dishCandidates = cands;
+    proposals[i] = p;
+    Logger.log(
+      '[b5EnsureDishCand_] i=' + i + ' n=' + cands.length + ' dish=' + (dn || '-')
+    );
+  }
+  return proposals;
+}
+
+/** 状況に合う既存の食べ方を1つ。候補に無い名前は残さない。同じ料理は1案だけ。 */
+function b5PickDishForSituation_(p, candidates, usedDishes) {
+  var names = [];
+  var byName = {};
+  var i;
+  usedDishes = usedDishes || [];
+  if (!b5SituationOf_(p)) {
+    Logger.log('[b5DishPick_] empty reason=no_situation');
+    return b5EmptyDishPick_();
+  }
+  for (i = 0; i < (candidates || []).length; i++) {
+    var nm = String(candidates[i].dishName || '').trim();
+    if (!nm || usedDishes.indexOf(nm) >= 0 || byName[nm]) continue;
+    byName[nm] = candidates[i];
+    names.push(nm);
+  }
+  if (!names.length) {
+    Logger.log('[b5DishPick_] empty reason=none');
+    return b5EmptyDishPick_();
+  }
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) {
+    Logger.log('[b5DishPick_] empty reason=no_api');
+    return b5EmptyDishPick_();
+  }
+  var candLines = [];
+  for (i = 0; i < names.length; i++) {
+    var row = byName[names[i]] || {};
+    var owner = String(row.partNameBase || '').trim();
+    candLines.push(owner ? names[i] + '（構成:' + owner + '）' : names[i]);
+  }
+  var got = b5GeminiFlags_(
+    '状況に合う食べ方を1つ選ぶ。JSONだけ。\n' +
+      '{"dishName":""}\n' +
+      'dishNameは候補の名前そのもの（括弧の構成名は含めない）。合うものが無ければ空。新しい名前は作らない。\n' +
+      '状況:' + b5SituationOf_(p) + '\n' +
+      '得たい結果:' + (b5ErrandOf_(p) || '') + '\n' +
+      '候補:' + candLines.join('、'),
+    'b5DishPick_'
+  );
+  var chosen = String((got && got.dishName) || '').trim();
+  if (!byName[chosen]) {
+    Logger.log('[b5DishPick_] empty reason=no_fit raw=' + (chosen || '-'));
+    return b5EmptyDishPick_();
+  }
+  var hit = byName[chosen];
+  Logger.log(
+    '[b5DishPick_] dish=' +
+      chosen +
+      (hit.partNameBase ? ' part=' + hit.partNameBase : '')
+  );
+  return {
+    dishName: chosen,
+    sourceUrl: String(hit.sourceUrl || ''),
+    partSku: String(hit.partSku || ''),
+    partNameBase: String(hit.partNameBase || ''),
+    partJan: String(hit.partJan || '')
+  };
+}
+
+/**
+ * @param {number[]|null|undefined} onlyIndexes
+ * @return {Object|null} index→true。null なら全件対象
+ */
+function b5OnlyIndexSet_(onlyIndexes) {
+  if (!onlyIndexes || !onlyIndexes.length) return null;
+  var s = {};
+  var i;
+  for (i = 0; i < onlyIndexes.length; i++) {
+    var n = parseInt(onlyIndexes[i], 10);
+    if (!isNaN(n) && n >= 0) s[n] = true;
+  }
+  return Object.keys(s).length ? s : null;
+}
+
+function b5EnrichSceneAndDishBatch_(materials, proposals, onlyIndexes) {
+  if (!proposals || !proposals.length) return proposals || [];
+  var onlySet = b5OnlyIndexSet_(onlyIndexes);
+  if (!b5IsFoodMaterials_(materials)) {
+    b5OfficialWhyBump_(materials, 'not_food', 5);
+    b5OfficialNote_(materials, 'category=' + String((materials && materials.category) || ''));
+    b5WriteOfficialDiagSheet_(materials);
+    for (var nf = 0; nf < proposals.length; nf++) {
+      if (onlySet && !onlySet[nf]) continue;
+      if (!proposals[nf].sceneHint || /袋を手前/.test(String(proposals[nf].sceneHint))) {
+        proposals[nf].sceneHint = b5SceneFromPersona_(proposals[nf], materials);
+      }
+    }
+    return proposals;
+  }
+  var recipePool = [];
+  // 部分再作成は料理検索プールを回さない（1件なのに全件相当の待ちを防ぐ）
+  if (!onlySet) {
+    try {
+      recipePool = b5BuildMixAwareRecipePool_(materials);
+    } catch (ePool) {
+      b5OfficialNote_(materials, 'pool_exception ' + String(ePool && ePool.message ? ePool.message : ePool).slice(0, 80));
+      if (!materials._officialWhy) materials._officialWhy = 'pool_exception';
+      b5WriteOfficialDiagSheet_(materials);
+      Logger.log('[b5EnrichSceneAndDishBatch_] pool ' + String(ePool && ePool.message ? ePool.message : ePool));
+    }
+  } else {
+    Logger.log('[b5EnrichSceneAndDishBatch_] remake skip recipe pool n=' + onlyIndexes.length);
+  }
+  var usedDishes = [];
+  var usedLayouts = [];
+  var judgedBy = [];
+  var i;
+  for (i = 0; i < proposals.length; i++) {
+    var p = proposals[i];
+    if (onlySet && !onlySet[i]) {
+      var keepDish = String(p.dishName || p.dish || '').trim();
+      if (keepDish) usedDishes.push(keepDish);
+      if (p.sceneLayout) usedLayouts.push(String(p.sceneLayout));
+      continue;
+    }
+    if (!p.errand && !p.personaErrand) {
+      p.errand = b5ErrandOf_(p);
+      p.personaErrand = p.errand;
+    }
+    Logger.log(
+      '[b5Text_] i=' +
+        i +
+        ' who=' +
+        String(p.appealWho || p.personaShort || '').replace(/[\r\n]+/g, ' ').substring(0, 80) +
+        ' class=' +
+        String(p.useClass || '-') +
+        ' drop=' +
+        String(p.personaDrop || '-')
+    );
+    Logger.log('[b5Text_] i=' + i + ' trouble=' + String(p.appealTrouble || '').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    Logger.log('[b5Text_] i=' + i + ' situation=' + String(b5SituationOf_(p) || '-').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    Logger.log('[b5Text_] i=' + i + ' errand=' + String(b5ErrandOf_(p) || '').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    Logger.log('[b5Text_] i=' + i + ' why=' + String(p.whyAppeal || '').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    Logger.log('[b5Text_] i=' + i + ' catch=' + String(p.catch || '').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    Logger.log('[b5Text_] i=' + i + ' sales=' + String(p.salesTalk || '').replace(/[\r\n]+/g, ' ').substring(0, 180));
+    var judged;
+    // 部分再作成: 既存の料理を維持し、場面文だけ更新（ラジオ用候補は後で ensure）
+    if (onlySet && String(p.dishName || p.dish || '').trim()) {
+      var keepD = String(p.dishName || p.dish || '').trim();
+      judged = {
+        ok: true,
+        fits: {},
+        rest: {},
+        order: [],
+        derived: {
+          dishName: keepD,
+          sourceUrl: String(p.dishSourceUrl || ''),
+          sourceTier: String(p.dishSource || 'keep'),
+          evidence: String(p.dishEvidence || ''),
+          partSku: String(p.dishPartSku || ''),
+          partNameBase: String(p.dishPartName || ''),
+          partJan: String(p.dishPartJan || '')
+        }
+      };
+    } else if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+      p._candI = i;
+      p.dishCandidates = b5DishCandidatesForRequest_(materials, p, recipePool);
+      var pickedDish = b5PickDishForSituation_(p, p.dishCandidates, usedDishes);
+      p.dish = pickedDish.dishName || '';
+      p.dishName = p.dish;
+      p.dishSourceUrl = pickedDish.sourceUrl || '';
+      p.dishSource = p.dish ? 'pool' : '';
+      p.dishPartSku = p.dish ? String(pickedDish.partSku || '') : '';
+      p.dishPartName = p.dish ? String(pickedDish.partNameBase || '') : '';
+      p.dishPartJan = p.dish ? String(pickedDish.partJan || '') : '';
+      judged = {
+        ok: true,
+        fits: {},
+        rest: {},
+        order: [],
+        derived: p.dish
+          ? {
+              dishName: p.dish,
+              sourceUrl: p.dishSourceUrl,
+              sourceTier: 'pool',
+              evidence: '',
+              partSku: p.dishPartSku,
+              partNameBase: p.dishPartName,
+              partJan: p.dishPartJan
+            }
+          : null
+      };
+    } else {
+      judged = b5JudgeDishFits_(materials, p, recipePool, usedDishes);
+      if (!b5DishOptionalForProposal_(p) && !b5LockedDishFromJudged_(judged, recipePool)) {
+        var once = b5RemakeDishOnce_(materials, p, recipePool, usedDishes);
+        if (once) judged.derived = once;
+      }
+    }
+    judgedBy[i] = judged;
+    var pack = b5GeminiSceneDish_(materials, p, recipePool, usedDishes, usedLayouts, judged);
+    if (pack) {
+      p.sceneHint = pack.sceneHint;
+      if (pack.sceneLinkWhy) p.sceneLinkWhy = pack.sceneLinkWhy;
+      p.sceneLayout = pack.sceneLayout;
+      p.dish = pack.dishName || '';
+      p.dishName = pack.dishName || '';
+      p.dishEvidence = pack.dishEvidence || '';
+      p.dishSourceUrl = pack.dishSourceUrl || '';
+      p.dishSource = pack.dishSource || (pack.dishName ? 'pool' : '');
+      if (p.dishName) {
+        if (pack.dishPartName) p.dishPartName = pack.dishPartName;
+        if (pack.dishPartSku) p.dishPartSku = pack.dishPartSku;
+        if (pack.dishPartJan) p.dishPartJan = pack.dishPartJan;
+      } else {
+        p.dishPartSku = '';
+        p.dishPartName = '';
+        p.dishPartJan = '';
+      }
+      p.sceneHint = b5AppendMixDishOwnerToScene_(p.sceneHint, p, materials);
+      p.sceneHint = b5SanitizeSceneNoInventWrap_(p.sceneHint);
+      b5AlignSceneToCatchOnce_(p, materials);
+      if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+        if (p.dishName) usedDishes.push(p.dishName);
+      } else if (p.dishCandidates) {
+        p.dish = '';
+        p.dishName = '';
+        p.dishSourceUrl = '';
+        p.dishSource = '';
+        p.dishPartSku = '';
+        p.dishPartName = '';
+        p.dishPartJan = '';
+      }
+      if (!getBoolScriptProperty_('B5_CAUSE_FIX', true) && pack.dishName && !p.dishCandidates) usedDishes.push(pack.dishName);
+      if (pack.sceneLayout) usedLayouts.push(pack.sceneLayout);
+    } else {
+      var errNow = b5ErrandOf_(p);
+      var picked = (!getBoolScriptProperty_('B5_CAUSE_FIX', true) && b5DishOptionalForProposal_(p))
+        ? null
+        : b5LockedDishFromJudged_(judged, recipePool);
+      if (picked && !getBoolScriptProperty_('B5_CAUSE_FIX', true) && picked.sourceTier !== 'materials') {
+        var fbSrc = String(picked.sourceUrl || '');
+        if (fbSrc && b5IsWeakOrMediaOfficialUrl_(fbSrc)) picked = null;
+        else if (!/^https?:\/\//i.test(fbSrc)) picked = null;
+      }
+      if (picked) {
+        p.dish = picked.dishName;
+        p.dishName = picked.dishName;
+        p.dishEvidence = picked.evidence || '';
+        p.dishSourceUrl = picked.sourceUrl || '';
+        p.dishSource = picked.sourceTier || 'pool';
+        p.dishPartSku = String(picked.partSku || p.dishPartSku || '');
+        p.dishPartName = String(picked.partNameBase || p.dishPartName || '');
+        p.dishPartJan = String(picked.partJan || p.dishPartJan || '');
+        usedDishes.push(picked.dishName);
+      } else {
+        p.dish = '';
+        p.dishName = '';
+        p.dishSourceUrl = '';
+        p.dishSource = '';
+        p.dishPartSku = '';
+        p.dishPartName = '';
+        p.dishPartJan = '';
+      }
+      var layoutCandidates2 = [];
+      var lj;
+      for (lj = 0; lj < B5_SCENE_LAYOUTS_.length; lj++) {
+        if (usedLayouts.indexOf(B5_SCENE_LAYOUTS_[lj]) < 0) layoutCandidates2.push(B5_SCENE_LAYOUTS_[lj]);
+      }
+      p.sceneLayout = (layoutCandidates2[0] || B5_SCENE_LAYOUTS_[0]);
+      usedLayouts.push(p.sceneLayout);
+      p.sceneHint = b5SceneFromPersona_(p, materials);
+      p.sceneHint = b5AppendMixDishOwnerToScene_(p.sceneHint, p, materials);
+      p.sceneHint = b5SanitizeSceneNoInventWrap_(p.sceneHint);
+      b5AlignSceneToCatchOnce_(p, materials);
+    }
+    Logger.log(
+      '[b5Text_] i=' +
+        i +
+        ' dish=' +
+        String(p.dishName || '-') +
+        ' dishPart=' +
+        String(p.dishPartName || '-') +
+        ' scene=' +
+        String(p.sceneHint || '').replace(/[\r\n]+/g, ' ').substring(0, 180)
+    );
+    if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) {
+      b5ReqLog_('料理', i, p.dishName ? 'ok' : 'empty', String(p.useClass || ''), p.dishName || '-');
+      b5ReqLog_('場面', i, p.situation ? 'ok' : 'empty', '', p.sceneHint || '');
+    }
+    try {
+      Utilities.sleep(150);
+    } catch (eSl) {}
+    proposals[i] = p;
+  }
+  for (i = 0; i < proposals.length; i++) {
+    var left = proposals[i];
+    if (left.dishName) continue;
+    if (b5DishOptionalForProposal_(left)) continue;
+    Logger.log('[b5EnrichSceneAndDishBatch_] leftover empty key=' + b5ProposalKey_(left));
+  }
+  return b5EnsureDishCandidatesOnProposals_(materials, proposals);
+}
 
 function b5DiagLog_(fn, t0, state, extra) {
   var ms = typeof t0 === 'number' ? Math.round(Date.now() - t0) : -1;
@@ -37642,42 +44750,3005 @@ function b5ZenkakuSlice_(s, maxN) {
   return out;
 }
 
-/** 提案ダイアログ用。画像焼き込み時はレイアウトで短縮してよい。 */
-var B5_PROPOSE_CATCH_MIN_ = 12;
-var B5_PROPOSE_CATCH_MAX_ = 36;
+/**
+ * S15: 語・文の途中切れか（virt looks_incomplete_ と同型）。
+ * @param {string} s
+ * @return {boolean}
+ */
+function b5LooksIncomplete_(s) {
+  var t = String(s || '').trim();
+  if (!t) return true;
+  if (/[・／、。（「『]$/.test(t)) return true;
+  if (/[てにをはがのとでもへや]$/.test(t)) return true;
+  if (/(のお|をご|がお)$/.test(t)) return true;
+  if (
+    /[削燻分旨溢逸整進彩添恵立仕付]$/.test(t) &&
+    !/(厚削り|使い分け|進む|整う|彩る|溢れる|旨味|旨み|恵み|仕立て|味付け)$/.test(t)
+  ) {
+    return true;
+  }
+  if (/(の深い|ぶり味|かつお味|まぐろ味|だしが|味が|深いコ|しっとり食|とぶ|まぐろとぶ)$/.test(t)) {
+    return true;
+  }
+  if (/[食]$/.test(t) && !/(食感|食卓|食事|食品|美食)$/.test(t)) return true;
+  if (/(そのまま出|すぐ使|手が込|味が染)$/.test(t)) return true;
+  if (/[出]$/.test(t) && !/(出荷|出品|出来|出発)$/.test(t)) return true;
+  if (/(なら|ので|ため)$/.test(t)) return true;
+  if (/[。、][ぁ-んァ-ヶ一-龥]{1,2}$/.test(t)) return true;
+  if (/(かつ|まぐ|ぶりと|おと)$/.test(t)) return true;
+  if (
+    /[ぁ-ん]$/.test(t) &&
+    !/(る|た|だ|い|く|す|む|う|つ|ぬ|ぶ|ぐ|ん|め|よ|ね|な|か|ば|ら|り|れ|ろ|っ|ー)$/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 字数上限で切ったあと途切れなら戻す。無理なら空（スライス合格禁止）。
+ * @param {string} s
+ * @param {number} maxN
+ * @param {number=} minN
+ * @return {string}
+ */
+function b5ZenkakuSliceComplete_(s, maxN, minN) {
+  var raw = String(s || '').trim();
+  var min = minN || 0;
+  if (!raw) return '';
+  if (b5ZenkakuLen_(raw) <= maxN && !b5LooksIncomplete_(raw)) return raw;
+  var cut = b5ZenkakuSlice_(raw, maxN);
+  while (cut && b5LooksIncomplete_(cut)) cut = cut.slice(0, -1);
+  if (b5LooksIncomplete_(cut) || (min && b5ZenkakuLen_(cut) < min)) {
+    var seps = ['。', '！', '？', '】', '、', '　'];
+    for (var si = 0; si < seps.length; si++) {
+      var sep = seps[si];
+      var i = cut.lastIndexOf(sep);
+      if (i < 3) continue;
+      var cand = cut.substring(0, i + (sep === '、' ? 0 : 1)).replace(/、+$/, '');
+      if (sep === '】') {
+        cand = cut.substring(0, i + 1);
+        if (b5ZenkakuLen_(cand) < min) continue;
+      }
+      if (!b5LooksIncomplete_(cand) && b5ZenkakuLen_(cand) >= min) return cand;
+    }
+    return '';
+  }
+  if (min && b5ZenkakuLen_(cut) < min) return '';
+  return cut;
+}
+
+/**
+ * セールスから【】見出しを除去（S17）。
+ * @param {string} s
+ * @return {string}
+ */
+function b5StripSalesBrackets_(s) {
+  return String(s || '')
+    .replace(/【[^】]*】/g, '')
+    .trim()
+    .replace(/\s+/g, '');
+}
+
+/** キャッチから【】だけ外す。中の文字と続きは残す。 */
+function b5StripCatchBrackets_(s) {
+  return String(s || '')
+    .replace(/【([^】]*)】/g, '$1')
+    .replace(/[【】]/g, '')
+    .trim();
+}
+
+/**
+ * ミックス: 料理に載せる構成を場面文へ明示。
+ * @param {string} scene
+ * @param {Object} p
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5AppendMixDishOwnerToScene_(scene, p, materials) {
+  var owner = String((p && p.dishPartName) || '').trim();
+  var parts = (materials && materials.comboParts) || [];
+  if (!owner || !parts || parts.length < 2) return String(scene || '');
+  var s = String(scene || '');
+  if (s.indexOf('載せるのは') >= 0) return s;
+  var line = '添える料理に載せるのは' + owner + 'だけ。他の構成は小皿の見本のみ。';
+  if (!s) return line;
+  return s.replace(/。?$/, '。') + line;
+}
+
+/**
+ * 画面で料理ラジオを変えたとき、場面文の料理名／載せる構成だけ合わせる（Geminiは呼ばない）。
+ * @param {{sceneHint?:string,oldDish?:string,newDish?:string,dishPartName?:string,dishPartSku?:string,dishPartJan?:string,comboParts?:Array}} payload
+ * @return {{ok:boolean,sceneHint:string}}
+ */
+function b5AdaptSceneHintForDishChange_(payload) {
+  payload = payload || {};
+  var scene = String(payload.sceneHint || '').trim();
+  var oldD = String(payload.oldDish || '').trim();
+  var newD = String(payload.newDish || '').trim();
+  function escRe_(s) {
+    return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  if (oldD && newD && oldD !== newD) {
+    scene = scene.split(oldD).join(newD);
+  }
+  if (oldD && !newD) {
+    scene = scene.replace(new RegExp('添える料理は' + escRe_(oldD) + '。?', 'g'), '');
+    scene = scene.split(oldD).join('商品');
+  }
+  if (newD) {
+    if (/添える料理は[^。]*/.test(scene)) {
+      scene = scene.replace(/添える料理は[^。]*/, '添える料理は' + newD);
+    } else if (scene.indexOf(newD) < 0) {
+      scene = ('添える料理は' + newD + '。' + scene).replace(/。+/g, '。');
+    }
+  }
+  scene = scene.replace(/添える料理に載せるのは[^。]*。?/g, '');
+  if (newD && String(payload.dishPartName || '').trim()) {
+    scene = b5AppendMixDishOwnerToScene_(
+      scene,
+      {
+        dishPartName: String(payload.dishPartName || ''),
+        dishPartSku: String(payload.dishPartSku || ''),
+        dishPartJan: String(payload.dishPartJan || ''),
+        dishName: newD,
+        dish: newD
+      },
+      { comboParts: payload.comboParts || [] }
+    );
+  }
+  scene = b5SanitizeSceneNoInventWrap_(scene);
+  return { ok: true, sceneHint: String(scene || '').trim() };
+}
+
+/** 場面文から創作個包装の言い回しを落とす。 */
+function b5SanitizeSceneNoInventWrap_(scene) {
+  var s = String(scene || '');
+  if (!s) return s;
+  s = s.replace(/個包装から出した/g, '見本どおりの');
+  s = s.replace(/個包装を開けた/g, '見本どおりの');
+  s = s.replace(/個包装のまま/g, '見本どおりの個品');
+  return s;
+}
+
+/**
+ * キャッチ／場面の「場」トークン（同一用事・場の一致用）。
+ * @param {string} text
+ * @return {string[]}
+ */
+function b5PlaceTokensFromText_(text) {
+  var s = String(text || '');
+  var needles = [
+    'デスク',
+    '書斎',
+    '机',
+    'リビング',
+    'サイドテーブル',
+    'ローテーブル',
+    '食卓',
+    'ダイニング',
+    'キッチン',
+    'ベッド',
+    'ベッドサイド',
+    'ソファ',
+    '晩酌',
+    '夜',
+    '朝',
+    'お茶'
+  ];
+  var out = [];
+  var i;
+  for (i = 0; i < needles.length; i++) {
+    if (s.indexOf(needles[i]) >= 0) out.push(needles[i]);
+  }
+  return out;
+}
+
+/**
+ * キャッチの場と場面の場が食い違うか。
+ * @param {string} catchText
+ * @param {string} scene
+ * @return {boolean}
+ */
+function b5SceneConflictsCatchPlace_(catchText, scene) {
+  var cTok = b5PlaceTokensFromText_(catchText);
+  var sTok = b5PlaceTokensFromText_(scene);
+  if (!cTok.length || !sTok.length) return false;
+  var i;
+  for (i = 0; i < cTok.length; i++) {
+    if (String(scene || '').indexOf(cTok[i]) >= 0) return false;
+  }
+  return true;
+}
+
+/**
+ * S10: 場面をキャッチの場に合わせて1回だけ直す。
+ * @param {Object} p
+ * @param {Object} materials
+ * @return {Object}
+ */
+function b5AlignSceneToCatchOnce_(p, materials) {
+  p = p || {};
+  if (p.sceneCatchAligned) return p;
+  var catchText = String(p.catch || p.catchImage || '').trim();
+  var scene = String(p.sceneHint || '').trim();
+  if (!catchText || !scene) return p;
+  if (!b5SceneConflictsCatchPlace_(catchText, scene)) return p;
+  p.sceneCatchAligned = true;
+  if (!getGeminiApiKey()) {
+    Logger.log('[b5AlignSceneToCatchOnce_] skip no gemini catch=' + catchText.slice(0, 40));
+    return p;
+  }
+  var cTok = b5PlaceTokensFromText_(catchText).join('／');
+  var prompt =
+    '食品ECのメイン画像用。sceneHintだけ直す。JSONのみ。\n' +
+    '{"sceneHint":""}\n' +
+    'キャッチ（場の正）: ' +
+    catchText +
+    '\nキャッチの場トークン: ' +
+    (cTok || '（なし）') +
+    '\n今の場面（不一致）: ' +
+    scene +
+    '\nルール: キャッチの場に合わせた写真指示1〜3文。売文禁止。料理名は今の場面にあれば残す。' +
+    '商品の見本を前、包材は後ろ。顔と手元は出さない。新しい場を発明しない。\n' +
+    '商品名: ' +
+    String((materials && materials.name) || '');
+  try {
+    var res = b5CallGeminiPersona_(prompt);
+    var raw = String((res && res.text) || '').trim();
+    var m = raw.match(/\{[\s\S]*\}/);
+    if (!m) {
+      Logger.log('[b5AlignSceneToCatchOnce_] no json');
+      return p;
+    }
+    var obj = JSON.parse(m[0]);
+    var next = String((obj && obj.sceneHint) || '').trim();
+    if (!next || next.length < 12) {
+      Logger.log('[b5AlignSceneToCatchOnce_] empty rewrite');
+      return p;
+    }
+    if (b5SceneConflictsCatchPlace_(catchText, next)) {
+      Logger.log('[b5AlignSceneToCatchOnce_] still conflict after rewrite');
+      return p;
+    }
+    p.sceneHint = b5SanitizeSceneNoInventWrap_(next);
+    p.sceneCatchAlignFix = 'once';
+    Logger.log(
+      '[b5AlignSceneToCatchOnce_] fixed catch=' +
+        catchText.slice(0, 40) +
+        ' scene=' +
+        String(p.sceneHint || '').replace(/[\r\n]+/g, ' ').slice(0, 120)
+    );
+  } catch (eAlign) {
+    Logger.log('[b5AlignSceneToCatchOnce_] ' + String(eAlign && eAlign.message ? eAlign.message : eAlign));
+  }
+  return p;
+}
+
+/** 絵の指示。商品名では分けない。 */
+function b5SceneDrawRules_() {
+  return (
+    '商品の見本を前に置く。包材は見本の後ろ。袋を並べて主役にしない。組み合わせでも個品は種類が分かればよい。顔と手渡す手元は出さない。描く物はその案の状況の場だけ。選んだ食べ方と別の食べ物は足さない。状況の文は画像の文字にしない。' +
+    '小皿の主役は開封後の中身。添える料理の上の具も見本の1片。一般トッピングに寄せるな。' +
+    '個包装の見本があるときだけ皿の横か後ろに1〜2個置く（小皿に混ぜるな）。カメラ最近傍は開封後の個品。個包装はそれより手前に出すな。見本に無い空気だまりを作るな。山にしない。見本が無い個包装は描くな。'
+  );
+}
+
+/**
+ * 旧WRAP置き（小皿混ぜ／横・周り）を場面文から落とす。商品固定なし。
+ * @param {string} scene
+ * @return {string}
+ */
+function b5SanitizeWrapPlaceInScene_(scene) {
+  var s = String(scene || '');
+  if (!s) return '';
+  s = s.replace(/個包装の見本があるときだけ皿の横[・･／]?周りに[1１][〜～\-][2２]個置くか小皿に少し混ぜて出せ[。．]?/g, '');
+  s = s.replace(/個包装の見本があるときだけ皿の横か後ろに[1１][〜～\-][2２]個置くか小皿に少し混ぜて出せ[。．]?/g, '');
+  s = s.replace(/個包装の見本があるときだけ皿の横[・･／]?周りに置くか小皿に少し混ぜて出せ[。．]?/g, '');
+  s = s.replace(/小皿に少し混ぜて出せ[。．]?/g, '');
+  s = s.replace(/。{2,}/g, '。');
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
+function b5AppendSceneDrawRules_(scene) {
+  var s = b5SanitizeWrapPlaceInScene_(String(scene || '').trim());
+  var rules = b5SceneDrawRules_();
+  var hasNewWrap = s.indexOf('小皿に混ぜるな') >= 0 && s.indexOf('カメラ最近傍') >= 0;
+  if (s.indexOf('見本を前') >= 0 && hasNewWrap) return s;
+  if (!s) return rules;
+  if (hasNewWrap) return s;
+  return s.replace(/。?$/, '。') + rules;
+}
+
+/**
+ * 希望枠／フォールバック字数＋完結。
+ * @return {{ok:boolean,mode:string}}
+ */
+function b5CopyLengthOk_(text, prefMin, prefMax, fallbackMax) {
+  var t = String(text || '').trim();
+  if (!t || b5LooksIncomplete_(t)) return { ok: false, mode: 'incomplete' };
+  var ln = b5ZenkakuLen_(t);
+  if (ln < prefMin) return { ok: false, mode: 'short' };
+  if (ln <= prefMax) return { ok: true, mode: 'pref' };
+  if (ln <= fallbackMax) return { ok: true, mode: 'fallback' };
+  return { ok: false, mode: 'long' };
+}
+
+/**
+ * S15: 画面＝焼成。キャッチは6〜12字の1本。超えたら1回書き直し、まだ超えたら焼かない。途中で切らない。
+ * セールスは希望枠＋不成文のみフォールバック。（旧・提案12〜36／画像用別短縮は廃止）
+ */
+var B5_CATCH_PREF_MIN_ = 6;
+var B5_CATCH_PREF_MAX_ = 12;
+var B5_CATCH_FALLBACK_MAX_ = B5_CATCH_PREF_MAX_;
+var B5_SALES_PREF_MIN_ = 4;
+var B5_SALES_PREF_MAX_ = 10;
+var B5_SALES_FALLBACK_MAX_ = 12;
+/** 互換エイリアス（既存呼び出し用＝画面＝焼成の上限） */
+var B5_PROPOSE_CATCH_MIN_ = B5_CATCH_PREF_MIN_;
+var B5_PROPOSE_CATCH_MAX_ = B5_CATCH_FALLBACK_MAX_;
+var B5_CATCH_BURN_MIN_ = B5_CATCH_PREF_MIN_;
+var B5_CATCH_BURN_MAX_ = B5_CATCH_FALLBACK_MAX_;
+var B5_SALES_TALK_MIN_ = B5_SALES_PREF_MIN_;
+var B5_SALES_TALK_MAX_ = B5_SALES_FALLBACK_MAX_;
+var B5_SALES_BURN_MIN_ = B5_SALES_PREF_MIN_;
+var B5_SALES_BURN_MAX_ = B5_SALES_FALLBACK_MAX_;
+/** 目的の階段: 文案作り直し（Gemini）の合計上限（T3/T4）。画像やり直しとは別。 */
+var B5_LADDER_REWRITE_MAX_ = 3;
+/** 案の件数上限（レ点子SKU）。 */
+var B5_PROPOSE_COUNT_MAX_ = 12;
+
+/**
+ * 販売戦略ペルソナ池（ばらけ用）。画像には入れない。
+ * @param {boolean} mix
+ * @return {Array<{id:string,short:string,detail:string}>}
+ */
+function b5PersonaPool_(mix) {
+  /** virt persona_pool と同型（短文＋詳細スロット＋用事） */
+  var pool = [
+    {
+      id: 'hurry',
+      short: '忙しい日に一品足したい人',
+      errand: '平日のもう一品',
+      detail:
+        'いつどこ: 平日の夜、帰宅後の食卓\n' +
+        '誰: 30代・共働き夫婦・夕食の支度担当\n' +
+        '困り: 時間がなく品数が足りない\n' +
+        '得たい結果（用事）: 袋から出してすぐ、もう一品を足せる\n' +
+        '材料の根拠: 味付き・そのまま食べられる類の記述\n' +
+        '料理の方向: 皿に盛った一品／ご飯の横'
+    },
+    {
+      id: 'drink',
+      short: '晩酌を少し華やかにしたい人',
+      errand: '晩酌のつまみ',
+      detail:
+        'いつどこ: 仕事帰りの夜、家の食卓\n' +
+        '誰: 40代・一人暮らしまたは夫婦・晩酌をする側\n' +
+        '困り: お酒に合うつまみがパッと出ない\n' +
+        '得たい結果（用事）: すぐ出せて席が少し華やぐ\n' +
+        '材料の根拠: おつまみ・珍味・晩酌系の用途\n' +
+        '料理の方向: 小皿に盛ったおつまみ'
+    },
+    {
+      id: 'family',
+      short: '家族の食卓を広げたい人',
+      errand: '家族で分けて使う',
+      detail:
+        'いつどこ: 週末の食卓\n' +
+        '誰: 30〜40代・子どもあり世帯・食事を用意する親\n' +
+        '困り: 大人と子どもの好みが分かれる\n' +
+        '得たい結果（用事）: 同じセットから用途を分けて出せる\n' +
+        '材料の根拠: 2種構成・用途が複数ある記述\n' +
+        '料理の方向: 取り分け皿が並ぶ食卓'
+    },
+    {
+      id: 'tea',
+      short: 'お茶請け・おやつを探している人',
+      errand: '午後のお茶請け',
+      detail:
+        'いつどこ: 午後の休憩、リビング\n' +
+        '誰: 50代・夫婦二人暮らし・お茶を淹れる側\n' +
+        '困り: 甘いもの以外の軽いお茶請けが欲しい\n' +
+        '得たい結果（用事）: 軽くつまめてお茶が進む\n' +
+        '材料の根拠: おやつ・お茶請けの用途\n' +
+        '料理の方向: 湯飲みの横に小皿'
+    },
+    {
+      id: 'gift',
+      short: 'ちょっとした手土産を考える人',
+      errand: '手土産・差し入れ',
+      detail:
+        'いつどこ: 出向く前の準備、相手宅や職場へ\n' +
+        '誰: 40代・取引先や知人への挨拶役\n' +
+        '困り: 重くない・袋がきちんとして見えるものが欲しい\n' +
+        '得たい結果（用事）: 渡したときに品が良く見える\n' +
+        '材料の根拠: 袋・セット感が伝わる商品\n' +
+        '料理の方向: 袋が正面で読める置き方（料理主役にしない）'
+    },
+    {
+      id: 'cook',
+      short: '料理のアクセントに使いたい人',
+      errand: '丼やおかずのアクセント',
+      detail:
+        'いつどこ: 平日の夕飯づくり、キッチン\n' +
+        '誰: 30代・家族または自炊・料理担当\n' +
+        '困り: いつもの丼・おかずが単調\n' +
+        '得たい結果（用事）: のせる／足すだけで味が変わる\n' +
+        '材料の根拠: トッピング・ふりかけ・具材寄りの使い方\n' +
+        '料理の方向: 丼や温かいおかずの上'
+    }
+  ];
+  if (mix) {
+    pool.push({
+      id: 'mix_choice',
+      short: 'その日の気分で選べるセットを探す人',
+      errand: '2種から気分で選ぶ',
+      detail:
+        'いつどこ: 買い物後のストック、家庭の棚\n' +
+        '誰: 30〜40代・世帯の買い出し担当\n' +
+        '困り: 味が一つだと飽きる／買い足しに出たくない\n' +
+        '得たい結果（用事）: 2種入っていてその日の気分で選べる\n' +
+        '材料の根拠: ミックス構成（2種以上）\n' +
+        '料理の方向: 2袋が並び、片方を開けた小皿'
+    });
+  }
+  return pool;
+}
+
+/**
+ * 案数ぶんペルソナを重複少なく割り当て。
+ * @param {number} n
+ * @param {boolean} mix
+ * @return {Array<Object>}
+ */
+function b5AssignPersonas_(n, mix) {
+  var pool = b5PersonaPool_(!!mix);
+  var out = [];
+  var used = {};
+  var i;
+  for (i = 0; i < n; i++) {
+    var pick = null;
+    var j;
+    for (j = 0; j < pool.length; j++) {
+      if (!used[pool[j].id]) {
+        pick = pool[j];
+        break;
+      }
+    }
+    if (!pick) pick = pool[i % pool.length];
+    used[pick.id] = true;
+    out.push({
+      id: pick.id,
+      short: pick.short,
+      detail: pick.detail,
+      errand: pick.errand || ''
+    });
+  }
+  return out;
+}
+
+function b5MaterialsBlob_(materials) {
+  var m = materials || {};
+  return [
+    m.name,
+    m.maker,
+    m.feats,
+    m.kw,
+    m.yahoo,
+    m.rakuten,
+    (m.bullets || []).join(' '),
+    m.desc
+  ].join('\n');
+}
+
+function b5SlotGrounded_(text, blob) {
+  var t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  var parts = t.split(/[・、,，/／\s　]+/);
+  var i;
+  for (i = 0; i < parts.length; i++) {
+    if (parts[i].length >= 2 && String(blob || '').indexOf(parts[i]) >= 0) return t;
+  }
+  return '';
+}
+
+function b5Compact_(s) {
+  return String(s || '').replace(/[\s　・、,，/／（）()「」]+/g, '');
+}
+
+/** 商品名かメーカー名だけなら用事にしない。 */
+function b5ErrandIsIdentity_(text, materials) {
+  var t = b5Compact_(text);
+  if (t.length < 2) return true;
+  var name = b5Compact_(materials && materials.name);
+  var maker = b5Compact_(materials && materials.maker);
+  if (maker && (t === maker || (t.indexOf(maker) >= 0 && t.split(maker).join('').length < 2))) return true;
+  if (name && (t === name || name.indexOf(t) >= 0 || (t.indexOf(name) >= 0 && t.split(name).join('').length < 2))) {
+    return true;
+  }
+  return false;
+}
+
+/** 材料の使い方・場面。商品名とメーカー名は除く。語の一覧は持たない。 */
+function b5UseFacts_(materials) {
+  materials = materials || {};
+  var src = [
+    materials.kw || '',
+    materials.feats || '',
+    (materials.bullets || []).join('\n'),
+    materials.yahoo || '',
+    materials.rakuten || '',
+    materials.desc || ''
+  ].join('\n');
+  var parts = src.split(/[\n。．・、,，/／|｜\s　]+/);
+  var out = [];
+  var seen = {};
+  var i;
+  for (i = 0; i < parts.length; i++) {
+    var p = String(parts[i] || '').trim();
+    if (b5ZenkakuLen_(p) < 2 || b5ZenkakuLen_(p) > 18) continue;
+    if (b5ErrandIsIdentity_(p, materials)) continue;
+    var key = b5Compact_(p);
+    if (!key || seen[key]) continue;
+    seen[key] = true;
+    out.push(p);
+  }
+  var uses = [];
+  var rest = [];
+  var marks = b5LadderPurposeMarks_();
+  for (i = 0; i < out.length; i++) {
+    var hit = false;
+    var mi;
+    for (mi = 0; mi < marks.length; mi++) {
+      if (out[i].indexOf(marks[mi]) >= 0) {
+        hit = true;
+        break;
+      }
+    }
+    if (hit) uses.push(out[i]);
+    else rest.push(out[i]);
+  }
+  return uses.concat(rest).slice(0, 12);
+}
+
+/** すでに使った使い方と、同じか、短い方が長い方に含まれるとき。 */
+function b5FactOverlapsUsed_(fact, usedErrand) {
+  var c = b5Compact_(fact);
+  if (!c) return true;
+  var k;
+  for (k in usedErrand) {
+    if (!Object.prototype.hasOwnProperty.call(usedErrand, k)) continue;
+    var u = b5Compact_(k);
+    if (!u) continue;
+    if (c === u) return true;
+    var short = c.length <= u.length ? c : u;
+    var long = c.length <= u.length ? u : c;
+    if (short.length >= 3 && long.indexOf(short) >= 0) return true;
+  }
+  return false;
+}
+
+/** 買う人の枠だけ残す。原料名へは戻さない。 */
+function b5CompletePersonaRow_(row, used, materials) {
+  var f = String((row && row.errand) || '').trim();
+  used = used || {};
+  function take(key, val, ok) {
+    var t = String(val || '').trim();
+    if (!t || !ok || used[key + ':' + t]) return '';
+    used[key + ':' + t] = true;
+    return t;
+  }
+  row.who = take('who', row.who, b5BuyerWhoOk_(row.who, materials, f));
+  row.whenWhere = take(
+    'when',
+    row.whenWhere,
+    b5ZenkakuLen_(row.whenWhere) >= 4 && row.whenWhere !== f && row.whenWhere !== f + 'のとき' && !b5TextHasDishAlias_(row.whenWhere)
+  );
+  row.trouble = take(
+    'trouble',
+    row.trouble,
+    b5ZenkakuLen_(row.trouble) >= 6 && row.trouble !== f && row.trouble !== f + 'が足りない' && !b5TextHasDishAlias_(row.trouble)
+  );
+  row.evidence = take('ev', row.evidence, !!row.evidence) || take('ev', f, !!f);
+  row.dishDir = take(
+    'dish',
+    row.dishDir,
+    b5ZenkakuLen_(row.dishDir) >= 4 && row.dishDir !== f && row.dishDir !== f + 'に添える' && !b5TextHasDishAlias_(row.dishDir)
+  );
+  row.errand = f;
+  return row;
+}
+
+function b5DishAlreadyUsed_(name, used) {
+  var key = b5NormalizeDishName_(name);
+  if (!key) return false;
+  var i;
+  for (i = 0; i < (used || []).length; i++) {
+    if (b5NormalizeDishName_(used[i]) === key) return true;
+  }
+  return false;
+}
+
+/** 訴求の理由が枠の復唱なら落とす。空文字なら残してよい。 */
+function b5WhyAppealReason_(why, row) {
+  var t = String(why || '').trim();
+  if (!t) return 'empty';
+  if (b5ZenkakuLen_(t) < 8) return 'short';
+  if (b5TextHasDishAlias_(t)) return 'dish';
+  if (row && row.who && row.trouble && row.errand) {
+    var canned = row.who + 'は、' + row.trouble + 'ので、' + row.errand + 'を買う';
+    if (t.replace(/。+$/, '') === canned) return 'restate';
+  }
+  if (/は、.+ので、.+を買う/.test(t)) return 'restate';
+  return '';
+}
+
+function b5PersonaDetailFromSlots_(row) {
+  var r = row || {};
+  return (
+    'いつどこ: ' + (r.whenWhere || '') + '\n' +
+    '誰: ' + (r.who || '') + '\n' +
+    '起点: ' + (r.anchor || '') + '\n' +
+    '困り: ' + (r.trouble || '') + '\n' +
+    '足場: ' + (r.foothold || '') + '\n' +
+    '状況: ' + (r.situation || '') + '\n' +
+    '得たい結果（用事）: ' + (r.errand || '') + '\n' +
+    '訴求の理由: ' + (r.whyAppeal || '') + '\n' +
+    '材料の根拠: ' + (r.evidence || '') + '\n' +
+    '料理の方向: ' + (r.dishDir || '')
+  );
+}
+
+function b5ReqLog_(req, i, state, reason, detail) {
+  Logger.log(
+    '[b5Req_] req=' +
+      req +
+      ' i=' +
+      i +
+      ' state=' +
+      state +
+      (reason ? ' reason=' + reason : '') +
+      (detail ? ' detail=' + String(detail).replace(/[\r\n]+/g, ' ').substring(0, 140) : '')
+  );
+}
+
+function b5FootholdBlob_(materials) {
+  return (
+    b5MaterialsPromptBlock_(materials) +
+    '\n' +
+    String((materials && materials._officialPageText) || '').replace(/\s+/g, ' ').substring(0, 4000)
+  );
+}
+
+function b5SituationEfficacyHit_(text) {
+  var m = String(text || '').match(/健康|栄養|成長|糖質|ダイエット|血圧|免疫|罪悪感|高タンパク|高たんぱく|ヘルシー/);
+  return m ? m[0] : '';
+}
+
+function b5HandoffHit_(text) {
+  var m = String(text || '').match(/インターホン|手渡|玄関|抱えて届/);
+  return m ? m[0] : '';
+}
+
+/** 足場は材料にそのままある使い方。状況はそのあと別段で、その場の物まで導く。 */
+function b5LeadSituations_(materials, list) {
+  if (!list || !list.length) return;
+  var blob = b5FootholdBlob_(materials);
+  var candidates = [];
+  var seen = {};
+  function addCand(name, source) {
+    var s = String(name || '').trim();
+    if (!s || seen[s]) return;
+    if (blob.indexOf(s) < 0) {
+      b5ReqLog_('足場', '-', 'fail', 'not_in_materials', source + ':' + s);
+      return;
+    }
+    if (b5SituationEfficacyHit_(s) === s) {
+      b5ReqLog_('足場', '-', 'fail', 'efficacy', s);
+      return;
+    }
+    seen[s] = true;
+    candidates.push(s);
+    b5ReqLog_('足場', '-', 'ok', source, s);
+  }
+  var seeded = b5DishesFromTextBlob_(blob, '', 'materials', '');
+  var si;
+  for (si = 0; si < seeded.length; si++) addCand(seeded[si].dishName, 'materials');
+  var giftWords = ['届ける', '渡す', '贈る', '手土産', '差し入れ', '贈り物', '贈答'];
+  for (si = 0; si < giftWords.length; si++) {
+    if (blob.indexOf(giftWords[si]) >= 0) addCand(giftWords[si], 'gift');
+  }
+  if (isB5ProposeGeminiEnabled_() && getGeminiApiKey()) {
+    var listed = b5GeminiObjectArray_(
+      '材料にそのまま書いてある使い方だけを短い語で返す。JSON配列だけ。\n' +
+        '[{"phrase":""}]\n' +
+        '材料に無い語は出さない。体への効能は出さない。\n材料:\n' +
+        blob,
+      'b5FootholdList_'
+    );
+    for (si = 0; si < listed.length; si++) addCand(listed[si] && listed[si].phrase, 'list');
+  }
+  b5ReqLog_('別段', '-', 'ok', 'foothold_n=' + candidates.length, '');
+  var used = {};
+  var assigned = {};
+  if (candidates.length && isB5ProposeGeminiEnabled_() && getGeminiApiKey()) {
+    var lines = '';
+    for (si = 0; si < list.length; si++) {
+      lines +=
+        si +
+        1 +
+        '. 誰:' +
+        (list[si].appealWho || '') +
+        ' 困り:' +
+        (list[si].appealTrouble || '') +
+        ' 得たい結果:' +
+        (list[si].errand || '') +
+        '\n';
+    }
+    var picks = b5GeminiObjectArray_(
+      '各案に、候補から使い方を1つ選ぶ。JSON配列だけ。\n' +
+        '[{"i":1,"foothold":""}]\n' +
+        'footholdは候補の語そのもの。合うものが無ければ空。候補に無い語は書かない。案ごとに別の語。\n' +
+        '候補:' +
+        candidates.join('、') +
+        '\n案:\n' +
+        lines,
+      'b5FootholdPick_'
+    );
+    for (si = 0; si < picks.length; si++) {
+      var ix = parseInt(picks[si] && picks[si].i, 10);
+      if (isNaN(ix)) continue;
+      assigned[ix - 1] = String((picks[si] && picks[si].foothold) || '').trim();
+    }
+  }
+  var sitLines = '';
+  var sitIdx = [];
+  for (si = 0; si < list.length; si++) {
+    var fh = assigned[si] || '';
+    if (candidates.indexOf(fh) < 0 || used[fh]) {
+      b5ReqLog_('足場', si, 'fail', fh ? 'not_in_candidates' : 'empty', fh || '-');
+      fh = '';
+    } else {
+      used[fh] = true;
+      b5ReqLog_('足場', si, 'ok', 'assigned', fh);
+    }
+    list[si].situation = '';
+    if (!String(list[si].appealWho || '').trim() || !String(list[si].errand || '').trim()) {
+      if (fh) delete used[fh];
+      list[si].foothold = '';
+      b5ReqLog_(
+        '買う人',
+        si,
+        'fail',
+        String(list[si].appealWho || '').trim() ? 'no_errand' : 'empty',
+        '状況は書かない'
+      );
+      continue;
+    }
+    list[si].foothold = fh;
+    if (!fh) continue;
+    sitIdx.push(si);
+    sitLines +=
+      si +
+      1 +
+      '. 足場:' +
+      fh +
+      ' 誰:' +
+      (list[si].appealWho || '') +
+      ' 困り:' +
+      (list[si].appealTrouble || '') +
+      ' 得たい結果:' +
+      (list[si].errand || '') +
+      '\n';
+  }
+  if (sitIdx.length && isB5ProposeGeminiEnabled_() && getGeminiApiKey()) {
+    var wrote = b5GeminiObjectArray_(
+      '各案の状況を、足場が決まったあとで書く。JSON配列だけ。\n' +
+        '[{"i":1,"situation":"","linkWhy":""}]\n' +
+        'linkWhyは、足場のどの語を、その人のどの場に結び付けたか。\n' +
+        '足場の語を文に残す。主語は、ネットの店で注文するその人。その人の場が見えるところまで延ばす。その場に普通にある物は、材料に名詞が無くても書いてよい。書いてよい物は、その足場の場の物だけ。別の場の物は書かない。玄関で渡す、インターホンを押す、箱を抱えて届ける、は書かない。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。\n' +
+        sitLines,
+      'b5SituationLead_'
+    );
+    var byI = {};
+    for (si = 0; si < wrote.length; si++) {
+      var wi = parseInt(wrote[si] && wrote[si].i, 10);
+      if (!isNaN(wi)) {
+        byI[wi - 1] = {
+          situation: String((wrote[si] && wrote[si].situation) || '').trim(),
+          linkWhy: String((wrote[si] && wrote[si].linkWhy) || '')
+            .replace(/[\r\n]+/g, ' ')
+            .substring(0, 180)
+        };
+      }
+    }
+    var retryLines = '';
+    var retryIdx = [];
+    for (si = 0; si < sitIdx.length; si++) {
+      var at = sitIdx[si];
+      var text = (byI[at] && byI[at].situation) || '';
+      if (byI[at] && byI[at].linkWhy) list[at].situationLinkWhy = byI[at].linkWhy;
+      var hit = b5SituationEfficacyHit_(text);
+      var hand = b5HandoffHit_(text);
+      var missing = text.indexOf(list[at].foothold) < 0;
+      if (hit || hand || missing || !text) {
+        b5ReqLog_(
+          '状況',
+          at,
+          'fail',
+          hit ? 'efficacy:' + hit : hand ? 'handoff:' + hand : missing ? 'foothold_missing' : 'empty',
+          text || '-'
+        );
+        retryIdx.push(at);
+        retryLines += at + 1 + '. 足場:' + list[at].foothold + ' 現状:' + (text || '空') + '\n';
+      } else {
+        list[at].situation = text;
+        b5ReqLog_('状況', at, 'ok', '', text);
+        b5ReqLog_('場の物', at, 'note', '', text);
+      }
+    }
+    if (retryIdx.length) {
+      var again = b5GeminiObjectArray_(
+        '落ちた案だけ状況を書き直す。JSON配列だけ。\n' +
+          '[{"i":1,"situation":"","linkWhy":""}]\n' +
+          'linkWhyは、足場のどの語を、その人のどの場に結び付けたか。\n' +
+          '足場の語を残す。主語は、ネットの店で注文するその人。その足場の場の物だけ足す。玄関で渡す、インターホンを押す、箱を抱えて届ける、は書かない。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。\n' +
+          retryLines,
+        'b5SituationRetry_'
+      );
+      var againBy = {};
+      for (si = 0; si < again.length; si++) {
+        var ai = parseInt(again[si] && again[si].i, 10);
+        if (!isNaN(ai)) {
+          againBy[ai - 1] = {
+            situation: String((again[si] && again[si].situation) || '').trim(),
+            linkWhy: String((again[si] && again[si].linkWhy) || '')
+              .replace(/[\r\n]+/g, ' ')
+              .substring(0, 180)
+          };
+        }
+      }
+      for (si = 0; si < retryIdx.length; si++) {
+        var rt = retryIdx[si];
+        var text2 = (againBy[rt] && againBy[rt].situation) || '';
+        if (againBy[rt] && againBy[rt].linkWhy) list[rt].situationLinkWhy = againBy[rt].linkWhy;
+        var hit2 = b5SituationEfficacyHit_(text2);
+        var hand2 = b5HandoffHit_(text2);
+        var missing2 = text2.indexOf(list[rt].foothold) < 0;
+        if (hit2 || hand2 || missing2 || !text2) {
+          list[rt].situation = '';
+          b5ReqLog_(
+            '状況',
+            rt,
+            'fail',
+            'retry:' + (hit2 ? 'efficacy:' + hit2 : hand2 ? 'handoff:' + hand2 : missing2 ? 'foothold_missing' : 'empty'),
+            text2 || '-'
+          );
+        } else {
+          list[rt].situation = text2;
+          b5ReqLog_('状況', rt, 'ok', 'retry', text2);
+          b5ReqLog_('場の物', rt, 'note', '', text2);
+        }
+      }
+    }
+  }
+  for (si = 0; si < list.length; si++) {
+    var p = list[si];
+    p.personaDetail =
+      '訴求方針: ' +
+      (p.appealPolicy || '') +
+      '\n' +
+      b5PersonaDetailFromSlots_({
+        whenWhere: p.whenWhere || '',
+        who: p.appealWho || '',
+        trouble: p.appealTrouble || '',
+        foothold: p.foothold || '',
+        situation: p.situation || '',
+        errand: p.errand || '',
+        whyAppeal: p.whyAppeal || ''
+      });
+  }
+}
+
+function b5AnchorInMaterials_(anchor, materials, page) {
+  var a = String(anchor || '').trim();
+  if (!a) return '';
+  var blob = b5MaterialsPromptBlock_(materials) + '\n' + String(page || '');
+  return blob.indexOf(a) >= 0 ? a : '';
+}
+
+function b5JoinGeminiTextParts_(parts) {
+  var out = '';
+  var textParts = 0;
+  var i;
+  var list = parts || [];
+  for (i = 0; i < list.length; i++) {
+    var part = list[i] || {};
+    if (part.thought === true) continue;
+    var t = part.text || '';
+    if (!t) continue;
+    out += t;
+    textParts++;
+  }
+  return { text: out, textParts: textParts, partCount: list.length };
+}
+
+function b5CallGeminiPersona_(prompt) {
+  var thinkOff = getBoolScriptProperty_('B5_THINK_OFF', true);
+  var thinkLabel = thinkOff ? 'minimal' : 'high';
+  var empty = { text: '', finish: '', partCount: 0, textParts: 0, thoughts: '', think: thinkLabel };
+  var apiKey = getGeminiApiKey();
+  if (!apiKey) return empty;
+  try {
+    var url =
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+      MODEL_GEMINI +
+      ':generateContent?key=' +
+      encodeURIComponent(apiKey);
+    var gen = { temperature: 0.2, maxOutputTokens: 16384 };
+    if (thinkOff) gen.thinkingConfig = { thinkingLevel: 'MINIMAL' };
+    var body = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: gen
+    };
+    var res = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true
+    });
+    var code = res.getResponseCode();
+    var bodyText = res.getContentText();
+    if (code !== 200) {
+      Logger.log('[b5CallGeminiPersona_] HTTP ' + code + ' ' + String(bodyText || '').slice(0, 180));
+      return empty;
+    }
+    var json = JSON.parse(bodyText);
+    var candidates = json.candidates;
+    if (!candidates || !candidates.length) return empty;
+    var joined = b5JoinGeminiTextParts_((candidates[0].content || {}).parts);
+    var usage = json.usageMetadata || {};
+    return {
+      text: joined.text,
+      finish: candidates[0].finishReason || '',
+      partCount: joined.partCount,
+      textParts: joined.textParts,
+      thoughts: usage.thoughtsTokenCount != null ? String(usage.thoughtsTokenCount) : '',
+      think: thinkLabel
+    };
+  } catch (eCall) {
+    Logger.log('[b5CallGeminiPersona_] ' + (eCall && eCall.message));
+    return empty;
+  }
+}
+
+function b5CompleteJsonObjects_(raw) {
+  var s = String(raw || '');
+  var start = s.indexOf('[');
+  if (start < 0) return [];
+  var out = [];
+  var i = start + 1;
+  var n = s.length;
+  while (i < n) {
+    while (
+      i < n &&
+      (s.charAt(i) === ' ' ||
+        s.charAt(i) === '\n' ||
+        s.charAt(i) === '\r' ||
+        s.charAt(i) === '\t' ||
+        s.charAt(i) === ',')
+    ) {
+      i++;
+    }
+    if (i >= n || s.charAt(i) === ']') break;
+    if (s.charAt(i) !== '{') break;
+    var begin = i;
+    var depth = 0;
+    var inStr = false;
+    var esc = false;
+    var closed = false;
+    for (; i < n; i++) {
+      var c = s.charAt(i);
+      if (inStr) {
+        if (esc) {
+          esc = false;
+          continue;
+        }
+        if (c === '\\') {
+          esc = true;
+          continue;
+        }
+        if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') {
+        inStr = true;
+        continue;
+      }
+      if (c === '{') depth++;
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) {
+          i++;
+          closed = true;
+          try {
+            var obj = JSON.parse(s.substring(begin, i));
+            if (obj && typeof obj === 'object') out.push(obj);
+          } catch (eObj) {}
+          break;
+        }
+      }
+    }
+    if (!closed || inStr) break;
+  }
+  return out;
+}
+
+function b5PersonaAsk_(materials, page, lines, count) {
+  var flowFirst = getBoolScriptProperty_('B5_FLOW_FIRST', true);
+  var schema = flowFirst
+    ? '[{"anchor":"","whenWhere":"","who":"","evidence":"","trouble":"","errand":"","whyAppeal":"","dishDir":"","useClass":"table"}]\n'
+    : '[{"anchor":"","whenWhere":"","who":"","trouble":"","errand":"","evidence":"","dishDir":"","whyAppeal":"","useClass":"table"}]\n';
+  var whenLine = flowFirst
+    ? '2. whenWhereは、その人が注文を決めるとき。食べている最中は書かない。玄関で渡す、インターホンを押す、箱を抱えて届ける、は書かない。\n'
+    : '2. whenWhereは、その人が注文を決めるとき。食べている最中は書かない。troubleは、その人が注文する理由。玄関で渡す、インターホンを押す、箱を抱えて届ける、は書かない。原料名は禁止。\n';
+  var threeLine = flowFirst
+    ? '7. 困り・得たい結果・訴求理由は、欄へ書く前に一つの流れで考える。順は、困り、それが終わる結果、その説明。考えた流れの文は返さない。根拠の次に、この3欄を続ける。料理の方向と区分は、その後ろ。troubleは、その人が注文する理由。原料名は禁止。得たい結果は1つ。二つを同時に書かない。贈り物の人に、毎日の食事の結果を書かない。\n'
+    : '7. 困り・得たい結果・訴求理由は同じ話にする。得たい結果は1つ。二つを同時に書かない。二つなら返す前に1つだけ残す。贈り物の人に、毎日の食事の結果を書かない。揃っていなければ、返す前にその3欄だけ書き直す。\n';
+  var prompt =
+    '提案画面のペルソナ。次のJSON配列だけ返す。件数はちょうど' +
+    count +
+    '。説明は付けない。\n' +
+    schema +
+    '案ごとに、材料にある売り方か使い道を1つ選び、anchorにその語を書く。その語を起点に、ネットで注文する人・困り・得たい結果・理由・区分を一つの話にする。anchorは材料にある語。材料に無い語は書かない。\n' +
+    '買う人を先に書く。使い方はそのあと。飛ばさない。\n' +
+    '1. whoは、この商品をネットの店で注文する人。年齢の幅・世帯・役目を「・」で3つつなぐ。役目は、画面で注文する役目。食べているだけの人、届いた箱を受け取るだけの人、店の人は書かない。材料に年齢が無くても、商品の売り方から想像して書く。原料名・商品名・料理名は入れない。用意した人物の一覧は使わない。案ごとに別人。\n' +
+    whenLine +
+    (getBoolScriptProperty_('B5_CAUSE_FIX', true) ? '状況はこの返答に書かない。状況は次の段で作る。\n' : '') +
+    '3. errandは得たい結果。その困りが終わる結果にする。材料・販売文・公式ページの使い方は、その困りに合うときだけ選ぶ。足りない案だけ、その困りから結果を短い文で書く。原料名・料理名だけは禁止。他の案と同じ文は禁止。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。\n' +
+    '4. evidenceは、材料か公式ページから選んだときだけその語。困りから書いたときは空。dishDirは食べ方の方向だけ。完成料理名は書かない。\n' +
+    '5. 他の案と同じ who・whenWhere・trouble は禁止。\n' +
+    '6. whyAppealは、その得たい結果が困りを終わらせる説明だけ。1文。誰・困り・用事を「は、ので、を買う」でつなぐ復唱は書かない。完成料理名は書かない。\n' +
+    threeLine +
+    '8. useClassは gift / stock / table のどれか。贈答用にネットで注文する人は gift。買い置きや気分で注文する人は stock。自分や家族の食卓のために注文する人は table。渡す動作では分けない。\n' +
+    '材料:\n' +
+    b5MaterialsPromptBlock_(materials) +
+    '\n公式ページ抜粋:\n' +
+    (page || 'なし') +
+    '\n案:\n' +
+    lines;
+  var raw = '';
+  var parsed = [];
+  var parseState = 'empty';
+  var joinOn = getBoolScriptProperty_('B5_JOIN_PARTIAL', true);
+  var finish = '';
+  var partCount = '';
+  var textParts = '';
+  var thoughts = '';
+  var think = '';
+  try {
+    if (joinOn) {
+      var pack = b5CallGeminiPersona_(prompt);
+      raw = String(pack.text || '');
+      finish = pack.finish || '';
+      partCount = String(pack.partCount != null ? pack.partCount : '');
+      textParts = String(pack.textParts != null ? pack.textParts : '');
+      thoughts = pack.thoughts || '';
+      think = pack.think || '';
+    } else {
+      raw = String(callGeminiForCPO(prompt) || '');
+    }
+    var a = raw.indexOf('[');
+    var b = raw.lastIndexOf(']');
+    if (a >= 0 && b > a) {
+      var got = JSON.parse(raw.substring(a, b + 1));
+      if (Object.prototype.toString.call(got) === '[object Array]') {
+        parsed = got;
+        parseState = parsed.length ? 'ok' : 'empty_array';
+      } else {
+        parseState = 'not_array';
+      }
+    } else if (joinOn && raw) {
+      parsed = b5CompleteJsonObjects_(raw);
+      parseState = parsed.length ? 'partial' : 'no_array';
+    } else {
+      parseState = raw ? 'no_array' : 'empty';
+    }
+  } catch (ePer) {
+    parsed = [];
+    if (joinOn && raw) {
+      parsed = b5CompleteJsonObjects_(raw);
+      parseState = parsed.length ? 'partial' : 'parse_fail';
+    } else {
+      parseState = 'parse_fail';
+    }
+    Logger.log('[b5FillPersonasFromMaterials_] parse fail ' + ePer);
+  }
+  var flat = raw.replace(/[\r\n]+/g, ' ');
+  var askLine =
+    'flow=' +
+    (flowFirst ? '1' : '0') +
+    ' join=' +
+    (joinOn ? '1' : '0') +
+    ' parse=' +
+    parseState +
+    ' back=' +
+    (parsed ? parsed.length : 0) +
+    '/' +
+    count +
+    ' parts=' +
+    partCount +
+    ' textParts=' +
+    textParts +
+    ' finish=' +
+    finish +
+    ' think=' +
+    think +
+    ' thought=' +
+    thoughts +
+    ' rawLen=' +
+    raw.length +
+    (parseState === 'ok'
+      ? ''
+      : ' head=' + flat.substring(0, 160) + ' tail=' + flat.substring(Math.max(0, flat.length - 160)));
+  if (!materials._personaAsks) materials._personaAsks = [];
+  materials._personaAsks.push(askLine);
+  Logger.log('[b5FillPersonasFromMaterials_] n=' + count + ' ' + askLine);
+  return parsed || [];
+}
+
+function b5PersonaMap_(parsed, expectIdxs) {
+  parsed = parsed || [];
+  expectIdxs = expectIdxs || [];
+  var byI = {};
+  var pi;
+  for (pi = 0; pi < parsed.length && pi < expectIdxs.length; pi++) byI[expectIdxs[pi]] = parsed[pi];
+  return byI;
+}
+
+function b5UnreservePersona_(g, usedErrand, usedSlots) {
+  if (!g) return;
+  if (g.errand) delete usedErrand[g.errand];
+  if (g.who) delete usedSlots['who:' + g.who];
+  if (g.whenWhere) delete usedSlots['when:' + g.whenWhere];
+  if (g.trouble) delete usedSlots['trouble:' + g.trouble];
+  if (g.evidence) delete usedSlots['ev:' + g.evidence];
+  if (g.dishDir) delete usedSlots['dish:' + g.dishDir];
+}
+
+function b5StorePersonaSrc_(list, n, src, materials, page, usedErrand, usedSlots) {
+  src = src || {};
+  var gemRaw = String(src.errand || '').trim();
+  var errWhy = '';
+  if (!gemRaw) errWhy = 'empty';
+  else if (b5ZenkakuLen_(gemRaw) < 4) errWhy = 'short';
+  else if (b5ErrandIsIdentity_(gemRaw, materials)) errWhy = 'identity';
+  else if (b5ErrandIsDishNameOnly_(gemRaw)) errWhy = 'dish';
+  else if (b5FactOverlapsUsed_(gemRaw, usedErrand)) errWhy = 'dup';
+  var errand = errWhy ? '' : gemRaw;
+  if (!errand && errWhy === 'empty') errWhy = 'no_usage';
+  if (errand) usedErrand[errand] = true;
+  var anchorRaw = String(src.anchor || '').trim();
+  var anchor = b5AnchorInMaterials_(anchorRaw, materials, page);
+  if (anchorRaw && !anchor) b5ReqLog_('起点', n, 'fail', 'not_in_materials', anchorRaw);
+  var row = {
+    whenWhere: String(src.whenWhere || '').trim(),
+    who: String(src.who || '').trim(),
+    trouble: String(src.trouble || '').trim(),
+    situation: '',
+    errand: errand,
+    evidence: errand,
+    dishDir: String(src.dishDir || '').trim(),
+    anchor: anchor
+  };
+  var whoBefore = row.who;
+  var whenBefore = row.whenWhere;
+  var troubleBefore = row.trouble;
+  var whoWhy = b5BuyerWhoReason_(whoBefore, materials, errand);
+  var whenWhy = b5PersonaSlotReason_(whenBefore, errand, 'when');
+  var troubleWhy = b5PersonaSlotReason_(troubleBefore, errand, 'trouble');
+  b5CompletePersonaRow_(row, usedSlots, materials);
+  var whyAppeal = String(src.whyAppeal || '').trim();
+  var whyWhy = b5WhyAppealReason_(whyAppeal, row);
+  if (whyWhy) whyAppeal = '';
+  row.whyAppeal = whyAppeal;
+  var handRow = b5HandoffHit_(row.whenWhere + row.trouble + row.errand);
+  if (handRow) {
+    b5ReqLog_('買う人', n, 'fail', 'handoff:' + handRow, row.whenWhere + ' ' + row.trouble + ' ' + row.errand);
+    row.whenWhere = '';
+    row.trouble = '';
+    row.errand = '';
+    errand = '';
+    errWhy = 'handoff';
+  }
+  var useClass = b5UseClassNorm_(src.useClass);
+  Logger.log(
+    '[b5PersonaRow_] i=' +
+      n +
+      ' errand=' +
+      (errand ? 'gemini' : 'empty:' + errWhy) +
+      ' who=' +
+      b5KeptLog_(row.who, whoBefore, whoWhy) +
+      ' when=' +
+      b5KeptLog_(row.whenWhere, whenBefore, whenWhy) +
+      ' trouble=' +
+      b5KeptLog_(row.trouble, troubleBefore, troubleWhy) +
+      ' why=' +
+      (whyAppeal ? 'keep' : 'empty:' + (whyWhy || 'empty')) +
+      ' class=' +
+      (useClass || 'empty') +
+      ' anchor=' +
+      (anchor || 'empty') +
+      ' whoBefore=' +
+      whoBefore.replace(/[\r\n]+/g, ' ') +
+      ' errBefore=' +
+      gemRaw.replace(/[\r\n]+/g, ' ') +
+      ' whoWhy=' +
+      (whoWhy || 'ok')
+  );
+  var policy = '誰に:' + (row.who || '') + '／何を:' + (row.errand || '');
+  list[n].personaId = 'm' + n;
+  list[n].personaShort = row.who || '';
+  list[n].anchor = anchor;
+  list[n].personaDetail = '訴求方針: ' + policy + '\n' + b5PersonaDetailFromSlots_(row);
+  list[n].errand = errand;
+  list[n].personaErrand = errand;
+  list[n].appealWho = row.who;
+  list[n].appealWhat = row.errand;
+  list[n].appealPolicy = policy;
+  list[n].whyAppeal = whyAppeal;
+  list[n].appealTrouble = row.trouble;
+  list[n].situation = '';
+  list[n].foothold = '';
+  list[n].whenWhere = row.whenWhere;
+  list[n].useClass = useClass;
+  list[n].personaWhoBefore = whoBefore;
+  list[n].personaErrBefore = gemRaw;
+  list[n].personaDrop = !row.who ? whoWhy || 'who' : !errand ? errWhy || 'errand' : !useClass ? 'class' : '';
+  if (!materials._personaRows) materials._personaRows = [];
+  materials._personaRows.push(
+    'i=' +
+      n +
+      ' whoBefore=' +
+      whoBefore.replace(/[\r\n]+/g, ' ').substring(0, 80) +
+      ' errBefore=' +
+      gemRaw.replace(/[\r\n]+/g, ' ').substring(0, 80) +
+      ' whoWhy=' +
+      (whoWhy || 'ok') +
+      ' errWhy=' +
+      (errWhy || 'ok') +
+      ' class=' +
+      (useClass || 'empty')
+  );
+  if (!useClass) Logger.log('[b5UseClass_] i=' + n + ' empty');
+  return {
+    errand: errand,
+    who: row.who,
+    whenWhere: row.whenWhere,
+    trouble: row.trouble,
+    evidence: row.evidence,
+    dishDir: row.dishDir
+  };
+}
+
+function b5ClearPersonaStory_(p, i, reason) {
+  p.personaDrop = p.personaDrop ? p.personaDrop + '+' + reason : reason;
+  b5ReqLog_('買う人', i, 'fail', p.personaDrop, '困りと得たい結果と理由を空にする');
+  p.appealTrouble = '';
+  p.errand = '';
+  p.personaErrand = '';
+  p.appealWhat = '';
+  p.whyAppeal = '';
+  p.appealPolicy = '誰に:' + (p.appealWho || '') + '／何を:';
+  p.personaDetail =
+    '訴求方針: ' +
+    p.appealPolicy +
+    '\n' +
+    b5PersonaDetailFromSlots_({
+      whenWhere: p.whenWhere || '',
+      who: p.appealWho || '',
+      anchor: p.anchor || '',
+      trouble: '',
+      foothold: p.foothold || '',
+      situation: '',
+      errand: '',
+      whyAppeal: ''
+    });
+}
+
+/**
+ * ペルソナは買う人を先に書く。使い方はそのあと。状況は別の段。
+ * @param {Object} materials
+ * @param {Array<Object>} proposals
+ * @return {Array<Object>}
+ */
+function b5LastPersonaParse_(materials) {
+  var asks = (materials && materials._personaAsks) || [];
+  if (!asks.length) return '';
+  var last = String(asks[asks.length - 1] || '');
+  var at = last.indexOf('parse=');
+  if (at < 0) return '';
+  var rest = last.substring(at + 6);
+  var end = rest.search(/[^a-z_]/);
+  return end < 0 ? rest : rest.substring(0, end);
+}
+
+function b5FillPersonasFromMaterials_(materials, proposals) {
+  var list = proposals || [];
+  if (!list.length) return list;
+  if (!getBoolScriptProperty_('B5_PERSONA_FROM_MATERIALS', true)) return list;
+  var page = '';
+  try {
+    if (b5IsFoodMaterials_(materials) && !materials._officialPageText) b5ResolveOfficialProductPage_(materials);
+    page = String((materials && materials._officialPageText) || '')
+      .replace(/\s+/g, ' ')
+      .substring(0, 400);
+  } catch (eOff) {
+    Logger.log('[b5FillPersonasFromMaterials_] official ' + String(eOff && eOff.message ? eOff.message : eOff));
+  }
+  var lines = '';
+  var fi;
+  for (fi = 0; fi < list.length; fi++) {
+    lines += fi + 1 + '. ' + (list[fi].themeId || '') + ' ' + (list[fi].themeName || '') + '\n';
+  }
+  var parsed = b5PersonaAsk_(materials, page, lines, list.length);
+  var expectAll = [];
+  var pi;
+  for (pi = 0; pi < list.length; pi++) expectAll.push(pi);
+  var byI = b5PersonaMap_(parsed, expectAll);
+  var usedErrand = {};
+  var usedSlots = {};
+  var held = [];
+  var n;
+  for (n = 0; n < list.length; n++) {
+    held[n] = b5StorePersonaSrc_(list, n, byI[n], materials, page, usedErrand, usedSlots);
+  }
+  var missing = [];
+  for (n = 0; n < list.length; n++) {
+    if (!list[n].appealWho || !list[n].errand || !list[n].useClass) missing.push(n);
+  }
+  if (missing.length) {
+    var lines2 = '';
+    for (n = 0; n < missing.length; n++) {
+      var mi = missing[n];
+      lines2 += mi + 1 + '. ' + (list[mi].themeId || '') + ' ' + (list[mi].themeName || '') + '\n';
+    }
+    Logger.log('[b5FillPersonasFromMaterials_] retry n=' + missing.length);
+    var parsed2 = b5PersonaAsk_(materials, page, lines2, missing.length);
+    var by2 = b5PersonaMap_(parsed2, missing);
+    for (n = 0; n < missing.length; n++) {
+      var at = missing[n];
+      var src2 = by2[at] || {};
+      b5UnreservePersona_(held[at], usedErrand, usedSlots);
+      held[at] = b5StorePersonaSrc_(list, at, src2, materials, page, usedErrand, usedSlots);
+    }
+  }
+  var lastParse = b5LastPersonaParse_(materials);
+  var unread = lastParse && lastParse !== 'ok';
+  if (unread) Logger.log('[b5FillPersonasFromMaterials_] array unread parse=' + lastParse);
+  for (n = 0; n < list.length; n++) {
+    if (!list[n].appealWho || !list[n].errand) {
+      b5ClearPersonaStory_(
+        list[n],
+        n,
+        list[n].appealWho
+          ? 'no_errand'
+          : unread && !String(list[n].personaWhoBefore || '').trim()
+            ? lastParse
+            : 'empty'
+      );
+    }
+  }
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) b5LeadSituations_(materials, list);
+  b5OneErrandAlign_(materials, page, list);
+  b5RewriteErrandClaims_(materials, page, list);
+  return list;
+}
+
+function b5WriteAppealFields_(p, trouble, errand, why) {
+  p.appealTrouble = String(trouble || '');
+  p.errand = String(errand || '');
+  p.personaErrand = p.errand;
+  p.appealWhat = p.errand;
+  p.whyAppeal = String(why || '');
+  p.appealPolicy = '誰に:' + (p.appealWho || '') + '／何を:' + p.errand;
+  p.personaDetail =
+    '訴求方針: ' +
+    p.appealPolicy +
+    '\n' +
+    b5PersonaDetailFromSlots_({
+      whenWhere: p.whenWhere || '',
+      who: p.appealWho || '',
+      anchor: p.anchor || '',
+      trouble: p.appealTrouble,
+      foothold: p.foothold || '',
+      situation: p.situation || '',
+      errand: p.errand,
+      whyAppeal: p.whyAppeal
+    });
+}
+
+/** 得たい結果に体の効能が残っていたら1回だけ書き直す。残ったら消さずログだけ。 */
+function b5RewriteErrandClaims_(materials, page, list) {
+  if (!getBoolScriptProperty_('B5_CAUSE_FIX', true)) return;
+  if (!list || !list.length) return;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return;
+  var lines = '';
+  var idx = [];
+  var i;
+  for (i = 0; i < list.length; i++) {
+    var hit = b5SituationEfficacyHit_(list[i].errand);
+    if (!hit || !list[i].appealWho) continue;
+    idx.push(i);
+    lines +=
+      i +
+      1 +
+      '. 誰:' +
+      (list[i].appealWho || '') +
+      ' 困り:' +
+      (list[i].appealTrouble || '') +
+      ' 得たい結果:' +
+      (list[i].errand || '') +
+      '\n';
+    b5ReqLog_('得たい結果', i, 'fail', 'efficacy:' + hit, list[i].errand);
+  }
+  if (!idx.length) return;
+  var fixed = b5GeminiObjectArray_(
+    '次の案だけ、得たい結果を書き直す。JSON配列だけ。\n' +
+      '[{"i":1,"errand":""}]\n' +
+      '困りが終わる結果は1つ。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。状況は返さない。\n' +
+      '材料:\n' +
+      b5MaterialsPromptBlock_(materials) +
+      '\n公式ページ抜粋:\n' +
+      (page || 'なし') +
+      '\n案:\n' +
+      lines,
+    'b5ErrandClaimRewrite_'
+  );
+  var byI = {};
+  for (i = 0; i < fixed.length; i++) {
+    var fi = parseInt(fixed[i] && fixed[i].i, 10);
+    if (!isNaN(fi)) byI[fi - 1] = fixed[i];
+  }
+  for (i = 0; i < idx.length; i++) {
+    var at = idx[i];
+    var row = byI[at];
+    var next = row ? String(row.errand || '').trim() : '';
+    if (next) {
+      list[at].errand = next;
+      list[at].personaErrand = next;
+      list[at].appealWhat = next;
+      list[at].appealPolicy = '誰に:' + (list[at].appealWho || '') + '／何を:' + next;
+    }
+    var hit2 = b5SituationEfficacyHit_(list[at].errand);
+    if (hit2) {
+      b5ReqLog_('得たい結果', at, 'note', 'keep:' + hit2, list[at].errand);
+      Logger.log('[b5ErrandClaim_] i=' + at + ' keep ' + hit2);
+    } else {
+      b5ReqLog_('得たい結果', at, 'ok', 'retry', list[at].errand);
+    }
+  }
+}
+
+/** 返ったあと、得たい結果の数を1回見る。誰か結果が空の案は入れない。届いた文が二つでも、既定では消さない。 */
+function b5OneErrandAlign_(materials, page, list) {
+  if (!getBoolScriptProperty_('B5_CAUSE_FIX', true)) return;
+  if (!list || !list.length) return;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return;
+  var lines = '';
+  var i;
+  for (i = 0; i < list.length; i++) {
+    if (!list[i].appealWho || !list[i].errand) {
+      b5ReqLog_('買う人', i, 'fail', list[i].appealWho ? 'no_errand' : 'empty', '書き直しに入れない');
+      continue;
+    }
+    lines +=
+      i +
+      1 +
+      '. 起点:' +
+      (list[i].anchor || '') +
+      ' 誰:' +
+      (list[i].appealWho || '') +
+      ' 困り:' +
+      (list[i].appealTrouble || '') +
+      ' 得たい結果:' +
+      (list[i].errand || '') +
+      ' 訴求理由:' +
+      (list[i].whyAppeal || '') +
+      '\n';
+  }
+  if (!lines) return;
+  var got = b5GeminiObjectArray_(
+    '各案の得たい結果の数と、3欄が同じ話かを返す。JSON配列だけ。\n' +
+      '[{"i":1,"n":1,"same":true}]\n' +
+      'nは得たい結果の数。sameは困り・得たい結果・訴求理由が同じ話なら true。\n' +
+      '案:\n' +
+      lines,
+    'b5OneErrand_'
+  );
+  if (!got.length) return;
+  var bad = {};
+  for (i = 0; i < got.length; i++) {
+    var idx = parseInt(got[i] && got[i].i, 10);
+    if (isNaN(idx)) continue;
+    var n = parseInt(got[i].n, 10);
+    var same = got[i].same === true || got[i].same === 'true';
+    if (!(n === 1 && same)) bad[idx - 1] = true;
+    else Logger.log('[b5OneErrand_] i=' + (idx - 1) + ' n=1');
+  }
+  var fixLines = '';
+  var fixIdx = [];
+  for (i = 0; i < list.length; i++) {
+    if (!bad[i] || !list[i].appealWho || !list[i].errand) continue;
+    fixIdx.push(i);
+    fixLines +=
+      i +
+      1 +
+      '. 起点:' +
+      (list[i].anchor || '') +
+      ' 誰:' +
+      (list[i].appealWho || '') +
+      ' 困り:' +
+      (list[i].appealTrouble || '') +
+      ' 得たい結果:' +
+      (list[i].errand || '') +
+      ' 訴求理由:' +
+      (list[i].whyAppeal || '') +
+      '\n';
+  }
+  if (!fixIdx.length) return;
+  Logger.log('[b5OneErrand_] rewrite n=' + fixIdx.length);
+  var fixed = b5GeminiObjectArray_(
+    '次の案だけ、困り・得たい結果・訴求理由を同じ話の1つに書き直す。JSON配列だけ。\n' +
+      '[{"i":1,"trouble":"","errand":"","whyAppeal":""}]\n' +
+      '得たい結果は1つ。状況は返さない。変えない。起点と誰の、ネットで注文する話にする。材料に無い商品の話は書かない。\n' +
+      '材料:\n' +
+      b5MaterialsPromptBlock_(materials) +
+      '\n公式ページ抜粋:\n' +
+      (page || 'なし') +
+      '\n案:\n' +
+      fixLines,
+    'b5OneErrandRewrite_'
+  );
+  var byI = {};
+  for (i = 0; i < fixed.length; i++) {
+    var fi = parseInt(fixed[i] && fixed[i].i, 10);
+    if (!isNaN(fi)) byI[fi - 1] = fixed[i];
+  }
+  for (i = 0; i < fixIdx.length; i++) {
+    var at = fixIdx[i];
+    var row = byI[at];
+    if (row) {
+      b5WriteAppealFields_(list[at], row.trouble, row.errand, row.whyAppeal);
+    }
+  }
+  var verifyLines = '';
+  for (i = 0; i < fixIdx.length; i++) {
+    var vi = fixIdx[i];
+    verifyLines +=
+      vi +
+      1 +
+      '. 困り:' +
+      (list[vi].appealTrouble || '') +
+      ' 得たい結果:' +
+      (list[vi].errand || '') +
+      ' 訴求理由:' +
+      (list[vi].whyAppeal || '') +
+      '\n';
+  }
+  var again = b5GeminiObjectArray_(
+    '各案の得たい結果の数と、3欄が同じ話かを返す。JSON配列だけ。\n' +
+      '[{"i":1,"n":1,"same":true}]\n' +
+      'nは得たい結果の数。sameは困り・得たい結果・訴求理由が同じ話なら true。\n' +
+      '案:\n' +
+      verifyLines,
+    'b5OneErrandVerify_'
+  );
+  var still = {};
+  for (i = 0; i < again.length; i++) {
+    var ai = parseInt(again[i] && again[i].i, 10);
+    if (isNaN(ai)) continue;
+    var n2 = parseInt(again[i].n, 10);
+    var same2 = again[i].same === true || again[i].same === 'true';
+    if (!(n2 === 1 && same2)) still[ai - 1] = true;
+  }
+  for (i = 0; i < fixIdx.length; i++) {
+    var ei = fixIdx[i];
+    if (!byI[ei] || !again.length || still[ei] || !list[ei].errand) {
+      if (getBoolScriptProperty_('B5_KEEP_STORY', true) && list[ei].errand) {
+        Logger.log('[b5OneErrand_] i=' + ei + ' keep reason=two');
+        list[ei].personaDrop = list[ei].personaDrop ? list[ei].personaDrop + '+two' : 'two';
+        b5ReqLog_('買う人', ei, 'note', 'two', '揃わないが残す');
+      } else {
+        Logger.log('[b5OneErrand_] i=' + ei + ' empty reason=two');
+        b5ClearPersonaStory_(list[ei], ei, 'two');
+      }
+    } else {
+      Logger.log('[b5OneErrand_] i=' + ei + ' n=1 after rewrite');
+    }
+  }
+}
+
+/**
+ * 案の用事（ペルソナ errand 優先）。
+ * @param {Object} p
+ * @return {string}
+ */
+function b5ErrandOf_(p) {
+  var e = String((p && (p.errand || p.personaErrand)) || '').trim();
+  if (e) return e;
+  return b5ErrandTokenFromPersona_((p && p.personaShort) || '');
+}
+
+/**
+ * 案の目標件数（レ点子。2未満なら4。上限12）。
+ * @param {Object} materials
+ * @return {number}
+ */
+function b5TargetProposalCount_(materials) {
+  var child = parseInt((materials && materials.childCount) || 0, 10);
+  if (isNaN(child) || child < 0) child = 0;
+  var target = child >= 2 ? child : 4;
+  if (target < 1) target = 1;
+  if (target > B5_PROPOSE_COUNT_MAX_) target = B5_PROPOSE_COUNT_MAX_;
+  return target;
+}
+
+/**
+ * 食品か（カテゴリー列に「食品」）。
+ * @param {Object} materials
+ * @return {boolean}
+ */
+function b5IsFoodMaterials_(materials) {
+  var cat = String((materials && materials.category) || '');
+  return cat.indexOf('食品') >= 0;
+}
+
+/**
+ * ミックスか（セット構成1が空でない）。
+ * @param {Object} materials
+ * @return {boolean}
+ */
+function b5IsMixMaterials_(materials) {
+  return !!(materials && materials.isMix);
+}
+
+/**
+ * ミックス構成の区別語（材料 feats／name から。汎用。一件固定しない）。
+ * @param {Object} materials
+ * @return {string[]}
+ */
+function b5MixMarks_(materials) {
+  if (materials && materials.mixMarks && materials.mixMarks.length) {
+    return materials.mixMarks
+      .map(function (x) {
+        return String(x || '').trim();
+      })
+      .filter(Boolean);
+  }
+  var bits = String((materials && materials.feats) || '')
+    .replace(/[／/|,，、]+/g, '・')
+    .split('・')
+    .map(function (x) {
+      return String(x || '').trim();
+    })
+    .filter(function (x) {
+      return x && b5ZenkakuLen_(x) >= 1 && b5ZenkakuLen_(x) <= 12;
+    });
+  // 重複除去
+  var out = [];
+  var seen = {};
+  for (var i = 0; i < bits.length; i++) {
+    if (seen[bits[i]]) continue;
+    seen[bits[i]] = true;
+    out.push(bits[i]);
+  }
+  return out;
+}
+
+/**
+ * セールス小（S15／S17）。【】除去・生完結優先・途切れスライス禁止。
+ * @param {Object} p
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5EnsureSalesTalk_(p, materials) {
+  var raw = b5StripSalesBrackets_((p && p.salesTalkRaw) || '');
+  var s = b5StripSalesBrackets_((p && p.salesTalk) || '');
+  function whole(t) {
+    t = String(t || '').trim();
+    if (!t || b5LooksIncomplete_(t)) return '';
+    return t;
+  }
+  var keep = whole(s) || whole(raw);
+  if (keep) {
+    if (b5ZenkakuLen_(keep) > B5_SALES_FALLBACK_MAX_) {
+      Logger.log('[b5EnsureSalesTalk_] len-keep n=' + b5ZenkakuLen_(keep));
+    }
+    return keep;
+  }
+  if (s || raw) Logger.log('[b5EnsureSalesTalk_] uncut-incomplete');
+  return s || raw || '';
+}
+
+/**
+ * S15: catchBurn＝catch／salesBurn＝salesTalk（別短縮しない）。
+ * 書いたあとに短くしない。字数外でも文は切らない。
+ * @param {Object} p
+ * @param {Object} materials
+ * @return {Object}
+ */
+function b5ApplyScreenEqualsBurn_(p, materials) {
+  p = p || {};
+  p.salesTalk = b5EnsureSalesTalk_(p, materials);
+  var okC = b5CopyLengthOk_(p.catch, B5_CATCH_PREF_MIN_, B5_CATCH_PREF_MAX_, B5_CATCH_FALLBACK_MAX_);
+  var okS = b5CopyLengthOk_(
+    p.salesTalk,
+    B5_SALES_PREF_MIN_,
+    B5_SALES_PREF_MAX_,
+    B5_SALES_FALLBACK_MAX_
+  );
+  p.catchLenMode = okC.mode;
+  p.salesLenMode = okS.mode;
+  if (!okC.ok || !okS.ok || b5LooksIncomplete_(p.catch) || b5ZenkakuLen_(p.catch) > B5_CATCH_FALLBACK_MAX_) {
+    Logger.log(
+      '[b5ApplyScreenEqualsBurn_] uncut catch n=' +
+        b5ZenkakuLen_(p.catch) +
+        ' incomplete=' +
+        b5LooksIncomplete_(p.catch)
+    );
+  }
+  if (p.burnSkip) {
+    p.catchBurn = '';
+    Logger.log('[b5BurnSkip_] screen reason=' + String(p.burnSkipReason || '') + ' catch=' + String(p.catch || '').replace(/[\r\n]+/g, ' ').substring(0, 80));
+  } else {
+    p.catchBurn = String(p.catch || '');
+  }
+  p.salesBurn = String(p.salesTalk || '');
+  p.burnSource = 'identity';
+  return p;
+}
+
+/**
+ * 画像用セールス小の門。
+ * @param {string} burn
+ * @return {boolean}
+ */
+function b5SalesBurnLooksOk_(burn) {
+  var b = String(burn || '').trim().replace(/\s+/g, '');
+  if (!b) return false;
+  var ln = b5ZenkakuLen_(b);
+  if (ln < B5_SALES_BURN_MIN_ || ln > B5_SALES_BURN_MAX_) return false;
+  if (/[てにをはがのとでもへや・／、。]$/.test(b)) return false;
+  return true;
+}
+
+/**
+ * セールス小 → 画像用短縮（長すぎるときだけ切る。意味単位）。
+ * @param {string} salesTalk
+ * @return {string}
+ */
+function b5BuildSalesBurn_(salesTalk) {
+  var t = String(salesTalk || '').trim().replace(/\s+/g, '');
+  if (!t) return '';
+  if (b5SalesBurnLooksOk_(t)) return t;
+  var cut = b5ZenkakuSlice_(t, B5_SALES_BURN_MAX_).replace(/[てにをはがのとでもへや・／、。]$/, '');
+  if (b5SalesBurnLooksOk_(cut)) return cut;
+  if (b5ZenkakuLen_(cut) >= B5_SALES_BURN_MIN_) return cut;
+  return t;
+}
+
+/**
+ * 画像用セールス小（Gemini。失敗時はルール短縮）。
+ * @param {string} salesTalk
+ * @param {Object} proposal
+ * @return {string}
+ */
+function b5BuildSalesBurnSmart_(salesTalk, proposal) {
+  var fallback = b5BuildSalesBurn_(salesTalk);
+  var t = String(salesTalk || '').trim().replace(/\s+/g, '');
+  if (!t) return '';
+  if (b5SalesBurnLooksOk_(t)) return t;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return fallback;
+  try {
+    var prompt =
+      'EC商品画像の小さい字用に、セールストークを日本語で短縮してください。\n' +
+      '全角' +
+      B5_SALES_BURN_MIN_ +
+      '〜' +
+      B5_SALES_BURN_MAX_ +
+      '字。語の途中で切らない。助詞で終わらせない。キャッチの複製禁止。\n' +
+      'ペルソナ: ' +
+      String((proposal && proposal.personaShort) || '') +
+      '\n元文: ' +
+      t +
+      '\n返答は短縮文だけ。JSON不要。';
+    var raw = String(callGeminiForCPO(prompt) || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/^["「]|["」]$/g, '')
+      .trim()
+      .replace(/\s+/g, '');
+    if (b5SalesBurnLooksOk_(raw)) return raw;
+  } catch (e) {
+    Logger.log('[b5BuildSalesBurnSmart_] ' + String(e && e.message ? e.message : e));
+  }
+  return fallback;
+}
+
+/**
+ * ペルソナ短文から用事トークン（同一用事接続用）。
+ * @param {string} personaShort
+ * @return {string}
+ */
+function b5ErrandTokenFromPersona_(personaShort) {
+  var s = String(personaShort || '');
+  var map = [
+    ['お茶請け', 'お茶請け'],
+    ['おやつ', 'おやつ'],
+    ['晩酌', '晩酌'],
+    ['手土産', '手土産'],
+    ['忙しい', '忙しい日'],
+    ['家族', '食卓'],
+    ['料理', '料理'],
+    ['気分で選べ', '気分で選ぶ'],
+    ['休憩', '休憩']
+  ];
+  var i;
+  for (i = 0; i < map.length; i++) {
+    if (s.indexOf(map[i][0]) >= 0) return map[i][1];
+  }
+  var m = s.match(/(.{2,8})(?:を|に|で|の)/);
+  if (m) return String(m[1] || '').trim();
+  return s.replace(/人$/, '').trim().slice(0, 8);
+}
+
+/**
+ * S10/S11/S12: 同一用事・用事が先・場面を写真指示へ寄せる（N1以外）。
+ * @param {Object} p
+ * @param {Object} materials
+ * @param {Object=} opt
+ * @return {Object}
+ */
+function b5AlignProposalSameErrand_(p, materials, opt) {
+  p = p || {};
+  var tid = String(p.themeId || '');
+  if (tid === 'N1' || tid.indexOf('N1') === 0) {
+    p.sceneHint = b5SceneFromPersona_(p, materials);
+    return p;
+  }
+  var errand = b5ErrandOf_(p);
+  if (!errand) return p;
+  var catch0 = String(p.catch || '').trim();
+  var shown = b5StripCatchBrackets_(catch0);
+  var shownLen = b5ZenkakuLen_(shown);
+  if (shown && shownLen >= B5_CATCH_PREF_MIN_ && shownLen <= B5_CATCH_PREF_MAX_) p.catch = shown;
+  // 場面は enrich 前のフォールバック（袋手前禁止）
+  if (!String(p.sceneHint || '').trim() || /袋を手前/.test(String(p.sceneHint || ''))) {
+    p.sceneHint = b5SceneFromPersona_(p, materials);
+  }
+  var dish = String((opt && opt.dish) || p.dish || p.dishName || '').trim();
+  if (dish && String(p.sceneHint || '').indexOf(dish) < 0 && b5IsFoodMaterials_(materials)) {
+    p.sceneHint = '添える料理は' + dish + '。' + String(p.sceneHint || '');
+  }
+  return p;
+}
+
+/**
+ * 字数切りだけの短縮（S8比較用）。
+ * @param {string} catchText
+ * @param {number} maxN
+ * @return {string}
+ */
+function b5NaiveSliceBurn_(catchText, maxN) {
+  return b5ZenkakuSlice_(String(catchText || ''), maxN || B5_CATCH_BURN_MAX_);
+}
+
+/**
+ * 短縮の門（S4）。
+ * @param {string} burn
+ * @return {boolean}
+ */
+function b5CatchBurnLooksOk_(burn) {
+  var b = String(burn || '').trim();
+  if (!b) return false;
+  var ln = b5ZenkakuLen_(b);
+  if (ln < B5_CATCH_BURN_MIN_ || ln > B5_CATCH_BURN_MAX_) return false;
+  var body = b;
+  var m = b.match(/【([^】]+)】(.*)$/);
+  if (m) body = String(m[1] || '') + String(m[2] || '');
+  if (/[てにをはがのとでもへや・／、。]$/.test(body)) return false;
+  return true;
+}
+
+/**
+ * 意味単位の画像用短縮（Gemini。失敗時はルール短縮＋門）。
+ * @param {string} catchText
+ * @param {Object} materials
+ * @param {Object} proposal
+ * @return {string}
+ */
+function b5BuildCatchBurnSmart_(catchText, materials, proposal) {
+  var fallback = b5BuildCatchBurn_(catchText);
+  var t = String(catchText || '').trim();
+  if (!t) return '';
+  if (b5ZenkakuLen_(t) <= B5_CATCH_BURN_MAX_ && b5CatchBurnLooksOk_(t)) return t;
+  var naive = b5NaiveSliceBurn_(t, B5_CATCH_BURN_MAX_);
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) {
+    return b5CatchBurnLooksOk_(fallback) ? fallback : (b5CatchBurnLooksOk_(naive) ? naive : fallback);
+  }
+  try {
+    var prompt =
+      'EC商品画像に焼く短いキャッチに短縮してください。日本語。意味単位。語の途中で切らない。\n' +
+      '全角' +
+      B5_CATCH_BURN_MIN_ +
+      '〜' +
+      B5_CATCH_BURN_MAX_ +
+      '字。【】は付けない。助詞や「・」で不自然に終わらせない。\n' +
+      'ペルソナ: ' +
+      String((proposal && proposal.personaShort) || '') +
+      '\n元文: ' +
+      t +
+      '\n返答は短縮文だけ。JSON不要。';
+    var raw = String(callGeminiForCPO(prompt) || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/^["「]|["」]$/g, '')
+      .trim();
+    if (b5CatchBurnLooksOk_(raw) && raw !== naive) return raw;
+    if (b5CatchBurnLooksOk_(raw)) return raw;
+  } catch (e) {
+    Logger.log('[b5BuildCatchBurnSmart_] ' + String(e && e.message ? e.message : e));
+  }
+  if (b5CatchBurnLooksOk_(fallback) && fallback !== naive) return fallback;
+  return b5CatchBurnLooksOk_(fallback) ? fallback : t.slice(0, 18);
+}
+
+/**
+ * ミックス: 構成マークが両方キャッチ側に入るよう足す／足りなければ印。
+ * @param {Object} p
+ * @param {string[]} marks
+ * @return {Object}
+ */
+function b5EnsureMixBothOnProposal_(p, marks) {
+  if (!marks || marks.length < 2) return p;
+  var blob = String(p.catch || '') + String(p.catchBurn || '') + String(p.salesTalk || '');
+  var missing = [];
+  for (var i = 0; i < marks.length && missing.length < 2; i++) {
+    if (blob.indexOf(marks[i]) < 0) missing.push(marks[i]);
+  }
+  // 先頭2マークを必須とする
+  var need = marks.slice(0, 2);
+  var miss = [];
+  for (var j = 0; j < need.length; j++) {
+    if (blob.indexOf(need[j]) < 0) miss.push(need[j]);
+  }
+  if (!miss.length) return p;
+  var add = miss.join('・');
+  p.catch = String(p.catch || '') + (String(p.catch || '') ? '・' : '') + add;
+  if (p.salesTalk && String(p.salesTalk).indexOf(miss[0]) < 0 && b5ZenkakuLen_(p.salesTalk) < 10) {
+    p.salesTalk = String(p.salesTalk) + '・' + miss[0];
+  }
+  return p;
+}
+
+
+/**
+ * 親SKU配下の出品CKレ点子数。
+ * @param {string} parentSku
+ * @return {number}
+ */
+function b5CountCheckedChildrenForParentSku_(parentSku) {
+  parentSku = String(parentSku || '').trim();
+  if (!parentSku) return 0;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) return 0;
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) return 0;
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colCk = colMap[CHECKBOX_HEADER_NAME];
+  var colChild = colMap['子SKU'];
+  var colParent = colMap['親SKU'];
+  if (colCk === undefined || colChild === undefined || colParent === undefined) return 0;
+  var n = 0;
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    if (String(values[r][colParent] || '').trim() !== parentSku) continue;
+    var child = String(values[r][colChild] || '').trim();
+    if (!child) continue;
+    if (!b3MasterCheckboxOn_(values[r][colCk])) continue;
+    n++;
+  }
+  return n;
+}
+
+/**
+ * 案を出品CKレ点子数までに切る（前回再利用・指示文の食い違い防止）。
+ * 子0のときは切らない。selected 優先→sellRank→元順。
+ * @param {Array} proposals
+ * @param {string} parentSku
+ * @return {{proposals:Array, childCount:number, trimmed:boolean, before:number}}
+ */
+function b5CapProposalsToCheckedChildCount_(proposals, parentSku) {
+  var before = proposals && proposals.length ? proposals.length : 0;
+  var childCount = b5CountCheckedChildrenForParentSku_(parentSku);
+  if (!before || childCount < 1 || before <= childCount) {
+    return {
+      proposals: proposals || [],
+      childCount: childCount,
+      trimmed: false,
+      before: before
+    };
+  }
+  var copy = (proposals || []).slice();
+  copy.sort(function (a, b) {
+    var sa = a && a.selected === false ? 1 : 0;
+    var sb = b && b.selected === false ? 1 : 0;
+    if (sa !== sb) return sa - sb;
+    var ra = parseInt((a && a.sellRank) || 999, 10) || 999;
+    var rb = parseInt((b && b.sellRank) || 999, 10) || 999;
+    if (ra !== rb) return ra - rb;
+    return 0;
+  });
+  var capped = copy.slice(0, childCount);
+  Logger.log(
+    '[b5CapProposals_] sku=' +
+      parentSku +
+      ' child=' +
+      childCount +
+      ' before=' +
+      before +
+      ' after=' +
+      capped.length
+  );
+  return {
+    proposals: capped,
+    childCount: childCount,
+    trimmed: true,
+    before: before
+  };
+}
+
+/**
+ * 保存済み案をいまの子レ点数に揃える。
+ * - 保存≧子 → 切るだけ（再生成しない）
+ * - 保存＜子 → 保存分はそのまま、足りない件数だけ新規生成
+ * @param {Array} savedProposals
+ * @param {Object} materials
+ * @param {string} parentSku
+ * @return {{proposals:Array, childCount:number, target:number, trimmed:boolean, toppedUp:boolean, before:number, added:number}}
+ */
+function b5AlignSavedProposalsToChildCount_(savedProposals, materials, parentSku) {
+  var mats = materials || {};
+  var childCount = b5CountCheckedChildrenForParentSku_(parentSku);
+  if (childCount > 0) mats.childCount = childCount;
+  var target = b5TargetProposalCount_(mats);
+  var saved = (savedProposals || []).slice();
+  var before = saved.length;
+  if (!before) {
+    return {
+      proposals: [],
+      childCount: childCount,
+      target: target,
+      trimmed: false,
+      toppedUp: false,
+      before: 0,
+      added: 0
+    };
+  }
+  if (target < 1 || before > target) {
+    var capOnly = b5CapProposalsToCheckedChildCount_(saved, parentSku);
+    return {
+      proposals: capOnly.proposals,
+      childCount: capOnly.childCount,
+      target: target,
+      trimmed: capOnly.trimmed,
+      toppedUp: false,
+      before: before,
+      added: 0
+    };
+  }
+  if (before >= target) {
+    return {
+      proposals: saved,
+      childCount: childCount,
+      target: target,
+      trimmed: false,
+      toppedUp: false,
+      before: before,
+      added: 0
+    };
+  }
+  var need = target - before;
+  Logger.log(
+    '[b5AlignSavedProposals_] topUp sku=' +
+      parentSku +
+      ' saved=' +
+      before +
+      ' target=' +
+      target +
+      ' need=' +
+      need
+  );
+  var fresh = b5ProposeFromMaterials_(mats) || [];
+  var used = {};
+  var i;
+  for (i = 0; i < saved.length; i++) {
+    var sk = b5NormalizeCatchKey_(
+      (saved[i] && (saved[i].catchBurn || saved[i].catch)) || ''
+    );
+    if (sk) used[sk] = true;
+  }
+  var extras = [];
+  for (i = 0; i < fresh.length && extras.length < need; i++) {
+    var fr = fresh[i] || {};
+    var fk = b5NormalizeCatchKey_(fr.catchBurn || fr.catch || '');
+    if (fk && used[fk]) continue;
+    if (fk) used[fk] = true;
+    extras.push(fr);
+  }
+  // 重複で足りないとき: 残りの fresh をキー無視で足す（保存済み本体は触らない）
+  if (extras.length < need) {
+    for (i = 0; i < fresh.length && extras.length < need; i++) {
+      var fr2 = fresh[i] || {};
+      var already = false;
+      var ei;
+      for (ei = 0; ei < extras.length; ei++) {
+        if (extras[ei] === fr2) {
+          already = true;
+          break;
+        }
+        if (
+          b5NormalizeCatchKey_(extras[ei].catchBurn || extras[ei].catch || '') ===
+          b5NormalizeCatchKey_(fr2.catchBurn || fr2.catch || '')
+        ) {
+          already = true;
+          break;
+        }
+      }
+      if (already) continue;
+      var fk2 = b5NormalizeCatchKey_(fr2.catchBurn || fr2.catch || '');
+      if (fk2 && used[fk2]) continue;
+      extras.push(fr2);
+    }
+  }
+  var merged = saved.concat(extras);
+  for (i = 0; i < merged.length; i++) {
+    if (!merged[i]) merged[i] = {};
+    merged[i].sellRank = i + 1;
+  }
+  var newIndexes = [];
+  for (i = before; i < merged.length; i++) newIndexes.push(i);
+  if (newIndexes.length) {
+    merged = b5PolishCatchesWithGemini_(mats, merged, newIndexes);
+    merged = b5EnrichSceneAndDishBatch_(mats, merged, newIndexes);
+    try {
+      b5DedupeCatchesAcrossProposals_(mats, merged);
+    } catch (eDed) {
+      Logger.log('[b5AlignSavedProposals_] dedupe: ' + eDed);
+    }
+  }
+  Logger.log(
+    '[b5AlignSavedProposals_] done sku=' +
+      parentSku +
+      ' before=' +
+      before +
+      ' after=' +
+      merged.length +
+      ' added=' +
+      extras.length
+  );
+  return {
+    proposals: merged,
+    childCount: childCount,
+    target: target,
+    trimmed: false,
+    toppedUp: extras.length > 0,
+    before: before,
+    added: extras.length
+  };
+}
+
+/**
+ * 訴求軸の正規化キー（被り判定用）。
+ * @param {string} s
+ * @return {string}
+ */
+function b5NormalizeAppealAxisKey_(s) {
+  return String(s || '')
+    .replace(/[\s　]/g, '')
+    .replace(/[！!？?。．、,・]/g, '')
+    .toLowerCase()
+    .substring(0, 48);
+}
+
+/**
+ * 案から訴求軸キー。
+ * @param {Object} p
+ * @return {string}
+ */
+function b5AppealAxisKeyFromProposal_(p) {
+  return b5NormalizeAppealAxisKey_(
+    (p &&
+      (p.appealAxisLabel ||
+        p.remakeAppealAxis ||
+        p.errand ||
+        p.appealWhat ||
+        p.personaErrand ||
+        '')) ||
+      ''
+  );
+}
+
+/**
+ * 再作成用の訴求軸候補（材料に合うもの優先）。他案使用中は blocked。
+ * @param {Object} materials
+ * @param {Array} proposals
+ * @return {Array<{id:string,label:string,blocked:boolean,usedBy:number}>}
+ */
+function b5BuildAppealAxisOptions_(materials, proposals) {
+  var blob = b5MaterialsBlob_(materials || {});
+  var usedByKey = {};
+  var pi;
+  for (pi = 0; pi < (proposals || []).length; pi++) {
+    var pk = b5AppealAxisKeyFromProposal_(proposals[pi]);
+    if (!pk) continue;
+    if (!usedByKey[pk]) usedByKey[pk] = [];
+    usedByKey[pk].push(
+      parseInt((proposals[pi] && proposals[pi].sellRank) || pi + 1, 10) || pi + 1
+    );
+  }
+  var pool = [
+    { id: 'self_reward', label: '自分へのご褒美', needles: ['ご褒美', '自分', '贅沢'] },
+    { id: 'time_save', label: '時短のもう一品', needles: ['時短', 'すぐ', 'さっと', '手軽'] },
+    { id: 'drink', label: '晩酌のおつまみ', needles: ['晩酌', 'おつまみ', 'ビール', '酒'] },
+    { id: 'tea', label: 'お茶請け・おやつ', needles: ['お茶請け', 'お茶うけ', 'おやつ'] },
+    { id: 'gift', label: '大切な人への贈り物', needles: ['贈', 'ギフト', '手土産', '届'] },
+    { id: 'stock', label: '買い置き・常備', needles: ['常備', 'ストック', '備蓄'] },
+    { id: 'table', label: '食卓のもう一品', needles: ['食卓', '一品', 'おかずに'] },
+    { id: 'origin', label: '産地・素材の信頼', needles: ['国産', '産地', '原料', '焼津', '枕崎'] },
+    { id: 'mix_pick', label: '気分で選べる組み合わせ', needles: ['ミックス', '2種', 'セット', '食べ比べ'] }
+  ];
+  var out = [];
+  var seenLabel = {};
+  var oi;
+  for (oi = 0; oi < pool.length; oi++) {
+    var c = pool[oi];
+    var hit = false;
+    var ni;
+    for (ni = 0; ni < c.needles.length; ni++) {
+      if (c.needles[ni] && blob.indexOf(c.needles[ni]) >= 0) {
+        hit = true;
+        break;
+      }
+    }
+    // 材料ヒット優先。未ヒットでも枠を薄く残す（自由入力の代替）
+    if (!hit && out.length >= 6) continue;
+    var lk = b5NormalizeAppealAxisKey_(c.label);
+    if (seenLabel[lk]) continue;
+    seenLabel[lk] = true;
+    var usedBy = usedByKey[lk] || [];
+    // 部分一致: 他案の用事キーにラベルが含まれる／含む
+    if (!usedBy.length) {
+      var uk;
+      for (uk in usedByKey) {
+        if (!uk) continue;
+        if (uk.indexOf(lk) >= 0 || lk.indexOf(uk) >= 0) {
+          usedBy = usedByKey[uk];
+          break;
+        }
+      }
+    }
+    out.push({
+      id: c.id,
+      label: c.label,
+      blocked: usedBy.length > 0,
+      usedBy: usedBy.length ? usedBy[0] : 0
+    });
+  }
+  // 既存案の用事を「使用中」として明示（候補に無い文言も見える）
+  for (pi = 0; pi < (proposals || []).length; pi++) {
+    var lab = String(
+      (proposals[pi] &&
+        (proposals[pi].appealAxisLabel ||
+          proposals[pi].errand ||
+          proposals[pi].appealWhat ||
+          '')) ||
+        ''
+    ).trim();
+    if (!lab || b5ZenkakuLen_(lab) < 4) continue;
+    var lk2 = b5NormalizeAppealAxisKey_(lab);
+    if (seenLabel[lk2]) continue;
+    seenLabel[lk2] = true;
+    out.push({
+      id: 'used_' + pi,
+      label: lab.substring(0, 28),
+      blocked: true,
+      usedBy: parseInt((proposals[pi] && proposals[pi].sellRank) || pi + 1, 10) || pi + 1
+    });
+  }
+  return out.slice(0, 10);
+}
+
+/**
+ * item に訴求軸候補を付ける。
+ * @param {Object} item
+ * @param {Object} materials
+ * @return {Object}
+ */
+function b5AttachAppealAxisOptions_(item, materials) {
+  if (!item) return item;
+  item.appealAxisOptions = b5BuildAppealAxisOptions_(
+    materials || {},
+    item.proposals || []
+  );
+  return item;
+}
+
+/**
+ * 指定 index だけペルソナを訴求軸付きで作り直す。
+ * @param {Object} materials
+ * @param {Array} list
+ * @param {Array<number>} indexes
+ */
+function b5RefillPersonasForIndexesWithAxis_(materials, list, indexes) {
+  if (!list || !indexes || !indexes.length) return;
+  var page = '';
+  try {
+    if (b5IsFoodMaterials_(materials) && !materials._officialPageText) {
+      b5ResolveOfficialProductPage_(materials);
+    }
+    page = String((materials && materials._officialPageText) || '')
+      .replace(/\s+/g, ' ')
+      .substring(0, 400);
+  } catch (eOff) {
+    Logger.log('[b5RefillPersonasAxis_] official ' + eOff);
+  }
+  var usedErrand = {};
+  var usedSlots = {};
+  var i;
+  for (i = 0; i < list.length; i++) {
+    if (indexes.indexOf(i) >= 0) continue;
+    var keepE = String((list[i] && (list[i].errand || list[i].personaErrand)) || '').trim();
+    if (keepE) usedErrand[keepE] = true;
+    var keepWho = String((list[i] && list[i].appealWho) || '').trim();
+    if (keepWho) usedSlots['who:' + keepWho] = true;
+  }
+  var avoidLines = '';
+  for (i = 0; i < list.length; i++) {
+    if (indexes.indexOf(i) >= 0) continue;
+    var ae = String((list[i] && (list[i].errand || list[i].appealAxisLabel || '')) || '').trim();
+    if (ae) avoidLines += '- #' + (list[i].sellRank || i + 1) + ' ' + ae + '\n';
+  }
+  var lines = '';
+  for (i = 0; i < indexes.length; i++) {
+    var ix = indexes[i];
+    var pr = list[ix] || {};
+    var axis = String(pr.appealAxisLabel || pr.remakeAppealAxis || '').trim();
+    lines +=
+      ix +
+      1 +
+      '. ' +
+      (pr.themeId || '') +
+      ' ' +
+      (pr.themeName || '') +
+      ' 【指定訴求軸:' +
+      axis +
+      '】この軸の方向だけで買う人・困り・得たい結果を書く。軸を無視して贈答や別用事に寄せない。他案と同じ用事は禁止。\n';
+  }
+  if (avoidLines) {
+    lines += '他案で使用中の用事（これらと被るな）:\n' + avoidLines;
+  }
+  var parsed = b5PersonaAsk_(materials, page, lines, indexes.length);
+  var byI = b5PersonaMap_(parsed, indexes);
+  for (i = 0; i < indexes.length; i++) {
+    var at = indexes[i];
+    b5StorePersonaSrc_(list, at, byI[at] || {}, materials, page, usedErrand, usedSlots);
+  }
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) b5LeadSituations_(materials, list);
+  b5OneErrandAlign_(materials, page, list);
+  b5RewriteErrandClaims_(materials, page, list);
+}
+
+/**
+ * レ点なし再作成: 訴求軸付きでペルソナ〜場面をセット更新。
+ * @param {Object} materials
+ * @param {Array} proposals
+ * @param {Array<number>} remakeIndexes
+ * @param {Array<{index:number,axisId?:string,axisLabel?:string,freeText?:string}>} remakeAxes
+ * @return {Array}
+ */
+function b5RemakeProposalsWithAppealAxes_(
+  materials,
+  proposals,
+  remakeIndexes,
+  remakeAxes
+) {
+  var props = JSON.parse(JSON.stringify(proposals || []));
+  var axisByIndex = {};
+  var ai;
+  for (ai = 0; ai < (remakeAxes || []).length; ai++) {
+    var ax = remakeAxes[ai] || {};
+    var aidx = parseInt(ax.index, 10);
+    if (isNaN(aidx) || aidx < 0) continue;
+    axisByIndex[aidx] = ax;
+  }
+  var idxs = [];
+  var ri;
+  for (ri = 0; ri < (remakeIndexes || []).length; ri++) {
+    var ix = parseInt(remakeIndexes[ri], 10);
+    if (isNaN(ix) || ix < 0 || ix >= props.length) continue;
+    var choice = axisByIndex[ix] || {};
+    var free = String(choice.freeText || '').trim();
+    var label = free || String(choice.axisLabel || '').trim();
+    if (!label) {
+      throw new Error('案#' + (ix + 1) + ' の訴求軸を選ぶか自由入力してください');
+    }
+    var nk = b5NormalizeAppealAxisKey_(label);
+    var clash = false;
+    var oj;
+    for (oj = 0; oj < props.length; oj++) {
+      if (oj === ix) continue;
+      if (remakeIndexes.indexOf(oj) >= 0 && !axisByIndex[oj]) continue;
+      // 再作成対象同士は後で揃う。残す案との被りだけ先に見る
+      if (remakeIndexes.indexOf(oj) >= 0) continue;
+      var ok = b5AppealAxisKeyFromProposal_(props[oj]);
+      if (ok && (ok === nk || ok.indexOf(nk) >= 0 || nk.indexOf(ok) >= 0)) {
+        clash = true;
+        break;
+      }
+    }
+    if (clash) {
+      throw new Error(
+        '案#' + (ix + 1) + ' の訴求軸「' + label + '」は他案と被っています。別の軸を選んでください'
+      );
+    }
+    props[ix].appealAxisId = String(choice.axisId || '').trim();
+    props[ix].appealAxisLabel = label;
+    props[ix].remakeAppealAxis = label;
+    props[ix].appealWho = '';
+    props[ix].personaShort = '';
+    props[ix].personaDetail = '';
+    props[ix].appealTrouble = '';
+    props[ix].errand = '';
+    props[ix].personaErrand = '';
+    props[ix].appealWhat = '';
+    props[ix].whyAppeal = '';
+    props[ix].appealPolicy = '';
+    props[ix].situation = '';
+    props[ix].whenWhere = '';
+    props[ix].anchor = '';
+    props[ix].foothold = '';
+    idxs.push(ix);
+  }
+  if (!idxs.length) return props;
+  b5RefillPersonasForIndexesWithAxis_(materials, props, idxs);
+  props = b5PolishCatchesWithGemini_(materials, props, idxs);
+  props = b5EnrichSceneAndDishBatch_(materials, props, idxs);
+  try {
+    b5DedupeCatchesAcrossProposals_(materials, props);
+  } catch (eDed) {
+    Logger.log('[b5RemakeProposalsWithAppealAxes_] dedupe ' + eDed);
+  }
+  props = b5EnsureDishCandidatesOnProposals_(materials, props);
+  props = b5MarkProposalsSelectedForUi_(props);
+  Logger.log(
+    '[b5RemakeProposalsWithAppealAxes_] n=' + idxs.length + ' idxs=' + idxs.join(',')
+  );
+  return props;
+}
+
+/**
+ * 食品判定の列。見出しに「カテゴリー」と「食品」の両方がある列（改行可）。
+ * 無いときは undefined。空の amazon カテゴリーへは落とさない。
+ * @param {Array} headers
+ * @return {number|undefined}
+ */
+function b5FoodCategoryCol_(headers) {
+  var list = headers || [];
+  var i;
+  for (i = 0; i < list.length; i++) {
+    var raw = String(list[i] || '');
+    if (raw.indexOf('カテゴリー') >= 0 && raw.indexOf('食品') >= 0) return i;
+  }
+  return undefined;
+}
+
+/**
+ * マスタ行からカテゴリー・ミックス判定を materials に足す。
+ * @param {Object} materials
+ * @param {string} parentSku
+ * @param {string} jan
+ * @return {Object}
+ */
+/**
+ * マスタ親行のセット構成1〜5 → comboParts（画像・①′・compose の正）。
+ * @param {string} parentSku
+ * @return {Array<{parentSku:string,nameBase:string,jan:string,qty:number}>}
+ */
+function b5MasterComboPartsForParentSku_(parentSku) {
+  var want = String(parentSku || '').trim();
+  if (!want) return [];
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) return [];
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) return [];
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colParent = colMap['親SKU'];
+  var colChild = colMap['子SKU'];
+  var colName = colMap['商品名ベース'];
+  var colJan = colMap['JANコード'];
+  if (colParent === undefined) return [];
+  var hit = -1;
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    if (colChild !== undefined && String(values[r][colChild] || '').trim()) continue;
+    if (String(values[r][colParent] || '').trim() !== want) continue;
+    hit = r;
+    break;
+  }
+  if (hit < 0) return [];
+  var skus = [];
+  for (var ci = 1; ci <= 5; ci++) {
+    var cSku = colMap['セット構成' + ci + '_親SKU'];
+    if (cSku === undefined) continue;
+    var partSku = String(values[hit][cSku] || '').trim();
+    if (!partSku) continue;
+    var cQty = colMap['セット構成' + ci + '_数量'];
+    var qtyRaw = cQty !== undefined ? String(values[hit][cQty] || '').trim() : '';
+    var qty = parseInt(qtyRaw, 10);
+    if (isNaN(qty) || qty < 0) qty = 0;
+    skus.push({ parentSku: partSku, qty: qty });
+  }
+  if (skus.length < 2) return [];
+  var bySku = {};
+  for (var r2 = headerRowIdx + 1; r2 < values.length; r2++) {
+    if (colChild !== undefined && String(values[r2][colChild] || '').trim()) continue;
+    var psku = String(values[r2][colParent] || '').trim();
+    if (!psku || bySku[psku]) continue;
+    bySku[psku] = {
+      nameBase: colName !== undefined ? String(values[r2][colName] || '').trim() : '',
+      jan: colJan !== undefined ? b5JanDigits_(values[r2][colJan]) : ''
+    };
+  }
+  var out = [];
+  for (var i = 0; i < skus.length; i++) {
+    var meta = bySku[skus[i].parentSku] || {};
+    out.push({
+      parentSku: skus[i].parentSku,
+      nameBase: String(meta.nameBase || '').trim(),
+      jan: String(meta.jan || '').trim(),
+      qty: skus[i].qty
+    });
+  }
+  return out;
+}
+
+function b5EnrichMaterialsMeta_(materials, parentSku, jan) {
+  materials = materials || {};
+  materials.childCount = b5CountCheckedChildrenForParentSku_(parentSku);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!sh) return materials;
+  var values = sh.getDataRange().getValues();
+  var headerRowIdx = -1;
+  for (var hr = 0; hr < Math.min(values.length, 30); hr++) {
+    if ((values[hr] || []).indexOf(ANCHOR_HEADER_NAME) !== -1) {
+      headerRowIdx = hr;
+      break;
+    }
+  }
+  if (headerRowIdx < 0) return materials;
+  var colMap = getColumnIndexMap(values[headerRowIdx]);
+  var colJan = colMap['JANコード'];
+  var colChild = colMap['子SKU'];
+  var colCat = b5FoodCategoryCol_(values[headerRowIdx]);
+  if (colCat === undefined) {
+    colCat = colMap['カテゴリー'] !== undefined ? colMap['カテゴリー'] : colMap['amazon カテゴリー'];
+  }
+  var colCombo = colMap['セット構成1_親SKU'];
+  var wantJan = b5JanDigits_(jan);
+  if (wantJan) materials.jan = wantJan;
+  for (var r = headerRowIdx + 1; r < values.length; r++) {
+    if (colChild !== undefined && String(values[r][colChild] || '').trim()) continue;
+    var mJan = colJan !== undefined ? b5JanDigits_(values[r][colJan]) : '';
+    if (wantJan && mJan !== wantJan) continue;
+    if (colCat !== undefined) materials.category = String(values[r][colCat] || '').trim();
+    if (colCombo !== undefined) {
+      materials.isMix = !!String(values[r][colCombo] || '').trim();
+      materials.comboSku1 = String(values[r][colCombo] || '').trim();
+    }
+    break;
+  }
+  var comboParts = b5MasterComboPartsForParentSku_(parentSku);
+  if (comboParts.length >= 2) {
+    materials.isMix = true;
+    materials.comboParts = comboParts;
+    materials.comboSku1 = comboParts[0].parentSku || materials.comboSku1 || '';
+    materials.mixMarks = comboParts
+      .map(function (p) {
+        return String((p && p.nameBase) || '').trim();
+      })
+      .filter(Boolean);
+  }
+  Logger.log(
+    '[b5EnrichMaterialsMeta_] foodCol=' +
+      (colCat === undefined ? '-' : colCat) +
+      ' category=' +
+      String(materials.category || '').slice(0, 40) +
+      ' comboN=' +
+      comboParts.length
+  );
+  return materials;
+}
+
+/**
+ * 提案キャッチから画像用短縮（意味単位。途中切れ禁止）。
+ * @param {string} catchText
+ * @return {string}
+ */
+function b5BuildCatchBurn_(catchText) {
+  var t = String(catchText || '').trim();
+  if (!t) return '';
+  var m = t.match(/【([^】]{2,18})】/);
+  if (m && b5ZenkakuLen_(m[1]) >= B5_CATCH_BURN_MIN_ && b5ZenkakuLen_(m[1]) <= B5_CATCH_BURN_MAX_) {
+    return '【' + m[1] + '】';
+  }
+  if (m) {
+    var head = m[1];
+    if (b5ZenkakuLen_(head) > B5_CATCH_BURN_MAX_) {
+      head = b5ZenkakuSlice_(head, B5_CATCH_BURN_MAX_);
+      head = head.replace(/[てにをはがのと・／]$/, '');
+      return '【' + head + '】';
+    }
+    var after = t.substring(t.indexOf('】') + 1).replace(/\s+/g, '');
+    if (after) {
+      var room = B5_CATCH_BURN_MAX_ - b5ZenkakuLen_(head) - 1;
+      if (room >= 2) {
+        var piece = b5ZenkakuSlice_(after, room).replace(/[てにをはがのと・／]$/, '');
+        if (piece) return '【' + head + '】' + piece;
+      }
+      return '【' + head + '】';
+    }
+    return '【' + head + '】';
+  }
+  var body = b5ZenkakuSlice_(t, B5_CATCH_BURN_MAX_).replace(/[てにをはがのと・／]$/, '');
+  if (b5ZenkakuLen_(body) < B5_CATCH_BURN_MIN_) return t;
+  return body;
+}
+
+/**
+ * 食品で材料に食べ方が無いとき、既存 Gemini で料理見出しを1つ補完（失敗したら空）。
+ * @param {Object} materials
+ * @param {Object} persona
+ * @return {{dish:string,source:string}}
+ */
+function b5AiDishComplement_(materials, persona) {
+  if (!b5IsFoodMaterials_(materials)) return { dish: '', source: '' };
+  var blob = b5MaterialsBlob_(materials);
+  var marks = b5LadderPurposeMarks_();
+  var i;
+  for (i = 0; i < marks.length; i++) {
+    if (blob.indexOf(marks[i]) >= 0) return { dish: marks[i], source: 'material' };
+  }
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return { dish: '', source: '' };
+  try {
+    var prompt =
+      '食品ECの画像に描く料理・食べ方を日本語で短い見出し1つだけ返してください。\n' +
+      '効能・賞・お得・最強・手順・健康は禁止。材料の商品に合うもの。JSON不要。見出しのみ。\n' +
+      'ペルソナ: ' +
+      String((persona && persona.short) || '') +
+      '\n' +
+      b5MaterialsPromptBlock_(materials);
+    var raw = String(callGeminiForCPO(prompt) || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/^["「]|["」]$/g, '')
+      .trim();
+    var ban = b5LadderBanMarks_();
+    for (i = 0; i < ban.length; i++) {
+      if (raw.indexOf(ban[i]) >= 0) return { dish: '', source: '' };
+    }
+    if (b5ZenkakuLen_(raw) < 2 || b5ZenkakuLen_(raw) > 20) return { dish: '', source: '' };
+    return { dish: raw, source: 'ai' };
+  } catch (e) {
+    Logger.log('[b5AiDishComplement_] fail ' + String(e && e.message ? e.message : e));
+    return { dish: '', source: '' };
+  }
+}
+
+
+/** 目的の階段 — 味系マーカー（材料判定・採点用。見出し定型にしない）。 */
+function b5LadderTasteMarks_() {
+  return ['おいしい', '美味し', '旨み', '旨味', 'ジュワッ', 'じゅわ', 'コク', '香ば', '甘み', '塩気', '風味', '味わい', 'うまい', '美味'];
+}
+
+/** 目的の階段 — 用事・成果系マーカー（材料にあるときだけ使う）。 */
+function b5LadderPurposeMarks_() {
+  return [
+    '時短',
+    'すぐ',
+    'さっと',
+    '手軽',
+    '一品',
+    '晩酌',
+    'おつまみ',
+    'お茶漬け',
+    'お茶請け',
+    'おやつ',
+    '忙しい',
+    '食卓',
+    '酒',
+    'ビール',
+    '振る',
+    'かける',
+    '早変わり',
+    '専門店',
+    'だしをとらず',
+    '両用'
+  ];
+}
+
+/** 目的の階段 — 手順・買わせ継ぎ足し禁止（材料近くにあっても買わせ文にしない）。 */
+function b5LadderBanMarks_() {
+  return [
+    '開ける',
+    'のせる',
+    '並べる',
+    '混ぜる',
+    '包む',
+    '加熱',
+    'レンジで',
+    '手順',
+    '体験談',
+    '健康',
+    'お得',
+    '最強',
+    'ヘルシー',
+    '罪悪感なく',
+    '罪なし',
+    'ダイエット',
+    '血圧',
+    '免疫'
+  ];
+}
+
+/**
+ * 材料テキスト結合。
+ * @param {Object} materials
+ * @return {string}
+ */
+function b5MaterialsBlob_(materials) {
+  materials = materials || {};
+  return [
+    materials.name || '',
+    materials.feats || '',
+    materials.kw || '',
+    materials.yahoo || '',
+    materials.rakuten || '',
+    materials.desc || '',
+    (materials.bullets || []).join(' ')
+  ].join('\n');
+}
+
+/**
+ * 材料に味以外の用事・成果がいくつあるか（重複語は1）。
+ * @param {string} blob
+ * @return {{purposeCount:number,tasteOnly:boolean,purposeHits:string[],tasteHits:string[]}}
+ */
+function b5LadderMaterialStages_(blob) {
+  blob = String(blob || '');
+  var purpose = b5LadderPurposeMarks_();
+  var taste = b5LadderTasteMarks_();
+  var purposeHits = [];
+  var tasteHits = [];
+  var i;
+  for (i = 0; i < purpose.length; i++) {
+    if (blob.indexOf(purpose[i]) >= 0 && purposeHits.indexOf(purpose[i]) < 0) purposeHits.push(purpose[i]);
+  }
+  for (i = 0; i < taste.length; i++) {
+    if (blob.indexOf(taste[i]) >= 0 && tasteHits.indexOf(taste[i]) < 0) tasteHits.push(taste[i]);
+  }
+  return {
+    purposeCount: purposeHits.length,
+    tasteOnly: purposeHits.length === 0 && tasteHits.length > 0,
+    purposeHits: purposeHits,
+    tasteHits: tasteHits
+  };
+}
+
+/**
+ * 機械ゲート。手順語・買わせ禁止・（T3/T4で）材料外の目立ち語を弾く。
+ * @return {{ok:boolean,reason:string}}
+ */
+function b5LadderMachineGate_(catchText, materials, themeId, proposal) {
+  var t = String(catchText || '');
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true) && b5ZenkakuLen_(t) > B5_CATCH_FALLBACK_MAX_) {
+    return { ok: false, reason: B5_CATCH_PREF_MAX_ + '字超' };
+  }
+  var tid = String(themeId || '');
+  if (tid !== 'T3' && tid !== 'T4') return { ok: true, reason: '' };
+  if (!t) return { ok: false, reason: '空' };
+  var bans = b5LadderBanMarks_();
+  var bi;
+  for (bi = 0; bi < bans.length; bi++) {
+    if (t.indexOf(bans[bi]) >= 0) return { ok: false, reason: '禁止語:' + bans[bi] };
+  }
+  // 「簡単・すぐ・本格」を定型見出しにしない（採点語のみ）
+  if (/【\s*(簡単|すぐ本格|本格|すぐ)\s*】/.test(t)) {
+    return { ok: false, reason: '採点語を見出し定型にしている' };
+  }
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true)) return { ok: true, reason: '' };
+  var blob = b5MaterialsBlob_(materials);
+  // キャッチ内の【見出し】が材料のどこにも無いときは弱く弾く（短すぎる一般語は除外）
+  var m = t.match(/【([^】]{2,16})】/);
+  if (m) {
+    var head = String(m[1] || '').replace(/\s+/g, '');
+    if (head.length >= 2 && blob.indexOf(head) < 0) {
+      var errandHead = b5ErrandOf_(proposal || {});
+      if (errandHead && (head.indexOf(errandHead) >= 0 || errandHead.indexOf(head) >= 0)) {
+        return { ok: true, reason: '' };
+      }
+      // 材料の部分一致（用途KW断片）は許す
+      var okPart = false;
+      var marks = b5LadderPurposeMarks_().concat(b5LadderTasteMarks_());
+      var mi;
+      for (mi = 0; mi < marks.length; mi++) {
+        if (head.indexOf(marks[mi]) >= 0 && blob.indexOf(marks[mi]) >= 0) {
+          okPart = true;
+          break;
+        }
+      }
+      if (!okPart) return { ok: false, reason: '材料に無い見出し' };
+    }
+  }
+  return { ok: true, reason: '' };
+}
+
+/**
+ * 訴求度1〜5（画面表示専用）。sellRank とは別。
+ * @return {{score:number,reason:string}}
+ */
+function b5LadderAppealScore_(catchText, materials, themeId, proposal) {
+  var tid = String(themeId || '');
+  if (tid !== 'T3' && tid !== 'T4') return { score: 0, reason: '' };
+  var t = String(catchText || '');
+  var blob = b5MaterialsBlob_(materials);
+  var stages = b5LadderMaterialStages_(blob);
+  var gate = b5LadderMachineGate_(t, materials, tid, proposal);
+  if (!gate.ok) return { score: 1, reason: gate.reason || 'ゲート不合' };
+  if (!t || /・/.test(t) && t.split('・').length >= 3 && !/【/.test(t)) {
+    return { score: 1, reason: '名前の羅列、または意味が分からない' };
+  }
+  var tasteMarks = b5LadderTasteMarks_();
+  var purposeMarks = b5LadderPurposeMarks_();
+  var hasPurposeInText = b5HasAny_(t, purposeMarks);
+  var hasTasteInText = b5HasAny_(t, tasteMarks);
+  var onomato = ['ジュワッ', 'じゅわ', 'パリッ', 'サクッ', 'ふわっ'];
+  if (b5HasAny_(t, onomato) && !hasPurposeInText) {
+    return { score: 2, reason: '味の擬音だけ' };
+  }
+  if (/おいしくなる|美味しくなる/.test(t) && !hasPurposeInText) {
+    return { score: 3, reason: 'おいしくなる、で止まっている' };
+  }
+  // 目的が先か: 【見出し】または文頭付近に用事語
+  var purposeFirst = false;
+  var hm = t.match(/【([^】]+)】/);
+  if (hm && b5HasAny_(hm[1], purposeMarks)) purposeFirst = true;
+  if (!purposeFirst && hasPurposeInText) {
+    var pIdx = 9999;
+    var tIdx = 9999;
+    var i;
+    for (i = 0; i < purposeMarks.length; i++) {
+      var a = t.indexOf(purposeMarks[i]);
+      if (a >= 0 && a < pIdx) pIdx = a;
+    }
+    for (i = 0; i < tasteMarks.length; i++) {
+      var b = t.indexOf(tasteMarks[i]);
+      if (b >= 0 && b < tIdx) tIdx = b;
+    }
+    if (pIdx < tIdx) purposeFirst = true;
+  }
+  if (!purposeFirst) {
+    if (hasTasteInText) return { score: 3, reason: '味が先、または用事が弱い' };
+    return { score: 1, reason: '意味が分からない' };
+  }
+  if (stages.purposeCount >= 2) {
+    return { score: 5, reason: '目的が先。味以外の段が2つ以上材料にあり、味は最後' };
+  }
+  if (stages.purposeCount >= 1) {
+    return { score: 4, reason: '目的が先。味以外の段が1つある' };
+  }
+  return { score: 3, reason: '用事語はあるが材料の段が薄い' };
+}
+
+/**
+ * T3/T4用: 材料の用事語を見出しに、続きは納得、味は最後。
+ * @return {{catch:string,salesTalk:string,evidence:string}}
+ */
+function b5LadderBuildCatchSales_(materials, themeId, fallbackEv) {
+  var blob = b5MaterialsBlob_(materials);
+  var stages = b5LadderMaterialStages_(blob);
+  var purpose = stages.purposeHits;
+  var taste = stages.tasteHits;
+  var head = '';
+  var body = '';
+  var sales = '';
+  // 見出しは案の用事。材料の先頭語（手軽／おつまみ）で全案を潰さない
+  var err = String(fallbackEv || '').trim();
+  if (err) {
+    head = err;
+    body = '';
+    var pi;
+    for (pi = 0; pi < purpose.length; pi++) {
+      if (purpose[pi] !== head && purpose[pi] !== '手軽' && purpose[pi] !== 'おつまみ' && purpose[pi] !== '美味') {
+        body = purpose[pi];
+        break;
+      }
+    }
+    if (!body) {
+      var marks = (materials && materials.mixMarks) || [];
+      body = marks.length >= 2 ? marks[0] + 'と' + marks[1] : marks[0] || head;
+    }
+  } else if (purpose.length) {
+    head = purpose[0];
+    body = purpose.length > 1 ? purpose[1] : purpose[0];
+  } else if (fallbackEv) {
+    head = String(fallbackEv);
+    body = String(fallbackEv);
+  }
+  // 味は最後（続きに足す）
+  if (taste.length && body.indexOf(taste[0]) < 0) {
+    body = body + '・' + taste[0];
+  }
+  if (!head) head = String(fallbackEv || (themeId === 'T3' ? '使い方' : '成果'));
+  if (!body) body = head;
+  var catchText = b5ShortCatch_('【' + head.replace(/^【|】$/g, '') + '】' + body, head);
+  sales = b5StripSalesBrackets_(String(body).replace(/[・／]+/g, '、'));
+  // body≈head だと catch 核と sales が同文になる → 味・別目的語へずらす（S2）
+  if (b5SalesSameAsCatch_(catchText, sales)) {
+    var altS = '';
+    if (taste.length) altS = b5StripSalesBrackets_(String(taste[0]).replace(/[・／]+/g, '、'));
+    if ((!altS || b5SalesSameAsCatch_(catchText, altS)) && purpose.length) {
+      var pj;
+      for (pj = 0; pj < purpose.length; pj++) {
+        var cand = b5StripSalesBrackets_(String(purpose[pj]).replace(/[・／]+/g, '、'));
+        if (cand && !b5SalesSameAsCatch_(catchText, cand)) {
+          altS = cand;
+          break;
+        }
+      }
+    }
+    if (altS && !b5SalesSameAsCatch_(catchText, altS)) sales = altS;
+  }
+  if (!sales) sales = 'すぐ使える';
+  if (b5SalesSameAsCatch_(catchText, sales)) {
+    Logger.log('[b5SalesDup_] ladder still-same catch=' + String(catchText).substring(0, 40));
+  }
+  return {
+    catch: catchText,
+    salesTalk: sales,
+    evidence: (purpose.concat(taste).slice(0, 4).join('／') || fallbackEv || '')
+  };
+}
 
 function b5TrimCatchLen_(t) {
   t = String(t || '').trim();
   if (!t) return t;
   if (t.charAt(0) === '【' && t.indexOf('】') < 0) t = t.substring(1);
-  if (b5ZenkakuLen_(t) <= B5_PROPOSE_CATCH_MAX_) return t;
-  var cut = b5ZenkakuSlice_(t, B5_PROPOSE_CATCH_MAX_);
-  var i;
-  for (i = cut.length - 1; i > 0; i--) {
-    if ('。！？、・／】」』'.indexOf(cut.charAt(i)) >= 0) {
-      var cand = cut.substring(0, i + (/[、・／]/.test(cut.charAt(i)) ? 0 : 1)).replace(/[、・／]+$/, '');
-      if (b5ZenkakuLen_(cand) >= B5_PROPOSE_CATCH_MIN_) return cand;
-    }
-  }
-  for (i = cut.length - 1; i > 0; i--) {
-    if (
-      'にをがはでともへのや'.indexOf(cut.charAt(i)) >= 0 &&
-      b5ZenkakuLen_(cut.substring(0, i + 1)) >= B5_PROPOSE_CATCH_MIN_
-    ) {
-      return cut.substring(0, i + 1);
-    }
-  }
-  for (i = cut.length - 1; i > 0; i--) {
-    var ch = cut.charAt(i);
-    if (
-      ch >= '\u3040' &&
-      ch <= '\u309f' &&
-      b5ZenkakuLen_(cut.substring(0, i + 1)) >= B5_PROPOSE_CATCH_MIN_
-    ) {
-      return cut.substring(0, i + 1);
-    }
-  }
-  return b5ZenkakuSlice_(t, 28);
+  return t;
 }
 
 function b5ShortCatch_(text, fallback) {
@@ -37692,11 +47763,8 @@ function b5ShortCatch_(text, fallback) {
     // 見出し＋直後の短い続きを残してイメージが伝わる長さに
     var after = raw.substring(m.index + m[0].length).replace(/\s+/g, '');
     after = after.replace(/^[。．、，・／]+/, '');
-    t = '【' + inner + '】';
-    if (after && b5ZenkakuLen_(t) < B5_PROPOSE_CATCH_MAX_) {
-      var rest = b5ZenkakuSlice_(after, B5_PROPOSE_CATCH_MAX_ - b5ZenkakuLen_(t));
-      t = t + rest;
-    }
+    t = inner;
+    if (after) t = t + after;
   } else {
     t = raw.replace(/\s+/g, '').replace(/^[にもをはがでとにのへや]、*/, '').replace(/^】+/, '');
   }
@@ -37972,7 +48040,7 @@ function b5LoadMaterialsForParent_(jan, nameBase) {
       '▼マスタ(箇条書き' + bi + ')'
     ]);
     if (!b) b = masterBits['商品説明の箇条書き' + circ.charAt(bi - 1)] || '';
-    if (b) bullets.push(String(b).substring(0, 80));
+    if (b) bullets.push(String(b));
   }
   var desc =
     b5AiPick_(aiBits, ['商品説明[正解]', '商品説明[GPT]', '▼マスタ(商品説明)']) ||
@@ -38082,7 +48150,9 @@ function b5ProposeFromMaterials_(materials) {
       sellScore: 30 + p2.pts
     });
   }
-  if (b5HasAny_(blob, T3)) {
+  var ladderStages = b5LadderMaterialStages_(blob);
+  // 入口ゲート廃止: T3は材料KWが無くても候補化可（事実捏造はしない）
+  {
     var ev3 = '';
     for (var t3i = 0; t3i < T3.length; t3i++) {
       if (blob.indexOf(T3[t3i]) >= 0) {
@@ -38090,71 +48160,90 @@ function b5ProposeFromMaterials_(materials) {
         break;
       }
     }
+    if (!ev3 && ladderStages.purposeHits.length) ev3 = ladderStages.purposeHits[0];
+    if (!ev3) ev3 = '使い方';
     var p3 = b5Prominence_(materials, T3);
+    var ladder3 = b5LadderBuildCatchSales_(materials, 'T3', p3.ev || ev3);
+    var score3 = b5LadderAppealScore_(ladder3.catch, materials, 'T3');
     raw.push({
       themeId: 'T3',
       themeName: '使い方・シーン',
-      catch: b5ShortCatch_(p3.ev || ev3, ev3),
-      sceneHint: 'キャッチにある食べ方（' + ev3 + '）。材料に無いシーンは出さない。',
-      evidence: p3.ev || ev3,
+      catch: ladder3.catch,
+      salesTalk: ladder3.salesTalk,
+      sceneHint: '袋を手前に。使い方が分かる実写（' + (p3.ev || ev3) + '）。材料に無いシーンは出さない。',
+      evidence: ladder3.evidence || p3.ev || ev3,
       classId: 'usage',
-      sellScore: 50 + p3.pts
+      sellScore: 50 + p3.pts,
+      appealScore: score3.score,
+      appealReason: score3.reason
     });
   }
-  for (var si = 0; si < sellClasses.length; si++) {
-    var sc = sellClasses[si];
-    if (sc.id === 'table_expand') {
-      if (
-        !(
-          (blob.indexOf('お茶漬け') >= 0 && blob.indexOf('おつまみ') >= 0) ||
-          blob.indexOf('食卓が広が') >= 0 ||
-          blob.indexOf('両用') >= 0
-        )
-      ) {
-        continue;
+  // 味の文しか材料に無いとき T4 を出さない（要件: 目的の階段）
+  if (ladderStages.tasteOnly) {
+    Logger.log('[b5ProposeFromMaterials_] skip T4 taste_only');
+  } else {
+    for (var si = 0; si < sellClasses.length; si++) {
+      var sc = sellClasses[si];
+      if (sc.id === 'table_expand') {
+        if (
+          !(
+            (blob.indexOf('お茶漬け') >= 0 && blob.indexOf('おつまみ') >= 0) ||
+            blob.indexOf('食卓が広が') >= 0 ||
+            blob.indexOf('両用') >= 0
+          )
+        ) {
+          continue;
+        }
       }
-    }
-    if (!b5HasAny_(blob, sc.needles)) continue;
-    var needleJoin = sc.needles.join('');
-    var banned = false;
-    for (var bi = 0; bi < ban.length; bi++) {
-      if (needleJoin.indexOf(ban[bi]) >= 0) {
-        banned = true;
-        break;
-      }
-    }
-    if (banned) continue;
-    var pr = b5Prominence_(materials, sc.needles);
-    var labelMap = {
-      time_save: 'すぐ一品',
-      drink_snack: '晩酌が華やぐ',
-      tea_snack: 'お茶請け・おやつ',
-      table_expand: '食卓が広がる'
-    };
-    var label = labelMap[sc.id] || '成果';
-    var ev4 = pr.ev;
-    if (!ev4) {
-      for (var ni = 0; ni < sc.needles.length; ni++) {
-        if (blob.indexOf(sc.needles[ni]) >= 0) {
-          ev4 = sc.needles[ni];
+      if (!b5HasAny_(blob, sc.needles)) continue;
+      var needleJoin = sc.needles.join('');
+      var banned = false;
+      for (var bi = 0; bi < ban.length; bi++) {
+        if (needleJoin.indexOf(ban[bi]) >= 0) {
+          banned = true;
           break;
         }
       }
+      if (banned) continue;
+      var pr = b5Prominence_(materials, sc.needles);
+      var labelMap = {
+        time_save: '時短の食卓',
+        drink_snack: '晩酌が華やぐ',
+        tea_snack: 'お茶請け・おやつ',
+        table_expand: '食卓が広がる'
+      };
+      var label = labelMap[sc.id] || '成果';
+      var ev4 = pr.ev;
+      if (!ev4) {
+        for (var ni = 0; ni < sc.needles.length; ni++) {
+          if (blob.indexOf(sc.needles[ni]) >= 0) {
+            ev4 = sc.needles[ni];
+            break;
+          }
+        }
+      }
+      var ladder4 = b5LadderBuildCatchSales_(materials, 'T4', ev4 || label);
+      var score4 = b5LadderAppealScore_(ladder4.catch, materials, 'T4');
+      raw.push({
+        themeId: 'T4',
+        themeName: '成果・' + label,
+        catch: ladder4.catch,
+        salesTalk: ladder4.salesTalk,
+        sceneHint: '買うと良い未来（' + label + '）。食感だけの説明にしない。袋は必須。用事が先・味は最後。',
+        evidence: ladder4.evidence || ev4 || label,
+        classId: sc.id,
+        sellScore: sc.w + pr.pts,
+        appealScore: score4.score,
+        appealReason: score4.reason
+      });
     }
-    raw.push({
-      themeId: 'T4',
-      themeName: '成果・' + label,
-      catch: b5ShortCatch_(ev4 || label, label),
-      sceneHint: '買うと良い未来（' + label + '）。食感だけの説明にしない。袋は必須。',
-      evidence: ev4 || label,
-      classId: sc.id,
-      sellScore: sc.w + pr.pts
-    });
   }
   raw.sort(function (a, b) {
     return (b.sellScore || 0) - (a.sellScore || 0);
   });
-  // 先に themeId を1つずつ（T4が3つ並ばない）。空きがあれば別 classId の T4 等で埋める
+  // 先に themeId を1つずつ。空きは別 classId。件数＝レ点子（上限12）
+  var targetN = b5TargetProposalCount_(materials);
+  var personas = b5AssignPersonas_(targetN, b5IsMixMaterials_(materials));
   var out = [];
   var seenClass = {};
   var seenTheme = {};
@@ -38167,10 +48256,18 @@ function b5ProposeFromMaterials_(materials) {
     var row1 = raw[ri];
     row1.catchRule = row1.catch;
     row1.sellRank = out.length + 1;
+    var per1 = personas[out.length] || personas[0];
+    if (per1) {
+      row1.personaId = per1.id;
+      row1.personaShort = per1.short;
+      row1.personaDetail = per1.detail;
+      row1.errand = per1.errand || '';
+      row1.personaErrand = row1.errand;
+    }
     out.push(row1);
-    if (out.length >= 4) break;
+    if (out.length >= targetN) break;
   }
-  if (out.length < 4) {
+  if (out.length < targetN) {
     for (ri = 0; ri < raw.length; ri++) {
       var key2 = raw[ri].themeId + ':' + raw[ri].classId;
       if (seenClass[key2]) continue;
@@ -38178,9 +48275,59 @@ function b5ProposeFromMaterials_(materials) {
       var row2 = raw[ri];
       row2.catchRule = row2.catch;
       row2.sellRank = out.length + 1;
+      var per2 = personas[out.length] || personas[0];
+      if (per2) {
+        row2.personaId = per2.id;
+        row2.personaShort = per2.short;
+        row2.personaDetail = per2.detail;
+        row2.errand = per2.errand || '';
+        row2.personaErrand = row2.errand;
+      }
       out.push(row2);
-      if (out.length >= 4) break;
+      if (out.length >= targetN) break;
     }
+  }
+  // 入口ゲート廃止の穴埋め: 件数不足時はペルソナ用事で T3/T4 を足す（賞・産地の捏造はしない）
+  while (out.length < targetN) {
+    var perF = personas[out.length] || personas[out.length % personas.length] || {
+      id: 'fill_' + out.length,
+      short: '忙しい日に一品足したい人',
+      detail: '時間がない平日。'
+    };
+    var fillTheme = out.length % 2 === 0 ? 'T3' : 'T4';
+    var fillEv = b5ErrandTokenFromPersona_(perF.short) || '使い方';
+    var fillLadder = b5LadderBuildCatchSales_(materials, fillTheme, fillEv);
+    var fillRow = {
+      themeId: fillTheme,
+      themeName: fillTheme === 'T3' ? '使い方・シーン' : '成果・' + fillEv,
+      catch: fillLadder.catch,
+      salesTalk: fillLadder.salesTalk,
+      sceneHint: '袋を手前に。' + fillEv + 'が分かる実写。',
+      evidence: fillLadder.evidence || fillEv,
+      classId: 'persona_' + String(perF.id || out.length),
+      sellScore: 40 - out.length,
+      sellRank: out.length + 1,
+      personaId: perF.id,
+      personaShort: perF.short,
+      personaDetail: perF.detail,
+      errand: perF.errand || '',
+      personaErrand: perF.errand || '',
+      catchRule: fillLadder.catch
+    };
+    out.push(fillRow);
+  }
+  b5FillPersonasFromMaterials_(materials, out);
+  // 場面フォールバックのみ（料理・場面Geminiは polish 後の b5EnrichSceneAndDishBatch_）
+  var mixMarks = b5MixMarks_(materials);
+  materials.mixMarks = mixMarks;
+  for (ri = 0; ri < out.length; ri++) {
+    if (!out[ri].errand) {
+      out[ri].errand = b5ErrandOf_(out[ri]);
+      out[ri].personaErrand = out[ri].errand;
+    }
+    out[ri].sceneHint = b5SceneFromPersona_(out[ri], materials);
+    out[ri] = b5AlignProposalSameErrand_(out[ri], materials, {});
+    out[ri].salesTalk = b5EnsureSalesTalk_(out[ri], materials);
   }
   return out;
 }
@@ -38196,8 +48343,32 @@ function b5NormalizeCatchKey_(s) {
     .toLowerCase();
 }
 
+/** キャッチとセールスが実質同文か（S2）。UIの欄ひも付けではなく生成側の複製を見る。 */
+function b5SalesSameAsCatch_(catchText, salesText) {
+  var c = b5NormalizeCatchKey_(String(catchText || '').replace(/【[^】]*】/g, ''));
+  var s = b5NormalizeCatchKey_(b5StripSalesBrackets_(salesText));
+  return !!(c && s && c === s);
+}
+
 /**
- * N1以外から商品名フル・内容量を除く。魚種1語（ぶり等）は残してよい。
+ * 案スロットキー（管理単位）。画面の「#連番 テーマ」＝ sellRank ＋ themeId。
+ * themeId 単独・ペルソナ単独は禁止（席がずれて意図しない訴求になる）。
+ * @param {Object} pr
+ * @param {number=} indexOpt 0始まり。sellRank が無いときだけ使う
+ * @return {string}
+ */
+function b5ProposalSlotKey_(pr, indexOpt) {
+  var tid = String((pr && pr.themeId) || '').trim();
+  if (!tid) return '';
+  var rank = parseInt((pr && pr.sellRank), 10);
+  if ((!rank || rank < 1) && indexOpt != null && indexOpt >= 0) rank = indexOpt + 1;
+  if (rank >= 1) return tid + '\t#' + String(rank);
+  var cid = String((pr && pr.classId) || '').trim();
+  return cid ? tid + '\t' + cid : '';
+}
+
+/**
+ * N1以外から商品名フル・内容量を除く。区別語1語は単品のみ可。ミックスでは S1（両方）優先。
  * @param {string} catchText
  * @param {Object} materials
  * @param {string} themeId
@@ -38246,7 +48417,7 @@ function b5BuildN1Catch_(materials) {
 }
 
 function b5SanitizeCatchForTheme_(catchText, materials, themeId) {
-  var t = String(catchText || '').trim();
+  var t = b5StripCatchBrackets_(String(catchText || '').trim());
   if (!t) return t;
   var tid = String(themeId || '');
   if (tid === 'N1') return t;
@@ -38285,10 +48456,10 @@ function b5MaterialsPromptBlock_(materials) {
     'メーカー: ' + (materials.maker || ''),
     '特徴: ' + (materials.feats || ''),
     '用途KW: ' + (materials.kw || ''),
-    'Yahoo: ' + String(materials.yahoo || '').substring(0, 120),
-    '楽天: ' + String(materials.rakuten || '').substring(0, 160),
+    'Yahoo: ' + String(materials.yahoo || ''),
+    '楽天: ' + String(materials.rakuten || ''),
     '箇条書き: ' + (materials.bullets || []).join('／'),
-    '説明: ' + String(materials.desc || '').substring(0, 200)
+    '説明: ' + String(materials.desc || '')
   ].join('\n');
 }
 
@@ -38330,11 +48501,11 @@ function b5ParseOneGeminiCatch_(rawText, themeId, classId) {
     var cid = String((parsed[i] && parsed[i].classId) || '');
     var c = String((parsed[i] && parsed[i].catch) || '').trim();
     if (!c) continue;
-    if (tid + ':' + cid === wantKey || (tid === themeId && !classId)) return b5TrimCatchLen_(c);
+    if (tid + ':' + cid === wantKey || (tid === themeId && !classId)) return b5StripCatchBrackets_(b5TrimCatchLen_(c));
   }
   for (i = 0; i < parsed.length; i++) {
     var c2 = String((parsed[i] && parsed[i].catch) || '').trim();
-    if (c2) return b5TrimCatchLen_(c2);
+    if (c2) return b5StripCatchBrackets_(b5TrimCatchLen_(c2));
   }
   return '';
 }
@@ -38358,16 +48529,45 @@ function b5CatchHasBodyOutsideBrackets_(catchText) {
  * @param {Object} proposal
  * @param {string[]} avoidCatches 同一商品内の他案（酷似禁止）
  * @param {boolean} forceBody 【】外本文を必須にする再送
- * @return {string}
+ * @return {{catch:string,salesTalk:string}}
  */
-function b5GeminiCatchOneTheme_(materials, proposal, avoidCatches, forceBody) {
+function b5CopyContentWords_(text) {
+  var runs = String(text || '').match(/[一-龥]{2,}|[ァ-ヶー]{2,}|[ぁ-ん]{3,}/g) || [];
+  var out = [];
+  var seen = {};
+  var i;
+  for (i = 0; i < runs.length; i++) {
+    if (seen[runs[i]]) continue;
+    seen[runs[i]] = true;
+    out.push(runs[i]);
+  }
+  return out;
+}
+
+function b5HitUsedWords_(text, usedWords) {
+  var t = String(text || '');
+  var hits = [];
+  var i;
+  for (i = 0; i < (usedWords || []).length; i++) {
+    if (usedWords[i] && t.indexOf(usedWords[i]) >= 0 && hits.indexOf(usedWords[i]) < 0) hits.push(usedWords[i]);
+  }
+  return hits;
+}
+
+function b5GeminiCatchOneTheme_(materials, proposal, avoidCatches, forceBody, bannedWords, lenRetry) {
+  lenRetry = String(lenRetry || '');
+  if (lenRetry) Logger.log('[b5CatchLen_] retry=' + lenRetry + ' theme=' + String(proposal.themeId || ''));
   var matLines = b5MaterialsPromptBlock_(materials);
   var productHint = String((materials && materials.name) || '');
   var tid = String(proposal.themeId || '');
   var cid = String(proposal.classId || '');
   var avoid = avoidCatches || [];
   var prompt =
-    '楽天MAINのセールストーク案を、このテーマだけ1つ作ってください（他テーマは考えない）。\n' +
+    '楽天MAINのキャッチを、このテーマだけ、全角' +
+    B5_CATCH_PREF_MIN_ +
+    '〜' +
+    B5_CATCH_PREF_MAX_ +
+    '字で1つ作ってください（他テーマは考えない）。セールスは別の補足です。\n' +
     'テーマ: ' +
     tid +
     ' / ' +
@@ -38380,30 +48580,124 @@ function b5GeminiCatchOneTheme_(materials, proposal, avoidCatches, forceBody) {
     (proposal.sceneHint || '') +
     '\n商品名: ' +
     productHint +
-    '\n材料（この商品のみ）:\n' +
+    '\nこの案の状況: ' +
+    (b5SituationOf_(proposal) || '') +
+    '\nこの案の得たい結果: ' +
+    (b5ErrandOf_(proposal) || '') +
+    '\n' +
+    (avoid.length ? '前の案と同じ方向・同じ文言の並びは禁止: ' + JSON.stringify(avoid) + '\n' : '') +
+    (bannedWords && bannedWords.length ? '同じ語の再使用は禁止: ' + bannedWords.join('、') + '\n' : '') +
+    'この順で考える。前の段を飛ばさない。\n' +
+    '1. 状況、困り、得たい結果、訴求理由を読む。得たい結果は状況の場から。四つは同じ話にする。\n' +
+    '2. その人に向けるキャッチとセールスを書く。見出しは状況が見えること。材料に無い場は書かない。商品名とメーカー名は見出しにしない。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。お得、最強、開ける、のせる、並べる、は見出しに出さない。体の効能でない材料の語は、その人の訴求なら使ってよい。\n' +
+    '3. 材料は、その訴求を支えるときだけ使う。材料の文の言い換えから始めない。\n' +
+    '一枚で、その人の得たい結果が見える。文として完結しなくても、イメージが止まればよい。\n' +
+    '訴求方針: ' +
+    String(proposal.appealPolicy || '') +
+    '\n条件:\n' +
+    '- 【】は付けない。キャッチは全角' +
+    B5_CATCH_PREF_MIN_ +
+    '〜' +
+    B5_CATCH_PREF_MAX_ +
+    '字の1本。補足はセールスに書く。\n' +
+    '- 完成料理名は書かない。添える料理は別欄\n' +
+    '- キャッチは全角' +
+    B5_CATCH_PREF_MIN_ +
+    '〜' +
+    B5_CATCH_PREF_MAX_ +
+    '字。この範囲を超えない。語の途中で切らない\n' +
+    'ペルソナ短文: ' +
+    String(proposal.personaShort || '') +
+    '\nペルソナ詳細: ' +
+    String(proposal.personaDetail || '') +
+    '\n材料（支えるときだけ）:\n' +
     matLines +
     '\n' +
-    (avoid.length ? '禁止（同じ・酷似不可）: ' + JSON.stringify(avoid) + '\n' : '') +
-    '条件:\n' +
-    '- 形式は必ず【見出し】＋外側の続き。例: 【晩酌に】生姜醤油が香るぶり。\n' +
-    '- 【】の中だけで終わらせない。】の後ろに全角4字以上の本文を付ける（必須）\n' +
-    '- 全体は全角' +
-    B5_PROPOSE_CATCH_MIN_ +
-    '〜' +
-    B5_PROPOSE_CATCH_MAX_ +
-    '字。語の途中で切らない\n' +
     (tid === 'N1'
-      ? '- N1: 商品名フル＋特徴（味・製法）。名前だけ／メーカーだけは不可。特徴は】の外にも書いてよい\n'
-      : '- T1〜T4: 商品名フル・内容量・「食べるおだし」禁止。魚種1語のみ可\n') +
-    '- 材料にある製法・味・使い方は可。材料に無い効能・累計・受賞・No.1禁止\n' +
-    (forceBody ? '- 前回は【】だけだった。必ず】の外に本文を付けてやり直すこと\n' : '') +
+      ? '- N1: 商品名フル＋特徴（味・製法）。名前だけ／メーカーだけは不可。特徴も同じ文に書く\n'
+      : '- T1〜T4: 商品名フル・内容量・シリーズ定番名の繰り返し禁止。構成の語は、その訴求を支えるときだけ使う。\n') +
+    (tid === 'T3' || tid === 'T4'
+      ? '- 【目的の階段】キャッチはペルソナの得たい結果が分かる全角' +
+        B5_CATCH_PREF_MIN_ +
+        '〜' +
+        B5_CATCH_PREF_MAX_ +
+        '字。味だけで終わらせない\n' +
+        '- 「簡単」「すぐ本格」「本格」を見出しの定型にしない（採点語のみ）\n' +
+        '- 手順の動作（開ける・のせる・並べる等）・体験談禁止。体の効能をうたう語は書かない。健康、栄養、成長、糖質、ダイエット、血圧、免疫、罪悪感、高タンパク、ヘルシーは例で、同じ種類も書かない。お得、最強の継ぎ足し禁止。\n' +
+        '- appealScoreはこの文だけを1〜5で自己採点。5=用事が先で意味がすぐ分かる。4=用事が先で味以外が1段。3=おいしくなるで止まっている。2=味の擬音だけ。1=名前の羅列か意味が分からない。材料の語数で点数を上げない\n' +
+        '- appealReasonは20字以内\n'
+      : '') +
+    '- 困りと得たい結果から、その人が買おうと思える文を書く。材料の文の言い換えから始めない\n' +
+    '- 見出しに「美味」「おつまみ」だけを連発しない。用事ごとに結果を変える\n' +
+    '- catch は画面にそのまま焼く（別の画像用短縮はしない）。全角' +
+    B5_CATCH_PREF_MIN_ +
+    '〜' +
+    B5_CATCH_PREF_MAX_ +
+    '字。この範囲を超えない。途中切れ禁止\n' +
+    '- salesTalk も画面にそのまま焼く。全角' +
+    B5_SALES_PREF_MIN_ +
+    '〜' +
+    B5_SALES_PREF_MAX_ +
+    '字希望。不成文のときだけ最大' +
+    B5_SALES_FALLBACK_MAX_ +
+    '字。【】見出しは付けない。catch と同じ文の複製は禁止\n' +
+    '- ペルソナの用事と catch／salesTalk／場面は同じ用事でつなぐ。用事が先（味だけ先頭禁止）\n' +
+    '- 材料は訴求を支えるときだけ使う。材料に無い効能・累計・受賞・No.1は書かない。書いたあとに材料の語を足さない\n' +
+    '- lenWhyは、残した語、捨てた語、全角の字数。\n' +
+    (lenRetry === 'long'
+      ? '- 前回は長すぎた。全角' + B5_CATCH_PREF_MIN_ + '〜' + B5_CATCH_PREF_MAX_ + '字に収める。\n'
+      : lenRetry === 'short'
+        ? '- 前回は短すぎた。全角' + B5_CATCH_PREF_MIN_ + '〜' + B5_CATCH_PREF_MAX_ + '字にする。\n'
+        : '') +
     '- 出力は JSON のみ: {"themeId":"' +
     tid +
     '","classId":"' +
     cid +
-    '","catch":"……"}';
+    '","catch":"……","salesTalk":"……","lenWhy":"……","appealScore":5,"appealReason":"……"}';
   var raw = callGeminiForCPO(prompt);
-  return b5ParseOneGeminiCatch_(raw, tid, cid);
+  return b5ParseOneGeminiCatchSales_(raw, tid, cid);
+}
+
+/**
+ * Gemini 1件から salesTalk も取る（無ければ空）。
+ * @return {{catch:string,salesTalk:string}}
+ */
+function b5ParseOneGeminiCatchSales_(rawText, themeId, classId) {
+  var catchOnly = b5ParseOneGeminiCatch_(rawText, themeId, classId);
+  var salesTalk = '';
+  if (!rawText) return { catch: catchOnly, salesTalk: '' };
+  try {
+    var jsonStr = String(rawText).trim();
+    var fence = jsonStr.indexOf('```');
+    if (fence >= 0) {
+      var fence2 = jsonStr.indexOf('```', fence + 3);
+      var block = fence2 > fence ? jsonStr.substring(fence + 3, fence2) : jsonStr.substring(fence + 3);
+      jsonStr = block.replace(/^json\s*/i, '').trim();
+    }
+    var objStart = jsonStr.indexOf('{');
+    var objEnd = jsonStr.lastIndexOf('}');
+    if (objStart >= 0 && objEnd > objStart) {
+      var obj = JSON.parse(jsonStr.substring(objStart, objEnd + 1));
+      // 字数切りで壊さない。S17で【】除去のみ（採用判定は ensure／画面＝焼成）
+      salesTalk = b5StripSalesBrackets_(String((obj && obj.salesTalk) || ''));
+      var lenWhy = String((obj && obj.lenWhy) || '')
+        .replace(/[\r\n]+/g, ' ')
+        .substring(0, 180);
+      var appealN = parseInt(obj && obj.appealScore, 10);
+      if (appealN >= 1 && appealN <= 5) {
+        return {
+          catch: catchOnly,
+          salesTalk: salesTalk,
+          lenWhy: lenWhy,
+          appealScore: appealN,
+          appealReason: String((obj && obj.appealReason) || '').slice(0, 40),
+          appealFromGemini: true
+        };
+      }
+      return { catch: catchOnly, salesTalk: salesTalk, lenWhy: lenWhy, appealScore: 0, appealReason: '', appealFromGemini: false };
+    }
+  } catch (eSales) {}
+  return { catch: catchOnly, salesTalk: salesTalk, lenWhy: '', appealScore: 0, appealReason: '', appealFromGemini: false };
 }
 
 /**
@@ -38413,79 +48707,473 @@ function b5GeminiCatchOneTheme_(materials, proposal, avoidCatches, forceBody) {
  * @param {Array<Object>} proposals
  * @return {Array<Object>}
  */
-function b5PolishCatchesWithGemini_(materials, proposals) {
+function b5PolishCatchesWithGemini_(materials, proposals, onlyIndexes) {
   if (!proposals || !proposals.length) return proposals || [];
   if (!isB5ProposeGeminiEnabled_()) {
     Logger.log('[b5PolishCatchesWithGemini_] skipped prop=off');
-    return proposals;
+    return b5LadderAttachScores_(materials, proposals);
   }
   if (!getGeminiApiKey()) {
     Logger.log('[b5PolishCatchesWithGemini_] skipped no GEMINI_API_KEY');
-    return proposals;
+    return b5LadderAttachScores_(materials, proposals);
   }
+  var onlySet = b5OnlyIndexSet_(onlyIndexes);
+  if (onlySet) Logger.log('[b5PolishCatchesWithGemini_] remake only n=' + onlyIndexes.length);
   var used = {};
+  var usedWords = [];
+  var ladderRewrites = 0;
   for (var i = 0; i < proposals.length; i++) {
     var p = proposals[i];
+    if (onlySet && !onlySet[i]) {
+      var nkKeep = b5NormalizeCatchKey_(p.catch);
+      if (nkKeep) used[nkKeep] = true;
+      var keepW = b5CopyContentWords_(String(p.catch || '') + String(p.salesTalk || ''));
+      var kw;
+      for (kw = 0; kw < keepW.length; kw++) {
+        if (usedWords.indexOf(keepW[kw]) < 0) usedWords.push(keepW[kw]);
+      }
+      continue;
+    }
     var avoid = [];
     for (var j = 0; j < proposals.length; j++) {
-      if (j !== i && proposals[j].catch) avoid.push(proposals[j].catch);
+      if (j === i) continue;
+      if (j < i && proposals[j].appealPolicy) avoid.push(proposals[j].appealPolicy);
+      if (proposals[j].catch) avoid.push(proposals[j].catch);
+      if (j < i && proposals[j].salesTalk) avoid.push(proposals[j].salesTalk);
     }
-    var got = b5GeminiCatchOneTheme_(materials, p, avoid, false);
-    got = b5SanitizeCatchForTheme_(got, materials, p.themeId);
+    var pack = b5GeminiCatchOneTheme_(materials, p, avoid, false, usedWords);
+    var appealHold = pack;
+    var got = b5SanitizeCatchForTheme_(pack && pack.catch, materials, p.themeId);
+    var salesGot = pack && pack.salesTalk ? String(pack.salesTalk) : '';
     if (got && (!b5CatchHasBodyOutsideBrackets_(got) || b5ZenkakuLen_(got) < B5_PROPOSE_CATCH_MIN_)) {
       Logger.log('[b5PolishCatchesWithGemini_] body-retry key=' + b5ProposalKey_(p));
       try {
         Utilities.sleep(250);
       } catch (eSleep1) {}
-      var got2 = b5GeminiCatchOneTheme_(materials, p, avoid, true);
-      got2 = b5SanitizeCatchForTheme_(got2, materials, p.themeId);
-      if (got2 && b5CatchHasBodyOutsideBrackets_(got2)) got = got2;
+      var pack2 = b5GeminiCatchOneTheme_(materials, p, avoid, false, usedWords, 'short');
+      var got2 = b5SanitizeCatchForTheme_(pack2 && pack2.catch, materials, p.themeId);
+      if (got2 && b5CatchHasBodyOutsideBrackets_(got2)) {
+        got = got2;
+        appealHold = pack2;
+        if (pack2.salesTalk) salesGot = String(pack2.salesTalk);
+      }
     }
     var nk = b5NormalizeCatchKey_(got);
     if (got && nk && used[nk]) {
       try {
         Utilities.sleep(250);
       } catch (eSleep2) {}
-      var got3 = b5GeminiCatchOneTheme_(materials, p, avoid.concat([got]), true);
-      got3 = b5SanitizeCatchForTheme_(got3, materials, p.themeId);
+      var pack3 = b5GeminiCatchOneTheme_(materials, p, avoid.concat([got]), true, usedWords);
+      var got3 = b5SanitizeCatchForTheme_(pack3 && pack3.catch, materials, p.themeId);
       if (got3 && b5CatchHasBodyOutsideBrackets_(got3) && !used[b5NormalizeCatchKey_(got3)]) {
         got = got3;
+        appealHold = pack3;
         nk = b5NormalizeCatchKey_(got);
+        if (pack3.salesTalk) salesGot = String(pack3.salesTalk);
       }
     }
-    if (got && b5ZenkakuLen_(got) >= 8 && b5CatchHasBodyOutsideBrackets_(got)) {
+    if (got && b5ZenkakuLen_(got) >= B5_CATCH_PREF_MIN_) {
       p.catch = got;
+      if (appealHold && appealHold.lenWhy) p.catchLenWhy = appealHold.lenWhy;
+      if (salesGot) {
+        if (b5SalesSameAsCatch_(got, salesGot)) {
+          Logger.log('[b5SalesDup_] gemini same-as-catch key=' + b5ProposalKey_(p));
+          salesGot = '';
+        } else {
+          p.salesTalkRaw = b5StripSalesBrackets_(salesGot);
+          p.salesTalk = p.salesTalkRaw;
+        }
+      }
       p.catchSource = 'gemini';
+      if (appealHold && appealHold.appealFromGemini) {
+        p.appealScore = appealHold.appealScore;
+        p.appealReason = appealHold.appealReason || '';
+        p.appealFromGemini = true;
+      }
       if (nk) used[nk] = true;
       Logger.log('[b5PolishCatchesWithGemini_] ok key=' + b5ProposalKey_(p) + ' len=' + b5ZenkakuLen_(got));
     } else {
       p.catch = b5SanitizeCatchForTheme_(p.catchRule || p.catch, materials, p.themeId);
-      // ルール案が【】だけなら N1 は build、それ以外は evidence を外付け
       if (!b5CatchHasBodyOutsideBrackets_(p.catch)) {
         if (p.themeId === 'N1') {
           p.catch = b5BuildN1Catch_(materials);
+        } else if (p.themeId === 'T3' || p.themeId === 'T4') {
+          var ladderFb = b5LadderBuildCatchSales_(materials, p.themeId, b5ErrandOf_(p) || p.evidence);
+          p.catch = ladderFb.catch;
+          if (!p.salesTalk) p.salesTalk = ladderFb.salesTalk;
         } else {
           var ev = String(p.evidence || '').replace(/\s+/g, '');
           if (ev) {
             var head = p.catch && p.catch.indexOf('】') >= 0 ? p.catch : '【' + (p.themeName || p.themeId) + '】';
             if (head.indexOf('】') < 0) head = '【' + head + '】';
-            p.catch = b5TrimCatchLen_(head + b5ZenkakuSlice_(ev, 18));
+            p.catch = b5TrimCatchLen_(head + ev);
           }
         }
       }
       p.catchSource = 'rule';
+      p.appealFromGemini = false;
       Logger.log('[b5PolishCatchesWithGemini_] fallback rule key=' + b5ProposalKey_(p));
+    }
+    // 目的の階段: T3/T4 は機械ゲート→自己採点。低点かつ予算内ならもう一度Gemini（型には差し替えない）
+    if (!getBoolScriptProperty_('B5_CAUSE_FIX', true) && (p.themeId === 'T3' || p.themeId === 'T4') && ladderRewrites < B5_LADDER_REWRITE_MAX_) {
+      var gate0 = b5LadderMachineGate_(p.catch, materials, p.themeId, p);
+      var sc0 = p.appealFromGemini
+        ? { score: p.appealScore, reason: p.appealReason || '' }
+        : b5LadderAppealScore_(p.catch, materials, p.themeId, p);
+      if (!gate0.ok) sc0 = { score: 1, reason: gate0.reason || 'ゲート不合' };
+      p.appealScore = sc0.score;
+      p.appealReason = sc0.reason;
+      if ((!gate0.ok || sc0.score < 4) && ladderRewrites < B5_LADDER_REWRITE_MAX_) {
+        ladderRewrites++;
+        Logger.log(
+          '[b5PolishCatchesWithGemini_] ladder-rewrite #' +
+            ladderRewrites +
+            ' key=' +
+            b5ProposalKey_(p) +
+            ' score=' +
+            sc0.score +
+            ' gate=' +
+            gate0.ok +
+            ' reason=' +
+            String(gate0.reason || sc0.reason || '').replace(/[\r\n]+/g, ' ').substring(0, 80)
+        );
+        try {
+          Utilities.sleep(250);
+        } catch (eSleepL) {}
+        var packL = b5GeminiCatchOneTheme_(materials, p, avoid.concat([p.catch]), true, usedWords);
+        var gotL = b5SanitizeCatchForTheme_(packL && packL.catch, materials, p.themeId);
+        if (gotL && b5ZenkakuLen_(gotL) >= B5_CATCH_PREF_MIN_) {
+          var gateL = b5LadderMachineGate_(gotL, materials, p.themeId, p);
+          var scL = packL && packL.appealFromGemini
+            ? { score: packL.appealScore, reason: packL.appealReason || '' }
+            : b5LadderAppealScore_(gotL, materials, p.themeId, p);
+          if (!gateL.ok) scL = { score: 1, reason: gateL.reason || 'ゲート不合' };
+          if (gateL.ok && scL.score >= sc0.score) {
+            p.catch = gotL;
+            if (packL && packL.lenWhy) p.catchLenWhy = packL.lenWhy;
+            if (packL.salesTalk) {
+              var salesL = b5StripSalesBrackets_(packL.salesTalk);
+              if (b5SalesSameAsCatch_(gotL, salesL)) {
+                Logger.log('[b5SalesDup_] ladder-rewrite same-as-catch key=' + b5ProposalKey_(p));
+              } else {
+                p.salesTalkRaw = salesL;
+                p.salesTalk = salesL;
+              }
+            }
+            p.catchSource = 'gemini_ladder';
+            p.appealScore = scL.score;
+            p.appealReason = scL.reason;
+            p.appealFromGemini = !!(packL && packL.appealFromGemini);
+          }
+        }
+      }
+    }
+    var banHits = b5HitUsedWords_(String(p.catch || '') + String(p.salesTalk || ''), usedWords);
+    if (banHits.length) {
+      Logger.log('[b5PolishCatchesWithGemini_] wordban retry key=' + b5ProposalKey_(p) + ' hit=' + banHits.join(','));
+      try {
+        Utilities.sleep(250);
+      } catch (eBan) {}
+      var packB = b5GeminiCatchOneTheme_(materials, p, avoid.concat([p.catch]), true, usedWords);
+      var gotB = b5SanitizeCatchForTheme_(packB && packB.catch, materials, p.themeId);
+      var salesB = packB && packB.salesTalk ? b5StripSalesBrackets_(packB.salesTalk) : String(p.salesTalk || '');
+      if (gotB && salesB && b5SalesSameAsCatch_(gotB, salesB)) {
+        Logger.log('[b5SalesDup_] wordban same-as-catch key=' + b5ProposalKey_(p));
+        salesB = String(p.salesTalk || '');
+        if (b5SalesSameAsCatch_(gotB, salesB)) salesB = '';
+      }
+      var ban2 = b5HitUsedWords_(String(gotB || '') + salesB, usedWords);
+      if (gotB && b5ZenkakuLen_(gotB) >= B5_CATCH_PREF_MIN_ && !ban2.length) {
+        p.catch = gotB;
+        if (packB && packB.lenWhy) p.catchLenWhy = packB.lenWhy;
+        if (salesB) {
+          p.salesTalk = salesB;
+          p.salesTalkRaw = salesB;
+        }
+        p.catchSource = 'gemini';
+      } else if (gotB && b5ZenkakuLen_(gotB) >= B5_CATCH_PREF_MIN_) {
+        p.catch = gotB;
+        if (packB && packB.lenWhy) p.catchLenWhy = packB.lenWhy;
+        if (salesB) {
+          p.salesTalk = salesB;
+          p.salesTalkRaw = salesB;
+        }
+        p.catchSource = 'gemini';
+        Logger.log(
+          '[b5PolishCatchesWithGemini_] wordban keep key=' +
+            b5ProposalKey_(p) +
+            ' hit=' +
+            ban2.join(',')
+        );
+      } else {
+        Logger.log(
+          '[b5PolishCatchesWithGemini_] wordban keep-original key=' +
+            b5ProposalKey_(p) +
+            ' hit=' +
+            banHits.join(',')
+        );
+      }
+    }
+    var addW = b5CopyContentWords_(String(p.catch || '') + String(p.salesTalk || ''));
+    var wi;
+    for (wi = 0; wi < addW.length; wi++) {
+      if (usedWords.indexOf(addW[wi]) < 0) usedWords.push(addW[wi]);
     }
     try {
       Utilities.sleep(200);
     } catch (eSleep3) {}
   }
+  var seenWords = [];
   for (var si = 0; si < proposals.length; si++) {
+    if (onlySet && !onlySet[si]) {
+      var lateAddKeep = b5CopyContentWords_(
+        String(proposals[si].catch || '') + String(proposals[si].salesTalk || '')
+      );
+      var lwk;
+      for (lwk = 0; lwk < lateAddKeep.length; lwk++) {
+        if (seenWords.indexOf(lateAddKeep[lwk]) < 0) seenWords.push(lateAddKeep[lwk]);
+      }
+      continue;
+    }
     proposals[si].catch = b5SanitizeCatchForTheme_(
       proposals[si].catch,
       materials,
       proposals[si].themeId
     );
+    if (proposals[si].salesTalk && !proposals[si].salesTalkRaw) {
+      proposals[si].salesTalkRaw = b5StripSalesBrackets_(proposals[si].salesTalk);
+    }
+    proposals[si].salesTalk = b5EnsureSalesTalk_(proposals[si], materials);
+    if (b5SalesSameAsCatch_(proposals[si].catch, proposals[si].salesTalk)) {
+      Logger.log('[b5SalesDup_] late same-as-catch key=' + b5ProposalKey_(proposals[si]));
+      var ladderFix = b5LadderBuildCatchSales_(
+        materials,
+        proposals[si].themeId,
+        b5ErrandOf_(proposals[si]) || proposals[si].evidence
+      );
+      var salesFix = b5StripSalesBrackets_((ladderFix && ladderFix.salesTalk) || '');
+      if (salesFix && !b5SalesSameAsCatch_(proposals[si].catch, salesFix)) {
+        proposals[si].salesTalk = salesFix;
+        proposals[si].salesTalkRaw = salesFix;
+      }
+    }
+    var lateHits = b5HitUsedWords_(String(proposals[si].catch || '') + String(proposals[si].salesTalk || ''), seenWords);
+    if (lateHits.length) {
+      Logger.log('[b5PolishCatchesWithGemini_] wordban late key=' + b5ProposalKey_(proposals[si]) + ' hit=' + lateHits.join(','));
+    }
+    var lateAdd = b5CopyContentWords_(String(proposals[si].catch || '') + String(proposals[si].salesTalk || ''));
+    var liw;
+    for (liw = 0; liw < lateAdd.length; liw++) {
+      if (seenWords.indexOf(lateAdd[liw]) < 0) seenWords.push(lateAdd[liw]);
+    }
+  }
+  // 部分再作成は見出し一括書き直しを飛ばす（対象外の案まで触らない・時間短縮）
+  if (getBoolScriptProperty_('B5_CAUSE_FIX', true) && !onlySet) b5HeadlineRewriteOnce_(materials, proposals);
+  b5DedupeCatchesAcrossProposals_(materials, proposals);
+  return b5LadderAttachScores_(materials, proposals);
+}
+
+/**
+ * 案どうしでキャッチ同文なら、後の案だけ1回書き直し（保険）。
+ * @param {Object} materials
+ * @param {Array<Object>} proposals
+ */
+function b5DedupeCatchesAcrossProposals_(materials, proposals) {
+  if (!proposals || proposals.length < 2) return;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return;
+  var used = {};
+  var i;
+  for (i = 0; i < proposals.length; i++) {
+    var nk0 = b5NormalizeCatchKey_(proposals[i].catch);
+    if (nk0) used[nk0] = true;
+  }
+  for (i = 0; i < proposals.length; i++) {
+    var p = proposals[i];
+    var nk = b5NormalizeCatchKey_(p.catch);
+    if (!nk) continue;
+    var first = -1;
+    var j;
+    for (j = 0; j < i; j++) {
+      if (b5NormalizeCatchKey_(proposals[j].catch) === nk) {
+        first = j;
+        break;
+      }
+    }
+    if (first < 0) continue;
+    Logger.log('[b5CatchDupAcross_] i=' + i + ' sameAs=' + first + ' catch=' + String(p.catch || '').substring(0, 40));
+    var avoid = [];
+    for (j = 0; j < proposals.length; j++) {
+      if (proposals[j].catch) avoid.push(proposals[j].catch);
+      if (j < i && proposals[j].salesTalk) avoid.push(proposals[j].salesTalk);
+    }
+    try {
+      Utilities.sleep(250);
+    } catch (eDup) {}
+    var pack = b5GeminiCatchOneTheme_(materials, p, avoid, true, []);
+    var got = b5SanitizeCatchForTheme_(pack && pack.catch, materials, p.themeId);
+    var gotNk = b5NormalizeCatchKey_(got);
+    if (got && b5ZenkakuLen_(got) >= B5_CATCH_PREF_MIN_ && gotNk && !used[gotNk]) {
+      p.catch = got;
+      if (pack && pack.lenWhy) p.catchLenWhy = pack.lenWhy;
+      if (pack && pack.salesTalk && !b5SalesSameAsCatch_(got, pack.salesTalk)) {
+        p.salesTalkRaw = b5StripSalesBrackets_(pack.salesTalk);
+        p.salesTalk = p.salesTalkRaw;
+      }
+      p.catchSource = 'gemini_dedupe';
+      used[gotNk] = true;
+      Logger.log('[b5CatchDupAcross_] fixed i=' + i);
+    } else {
+      Logger.log('[b5CatchDupAcross_] keep-dup i=' + i);
+    }
+  }
+}
+
+function b5CatchHead_(catchText) {
+  var m = String(catchText || '').match(/【([^】]{1,40})】/);
+  return m ? String(m[1] || '').trim() : String(catchText || '').trim();
+}
+
+function b5HeadlineLocalReason_(p, materials) {
+  var t = String((p && p.catch) || '');
+  if (!t) return '空';
+  if (b5ZenkakuLen_(t) > B5_CATCH_FALLBACK_MAX_) return B5_CATCH_PREF_MAX_ + '字超';
+  var tid = String((p && p.themeId) || '');
+  if (tid === 'T3' || tid === 'T4') {
+    var g = b5LadderMachineGate_(t, materials, tid, p);
+    if (!g.ok) return g.reason || 'ゲート不合';
+  }
+  return '';
+}
+
+function b5HeadlineStoryMap_(materials, proposals, indexes) {
+  var map = {};
+  if (!indexes || !indexes.length) return map;
+  if (!isB5ProposeGeminiEnabled_() || !getGeminiApiKey()) return map;
+  var lines = '';
+  var i;
+  for (i = 0; i < indexes.length; i++) {
+    var p = proposals[indexes[i]];
+    lines += indexes[i] + 1 + '. 得たい結果:' + b5ErrandOf_(p) + ' 見出し:' + b5CatchHead_(p.catch) + '\n';
+  }
+  var got = b5GeminiObjectArray_(
+    '見出しが得たい結果と同じ話か、材料に無い効能・累計・受賞・No.1を足しているかを返す。JSON配列だけ。\n' +
+      '[{"i":1,"same":true,"extra":false}]\n' +
+      'sameが false なら見出しが得たい結果と違う。extraが true なら材料に無い効能を足している。\n' +
+      '材料:\n' +
+      b5MaterialsPromptBlock_(materials) +
+      '\n案:\n' +
+      lines,
+    'b5Headline_'
+  );
+  for (i = 0; i < got.length; i++) {
+    var idx = parseInt(got[i] && got[i].i, 10);
+    if (isNaN(idx)) continue;
+    var same = got[i].same === true || got[i].same === 'true';
+    var extra = got[i].extra === true || got[i].extra === 'true';
+    if (!same) map[idx - 1] = '見出しが得たい結果と違う';
+    else if (extra) map[idx - 1] = '材料に無い効能';
+  }
+  return map;
+}
+
+/** 見出しの落ちは案ごとに1回だけ作り直す。まだ落ちたら画面に残し、焼成には使わない。 */
+function b5HeadlineRewriteOnce_(materials, proposals) {
+  var reasons = {};
+  var storyIdx = [];
+  var i;
+  for (i = 0; i < proposals.length; i++) {
+    var local = b5HeadlineLocalReason_(proposals[i], materials);
+    if (local) reasons[i] = local;
+    else storyIdx.push(i);
+  }
+  var story = b5HeadlineStoryMap_(materials, proposals, storyIdx);
+  for (i = 0; i < proposals.length; i++) {
+    if (story[i]) reasons[i] = story[i];
+  }
+  var rewritten = [];
+  for (i = 0; i < proposals.length; i++) {
+    if (!reasons[i]) continue;
+    Logger.log('[b5Headline_] rewrite i=' + i + ' reason=' + reasons[i]);
+    var avoid = [];
+    var j;
+    for (j = 0; j < proposals.length; j++) {
+      if (proposals[j].catch) avoid.push(proposals[j].catch);
+    }
+    try {
+      Utilities.sleep(200);
+    } catch (eH) {}
+    var lenRetryH = reasons[i] === String(B5_CATCH_PREF_MAX_) + '字超' ? 'long' : '';
+    var pack = b5GeminiCatchOneTheme_(materials, proposals[i], avoid, false, [], lenRetryH);
+    var got = b5SanitizeCatchForTheme_(pack && pack.catch, materials, proposals[i].themeId);
+    if (got && b5ZenkakuLen_(got) >= B5_CATCH_PREF_MIN_) {
+      proposals[i].catch = got;
+      if (pack && pack.lenWhy) proposals[i].catchLenWhy = pack.lenWhy;
+      if (pack.salesTalk) {
+        proposals[i].salesTalkRaw = b5StripSalesBrackets_(pack.salesTalk);
+        proposals[i].salesTalk = proposals[i].salesTalkRaw;
+      }
+      proposals[i].catchSource = 'gemini_headline';
+    }
+    rewritten.push(i);
+  }
+  var stillLocal = {};
+  var story2idx = [];
+  for (i = 0; i < rewritten.length; i++) {
+    var ri = rewritten[i];
+    var local2 = b5HeadlineLocalReason_(proposals[ri], materials);
+    if (local2) stillLocal[ri] = local2;
+    else story2idx.push(ri);
+  }
+  var story2 = b5HeadlineStoryMap_(materials, proposals, story2idx);
+  for (i = 0; i < rewritten.length; i++) {
+    var ri2 = rewritten[i];
+    var why = stillLocal[ri2] || story2[ri2] || '';
+    if (!why) {
+      Logger.log('[b5Headline_] keep i=' + ri2);
+      continue;
+    }
+    proposals[ri2].burnSkip = true;
+    proposals[ri2].burnSkipReason = why;
+    Logger.log(
+      '[b5BurnSkip_] i=' +
+        ri2 +
+        ' reason=' +
+        why +
+        ' catch=' +
+        String(proposals[ri2].catch || '').replace(/[\r\n]+/g, ' ').substring(0, 80)
+    );
+  }
+}
+
+/**
+ * T3/T4 に訴求度を付与（画面専用）。N1は採点淘汰しない。
+ * @param {Object} materials
+ * @param {Array<Object>} proposals
+ * @return {Array<Object>}
+ */
+function b5LadderAttachScores_(materials, proposals) {
+  if (!proposals) return [];
+  for (var i = 0; i < proposals.length; i++) {
+    var p = proposals[i];
+    p = b5AlignProposalSameErrand_(p, materials, { dish: p.dish });
+    if (p.themeId !== 'T3' && p.themeId !== 'T4') {
+      p.appealScore = p.appealScore || 0;
+      p.appealReason = p.appealReason || '';
+      p = b5ApplyScreenEqualsBurn_(p, materials);
+      proposals[i] = p;
+      continue;
+    }
+    var gate = b5LadderMachineGate_(p.catch, materials, p.themeId, p);
+    if (!gate.ok) {
+      p.appealScore = 1;
+      p.appealReason = gate.reason || 'ゲート不合';
+    } else if (!p.appealFromGemini) {
+      var sc = b5LadderAppealScore_(p.catch, materials, p.themeId, p);
+      p.appealScore = sc.score;
+      p.appealReason = sc.reason;
+    }
+    p = b5ApplyScreenEqualsBurn_(p, materials);
+    proposals[i] = p;
   }
   return proposals;
 }
@@ -38523,11 +49211,15 @@ function collectB5RakutenMainBaseParents_() {
     if (!b3MasterCheckboxOn_(values[r][colCk])) continue;
     if (colChild !== undefined && !b3IsParentMasterRow_(values[r], colChild)) continue;
     var jan = String(values[r][colJan] || '').trim();
-    if (jan.length < 8 || seen[jan]) continue;
-    seen[jan] = true;
+    if (jan.length < 8) continue;
+    var parentSku = colParent !== undefined ? String(values[r][colParent] || '').trim() : '';
+    // 正本は親SKU単位。同じJANの oya2／oya3 などを1件に潰さない。
+    var dedupeKey = parentSku || jan;
+    if (seen[dedupeKey]) continue;
+    seen[dedupeKey] = true;
     rows.push({
       jan: jan,
-      parentSku: colParent !== undefined ? String(values[r][colParent] || '').trim() : '',
+      parentSku: parentSku,
       nameBase: colName !== undefined ? String(values[r][colName] || '').trim() : '',
       maker: colMaker !== undefined ? String(values[r][colMaker] || '').trim() : ''
     });
@@ -38625,7 +49317,7 @@ function menuB5RakutenMainBaseCursorPrompt() {
     b5DiagLog_(fn, t0, 'DONE', 'reason=no_parents');
     return;
   }
-  var imgInfo = listAmazonBaseTruthImageFiles_();
+  var imgInfo = listAmazonBaseTruthImageFiles_(b5TruthListOptFromParents_(parents.rows));
   b5DiagLog_(
     fn,
     t0,
@@ -38656,43 +49348,140 @@ function b5DriveThumbUrl_(fileId, w) {
 }
 
 /**
- * 正本サムネ選択HTML（親1行分）。候補は関連を優先し、最大16枚。
+ * 正本 rel が親SKUに完全一致するか（接頭辞一致しない。oya ≠ oya2）。
+ * @param {string} rel
+ * @param {string} parentSku
+ * @return {boolean}
+ */
+function b5TruthRelMatchesParentSku_(rel, parentSku) {
+  var sku = String(parentSku || '').trim();
+  if (!sku) return false;
+  var base = String(rel || '')
+    .replace(/^.*[\\\/]/, '')
+    .replace(/\.[^.]+$/, '');
+  if (base === sku) return true;
+  return base.indexOf(sku + '_') === 0;
+}
+
+/**
+ * 他親SKUっぽい正本ファイルか（B-④候補の混入防止）。
+ * 自親SKU／自JAN枝は残す。別JANの oya 付きファイルは落とす。
+ * @param {string} rel
+ * @param {string} parentSku
+ * @return {boolean}
+ */
+function b5TruthRelLooksForeignParent_(rel, parentSku) {
+  var sku = String(parentSku || '')
+    .trim()
+    .toLowerCase();
+  var base = String(rel || '')
+    .replace(/^.*[\\\/]/, '')
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase();
+  if (!sku || !base) return false;
+  if (base === sku || base.indexOf(sku + '_') === 0) return false;
+  var mSku = sku.match(/(\d{10,14})/);
+  var mBase = base.match(/(\d{10,14})/);
+  if (mSku && mBase && mSku[1] === mBase[1]) return false;
+  if (mBase && /oya\d*/i.test(base) && mSku && mBase[1] !== mSku[1]) return true;
+  if (
+    /^(ishi|sanky|amzn)-/i.test(base) &&
+    mBase &&
+    mSku &&
+    mBase[1] !== mSku[1]
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 正本候補を親SKU向けに絞る（B-④／B-⑤共通）。
+ * 親SKU完全一致優先・処理済みは当該親のみ・最大 maxShow・preRel は必ず残す。
+ * @param {Array<{name:string,rel:string,id:string}>} files
+ * @param {string} parentSku
+ * @param {string} preRel
+ * @param {number=} maxShow
+ * @return {Array<{name:string,rel:string,id:string}>}
+ */
+function b5TruthFilesForParent_(files, parentSku, preRel, maxShow) {
+  var MAX_SHOW = maxShow && maxShow > 0 ? maxShow : 12;
+  var list = files || [];
+  var sku = String(parentSku || '');
+  var pre = String(preRel || '').replace(/\//g, '\\');
+  var relatedRoot = [];
+  var relatedProc = [];
+  var restRoot = [];
+  var preFile = null;
+  for (var i = 0; i < list.length; i++) {
+    var rel = String(list[i].rel || list[i].name || '');
+    var relN = rel.replace(/\//g, '\\');
+    var isProc = rel.indexOf('処理済み/') === 0 || rel.indexOf('処理済み\\') === 0;
+    if (pre && relN === pre) preFile = list[i];
+    if (b5TruthRelMatchesParentSku_(rel, sku)) {
+      if (isProc) relatedProc.push(list[i]);
+      else relatedRoot.push(list[i]);
+    } else if (!isProc && !b5TruthRelLooksForeignParent_(rel, sku)) {
+      restRoot.push(list[i]);
+    }
+  }
+  var shown = relatedRoot.concat(relatedProc);
+  if (shown.length > MAX_SHOW) shown = shown.slice(0, MAX_SHOW);
+  if (shown.length < MAX_SHOW) {
+    shown = shown.concat(restRoot.slice(0, MAX_SHOW - shown.length));
+  }
+  if (preFile) {
+    var preN = String(preFile.rel || preFile.name || '').replace(/\//g, '\\');
+    var hasPre = false;
+    for (var p = 0; p < shown.length; p++) {
+      if (String(shown[p].rel || shown[p].name || '').replace(/\//g, '\\') === preN) {
+        hasPre = true;
+        break;
+      }
+    }
+    if (!hasPre) {
+      if (shown.length >= MAX_SHOW) shown = shown.slice(0, MAX_SHOW - 1);
+      shown.unshift(preFile);
+    }
+  }
+  return shown;
+}
+
+/**
+ * 正本サムネ選択HTML（親1行分）。
+ * 関連＝親SKU完全一致のみ（JAN横断しない）。処理済みは保存済み／当該親のみ。最大12枚。
  * @param {Array<{name:string,rel:string,id:string}>} files
  * @param {string} jan
  * @param {string} parentSku
  * @param {string} preRel
  * @return {string}
  */
+/**
+ * @return {{html:string, preChecked:boolean}}
+ */
 function b5TruthThumbPickerHtml_(files, jan, parentSku, preRel) {
   var j = String(jan || '');
   var sku = String(parentSku || '');
   var pre = String(preRel || '').replace(/\//g, '\\');
-  var list = files || [];
-  var related = [];
-  var rest = [];
-  for (var i = 0; i < list.length; i++) {
-    var rel = String(list[i].rel || list[i].name || '');
-    var hit =
-      (j && rel.indexOf(j) >= 0) ||
-      (sku && rel.toLowerCase().indexOf(sku.toLowerCase()) >= 0);
-    if (hit) related.push(list[i]);
-    else rest.push(list[i]);
-  }
-  var shown = related.length
-    ? related.concat(rest.slice(0, Math.max(0, 12 - related.length)))
-    : list.slice(0, 16);
+  var shown = b5TruthFilesForParent_(files, sku, preRel, 12);
   if (!shown.length) {
-    return '<span style="color:#b00020;font-size:12px;">正本候補がありません</span>';
+    return {
+      html: '<span style="color:#b00020;font-size:12px;">正本候補がありません</span>',
+      preChecked: false
+    };
   }
+  var preChecked = false;
   var h = '<div class="b5-truth-grid">';
   for (var k = 0; k < shown.length; k++) {
     var f = shown[k];
     var r = String(f.rel || f.name || '');
     var rN = r.replace(/\//g, '\\');
     var id = String(f.id || '');
-    var ck = pre && rN === pre ? ' checked' : '';
-    var sel = pre && rN === pre ? ' selected' : '';
-    var thumb = b5DriveThumbUrl_(id, 200);
+    var isPre = !!(pre && rN === pre);
+    if (isPre) preChecked = true;
+    var ck = isPre ? ' checked' : '';
+    var sel = isPre ? ' selected' : '';
+    var thumb = b5DriveThumbUrl_(id, 80);
     h += '<label class="b5-truth-card' + sel + '">';
     if (thumb) {
       h +=
@@ -38720,7 +49509,14 @@ function b5TruthThumbPickerHtml_(files, jan, parentSku, preRel) {
       '</span></label>';
   }
   h += '</div>';
-  return h;
+  if (pre && !preChecked) {
+    h =
+      '<p style="color:#b00020;font-size:11px;margin:0 0 4px;">共有の正本ファイルが見つかりません（' +
+      pre.replace(/</g, '&lt;') +
+      '）。下から選び直してください。</p>' +
+      h;
+  }
+  return { html: h, preChecked: preChecked };
 }
 
 /**
@@ -38729,14 +49525,9 @@ function b5TruthThumbPickerHtml_(files, jan, parentSku, preRel) {
  */
 function showB5PackageTruthBindDialog_(payload) {
   try {
-    b5SeedTextColorSharedFromMaps_();
+    b5SeedMapsIfEmptyOnDialog_();
   } catch (eSeed) {
-    Logger.log('[B5.TEXT_COLOR] seed_on_dialog ' + String(eSeed && eSeed.message ? eSeed.message : eSeed));
-  }
-  try {
-    b5SeedPackageTruthFromCompose_();
-  } catch (eSeed2) {
-    Logger.log('[B5.TRUTH_MAP] seed_on_dialog ' + String(eSeed2 && eSeed2.message ? eSeed2.message : eSeed2));
+    Logger.log('[B5.SEED] on_dialog ' + String(eSeed && eSeed.message ? eSeed.message : eSeed));
   }
   var rows = payload.rows || [];
   var files = payload.files || [];
@@ -38747,6 +49538,9 @@ function showB5PackageTruthBindDialog_(payload) {
   var colorShared = loadB5TextColorByParent_();
   var preTruthN = 0;
   var foodOkN = 0;
+  var autoToPropose =
+    rows.length > 0 &&
+    getBoolScriptProperty_('B5_AUTO_TO_PROPOSE', true);
 
   function b5TruthOptionsHtmlForRel_(selectedRel) {
     var selNorm = String(selectedRel || '')
@@ -38787,7 +49581,8 @@ function showB5PackageTruthBindDialog_(payload) {
       savedParent: savedSku,
       parentSku: sku
     });
-    if (preRel) preTruthN++;
+    var thumbPick = b5TruthThumbPickerHtml_(files, jan, sku, preRel);
+    if (thumbPick.preChecked) preTruthN++;
     var foodRow = foodByJan[jan] || {};
     var foodLabel = String(foodRow.label || '未確定');
     var foodOk = String(foodRow.confirmedBy || '') === 'human';
@@ -38809,6 +49604,14 @@ function showB5PackageTruthBindDialog_(payload) {
       '<option value="5"' +
       (prefTc === '5' ? ' selected' : '') +
       '>5 茶</option>';
+    var truthStatusHtml = '';
+    if (thumbPick.preChecked) {
+      truthStatusHtml =
+        '<br><span style="font-size:11px;color:#2e7d32;">正本: 共有から初期選択</span>';
+    } else if (preRel) {
+      truthStatusHtml =
+        '<br><span style="font-size:11px;color:#b00020;">正本: 共有値あり・画面で未選択（下から選んでください）</span>';
+    }
     rowHtml +=
       '<tr data-jan="' +
       jan.replace(/"/g, '&quot;') +
@@ -38828,12 +49631,10 @@ function showB5PackageTruthBindDialog_(payload) {
       ';">個品: ' +
       foodLabel.replace(/</g, '&lt;') +
       '</span>' +
-      (preRel
-        ? '<br><span style="font-size:11px;color:#2e7d32;">正本: 共有から初期選択</span>'
-        : '') +
+      truthStatusHtml +
       '</td>' +
       '<td>' +
-      b5TruthThumbPickerHtml_(files, jan, sku, preRel) +
+      thumbPick.html +
       '</td>' +
       '<td><select class="b5-color" style="width:100%;font-size:12px;" title="MAIN／サブ共有の文字色">' +
       colorOptHtmlRow +
@@ -38869,6 +49670,9 @@ function showB5PackageTruthBindDialog_(payload) {
     ' / ' +
     rows.length +
     ' ／ 文字色はドロップダウンに反映</p>' +
+    (autoToPropose && preTruthN === rows.length && foodOkN === rows.length
+      ? '<p style="font-size:12px;background:#e3f2fd;border:1px solid #1565c0;padding:6px;">正本と個品見本は確定済みです。ペルソナとキャッチの案を今から作り、案の画面へ進みます。</p>'
+      : '') +
     '<p style="font-size:12px;background:#fff8e6;border:1px solid #e6d9a8;padding:8px;">' +
     '<b>すでに画像を作ったことがある場合</b>：正本を選ばなくても ' +
     '<b>「過去の画像を使う（案・生成をスキップ）」</b> で進めます（親SKU／JANで過去フォルダを探します）。' +
@@ -38877,16 +49681,16 @@ function showB5PackageTruthBindDialog_(payload) {
     '<table><thead><tr><th>JAN／親SKU／商品名</th><th>正本画像</th><th style="width:110px;">文字色</th></tr></thead><tbody>' +
     rowHtml +
     '</tbody></table>' +
-    '<p><button id="b5GoBind">紐付け確定 → 見本へ</button> ' +
-    '<button id="b5GoReuse" style="font-weight:bold;">過去の画像を使う（案・生成をスキップ）</button> ' +
-    '<button onclick="google.script.host.close();">閉じる</button></p>' +
+    '<p><button type="button" id="b5GoBind" onclick="if(window.b5ClickGoBind){window.b5ClickGoBind();}else{var e=document.getElementById(&quot;b5Err&quot;);if(e)e.textContent=&quot;スクリプト未準備です。ダイアログを閉じて開き直してください。&quot;;}">紐付け確定 → 見本へ</button> ' +
+    '<button type="button" id="b5GoReuse" style="font-weight:bold;">過去の画像を使う（案・生成をスキップ）</button> ' +
+    '<button type="button" onclick="google.script.host.close();">閉じる</button></p>' +
     '<p id="b5Err" style="color:#b00020;font-size:12px;"></p>' +
     '</div>' +
     '<div id="canonPanel" class="panel">' +
     '<h3 style="margin-top:0;">B-④ — ①′ 中身の見本（必須）</h3>' +
     '<p style="font-size:12px;color:#444;">下表が<strong>緑の「確定」</strong>なら、画像確認を飛ばして<strong>「次へ」</strong>で案に進めます。<br>' +
     '中身の見本を<strong>これから選ぶ</strong>、または<strong>画像で確認し直す</strong>ときは、下の命令をコピーして実行してください（サブと同じ画面が開きます）。Web下は<strong>「変更なしで閉じる」</strong>か<strong>「選び直したらここで保存」</strong>の2つ。戻って<strong>「次へ」</strong>。<br>' +
-    '<span style="color:#666;">この画面を開いた時点で、セールストーク案は裏で順番に作成を開始します（見本と同時進行）。</span></p>' +
+    '<span style="color:#666;">この画面を開いた時点で、<strong>先頭の親</strong>のセールストーク案を裏で作成します。案画面では親ごとにチェックし、完了後に次親へ進みます（次親は裏で先読み）。</span></p>' +
     '<div id="b5CanonStatus"></div>' +
     '<p id="b5ProposePrefetchHint" style="font-size:12px;color:#555;margin:8px 0;"></p>' +
     '<p style="font-size:12px;background:#fff8e6;border:1px solid #e6d9a8;padding:8px;">' +
@@ -38894,15 +49698,23 @@ function showB5PackageTruthBindDialog_(payload) {
     '<textarea id="b5GateCmd" rows="6" readonly style="background:#f7f7f7;"></textarea>' +
     '<p><button id="b5CopyGate">命令をコピー（見本を選ぶ／画像で確認）</button> ' +
     '<button id="b5GoCanonNext" style="font-weight:bold;">次へ（確定済み・確認スキップ）</button> ' +
+    '<button id="b5BackBind">← 正本へ戻る</button> ' +
     '<button onclick="google.script.host.close();">閉じる</button></p>' +
     '<p id="b5ErrCanon" style="color:#b00020;font-size:12px;"></p>' +
     '</div>' +
     '<div id="proposePanel" class="panel">' +
-    '<h3 style="margin-top:0;">B-④ — ②セールストーク案（複数チェック可）</h3>' +
-    '<p style="font-size:12px;color:#444;">材料から出した案です。良いものだけチェック（キャッチは直してよい）。' +
-    'チェックした分だけ画像指示に載せます。画像の実行は後でOK。</p>' +
+    '<h3 style="margin-top:0;">B-④ — ②セールストーク案（親ごと・複数チェック可）</h3>' +
+    '<p id="b5ParentQueueHint" style="font-size:12px;color:#0a7;font-weight:bold;"></p>' +
+    '<p style="font-size:12px;color:#444;">いま表示中の<strong>1親分</strong>だけチェック・編集します。' +
+    '<strong>キャッチ／セールス＝画像に焼く文</strong>（別の画像用欄はありません。キャッチとセールスに【】は付けない）。' +
+    '作り直すときは<strong>レ点を外し</strong>、各案の<strong>訴求軸</strong>（候補または自由入力）を選んでから再作成します。他案と同じ軸は選べません。' +
+    '「この親は完了」で次の親へ。最後の親が終わると指示文へ進みます。窓は1つのままです。</p>' +
+    '<p id="b5NextParentHint" style="font-size:12px;color:#555;"></p>' +
     '<div id="b5ProposeBody"></div>' +
-    '<p><button id="b5GoPrompt">チェック確定 → 指示文</button> ' +
+    '<p><button id="b5ParentDone" style="font-weight:bold;">この親は完了 → 次へ</button> ' +
+    '<button id="b5GoPrompt" style="display:none;">全親完了 → 指示文</button> ' +
+    '<button id="b5RemakeChecked">レ点を外した案を再作成する</button> ' +
+    '<button id="b5BackCanon">← 見本へ戻る</button> ' +
     '<button onclick="google.script.host.close();">閉じる</button></p>' +
     '<p id="b5Err2" style="color:#b00020;font-size:12px;"></p>' +
     '</div>' +
@@ -38915,10 +49727,31 @@ function showB5PackageTruthBindDialog_(payload) {
     '<button onclick="google.script.host.close();">閉じる</button></p>' +
     '</div>' +
     '<script>' +
-    'var B5_STATE={items:[],selections:[],bindings:[],proposalsReady:false,proposalsLoading:false,proposalsError:""};' +
+    'var B5_STATE={items:[],selections:[],bindings:[],proposalsReady:false,proposalsLoading:false,proposalsError:"",parentIndex:0,itemsByIndex:[],selectionsAccum:[],prefetchingIndex:-1};' +
+    'var B5_AUTO_TO_PROPOSE=' +
+    (autoToPropose && preTruthN === rows.length && foodOkN === rows.length ? 'true' : 'false') +
+    ';' +
     'var B5_PROPOSE_WAITERS=[];' +
     'var B5_COLOR_JA={"1":"えんじ","2":"青","3":"黒","4":"緑","5":"茶"};' +
     'function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}' +
+    'function b5Link(s){var t=String(s||"").trim();if(!/^https?:\\/\\//i.test(t)||/[\\s"<>]/.test(t))return esc(s);return "<a href=\\""+esc(t)+"\\" target=\\"_blank\\" rel=\\"noopener\\">"+esc(t)+"</a>";}' +
+    'function b5ParentCount(){return (B5_STATE.bindings&&B5_STATE.bindings.length)||0;}' +
+    'function b5UpdateParentQueueHint(){' +
+    'var el=document.getElementById("b5ParentQueueHint"); if(!el) return;' +
+    'var n=b5ParentCount(); var i=B5_STATE.parentIndex||0;' +
+    'if(!n){el.textContent="";return;}' +
+    'var b=B5_STATE.bindings[i]||{};' +
+    'el.textContent="親 "+(i+1)+" / "+n+" — "+String(b.parentSku||"")+" / JAN "+String(b.jan||"");' +
+    'var doneBtn=document.getElementById("b5ParentDone");' +
+    'var goBtn=document.getElementById("b5GoPrompt");' +
+    'var last=i>=n-1;' +
+    'if(doneBtn){doneBtn.style.display=last?"none":""; doneBtn.textContent="この親は完了 → 次へ";}' +
+    'if(goBtn){goBtn.style.display=last?"":"none";}' +
+    '}' +
+    'function b5SetNextParentHint(msg,color){' +
+    'var el=document.getElementById("b5NextParentHint"); if(!el) return;' +
+    'el.style.color=color||"#555"; el.textContent=String(msg||"");' +
+    '}' +
     'function renderCanonStatus(st){' +
     'var h="<table><thead><tr><th>JAN</th><th>状態</th><th>選んだ見本</th></tr></thead><tbody>";' +
     'var rows=st||[];' +
@@ -38940,45 +49773,155 @@ function showB5PackageTruthBindDialog_(payload) {
     'el.textContent=String(msg||"");' +
     '}' +
     'function onB5ProposalsDone(res){' +
+    'var idx=typeof res.targetIndex==="number"?res.targetIndex:B5_STATE.prefetchingIndex;' +
+    'if(idx<0) idx=B5_STATE.parentIndex||0;' +
     'B5_STATE.proposalsLoading=false;' +
+    'B5_STATE.prefetchingIndex=-1;' +
     'if(res&&res.ok){' +
-    'B5_STATE.items=res.items||[];' +
-    'B5_STATE.proposalsReady=!!(B5_STATE.items&&B5_STATE.items.length);' +
+    'var got=(res.items&&res.items[0])?res.items[0]:null;' +
+    'if(got){B5_STATE.itemsByIndex[idx]=got;}' +
     'B5_STATE.proposalsError="";' +
-    'setB5ProposePrefetchHint("セールストーク案: 準備できました（次へですぐ表示）","#0a7");' +
+    'if(idx===(B5_STATE.parentIndex||0)){' +
+    'B5_STATE.items=got?[got]:[];' +
+    'B5_STATE.proposalsReady=!!got;' +
+    'setB5ProposePrefetchHint("セールストーク案: 親"+(idx+1)+" 準備できました","#0a7");' +
     '}else{' +
+    'b5SetNextParentHint("次の親（"+(idx+1)+"）の案: 先読み完了","#0a7");' +
+    'setB5ProposePrefetchHint("セールストーク案: 親"+(idx+1)+" を先読み済み","#0a7");' +
+    '}' +
+    'b5PrefetchNextParentIfNeeded();' +
+    '}else{' +
+    'if(idx===(B5_STATE.parentIndex||0)){' +
     'B5_STATE.proposalsReady=false;' +
     'B5_STATE.proposalsError=(res&&res.error)||"案の作成に失敗";' +
-    'setB5ProposePrefetchHint("セールストーク案: 失敗 — 次へで再試行します","#b00020");' +
+    'setB5ProposePrefetchHint("セールストーク案: 失敗 — 次へで再試行","#b00020");' +
+    '}else{' +
+    'b5SetNextParentHint("次の親の案: 失敗（表示時に再試行）","#b00020");' +
+    '}' +
     '}' +
     'var w=B5_PROPOSE_WAITERS.slice();' +
     'B5_PROPOSE_WAITERS=[];' +
     'for(var wi=0;wi<w.length;wi++){try{w[wi](res);}catch(ex){}}' +
     '}' +
+    'function b5PrefetchParentAt(index,isPrefetch){' +
+    'if(!B5_STATE.bindings||index<0||index>=B5_STATE.bindings.length) return;' +
+    'if(B5_STATE.itemsByIndex[index]) return;' +
+    'if(B5_STATE.proposalsLoading) return;' +
+    'B5_STATE.proposalsLoading=true;' +
+    'B5_STATE.prefetchingIndex=index;' +
+    'var one=[B5_STATE.bindings[index]];' +
+    'var label="親"+(index+1)+"/"+b5ParentCount();' +
+    'if(isPrefetch) b5SetNextParentHint(label+" の案を裏で作成中…","#555");' +
+    'else setB5ProposePrefetchHint("セールストーク案: "+label+"（前回があれば再利用）…");' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'res=res||{}; res.targetIndex=index; onB5ProposalsDone(res);' +
+    '}).withFailureHandler(function(e){onB5ProposalsDone({ok:false,error:String(e&&e.message?e.message:e),targetIndex:index});})' +
+    '.buildB5ProposalsForBindings({bindings:one,prefetch:!!isPrefetch});' +
+    '}' +
+    'function b5PrefetchNextParentIfNeeded(){' +
+    'var next=(B5_STATE.parentIndex||0)+1;' +
+    'if(next<b5ParentCount()&&!B5_STATE.itemsByIndex[next]&&!B5_STATE.proposalsLoading){' +
+    'b5PrefetchParentAt(next,true);' +
+    '}' +
+    '}' +
     'function prefetchB5Proposals(){' +
     'if(!B5_STATE.bindings||!B5_STATE.bindings.length) return;' +
-    'if(B5_STATE.proposalsLoading) return;' +
-    'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length) return;' +
-    'B5_STATE.proposalsLoading=true;' +
+    'B5_STATE.parentIndex=0;' +
+    'B5_STATE.itemsByIndex=[];' +
+    'B5_STATE.selectionsAccum=[];' +
     'B5_STATE.proposalsReady=false;' +
-    'setB5ProposePrefetchHint("セールストーク案: 裏で作成中（見本を選んでいる間に "+B5_STATE.bindings.length+" 品番を順番に処理）…");' +
-    'google.script.run.withSuccessHandler(onB5ProposalsDone)' +
-    '.withFailureHandler(function(e){onB5ProposalsDone({ok:false,error:String(e&&e.message?e.message:e)});})' +
-    '.buildB5ProposalsForBindings({bindings:B5_STATE.bindings,prefetch:true});' +
+    'b5PrefetchParentAt(0,false);' +
     '}' +
     'function waitB5ProposalsThen(next){' +
-    'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length){next({ok:true,items:B5_STATE.items});return;}' +
-    'if(B5_STATE.proposalsLoading){B5_PROPOSE_WAITERS.push(next);return;}' +
+    'var idx=B5_STATE.parentIndex||0;' +
+    'if(B5_STATE.itemsByIndex[idx]){next({ok:true,items:[B5_STATE.itemsByIndex[idx]],targetIndex:idx});return;}' +
+    'if(B5_STATE.proposalsLoading&&B5_STATE.prefetchingIndex===idx){B5_PROPOSE_WAITERS.push(next);return;}' +
     'B5_PROPOSE_WAITERS.push(next);' +
-    'prefetchB5Proposals();' +
+    'b5PrefetchParentAt(idx,false);' +
     '}' +
     'function showB5ProposePanelFromItems(res2,errEl){' +
     'if(!res2||!res2.ok){if(errEl) errEl.textContent=(res2&&res2.error)||B5_STATE.proposalsError||"案作成失敗";return;}' +
-    'B5_STATE.items=res2.items||[];' +
+    'var idx=typeof res2.targetIndex==="number"?res2.targetIndex:(B5_STATE.parentIndex||0);' +
+    'var it=(res2.items&&res2.items[0])||B5_STATE.itemsByIndex[idx];' +
+    'if(!it){if(errEl) errEl.textContent="案が空です";return;}' +
+    'B5_STATE.parentIndex=idx;' +
+    'B5_STATE.itemsByIndex[idx]=it;' +
+    'B5_STATE.items=[it];' +
+    'B5_STATE.proposalsReady=true;' +
     'renderProposals(B5_STATE.items);' +
+    'b5UpdateParentQueueHint();' +
+    'b5PrefetchNextParentIfNeeded();' +
     'document.getElementById("canonPanel").className="panel";' +
     'document.getElementById("proposePanel").className="panel on";' +
     'if(errEl) errEl.textContent="";' +
+    '}' +
+    'function b5SyncDomIntoCurrentItem(){' +
+    'var it=B5_STATE.items&&B5_STATE.items[0]; if(!it||!it.proposals) return it;' +
+    'for(var p=0;p<it.proposals.length;p++){' +
+    'var pr=it.proposals[p]||{};' +
+    'var box=document.querySelector(".b5-pick[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'pr.selected=!!(box&&box.checked);' +
+    'var inp=document.querySelector(".b5-catch[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'if(inp){var ct=String(inp.value||"").trim(); if(ct){pr.catch=ct; if(!pr.burnSkip) pr.catchBurn=ct;}}' +
+    'var sinp=document.querySelector(".b5-sales[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'if(sinp){var st=String(sinp.value||"").replace(/【[^】]*】/g,"").trim(); pr.salesTalk=st; pr.salesBurn=st;}' +
+    'var layInp=document.querySelector(".b5-layout[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'if(layInp) pr.sceneLayout=String(layInp.value||"").trim();' +
+    'var scInp=document.querySelector(".b5-scene[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'if(scInp) pr.sceneHint=String(scInp.value||"").trim();' +
+    'var dInp=document.querySelector(".b5-dish[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'if(dInp){var dv=String(dInp.value||"").trim(); pr.dish=dv; pr.dishName=dv;}' +
+    'var rad=document.querySelector(".b5-dish-pick[data-i=\\"0\\"][data-p=\\""+p+"\\"]:checked");' +
+    'if(rad){var rv=String(rad.value||"").trim(); pr.dish=rv; pr.dishName=rv; pr.dishPartSku=String(rad.getAttribute("data-part-sku")||""); pr.dishPartName=String(rad.getAttribute("data-part-name")||""); pr.dishPartJan=String(rad.getAttribute("data-part-jan")||""); var su=String(rad.getAttribute("data-source-url")||""); if(su) pr.dishSourceUrl=su; if(!rv){pr.dishPartSku=""; pr.dishPartName=""; pr.dishPartJan="";}}' +
+    'it.proposals[p]=pr;' +
+    '}' +
+    'var idx=B5_STATE.parentIndex||0;' +
+    'B5_STATE.itemsByIndex[idx]=it;' +
+    'B5_STATE.items=[it];' +
+    'return it;' +
+    '}' +
+    'var B5_DRAFT_SAVE_TIMER=null;' +
+    'function b5PersistProposalCopyClient(){' +
+    'var it=b5SyncDomIntoCurrentItem();' +
+    'var bag=[];' +
+    'for(var i=0;i<(B5_STATE.itemsByIndex||[]).length;i++){if(B5_STATE.itemsByIndex[i]) bag.push(B5_STATE.itemsByIndex[i]);}' +
+    'if(it&&bag.indexOf(it)<0) bag.push(it);' +
+    'if(!bag.length) return;' +
+    'google.script.run.saveB5ProposalCopyFromClient({items:bag});' +
+    '}' +
+    'function b5ScheduleDraftSaveClient(){' +
+    'if(B5_DRAFT_SAVE_TIMER) clearTimeout(B5_DRAFT_SAVE_TIMER);' +
+    'B5_DRAFT_SAVE_TIMER=setTimeout(function(){B5_DRAFT_SAVE_TIMER=null;b5PersistProposalCopyClient();},800);' +
+    '}' +
+    'document.addEventListener("input",function(e){if(!e.target||!e.target.classList)return;if(e.target.classList.contains("b5-catch")||e.target.classList.contains("b5-sales")||e.target.classList.contains("b5-scene")||e.target.classList.contains("b5-layout")||e.target.classList.contains("b5-dish")) b5ScheduleDraftSaveClient();});' +
+    'document.addEventListener("change",function(e){if(!e.target||!e.target.classList)return;if(e.target.classList.contains("b5-pick")||e.target.classList.contains("b5-dish-pick")||e.target.classList.contains("b5-catch")||e.target.classList.contains("b5-sales")||e.target.classList.contains("b5-scene")||e.target.classList.contains("b5-layout")) b5ScheduleDraftSaveClient();});' +
+    'function b5CollectCurrentParentSelection(){' +
+    'var it=B5_STATE.items&&B5_STATE.items[0]; if(!it) return null;' +
+    'var picked=[];' +
+    'var boxes=document.querySelectorAll(".b5-pick[data-i=\\"0\\"]");' +
+    'for(var b=0;b<boxes.length;b++){' +
+    'if(!boxes[b].checked) continue;' +
+    'var p=parseInt(boxes[b].getAttribute("data-p"),10);' +
+    'var pr=(it.proposals||[])[p]; if(!pr) continue;' +
+    'var inp=document.querySelector(".b5-catch[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'var catchText=inp?String(inp.value||"").trim():String(pr.catch||"");' +
+    'if(!catchText) continue;' +
+    'var sinp=document.querySelector(".b5-sales[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'var salesText=sinp?String(sinp.value||"").trim():String(pr.salesTalk||"");' +
+    'salesText=String(salesText||"").replace(/【[^】]*】/g,"").trim();' +
+    'var layInp=document.querySelector(".b5-layout[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'var layoutText=layInp?String(layInp.value||"").trim():String(pr.sceneLayout||"");' +
+    'var scInp=document.querySelector(".b5-scene[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'var sceneText=scInp?String(scInp.value||"").trim():String(pr.sceneHint||"");' +
+    'var dInp=document.querySelector(".b5-dish[data-i=\\"0\\"][data-p=\\""+p+"\\"]");' +
+    'var dishText=dInp?String(dInp.value||"").trim():String(pr.dishName||pr.dish||"");' +
+    'var rad=document.querySelector(".b5-dish-pick[data-i=\\"0\\"][data-p=\\""+p+"\\"]:checked");' +
+    'var partSkuOut=String(pr.dishPartSku||""); var partNameOut=String(pr.dishPartName||""); var partJanOut=String(pr.dishPartJan||""); var dishUrlOut=String(pr.dishSourceUrl||"");' +
+    'if(rad){dishText=String(rad.value||"").trim(); partSkuOut=String(rad.getAttribute("data-part-sku")||""); partNameOut=String(rad.getAttribute("data-part-name")||""); partJanOut=String(rad.getAttribute("data-part-jan")||""); var su2=String(rad.getAttribute("data-source-url")||""); if(su2) dishUrlOut=su2; if(!dishText){partSkuOut=""; partNameOut=""; partJanOut="";}}' +
+    'picked.push({themeId:pr.themeId,themeName:pr.themeName,catch:catchText,catchBurn:(pr.burnSkip?"":catchText),burnSkip:!!pr.burnSkip,burnSkipReason:pr.burnSkipReason||"",salesTalk:salesText,salesBurn:salesText,sceneHint:sceneText,sceneLayout:layoutText,evidence:pr.evidence,sellRank:pr.sellRank,classId:pr.classId,appealScore:pr.appealScore||0,appealReason:pr.appealReason||"",personaShort:pr.personaShort||"",personaDetail:pr.personaDetail||"",errand:pr.errand||pr.personaErrand||"",dishSource:pr.dishSource||"",dish:dishText,dishName:dishText,dishSourceUrl:dishUrlOut,dishPartSku:partSkuOut,dishPartName:partNameOut,dishPartJan:partJanOut});' +
+    '}' +
+    'if(!picked.length) return null;' +
+    'return {jan:it.jan,parentSku:it.parentSku,rel:it.rel,nameBase:it.nameBase||it.name||"",name:it.name,textColor:it.textColor||"1",proposals:picked};' +
     '}' +
     'function refreshCanonStatus(cb){' +
     'var jans=[];' +
@@ -39005,11 +49948,61 @@ function showB5PackageTruthBindDialog_(payload) {
     'for(var p=0;p<ps.length;p++){' +
     'var pr=ps[p];' +
     'var id="b5p_"+i+"_"+p;' +
+    // 初期表示は常にレ点ON。下書きに残った selected=false（再作成のため外した痕跡）は消す。
+    // 人が外すのは再作成前／指示前だけ（DOM）。再描画のたびに外したままにしない。
+    'pr.selected=true;' +
     'h+="<label class=\\"row\\"><input type=\\"checkbox\\" class=\\"b5-pick\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" id=\\""+id+"\\" checked> ";' +
     'h+="#"+esc(pr.sellRank)+" <b>"+esc(pr.themeId)+"</b> "+esc(pr.themeName);' +
-    'h+=" <span style=\\"color:#888;font-size:11px\\">("+esc(pr.catchSource||"rule")+")</span><br>";' +
-    'h+="キャッチ <input class=\\"catch b5-catch\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.catch)+"\\"><br>";' +
-    'h+="<span style=\\"font-size:11px;color:#555\\">根拠: "+esc(pr.evidence||"")+"</span>";' +
+    'h+=" <span style=\\"color:#888;font-size:11px\\">("+esc(pr.catchSource||"rule")+")</span>";' +
+    'if(pr.personaShort||pr.personaDetail||pr.errand||pr.personaErrand||pr.situation){h+=" <details style=\\"display:inline-block;margin-left:4px;vertical-align:middle\\"><summary style=\\"font-size:11px;background:#f5f0ff;border:1px solid #cbb;padding:1px 6px;cursor:pointer;list-style:none\\">ペルソナ "+esc(pr.personaShort||"空")+(pr.situation?(" ／状況 "+esc(pr.situation)):"")+(pr.errand||pr.personaErrand?(" ／用事 "+esc(pr.errand||pr.personaErrand)):"")+"</summary><div style=\\"font-size:11px;color:#444;padding:4px 6px;max-width:420px;white-space:pre-wrap\\">"+esc(pr.personaDetail||"（詳細なし）")+"</div></details>";}' +
+    'h+=" <span class=\\"b5-dish-badge\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" style=\\"font-size:11px;background:#fff3e0;border:1px solid #e0a;padding:1px 6px;margin-left:4px;"+(pr.dish||pr.dishName?"":"display:none;")+"\\">料理 "+esc(pr.dishName||pr.dish||"")+(pr.dishSourceUrl?(" · "+b5Link(pr.dishSourceUrl)):"")+"</span>";' +
+    'if((pr.themeId==="T3"||pr.themeId==="T4")&&pr.appealScore){' +
+    'h+=" <span style=\\"font-size:11px;background:#eef6ff;border:1px solid #bcd;padding:1px 6px;margin-left:4px\\">訴求度 "+esc(pr.appealScore)+" — "+esc(pr.appealReason||"")+"</span>";' +
+    '}' +
+    'if(pr.burnSkip){h+=" <span style=\\"font-size:11px;background:#fdecea;border:1px solid #c62828;padding:1px 6px;margin-left:4px\\">焼成しない — "+esc(pr.burnSkipReason||"")+"</span>";}' +
+    'if(pr.appealAxisLabel||pr.remakeAppealAxis){h+=" <span style=\\"font-size:11px;background:#e8f5e9;border:1px solid #a5d6a7;padding:1px 6px;margin-left:4px\\">訴求軸 "+esc(pr.appealAxisLabel||pr.remakeAppealAxis)+"</span>";}' +
+    'h+="<br>";' +
+    'h+="<div class=\\"b5-axis-box\\" style=\\"margin:6px 0 8px;padding:6px 8px;border:1px dashed #90caf9;background:#f7fbff;font-size:12px\\">";' +
+    'h+="<b>再作成するときの訴求軸</b>（レ点を外した案だけ必須。他案で使用中は選べません）<br>";' +
+    'var axes=it.appealAxisOptions||[];' +
+    'if(!axes.length){h+="<span style=\\"color:#888\\">候補なし（自由入力可）</span><br>";}' +
+    'for(var ax=0;ax<axes.length;ax++){' +
+    'var ao=axes[ax]||{}; var aLab=String(ao.label||""); var aId=String(ao.id||"");' +
+    'var blocked=!!ao.blocked; var usedBy=ao.usedBy||0;' +
+    'h+="<label style=\\"display:inline-block;margin:2px 8px 2px 0;"+(blocked?"opacity:0.55;":"")+"\\">";' +
+    'h+="<input type=\\"radio\\" class=\\"b5-axis-pick\\" name=\\"b5axis_"+i+"_"+p+"\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" data-axis-id=\\""+esc(aId)+"\\" value=\\""+esc(aLab)+"\\""+(blocked?" disabled":"")+"> ";' +
+    'h+=esc(aLab);' +
+    'if(blocked) h+=" <span style=\\"color:#b00020;font-size:11px\\">（#"+(usedBy||"?")+" 使用中）</span>";' +
+    'h+="</label>";' +
+    '}' +
+    'h+="<br>自由入力 <input class=\\"catch b5-axis-free\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\"\\" style=\\"max-width:280px\\" placeholder=\\"候補に無いときだけ（誰向け・何のため）\\" title=\\"文案そのものは書かない\\">";' +
+    'h+="</div>";' +
+    'h+="キャッチ（画像の大文字と同文） <input class=\\"catch b5-catch\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.catch)+"\\" title=\\"全角6〜12字。超えたら焼かない\\"><br>";' +
+    'h+="セールス小（画像の小文字と同文・【】なし） <input class=\\"catch b5-sales\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.salesTalk||"")+"\\" style=\\"max-width:280px\\" title=\\"希望4〜10字・不成文のみ最大12\\"><br>";' +
+    'h+="場面レイアウト <input class=\\"catch b5-layout\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.sceneLayout||"")+"\\" style=\\"max-width:520px\\" title=\\"配置の型。場面の本文とは別\\"><br>";' +
+    'h+="場面 <input class=\\"catch b5-scene\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.sceneHint||"")+"\\" style=\\"max-width:520px\\" title=\\"包材は盛り付けの後ろ・個品見本と添える料理を分ける\\"><br>";' +
+    'var cands=(pr.dishCandidates||[]).slice();' +
+    'var mixPartsUi=it.comboParts||[];' +
+    // ミックスで候補欠落時もラジオ枠は出す（テキスト欄に落とさない）
+    'if(!cands.length&&mixPartsUi.length>=2){' +
+    'var dishSeed=String(pr.dishName||pr.dish||"").trim();' +
+    'if(dishSeed){cands.push({dishName:dishSeed,partNameBase:String(pr.dishPartName||""),partSku:String(pr.dishPartSku||""),partJan:String(pr.dishPartJan||""),sourceUrl:String(pr.dishSourceUrl||"")});}' +
+    '}' +
+    'if(cands.length||mixPartsUi.length>=2){' +
+    'h+="料理（構成ごとに候補。1案1つ。料理の上はその構成／他は小皿の見本）<br>";' +
+    'var dishNow=String(pr.dishName||pr.dish||"").trim();' +
+    'var partNow=String(pr.dishPartName||"").trim();' +
+    'h+="<label style=\\"font-size:12px;display:block;margin:2px 0\\"><input type=\\"radio\\" class=\\"b5-dish-pick\\" name=\\"b5dish_"+i+"_"+p+"\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" data-part-sku=\\"\\" data-part-name=\\"\\" data-part-jan=\\"\\" data-source-url=\\"\\" value=\\"\\""+(!dishNow?" checked":"")+"> なし（料理なし）</label>";' +
+    'var cols=[]; var colMap={}; var mixParts=mixPartsUi;' +
+    'if(mixParts.length>=2){for(var mp=0;mp<mixParts.length;mp++){var mpn=String(mixParts[mp].nameBase||mixParts[mp].parentSku||("構成"+(mp+1))).trim(); cols.push({key:mpn,label:mpn,sku:String(mixParts[mp].parentSku||""),jan:String(mixParts[mp].jan||""),rows:[]}); colMap[mpn]=cols.length-1;}}' +
+    'for(var c=0;c<cands.length;c++){var cd=cands[c]||{}; var pn=String(cd.partNameBase||"").trim()||"（構成未設定）"; if(colMap[pn]==null){colMap[pn]=cols.length; cols.push({key:pn,label:pn,sku:String(cd.partSku||""),jan:String(cd.partJan||""),rows:[]});} cols[colMap[pn]].rows.push(cd);}' +
+    'if(cols.length>=2){h+="<div style=\\"display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 8px\\">"; for(var ci=0;ci<cols.length;ci++){var col=cols[ci]; h+="<div style=\\"min-width:160px;flex:1;border:1px solid #ddd;padding:6px;background:#fafafa\\"><div style=\\"font-size:11px;font-weight:bold;margin-bottom:4px\\">"+esc(col.label)+"</div>"; if(!col.rows.length){h+="<div style=\\"font-size:11px;color:#888\\">候補なし</div>";} for(var cr=0;cr<col.rows.length;cr++){var cd2=col.rows[cr]||{}; var dn2=String(cd2.dishName||""); var sel2=!!dn2&&dn2===dishNow&&(!partNow||partNow===String(cd2.partNameBase||col.label||"").trim()); h+="<label style=\\"font-size:12px;display:block;margin:2px 0\\"><input type=\\"radio\\" class=\\"b5-dish-pick\\" name=\\"b5dish_"+i+"_"+p+"\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" data-part-sku=\\""+esc(cd2.partSku||col.sku||"")+"\\" data-part-name=\\""+esc(cd2.partNameBase||col.label||"")+"\\" data-part-jan=\\""+esc(cd2.partJan||col.jan||"")+"\\" data-source-url=\\""+esc(cd2.sourceUrl||"")+"\\" value=\\""+esc(dn2)+"\\""+(sel2?" checked":"")+"> "+esc(dn2); if(cd2.usedPieces) h+="（個品 "+esc(cd2.usedPieces)+"）"; h+="</label>";} h+="</div>";} h+="</div>";}' +
+    'else{for(var c3=0;c3<cands.length;c3++){var cd3=cands[c3]||{}; var sel3=String(cd3.dishName||"")&&String(cd3.dishName||"")===dishNow; h+="<label style=\\"font-size:12px;display:block;margin:2px 0\\"><input type=\\"radio\\" class=\\"b5-dish-pick\\" name=\\"b5dish_"+i+"_"+p+"\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" data-part-sku=\\""+esc(cd3.partSku||"")+"\\" data-part-name=\\""+esc(cd3.partNameBase||"")+"\\" data-part-jan=\\""+esc(cd3.partJan||"")+"\\" data-source-url=\\""+esc(cd3.sourceUrl||"")+"\\" value=\\""+esc(cd3.dishName||"")+"\\""+(sel3?" checked":"")+"> "+esc(cd3.dishName||""); if(cd3.partNameBase) h+=" <span style=\\"color:#666;font-size:11px\\">("+esc(cd3.partNameBase)+")</span>"; if(cd3.usedPieces) h+="（個品 "+esc(cd3.usedPieces)+"）"; h+="</label>";}}' +
+    'h+="<input type=\\"hidden\\" class=\\"b5-dish\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\"\\"><br>";' +
+    '}else{' +
+    'h+="添える料理 <input class=\\"catch b5-dish\\" data-i=\\""+i+"\\" data-p=\\""+p+"\\" value=\\""+esc(pr.dishName||pr.dish||"")+"\\" style=\\"max-width:220px\\" title=\\"空でも枠を出す。手土産・ストックは空でよい\\"><br>";' +
+    '}' +
+    'h+="<span style=\\"font-size:11px;color:#555\\">根拠: "+esc(pr.evidence||"")+(pr.dishName||pr.dish?("／料理:"+esc(pr.dishName||pr.dish)):"")+(pr.dishPartName?("／載せる構成:"+esc(pr.dishPartName)):"")+(pr.dishSourceUrl?("／"+b5Link(pr.dishSourceUrl)):"")+"</span>";' +
     'h+="</label>";' +
     '}' +
     'h+="</div>";' +
@@ -39017,6 +50010,31 @@ function showB5PackageTruthBindDialog_(payload) {
     'document.getElementById("b5ProposeBody").innerHTML=h;' +
     '}' +
     'document.addEventListener("change",function(e){if(!e.target||!e.target.classList||!e.target.classList.contains("b5-truth"))return;var grid=e.target.closest(".b5-truth-grid");if(!grid)return;var cards=grid.querySelectorAll(".b5-truth-card");for(var ci=0;ci<cards.length;ci++)cards[ci].classList.remove("selected");var lab=e.target.closest(".b5-truth-card");if(lab)lab.classList.add("selected");});' +
+    'document.addEventListener("change",function(e){' +
+    'if(!e.target||!e.target.classList||!e.target.classList.contains("b5-dish-pick"))return;' +
+    'var i=parseInt(e.target.getAttribute("data-i"),10); var p=parseInt(e.target.getAttribute("data-p"),10);' +
+    'var it=(B5_STATE.items||[])[i]; if(!it||!(it.proposals||[])[p]) return;' +
+    'var pr=it.proposals[p];' +
+    'var oldDish=String(pr.dishName||pr.dish||"").trim();' +
+    'var newDish=String(e.target.value||"").trim();' +
+    'var partSku=String(e.target.getAttribute("data-part-sku")||"");' +
+    'var partName=String(e.target.getAttribute("data-part-name")||"");' +
+    'var partJan=String(e.target.getAttribute("data-part-jan")||"");' +
+    'var srcUrl=String(e.target.getAttribute("data-source-url")||"");' +
+    'pr.dish=newDish; pr.dishName=newDish;' +
+    'pr.dishPartSku=newDish?partSku:""; pr.dishPartName=newDish?partName:""; pr.dishPartJan=newDish?partJan:"";' +
+    'if(srcUrl) pr.dishSourceUrl=srcUrl; if(!newDish) pr.dishSourceUrl="";' +
+    'var badge=document.querySelector(".b5-dish-badge[data-i=\\""+i+"\\"][data-p=\\""+p+"\\"]");' +
+    'if(badge){if(newDish){badge.style.display=""; badge.innerHTML="料理 "+esc(newDish)+(pr.dishSourceUrl?(" · "+b5Link(pr.dishSourceUrl)):"");}else{badge.style.display="none"; badge.textContent="";}}' +
+    'var scInp=document.querySelector(".b5-scene[data-i=\\""+i+"\\"][data-p=\\""+p+"\\"]");' +
+    'var sceneNow=scInp?String(scInp.value||""):String(pr.sceneHint||"");' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(!res||!res.ok) return;' +
+    'var next=String(res.sceneHint||"").trim();' +
+    'if(scInp) scInp.value=next;' +
+    'pr.sceneHint=next;' +
+    '}).withFailureHandler(function(){}).b5AdaptSceneHintForDishChange_({sceneHint:sceneNow,oldDish:oldDish,newDish:newDish,dishPartName:partName,dishPartSku:partSku,dishPartJan:partJan,comboParts:it.comboParts||[]});' +
+    '});' +
     'function collectB5Bindings(requireTruth){' +
     'var bindings=[];' +
     'var trs=document.querySelectorAll("#bindPanel tbody tr");' +
@@ -39045,23 +50063,61 @@ function showB5PackageTruthBindDialog_(payload) {
     'if(col) col.value=String(tc);' +
     '}' +
     '}' +
-    'document.getElementById("b5GoBind").onclick=function(){' +
-    'var err=document.getElementById("b5Err"); err.textContent="正本を保存し、見本状態を確認中…";' +
+    'window.b5ClickGoBind=function(){' +
+    'var err=document.getElementById("b5Err");' +
+    'if(!err){alert("b5Err がありません");return;}' +
+    'try{' +
+    'err.style.color="#b00020";' +
+    'err.textContent="クリック受理…正本を確認しています";' +
+    'var trsAll=document.querySelectorAll("#bindPanel tbody tr");' +
+    'var missing=[]; var rowN=0;' +
+    'for(var mi=0;mi<trsAll.length;mi++){' +
+    'var tj=trsAll[mi].getAttribute("data-jan")||"";' +
+    'var ts=trsAll[mi].getAttribute("data-sku")||"";' +
+    'var tn=trsAll[mi].getAttribute("data-name")||"";' +
+    'if(!tj) continue;' +
+    'rowN++;' +
+    'if(!trsAll[mi].querySelector(".b5-truth:checked")) missing.push((ts||tj)+(tn?(" / "+String(tn).slice(0,24)):""));' +
+    '}' +
+    'if(missing.length){err.textContent="正本が未選択の親があります（"+missing.length+"件）: "+missing.join(" ／ ")+" → サムネのラジオを選んでから再度「紐付け確定」";return;}' +
     'var bindings=collectB5Bindings(true);' +
     'if(!bindings.length){err.textContent="正本が1件も選ばれていません（新規作成時は正本が必要です）";return;}' +
-    'B5_STATE.proposalsReady=false;B5_STATE.proposalsLoading=false;B5_STATE.proposalsError="";B5_STATE.items=[];B5_PROPOSE_WAITERS=[];' +
+    'if(rowN&&bindings.length<rowN){err.textContent="正本の選択数が親の行数と一致しません（選んだ"+bindings.length+"／行"+rowN+"）。未選択の行がないか確認してください。";return;}' +
+    'err.textContent="正本を保存し、見本状態を確認中…（最大1分程度かかることがあります）";' +
+    'B5_STATE.proposalsReady=false;B5_STATE.proposalsLoading=false;B5_STATE.proposalsError="";B5_STATE.items=[];B5_STATE.itemsByIndex=[];B5_STATE.selectionsAccum=[];B5_STATE.parentIndex=0;B5_PROPOSE_WAITERS=[];' +
     'google.script.run.withSuccessHandler(function(res){' +
+    'try{' +
     'if(!res||!res.ok){err.textContent=(res&&res.error)||"失敗";return;}' +
-    'B5_STATE.bindings=res.bindings||bindings;' +
-    'document.getElementById("b5GateCmd").value=res.gateCmd||"";' +
-    'renderCanonStatus(res.statuses||[]);' +
+    // 先に画面を切る（後続で例外でも「変化なし」に見えない）
+    'var latest=collectB5Bindings(true);' +
+    'var useBind=(latest&&latest.length)?latest:(res.bindings||bindings);' +
+    'B5_STATE.bindings=useBind;' +
     'document.getElementById("bindPanel").className="panel";' +
+    'if(B5_AUTO_TO_PROPOSE && res.allConfirmed){' +
+    'document.getElementById("canonPanel").className="panel";' +
+    'document.getElementById("proposePanel").className="panel on";' +
+    'document.getElementById("b5ProposeBody").innerHTML="<p>前回案があればそのまま表示します。無いときだけ新規作成します。この画面のまま待ってください。</p>";' +
+    'var err2=document.getElementById("b5Err2"); if(err2){err2.style.color="#555"; err2.textContent="前回案を確認中…";}' +
+    '}else{' +
     'document.getElementById("canonPanel").className="panel on";' +
-    'prefetchB5Proposals();' +
+    'var errC=document.getElementById("b5ErrCanon"); if(errC){errC.style.color="#555"; errC.textContent="見本状態を表示しました。";}' +
+    '}' +
     'err.textContent="";' +
-    '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
+    'try{google.script.run.saveB5TextColorFromClient({bindings:useBind});}catch(eCol){}' +
+    'try{document.getElementById("b5GateCmd").value=res.gateCmd||"";}catch(eGate){}' +
+    'try{renderCanonStatus(res.statuses||[]);}catch(eSt){}' +
+    'try{b5UpdateParentQueueHint();}catch(eHint){}' +
+    'try{prefetchB5Proposals();}catch(ePre){err.textContent="案の先読み開始に失敗: "+String(ePre&&ePre.message?ePre.message:ePre);}' +
+    'if(B5_AUTO_TO_PROPOSE && res.allConfirmed){' +
+    'waitB5ProposalsThen(function(res2){showB5ProposePanelFromItems(res2,document.getElementById("b5Err2"));});' +
+    '}' +
+    '}catch(eOk){err.textContent="成功後処理エラー: "+String(eOk&&eOk.message?eOk.message:eOk);}' +
+    '}).withFailureHandler(function(e){err.textContent="サーバ失敗: "+String(e&&e.message?e.message:e);})' +
     '.beginB5AfterTruthBind({bindings:bindings});' +
+    '}catch(eClick){err.textContent="クリック処理エラー: "+String(eClick&&eClick.message?eClick.message:eClick);}' +
     '};' +
+    'var b5GoBindEl=document.getElementById("b5GoBind");' +
+    'if(b5GoBindEl) b5GoBindEl.onclick=function(){window.b5ClickGoBind();};' +
     'document.getElementById("b5CopyGate").onclick=function(){' +
     'var el=document.getElementById("b5GateCmd"); el.focus(); el.select(); document.execCommand("copy");' +
     '};' +
@@ -39071,6 +50127,10 @@ function showB5PackageTruthBindDialog_(payload) {
     'if(!res||!res.ok){err.textContent=(res&&res.error)||"状態取得失敗";return;}' +
     'renderCanonStatus(res.statuses||[]);' +
     'if(!res.allConfirmed){err.textContent="まだ未確定の商品があります。「命令をコピー」で見本を選んでから、もう一度「次へ」を押してください。";return;}' +
+    'var pidx=B5_STATE.parentIndex||0;' +
+    'if(B5_STATE.itemsByIndex[pidx]){' +
+    'showB5ProposePanelFromItems({ok:true,items:[B5_STATE.itemsByIndex[pidx]],targetIndex:pidx},err);return;' +
+    '}' +
     'if(B5_STATE.proposalsReady&&B5_STATE.items&&B5_STATE.items.length){' +
     'showB5ProposePanelFromItems({ok:true,items:B5_STATE.items},err);return;' +
     '}' +
@@ -39096,25 +50156,85 @@ function showB5PackageTruthBindDialog_(payload) {
     '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
     '.finishB5ReuseExistingCompose({bindings:bindings});' +
     '};' +
+    'document.getElementById("b5BackBind").onclick=function(){' +
+    'b5PersistProposalCopyClient();' +
+    'B5_STATE.proposalsReady=false;B5_STATE.proposalsLoading=false;B5_STATE.proposalsError="";B5_STATE.items=[];B5_STATE.itemsByIndex=[];B5_STATE.selectionsAccum=[];B5_STATE.parentIndex=0;B5_STATE.prefetchingIndex=-1;B5_PROPOSE_WAITERS=[];' +
+    'document.getElementById("canonPanel").className="panel";' +
+    'document.getElementById("bindPanel").className="panel on";' +
+    'setB5ProposePrefetchHint("","");' +
+    'b5SetNextParentHint("");' +
+    '};' +
+    'document.getElementById("b5BackCanon").onclick=function(){' +
+    'b5PersistProposalCopyClient();' +
+    'document.getElementById("proposePanel").className="panel";' +
+    'document.getElementById("canonPanel").className="panel on";' +
+    'setB5ProposePrefetchHint("見本に戻りました。案は保持。作り直しは「レ点を外した案を再作成する」のみ","#0a7");' +
+    'var errC=document.getElementById("b5ErrCanon"); if(errC){errC.style.color="#0a7"; errC.textContent="案は破棄していません。次へで同じ案に戻れます。";}' +
+    '};' +
+    'document.getElementById("b5RemakeChecked").onclick=function(){' +
+    // レ点オフの遅延下書き保存が、再作成後のONを上書きしないよう止める
+    'if(B5_DRAFT_SAVE_TIMER){clearTimeout(B5_DRAFT_SAVE_TIMER);B5_DRAFT_SAVE_TIMER=null;}' +
+    'var err=document.getElementById("b5Err2"); err.textContent="レ点を外した案だけ再作成中…";' +
+    'var idx=B5_STATE.parentIndex||0;' +
+    'if(!B5_STATE.bindings||!B5_STATE.bindings[idx]){err.textContent="紐付けがありません";return;}' +
+    'b5SyncDomIntoCurrentItem();' +
+    'if(B5_DRAFT_SAVE_TIMER){clearTimeout(B5_DRAFT_SAVE_TIMER);B5_DRAFT_SAVE_TIMER=null;}' +
+    'var remakeIndexes=[];' +
+    'var remakeAxes=[];' +
+    'var boxes=document.querySelectorAll(".b5-pick[data-i=\\"0\\"]");' +
+    'for(var bb=0;bb<boxes.length;bb++){' +
+    'if(boxes[bb].checked) continue;' +
+    'var pp=parseInt(boxes[bb].getAttribute("data-p"),10);' +
+    'if(isNaN(pp)||pp<0) continue;' +
+    'remakeIndexes.push(pp);' +
+    'var freeEl=document.querySelector(".b5-axis-free[data-i=\\"0\\"][data-p=\\""+pp+"\\"]");' +
+    'var freeTxt=freeEl?String(freeEl.value||"").trim():"";' +
+    'var rad=document.querySelector(".b5-axis-pick[data-i=\\"0\\"][data-p=\\""+pp+"\\"]:checked");' +
+    'var axisLabel=rad?String(rad.value||"").trim():"";' +
+    'var axisId=rad?String(rad.getAttribute("data-axis-id")||""):"";' +
+    'if(!freeTxt&&!axisLabel){err.textContent="案#"+(pp+1)+" の訴求軸を選ぶか、自由入力してください";return;}' +
+    'remakeAxes.push({index:pp,axisId:axisId,axisLabel:axisLabel,freeText:freeTxt});' +
+    '}' +
+    'if(!remakeIndexes.length){err.textContent="再作成する案のレ点を外してください（残す案はレ点したまま）";return;}' +
+    'var keepItem=JSON.parse(JSON.stringify(B5_STATE.items[0]||{}));' +
+    'google.script.run.withSuccessHandler(function(res){' +
+    'if(!res||!res.ok){err.textContent=(res&&res.error)||"再作成失敗";return;}' +
+    'var fresh=(res.items&&res.items[0])||null;' +
+    'if(!fresh||!(fresh.proposals||[]).length){err.textContent="再作成結果が空です";return;}' +
+    // 再作成後は全案レ点ON＋下書き保存（遅延保存のオフ残しで指示から落ちないようにする）
+    'for(var ri=0;ri<(fresh.proposals||[]).length;ri++){if(fresh.proposals[ri]) fresh.proposals[ri].selected=true;}' +
+    'B5_STATE.items=[fresh];B5_STATE.itemsByIndex[idx]=fresh;B5_STATE.proposalsReady=true;' +
+    'renderProposals(B5_STATE.items); b5UpdateParentQueueHint(); err.textContent="訴求軸から作り直しました（"+remakeIndexes.length+"件）。作り直した案にレ点を付け直しました。";' +
+    'if(B5_DRAFT_SAVE_TIMER){clearTimeout(B5_DRAFT_SAVE_TIMER);B5_DRAFT_SAVE_TIMER=null;}' +
+    'google.script.run.saveB5ProposalCopyFromClient({item:fresh});' +
+    '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
+    '.buildB5ProposalsForBindings({bindings:[B5_STATE.bindings[idx]],prefetch:false,applyCopyOverlay:false,remakeIndexes:remakeIndexes,remakeAxes:remakeAxes,keepProposals:(keepItem.proposals||[])});' +
+    '};' +
+    'document.getElementById("b5ParentDone").onclick=function(){' +
+    'var err=document.getElementById("b5Err2");' +
+    'var sel=b5CollectCurrentParentSelection();' +
+    'if(!sel){err.textContent="この親で案を1つ以上チェックしてください";return;}' +
+    'b5PersistProposalCopyClient();' +
+    'B5_STATE.selectionsAccum.push(sel);' +
+    'var next=(B5_STATE.parentIndex||0)+1;' +
+    'if(next>=b5ParentCount()){err.textContent="内部エラー: 次親がありません";return;}' +
+    'B5_STATE.parentIndex=next;' +
+    'err.textContent="次の親へ…";' +
+    'function showNext(){' +
+    'var it=B5_STATE.itemsByIndex[next];' +
+    'if(!it){err.textContent="次の親の案を作成中…"; waitB5ProposalsThen(function(res2){showB5ProposePanelFromItems(res2,err);});return;}' +
+    'showB5ProposePanelFromItems({ok:true,items:[it],targetIndex:next},err);' +
+    'err.textContent="親"+(next+1)+" を表示しました。先の親のチェックは保持しています。";' +
+    '}' +
+    'showNext();' +
+    '};' +
     'document.getElementById("b5GoPrompt").onclick=function(){' +
     'var err=document.getElementById("b5Err2"); err.textContent="指示文を作成中…";' +
-    'var selections=[];' +
-    'for(var i=0;i<B5_STATE.items.length;i++){' +
-    'var it=B5_STATE.items[i];' +
-    'var picked=[];' +
-    'var boxes=document.querySelectorAll(".b5-pick[data-i=\\""+i+"\\"]");' +
-    'for(var b=0;b<boxes.length;b++){' +
-    'if(!boxes[b].checked) continue;' +
-    'var p=parseInt(boxes[b].getAttribute("data-p"),10);' +
-    'var pr=(it.proposals||[])[p];' +
-    'if(!pr) continue;' +
-    'var inp=document.querySelector(".b5-catch[data-i=\\""+i+"\\"][data-p=\\""+p+"\\"]");' +
-    'var catchText=inp?String(inp.value||"").trim():String(pr.catch||"");' +
-    'if(!catchText) continue;' +
-    'picked.push({themeId:pr.themeId,themeName:pr.themeName,catch:catchText,sceneHint:pr.sceneHint,evidence:pr.evidence,sellRank:pr.sellRank,classId:pr.classId});' +
-    '}' +
-    'if(picked.length) selections.push({jan:it.jan,parentSku:it.parentSku,rel:it.rel,nameBase:it.nameBase||it.name||"",name:it.name,textColor:it.textColor||"1",proposals:picked});' +
-    '}' +
+    'var last=b5CollectCurrentParentSelection();' +
+    'if(!last){err.textContent="この親で案を1つ以上チェックしてください";return;}' +
+    'b5PersistProposalCopyClient();' +
+    'var selections=(B5_STATE.selectionsAccum||[]).slice();' +
+    'selections.push(last);' +
     'if(!selections.length){err.textContent="案を1つ以上チェックしてください";return;}' +
     'google.script.run.withSuccessHandler(function(res){' +
     'if(!res||!res.ok){err.textContent=(res&&res.error)||"失敗";return;}' +
@@ -39126,6 +50246,9 @@ function showB5PackageTruthBindDialog_(payload) {
     '}).withFailureHandler(function(e){err.textContent=String(e&&e.message?e.message:e);})' +
     '.finishB5AfterTruthBind({selections:selections});' +
     '};' +
+    'try{var checkedCards=document.querySelectorAll(".b5-truth:checked");for(var sci=0;sci<checkedCards.length;sci++){var card=checkedCards[sci].closest(".b5-truth-card");if(card&&card.scrollIntoView)card.scrollIntoView({block:"nearest",inline:"nearest"});}}catch(eScroll){}' +
+    'try{var bootErr=document.getElementById("b5Err");if(bootErr&&!bootErr.textContent){bootErr.style.color="#555";bootErr.textContent="準備完了。正本を選んで「紐付け確定 → 見本へ」を押してください。";}}catch(eBoot){}' +
+    'if(B5_AUTO_TO_PROPOSE){try{window.b5ClickGoBind();}catch(eAuto){var ae=document.getElementById("b5Err");if(ae)ae.textContent="自動遷移失敗: "+String(eAuto&&eAuto.message?eAuto.message:eAuto);}}' +
     '</script></body></html>';
 
   SpreadsheetApp.getUi().showModalDialog(
@@ -39143,6 +50266,11 @@ function buildB5ProposalsForBindings(payload) {
   var fn = 'buildB5ProposalsForBindings';
   var t0 = Date.now();
   var prefetch = !!(payload && payload.prefetch);
+  // レ点なし再作成は false（前回丸ごとスキップも無し）。初回／先読みは前回案があれば生成スキップ。
+  // true＝前回案の丸ごと再利用を試す。catch／sales だけの貼付は廃止済み。
+  var applyCopyOverlay = !(payload && payload.applyCopyOverlay === false);
+  var remakeIndexes = (payload && payload.remakeIndexes) || null;
+  var keepProposalsIn = (payload && payload.keepProposals) || null;
   try {
     var bindings = (payload && payload.bindings) || [];
     if (!bindings.length) {
@@ -39151,6 +50279,8 @@ function buildB5ProposalsForBindings(payload) {
     }
     var items = [];
     var seen = {};
+    var personaKeepLines = [];
+    var reasonKeepLines = [];
     for (var i = 0; i < bindings.length; i++) {
       var jan = String(bindings[i].jan || '').trim();
       var sku = String(bindings[i].parentSku || '').trim();
@@ -39163,20 +50293,230 @@ function buildB5ProposalsForBindings(payload) {
       var dedupeKey = nameBase || jan;
       if (!jan || !rel || !dedupeKey || seen[dedupeKey]) continue;
       seen[dedupeKey] = true;
+
+      // レ点なし再作成: 訴求軸付きでペルソナ〜場面をセット更新（他案は保持）
+      if (
+        remakeIndexes &&
+        remakeIndexes.length &&
+        keepProposalsIn &&
+        keepProposalsIn.length
+      ) {
+        var loadedR = b5LoadMaterialsForParent_(jan, nameBase);
+        var matsR = loadedR.materials || {};
+        matsR = b5EnrichMaterialsMeta_(matsR, sku, jan);
+        var remakeAxes = (payload && payload.remakeAxes) || [];
+        Logger.log(
+          '[buildB5ProposalsForBindings] remakeAxis indexes=' +
+            remakeIndexes.join(',') +
+            ' axes=' +
+            remakeAxes.length +
+            ' keep=' +
+            keepProposalsIn.length +
+            ' sku=' +
+            sku
+        );
+        var propsR;
+        try {
+          propsR = b5RemakeProposalsWithAppealAxes_(
+            matsR,
+            keepProposalsIn,
+            remakeIndexes,
+            remakeAxes
+          );
+        } catch (eRemake) {
+          b5DiagLog_(fn, t0, 'FAIL', 'remake_axis ' + String(eRemake && eRemake.message ? eRemake.message : eRemake));
+          return {
+            ok: false,
+            error: String(eRemake && eRemake.message ? eRemake.message : eRemake)
+          };
+        }
+        var itemComboR = (matsR.comboParts && matsR.comboParts.length >= 2)
+          ? matsR.comboParts
+          : (sku ? b5MasterComboPartsForParentSku_(sku) : []);
+        var itemRowR = {
+          jan: jan,
+          parentSku: sku,
+          nameBase: nameBase,
+          rel: rel,
+          textColor: textColor,
+          name: loadedR.name || nameBase || (matsR && matsR.name) || '',
+          error: 'レ点なし案を訴求軸から再作成（' + remakeIndexes.length + '件）',
+          matchHow: 'remake_axis',
+          comboParts: itemComboR.length >= 2 ? itemComboR : [],
+          proposals: propsR
+        };
+        b5AttachAppealAxisOptions_(itemRowR, matsR);
+        items.push(itemRowR);
+        saveB5ProposalCopyFromItem_(itemRowR);
+        b5SaveProposalDraftToDrive_(itemRowR);
+        b5DiagLog_(
+          fn,
+          t0,
+          'NAME',
+          'name=' +
+            nameBase.slice(0, 40) +
+            ' jan=' +
+            jan +
+            ' remake=' +
+            remakeIndexes.length +
+            ' how=remake_axis'
+        );
+        continue;
+      }
+
+      // 前回あり → 保存分は再利用。子より多い→切る。子より少ない→不足分だけ追加生成。
+      if (applyCopyOverlay) {
+        var reused = b5TryReuseFullProposals_(jan, sku);
+        if (reused && reused.proposals && reused.proposals.length) {
+          var reuseMats = b5EnrichMaterialsMeta_(
+            (b5LoadMaterialsForParent_(jan, nameBase || reused.nameBase || '').materials ||
+              {}),
+            sku,
+            jan
+          );
+          var alignR = b5AlignSavedProposalsToChildCount_(
+            reused.proposals,
+            reuseMats,
+            sku
+          );
+          alignR.proposals = b5EnsureDishCandidatesOnProposals_(
+            reuseMats,
+            alignR.proposals
+          );
+          alignR.proposals = b5MarkProposalsSelectedForUi_(alignR.proposals);
+          var reuseNoteParts = [
+            '前回案を再利用（' + reused.source + '・保存' + alignR.before + '件'
+          ];
+          if (alignR.toppedUp) {
+            reuseNoteParts.push(
+              '不足' + alignR.added + '件を追加→' + alignR.proposals.length + '件'
+            );
+          } else if (alignR.trimmed) {
+            reuseNoteParts.push(
+              '子レ点' +
+                alignR.childCount +
+                '件に' +
+                alignR.before +
+                '→' +
+                alignR.proposals.length +
+                '件'
+            );
+          } else {
+            reuseNoteParts.push('生成スキップ');
+          }
+          var reuseNote = reuseNoteParts.join('・') + '）';
+          var reuseCombo = sku ? b5MasterComboPartsForParentSku_(sku) : [];
+          var reuseRow = {
+            jan: jan,
+            parentSku: sku,
+            nameBase: nameBase || reused.nameBase || '',
+            rel: rel,
+            textColor: textColor,
+            name: reused.name || nameBase || '',
+            error: reuseNote,
+            matchHow: alignR.toppedUp
+              ? 'reuse_' + reused.source + '_topup'
+              : 'reuse_' + reused.source,
+            comboParts: reuseCombo.length >= 2 ? reuseCombo : [],
+            proposals: alignR.proposals
+          };
+          b5AttachAppealAxisOptions_(reuseRow, reuseMats);
+          items.push(reuseRow);
+          // 追加生成した分は下書きへ保存。切り詰め時だけ旧フルを残す。
+          var draftProps = alignR.toppedUp
+            ? alignR.proposals
+            : alignR.trimmed
+              ? reused.proposals
+              : alignR.proposals;
+          saveB5ProposalCopyFromItem_({
+            jan: jan,
+            parentSku: sku,
+            proposals: draftProps
+          });
+          b5SaveProposalDraftToDrive_({
+            jan: jan,
+            parentSku: sku,
+            nameBase: nameBase || reused.nameBase || '',
+            name: reused.name || nameBase || '',
+            textColor: textColor,
+            rel: rel,
+            proposals: draftProps
+          });
+          Logger.log(
+            '[b5ProposalReuse_] sku=' +
+              sku +
+              ' jan=' +
+              jan +
+              ' n=' +
+              alignR.proposals.length +
+              ' src=' +
+              reused.source +
+              (alignR.trimmed ? ' trimmedFrom=' + alignR.before : '') +
+              (alignR.toppedUp ? ' toppedUp=+' + alignR.added : ' skipGen=1') +
+              ' draftN=' +
+              draftProps.length
+          );
+          b5DiagLog_(
+            fn,
+            t0,
+            'NAME',
+            'name=' +
+              String(nameBase || '').slice(0, 40) +
+              ' jan=' +
+              jan +
+              ' n=' +
+              alignR.proposals.length +
+              ' how=reuse_' +
+              reused.source +
+              (alignR.toppedUp ? '_topup' : '') +
+              ' color=' +
+              textColor +
+              (alignR.toppedUp
+                ? ' topUp=+' + alignR.added
+                : ' skipGen=1') +
+              (alignR.trimmed ? ' capChild=' + alignR.childCount : '')
+          );
+          continue;
+        }
+      }
+
       var loaded = b5LoadMaterialsForParent_(jan, nameBase);
-      var proposals = b5ProposeFromMaterials_(loaded.materials || {});
-      proposals = b5PolishCatchesWithGemini_(loaded.materials || {}, proposals);
-      items.push({
+      var mats = loaded.materials || {};
+      mats = b5EnrichMaterialsMeta_(mats, sku, jan);
+      Logger.log('[buildB5ProposalsForBindings] childCount=' + mats.childCount + ' food=' + b5IsFoodMaterials_(mats) + ' mix=' + b5IsMixMaterials_(mats));
+      var proposals = b5ProposeFromMaterials_(mats);
+      proposals = b5PolishCatchesWithGemini_(mats, proposals);
+      proposals = b5EnrichSceneAndDishBatch_(mats, proposals);
+      proposals = b5MarkProposalsSelectedForUi_(proposals);
+      var keepPack = b5WritePersonaReceipt_(mats, proposals);
+      var ki;
+      for (ki = 0; ki < keepPack.persona.length; ki++) personaKeepLines.push(keepPack.persona[ki]);
+      for (ki = 0; ki < keepPack.reason.length; ki++) reasonKeepLines.push(keepPack.reason[ki]);
+      var noteExtra = '';
+      if (b5LadderMaterialStages_(b5MaterialsBlob_(mats)).tasteOnly) {
+        noteExtra = '味の材料しか無いため T4 は出していません（目的の階段）';
+      }
+      var itemCombo = (mats.comboParts && mats.comboParts.length >= 2)
+        ? mats.comboParts
+        : (sku ? b5MasterComboPartsForParentSku_(sku) : []);
+      var itemRow = {
         jan: jan,
         parentSku: sku,
         nameBase: nameBase,
         rel: rel,
         textColor: textColor,
-        name: loaded.name || nameBase || (loaded.materials && loaded.materials.name) || '',
-        error: loaded.error || '',
+        name: loaded.name || nameBase || (mats && mats.name) || '',
+        error: loaded.error || noteExtra,
         matchHow: loaded.matchHow || '',
+        comboParts: itemCombo.length >= 2 ? itemCombo : [],
         proposals: proposals
-      });
+      };
+      b5AttachAppealAxisOptions_(itemRow, mats);
+      // キャッチ／セールスだけの overlay は廃止（場面と食い違う）。引き継ぎは上の丸ごと再利用のみ。
+      items.push(itemRow);
+      // A: 作成完了時点で Drive 下書きを残す（画面を閉じても残る）
+      saveB5ProposalCopyFromItem_(itemRow);
+      b5SaveProposalDraftToDrive_(itemRow);
       b5DiagLog_(
         fn,
         t0,
@@ -39192,7 +50532,11 @@ function buildB5ProposalsForBindings(payload) {
           ' color=' +
           textColor +
           ' matErr=' +
-          (loaded.error || '-')
+          (loaded.error || '-') +
+          ' officialWhy=' +
+          (mats._officialWhy || '-') +
+          ' copyOv=' +
+          (applyCopyOverlay ? '1' : '0')
       );
     }
     if (!items.length) {
@@ -39203,7 +50547,13 @@ function buildB5ProposalsForBindings(payload) {
     saveB5PackageTruthByNameBase_(items);
     // 文字色共有（MAIN／サブ）
     saveB5TextColorByParent_(items);
-    b5DiagLog_(fn, t0, 'DONE', 'items=' + items.length + (prefetch ? ' prefetch=1' : ''));
+    b5DiagLog_(fn, t0, 'DONE', 'items=' + items.length + (prefetch ? ' prefetch=1' : '') + (applyCopyOverlay ? ' copyOv=1' : ' copyOv=0'));
+    for (var pk = 0; pk < personaKeepLines.length; pk++) {
+      Logger.log('[b5PersonaKeep_] ' + personaKeepLines[pk]);
+    }
+    for (pk = 0; pk < reasonKeepLines.length; pk++) {
+      Logger.log('[b5ReasonKeep_] ' + reasonKeepLines[pk]);
+    }
     return { ok: true, items: items, prefetch: prefetch };
   } catch (e) {
     b5DiagLog_(fn, t0, 'EXCEPTION', String(e && e.message ? e.message : e).slice(0, 200));
@@ -39381,58 +50731,86 @@ function finishB5AfterTruthBind(payload) {
     var compareHint =
       'G:\\マイドライブ\\05.画像生成（セットMAIN）\\00.テスト出力\\b5_main_base_compose\\';
     var colorJa = { '1': 'えんじ', '2': '青', '3': '黒', '4': '緑', '5': '茶' };
-    var janOnly = [];
-    for (var ji = 0; ji < selections.length; ji++) {
-      var jn = String(selections[ji].jan || '').trim();
-      if (jn && janOnly.indexOf(jn) < 0) janOnly.push(jn);
-    }
-    var janGateArgs = janOnly
-      .map(function (j) {
-        return '--jan ' + j;
-      })
-      .join(' ');
     var lines = [];
     lines.push('【B-④ 楽天MAIN基礎・案F／P2】人がダイアログで選んだ案。GASは合成しない。OpenAI画像のみ（Gemini画像は作らない）。');
     lines.push('文字色は親ごと（サイズ・味違いで変更可）。後続Cの --text-color と同じ番号。');
     lines.push(
-      'キャッチ: 下の文言を優先（人が確定した提案文）。提案はだいたい' +
-        B5_PROPOSE_CATCH_MIN_ +
+      'キャッチ／セールス: 画面＝焼成（catchBurn＝catch／salesBurn＝salesTalk。別短縮しない）。' +
+        '大＝全角' +
+        B5_CATCH_PREF_MIN_ +
         '〜' +
-        B5_PROPOSE_CATCH_MAX_ +
-        '字。画像はキャッチ大＋セールストーク小（§7.6ter）。上部左寄り・金丸＋Octas聖域。'
+        B5_CATCH_PREF_MAX_ +
+        '字の1本（超えたら1回書き直し、まだ超えたら焼かない）。小＝希望' +
+        B5_SALES_PREF_MIN_ +
+        '〜' +
+        B5_SALES_PREF_MAX_ +
+        '字（不成文のみ最大' +
+        B5_SALES_FALLBACK_MAX_ +
+        '）。キャッチとセールスに【】は付けない。途中切れ禁止。文字20%に大・小とも含む。上部左寄り・金丸＋Octas聖域。' +
+        '絵は全商品共通。商品の見本を前、包材は後ろ。袋を並べて主役にしない。組み合わせでも個品は種類が分かればよい。顔と手渡す手元は出さない。描く物はその案の状況の場だけ。選んだ食べ方と別の食べ物は足さない。状況の文は画像の文字にしない。'
     );
     lines.push(
-      '個品見本: compose は _out/theme_new_run_{JAN} の人間確定 FOOD_UNIT を自動添付（§7.14）。構図はMAIN専用。'
+      '個品見本: ミックスはマスタセット構成の各単品 theme_new_run_{JAN} の FOOD_UNIT（§7.14／§7.15）。単品は親JAN。構図はMAIN専用。商品名の中黒では分けない。'
     );
     lines.push(
       '出口: ブラウザで1〜4版を採用＋出品CKレ点子SKU割当 → 02.楽天ベース\\{親SKU}_単体__{adoptKey}.png ＋ set_base_map.json（比較は残す）。'
     );
     lines.push('');
     lines.push(
-      '【①′で確定済みならスキップ可】食材見本ゲート（B45 §7.12／§7.14）。B-④ ダイアログ ①′ で未確定の JAN だけ下を実行。'
+      '【①′で確定済みならスキップ可】食材見本ゲート（B45 §7.12／§7.15）。ミックスはセット構成の単品JAN。未確定だけ下を実行。'
     );
     lines.push('cd "' + toolDir + '"');
+    var finishSingleJans = [];
+    for (var fsi = 0; fsi < selections.length; fsi++) {
+      var fsel = selections[fsi] || {};
+      var fsku = String(fsel.parentSku || '').trim();
+      var fparts = fsku ? b5MasterComboPartsForParentSku_(fsku) : [];
+      if (fparts.length >= 2) {
+        lines.push(
+          'python sub_image_food_canon_launch.py --parent-sku ' +
+            fsku +
+            (fsel.nameBase
+              ? ' --name-base "' + String(fsel.nameBase).replace(/"/g, '') + '"'
+              : '') +
+            ' --force-pick --context main --no-wait'
+        );
+      } else {
+        var fjan = String(fsel.jan || '').trim();
+        if (fjan && finishSingleJans.indexOf(fjan) < 0) finishSingleJans.push(fjan);
+      }
+    }
+    if (finishSingleJans.length) {
+      lines.push(
+        'python sub_image_food_canon_launch.py ' +
+          finishSingleJans
+            .map(function (j) {
+              return '--jan ' + j;
+            })
+            .join(' ') +
+          ' --force-pick --context main --no-wait'
+      );
+    }
     lines.push(
-      'python sub_image_food_canon_launch.py ' +
-        (janGateArgs || '--jan （JAN）') +
-        ' --force-pick --context main --no-wait'
-    );
-    lines.push(
-      '→ ブラウザ（8790起算）で見本確認。MAIN用: 「変更なしで閉じる」または「選び直したらここで保存」→ B-④「次へ」。競合ゼロ時は案内に従いコピペ or 正本のみ。'
+      '→ ブラウザ（8790起算）で見本確認。ミックスは構成ごとの袋＋中身。MAIN用: 「変更なしで閉じる」または「選び直したらここで保存」→ B-④「次へ」。'
     );
     lines.push('');
     lines.push('Agent手順:');
-    lines.push('0. 個品見本: B-④ ①′ で human 確定済みならスキップ。未確定 JAN のみ下のゲート');
+    lines.push('0. 個品見本: B-④ ①′ で human 確定済みならスキップ。未確定はマスタ構成の単品JAN／組み合わせゲート');
     lines.push('1. 各親の JSON を tools/set_main_image/_b5_checked_{JAN}.json に保存（下のブロックをそのまま）');
     lines.push(
-      '2. 既存ラン確認: python b5_main_base_review_launch.py --list-latest → 人が「既存を使う／足りない分だけ／全部作り直し」を選ぶ'
+      '2. 再利用は自動判定（人が三択を選ばない）: python b5_reuse_decide.py --from-json _b5_checked_{JAN}.json'
     );
     lines.push(
-      '   ・既存を使う → その親は compose せず --compose-dir で review のみ'
+      '   ・mode=reuse → compose せず --fresh --compose-dir で review のみ'
     );
-    lines.push('   ・全部作り直し／足りない分 → 必要分だけ compose（親ごと・見本確定後）');
     lines.push(
-      '3. review_launch 起動（人がブラウザで修正・複数採用・レ点子割当・02）。スプレッドシートでは採用しない'
+      '   ・mode=missing_only → 足りないキャッチだけ同一 compose-dir へ足す → --fresh review'
+    );
+    lines.push(
+      '   ・mode=full → チェック分を通常 compose（新規ラン）→ --fresh review。人が「全部作り直し」と書いたときだけ --full'
+    );
+    lines.push(
+      '3. review_launch は必ず --fresh（人がブラウザで修正・複数採用・レ点子割当・02）。スプレッドシートでは採用しない'
     );
     lines.push('');
     lines.push('実行ディレクトリ:');
@@ -39449,6 +50827,20 @@ function finishB5AfterTruthBind(payload) {
       var textColor = String(selections[i].textColor || '1');
       if ('12345'.indexOf(textColor) < 0) textColor = '1';
       var props = selections[i].proposals || [];
+      var capF = b5CapProposalsToCheckedChildCount_(props, sku);
+      if (capF.trimmed) {
+        props = capF.proposals;
+        selections[i].proposals = props;
+        lines.push(
+          '※ ' +
+            sku +
+            '：案' +
+            capF.before +
+            '件→子レ点' +
+            capF.childCount +
+            '件に合わせて指示を切った（食い違い防止）'
+        );
+      }
       if (!jan || !rel || !props.length) continue;
       n++;
       var full = baseLocal + '\\' + rel;
@@ -39460,10 +50852,27 @@ function finishB5AfterTruthBind(payload) {
           themeId: String(pr.themeId || ''),
           themeName: String(pr.themeName || ''),
           catch: String(pr.catch || ''),
+          catchBurn: pr.burnSkip ? '' : String(pr.catch || pr.catchBurn || ''),
+          burnSkip: !!pr.burnSkip,
+          burnSkipReason: String(pr.burnSkipReason || ''),
+          salesTalk: b5StripSalesBrackets_(pr.salesTalk || ''),
+          salesBurn: b5StripSalesBrackets_(pr.salesTalk || pr.salesBurn || ''),
           evidence: String(pr.evidence || ''),
           sceneHint: String(pr.sceneHint || ''),
+          sceneLayout: String(pr.sceneLayout || ''),
           sellRank: pr.sellRank || p + 1,
-          sellScore: pr.sellScore
+          sellScore: pr.sellScore,
+          personaShort: String(pr.personaShort || ''),
+          personaDetail: String(pr.personaDetail || ''),
+          errand: String(pr.errand || pr.personaErrand || ''),
+          dish: String(pr.dishName || pr.dish || ''),
+          dishName: String(pr.dishName || pr.dish || ''),
+          dishSourceUrl: String(pr.dishSourceUrl || ''),
+          dishEvidence: String(pr.dishEvidence || ''),
+          dishPartSku: String(pr.dishPartSku || ''),
+          dishPartName: String(pr.dishPartName || ''),
+          dishPartJan: String(pr.dishPartJan || '')
+          // appealScore は画面専用。焼成は catchBurn＋salesBurn
         });
       }
       var shortName = b5ShortNameFromTruthRel_(rel);
@@ -39471,6 +50880,7 @@ function finishB5AfterTruthBind(payload) {
         selections[i].nameBase || selections[i].name || ''
       ).trim();
       if (nameBaseSel) truthMapEntries.push({ nameBase: nameBaseSel, rel: rel });
+      var comboPartsSel = sku ? b5MasterComboPartsForParentSku_(sku) : [];
       var payloadObj = {
         role: 'rakuten_main_base',
         jan: jan,
@@ -39479,6 +50889,8 @@ function finishB5AfterTruthBind(payload) {
         nameBase: nameBaseSel,
         textColor: textColor,
         packageTruth: full,
+        mix: comboPartsSel.length >= 2,
+        comboParts: comboPartsSel.length >= 2 ? comboPartsSel : [],
         proposals: propRows
       };
       lines.push('--- JAN ' + jan + (sku ? ' 親SKU ' + sku : '') + ' 省略名 ' + shortName + ' ---');
@@ -39502,17 +50914,23 @@ function finishB5AfterTruthBind(payload) {
       lines.push('```json');
       lines.push(JSON.stringify(payloadObj, null, 2));
       lines.push('```');
-      lines.push('画像（P2 compose・OpenAI・チェック分だけ最大4・見本確定後）:');
+      lines.push('画像（P2 compose・OpenAI・チェックした分だけ。最大はレ点子SKU数・見本確定後）:');
       lines.push(
         'python b5_main_base_compose.py --role rakuten_main_base --from-json ' +
           jsonName +
           ' --openai-quality medium'
       );
-      lines.push(
-        '※ FOOD_UNIT は theme_new_run_' +
-          jan +
-          ' から自動添付（人間確定済み前提）。'
-      );
+      if (comboPartsSel.length >= 2) {
+        lines.push(
+          '※ ミックス: comboParts はマスタセット構成。各構成の theme_new_run_{単品JAN} の FOOD_UNIT を添付（人間確定済み前提）。'
+        );
+      } else {
+        lines.push(
+          '※ FOOD_UNIT は theme_new_run_' +
+            jan +
+            ' から自動添付（人間確定済み前提）。'
+        );
+      }
       lines.push(
         '見る場所: ' +
           compareHint +
@@ -39532,13 +50950,17 @@ function finishB5AfterTruthBind(payload) {
     lines.push('python b5_main_base_review_launch.py --from-root-latest  … 最新を開く');
     lines.push('（または --compose-dir で各ラン指定。ポート 8865〜。1タブ＝1親）');
     lines.push(
-      'ブラウザ: 画像クリック拡大／比較フォルダを開く → 再生成は旧を残す → 採用1〜4＋レ点子SKU割当 → 02へ → メニュー C'
+      'ブラウザ: 画像クリック拡大／比較フォルダを開く → 再生成は旧を残す → 採用は最大でレ点子SKU数＋レ点子SKU割当 → 02へ → メニュー C'
     );
     lines.push(
       '※比較は残す。Yahooは楽天と同じマップ。Amazonは対象外。楽天ULは C 量産。'
     );
     if (truthMapEntries.length) saveB5PackageTruthByNameBase_(truthMapEntries);
     saveB5TextColorByParent_(selections);
+    for (var sci = 0; sci < selections.length; sci++) {
+      saveB5ProposalCopyFromItem_(selections[sci]);
+      b5SaveProposalDraftToDrive_(selections[sci]);
+    }
     b5DiagLog_(fn, t0, 'DONE', 'parents=' + n);
     return { ok: true, prompt: lines.join('\n'), bindCount: n };
   } catch (e) {
@@ -39844,6 +51266,8 @@ function checkB5FoodCanonStatusForJans(payload) {
         confirmedBy: confirmed,
         label: label,
         packageOnly: !!row.packageOnly,
+        hasWrap: row.hasWrap === true || (!!String(row.wrapName || '').trim() && String(row.wrapName) !== '__none__'),
+        wrapName: row.wrapName || '',
         identityName: row.identityName || '',
         identityStatus: row.identityStatus || ''
       });
@@ -39917,27 +51341,78 @@ function beginB5AfterTruthBind(payload) {
             parentSku: truthEntries[ci].parentSku,
             textColor: truthEntries[ci].textColor
           });
+          Logger.log(
+            '[B5.TEXT_COLOR] begin sku=' +
+              truthEntries[ci].parentSku +
+              ' tc=' +
+              truthEntries[ci].textColor
+          );
         }
       }
       if (colorRows.length) saveB5TextColorByParent_(colorRows);
     }
     var toolDir = 'c:\\Users\\takuy\\Desktop\\gas-project\\tools\\set_main_image';
-    var janGateArgs = jans
+    // ①′: セット構成2以上は組み合わせゲート（マスタBOM）。単品は --jan
+    var statusJans = [];
+    var seenStatusJan = {};
+    function pushStatusJan_(j) {
+      var d = String(j || '').trim();
+      if (!d || seenStatusJan[d]) return;
+      seenStatusJan[d] = true;
+      statusJans.push(d);
+    }
+    var gateCmdParts = [];
+    var singleJans = [];
+    for (var ti = 0; ti < truthEntries.length; ti++) {
+      var te = truthEntries[ti];
+      var partsBom = te.parentSku ? b5MasterComboPartsForParentSku_(te.parentSku) : [];
+      if (partsBom.length >= 2) {
+        for (var pi = 0; pi < partsBom.length; pi++) {
+          pushStatusJan_(partsBom[pi].jan);
+        }
+        var mixCmd =
+          'python sub_image_food_canon_launch.py --parent-sku ' +
+          te.parentSku +
+          (te.nameBase
+            ? ' --name-base "' + String(te.nameBase).replace(/"/g, '') + '"'
+            : '') +
+          ' --force-pick --context main --no-wait';
+        gateCmdParts.push(mixCmd);
+      } else {
+        pushStatusJan_(te.jan);
+        if (singleJans.indexOf(te.jan) < 0) singleJans.push(te.jan);
+      }
+    }
+    if (singleJans.length) {
+      gateCmdParts.push(
+        'python sub_image_food_canon_launch.py ' +
+          singleJans
+            .map(function (j) {
+              return '--jan ' + j;
+            })
+            .join(' ') +
+          ' --force-pick --context main --no-wait'
+      );
+    }
+    if (!statusJans.length) {
+      for (var ji = 0; ji < jans.length; ji++) pushStatusJan_(jans[ji]);
+    }
+    var janGateArgs = statusJans
       .map(function (j) {
         return '--jan ' + j;
       })
       .join(' ');
-    var gateLines = [
-      'cd "' + toolDir + '"',
-      'python sub_image_food_canon_launch.py ' +
-        (janGateArgs || '--jan （JAN）') +
-        ' --force-pick --context main --no-wait',
-      '→ ブラウザが開きます。中身の見本を選ぶ／画像で確認。',
-      '確認だけ: Web「変更なしで閉じる」→ B-④「次へ」。選び直し: Web「選び直したらここで保存」→ B-④「次へ」。',
+    var gateLines = ['cd "' + toolDir + '"'].concat(gateCmdParts);
+    gateLines.push('→ ブラウザが開きます。中身の見本を選ぶ／画像で確認。ミックスは構成ごとの袋＋中身。');
+    gateLines.push(
+      '確認だけ: Web「変更なしで閉じる」→ B-④「次へ」。選び直し: Web「選び直したらここで保存」→ B-④「次へ」。'
+    );
+    gateLines.push(
       '（手動で状態を書き直すとき）python b5_food_canon_status.py ' +
         (janGateArgs || '--jan （JAN）') +
         ' --export-drive'
-    ];
+    );
+    jans = statusJans.length ? statusJans : jans;
     var gateCmd = gateLines.join('\n');
     var st = checkB5FoodCanonStatusForJans({ jans: jans });
     b5DiagLog_(
@@ -40013,6 +51488,545 @@ function loadB5TextColorByParent_() {
     return obj && typeof obj === 'object' ? obj : {};
   } catch (e) {
     return {};
+  }
+}
+
+/**
+ * 親SKU → { bySlotKey: { "T4\t#5": { catch, salesTalk, ... } } }
+ * （旧 byThemeId／byPersonaKey は読まない）
+ * @return {Object}
+ */
+function loadB5ProposalCopyByParent_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(B5_PROPOSAL_COPY_BY_PARENT_PROP);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * 案1親ぶんの catch／sales を Property にマージ（スロット＝themeId＋#sellRank）。
+ * @param {{parentSku?:string,jan?:string,proposals?:Array}} item
+ * @return {number} 保存した件数
+ */
+function saveB5ProposalCopyFromItem_(item) {
+  if (!item) return 0;
+  var sku = String(item.parentSku || '').trim();
+  if (!sku) return 0;
+  var props = item.proposals || [];
+  var bySlot = {};
+  var n = 0;
+  for (var i = 0; i < props.length; i++) {
+    var pr = props[i] || {};
+    var sKey = b5ProposalSlotKey_(pr, i);
+    var catchText = String(pr.catch || '').trim();
+    if (!sKey || !catchText) continue;
+    var salesText = String(pr.salesTalk || '').replace(/【[^】]*】/g, '').trim();
+    bySlot[sKey] = {
+      catch: catchText,
+      salesTalk: salesText,
+      catchBurn: String(pr.catchBurn != null ? pr.catchBurn : catchText).trim(),
+      salesBurn: String(pr.salesBurn != null ? pr.salesBurn : salesText)
+        .replace(/【[^】]*】/g, '')
+        .trim(),
+      themeId: String(pr.themeId || '').trim(),
+      sellRank: parseInt(pr.sellRank, 10) || i + 1,
+      personaShort: String(pr.personaShort || pr.appealWho || '').trim(),
+      errand: String(pr.errand || pr.personaErrand || '').trim()
+    };
+    n++;
+  }
+  if (!n) return 0;
+  var map = loadB5ProposalCopyByParent_();
+  var prev = (map[sku] && map[sku].bySlotKey) || {};
+  var merged = {};
+  var pk;
+  for (pk in prev) {
+    if (Object.prototype.hasOwnProperty.call(prev, pk)) merged[pk] = prev[pk];
+  }
+  for (pk in bySlot) {
+    if (Object.prototype.hasOwnProperty.call(bySlot, pk)) merged[pk] = bySlot[pk];
+  }
+  map[sku] = {
+    jan: String(item.jan || '').trim() || (map[sku] && map[sku].jan) || '',
+    updatedAt: new Date().toISOString(),
+    bySlotKey: merged
+  };
+  try {
+    PropertiesService.getScriptProperties().setProperty(
+      B5_PROPOSAL_COPY_BY_PARENT_PROP,
+      JSON.stringify(map)
+    );
+    Logger.log('[b5ProposalCopy_] saved sku=' + sku + ' n=' + n + ' bySlot=1');
+  } catch (eSave) {
+    Logger.log('[b5ProposalCopy_] save fail: ' + eSave);
+  }
+  return n;
+}
+
+/**
+ * google.script.run 用。ダイアログから catch／sales を残す。
+ * @param {{item?:Object,items?:Array}} payload
+ * @return {{ok:boolean,saved?:number,error?:string}}
+ */
+function saveB5ProposalCopyFromClient(payload) {
+  try {
+    var n = 0;
+    if (payload && payload.item) {
+      n += saveB5ProposalCopyFromItem_(payload.item);
+      b5SaveProposalDraftToDrive_(payload.item);
+    }
+    var arr = (payload && payload.items) || [];
+    for (var i = 0; i < arr.length; i++) {
+      n += saveB5ProposalCopyFromItem_(arr[i]);
+      b5SaveProposalDraftToDrive_(arr[i]);
+    }
+    return { ok: true, saved: n };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+}
+
+/**
+ * @param {string} parentSku
+ * @return {string}
+ */
+function b5ProposalDraftFileName_(parentSku) {
+  return (
+    String(parentSku || '')
+      .trim()
+      .replace(/[\\\/:\*\?"<>\|]/g, '_') + '.json'
+  );
+}
+
+/**
+ * @return {GoogleAppsScript.Drive.Folder|null}
+ */
+function b5ResolveProposalDraftFolder_() {
+  try {
+    var work = b5ResolveSetMainWorkFolder_();
+    if (!work) return null;
+    var name = 'b5_proposal_drafts';
+    var it = work.getFoldersByName(name);
+    if (it.hasNext()) return it.next();
+    return work.createFolder(name);
+  } catch (e) {
+    Logger.log('[b5ResolveProposalDraftFolder_] ' + e);
+    return null;
+  }
+}
+
+/**
+ * 案の同一性（マージ用）。スロット（themeId＋#sellRank）＋キャッチ。
+ * @param {Object} pr
+ * @param {number=} indexOpt
+ * @return {string}
+ */
+function b5ProposalMergeKey_(pr, indexOpt) {
+  var sKey = b5ProposalSlotKey_(pr, indexOpt);
+  var catchText = String((pr && pr.catch) || '').trim();
+  if (sKey) return 's:' + sKey + '\t' + catchText;
+  return String((pr && pr.themeId) || '').trim() + '\t' + catchText;
+}
+
+/**
+ * 既存下書きに今回分をマージ。件数を減らして上書きしない（子を増やしたときのため）。
+ * 同じスロット（#連番＋テーマ）なら上書き。themeId／ペルソナ単独では潰さない。
+ * @param {Array} existing
+ * @param {Array} incoming
+ * @return {Array}
+ */
+function b5MergeProposalDraftLists_(existing, incoming) {
+  var byKey = {};
+  var order = [];
+  var slotToKey = {};
+  var i;
+  var list = existing || [];
+  for (i = 0; i < list.length; i++) {
+    var k0 = b5ProposalMergeKey_(list[i], i);
+    if (!k0 || byKey[k0]) continue;
+    byKey[k0] = list[i];
+    order.push(k0);
+    var sk0 = b5ProposalSlotKey_(list[i], i);
+    if (sk0 && !slotToKey[sk0]) slotToKey[sk0] = k0;
+  }
+  var inc = incoming || [];
+  for (i = 0; i < inc.length; i++) {
+    var row = inc[i] || {};
+    var sk1 = b5ProposalSlotKey_(row, i);
+    var k1 = b5ProposalMergeKey_(row, i);
+    if (!k1 && !sk1) continue;
+    if (sk1 && slotToKey[sk1]) {
+      var oldK = slotToKey[sk1];
+      byKey[oldK] = row;
+      if (k1 && k1 !== oldK) {
+        slotToKey[sk1] = k1;
+        byKey[k1] = row;
+        delete byKey[oldK];
+        var oi;
+        for (oi = 0; oi < order.length; oi++) {
+          if (order[oi] === oldK) {
+            order[oi] = k1;
+            break;
+          }
+        }
+      }
+      continue;
+    }
+    if (!k1) continue;
+    if (byKey[k1]) {
+      byKey[k1] = row;
+    } else {
+      byKey[k1] = row;
+      order.push(k1);
+      if (sk1) slotToKey[sk1] = k1;
+    }
+  }
+  var out = [];
+  for (i = 0; i < order.length; i++) {
+    if (byKey[order[i]]) out.push(byKey[order[i]]);
+  }
+  return out;
+}
+
+/**
+ * ダイアログ編集後の案一式を Drive に残す（次回の生成スキップ用。商品固定しない）。
+ * 既存より少ない件数だけでの全置換はしない（マージ）。
+ * @param {{parentSku?:string,jan?:string,proposals?:Array,nameBase?:string,name?:string,textColor?:string,rel?:string}} item
+ */
+function b5SaveProposalDraftToDrive_(item) {
+  if (!item) return;
+  var sku = String(item.parentSku || '').trim();
+  if (!sku || !(item.proposals || []).length) return;
+  var fname = b5ProposalDraftFileName_(sku);
+  var folders = [];
+  try {
+    var primary = b5ResolveProposalDraftFolder_();
+    if (primary) folders.push(primary);
+  } catch (eA) {
+    /* ignore */
+  }
+  try {
+    var testOut = resolveB5TestOutputFolderDetailed_();
+    if (testOut && testOut.folder) {
+      var itD = testOut.folder.getFoldersByName('b5_proposal_drafts');
+      if (itD.hasNext()) folders.push(itD.next());
+      else folders.push(testOut.folder.createFolder('b5_proposal_drafts'));
+    }
+  } catch (eB) {
+    /* ignore */
+  }
+  for (var fi = 0; fi < folders.length; fi++) {
+    try {
+      var existingFile = b5FindFileInFolder_(folders[fi], fname);
+      var prevProps = [];
+      var prevMeta = {};
+      if (existingFile) {
+        try {
+          prevMeta = JSON.parse(existingFile.getBlob().getDataAsString('UTF-8')) || {};
+          prevProps = prevMeta.proposals || [];
+        } catch (eParse) {
+          prevProps = [];
+        }
+      }
+      var merged = b5MergeProposalDraftLists_(prevProps, item.proposals || []);
+      var bodyObj = {
+        role: 'rakuten_main_base',
+        schema: 'b5_proposal_draft_v1',
+        jan: String(item.jan || prevMeta.jan || '').trim(),
+        parentSku: sku,
+        nameBase: String(item.nameBase || prevMeta.nameBase || '').trim(),
+        name: String(item.name || prevMeta.name || '').trim(),
+        textColor: String(item.textColor || prevMeta.textColor || '').trim(),
+        rel: String(item.rel || prevMeta.rel || '').trim(),
+        updatedAt: new Date().toISOString(),
+        proposals: merged
+      };
+      var body = JSON.stringify(bodyObj, null, 2);
+      if (existingFile) existingFile.setContent(body);
+      else folders[fi].createFile(Utilities.newBlob(body, 'application/json', fname));
+      Logger.log(
+        '[b5ProposalDraft_] saved sku=' +
+          sku +
+          ' in=' +
+          (item.proposals || []).length +
+          ' merged=' +
+          merged.length
+      );
+    } catch (e) {
+      Logger.log('[b5ProposalDraft_] save fail: ' + e);
+    }
+  }
+}
+
+/**
+ * 案が「丸ごと再利用」に足りるか（キャッチだけの薄い compose を弾く）。
+ * @param {Array} proposals
+ * @return {boolean}
+ */
+function b5ProposalsReuseReady_(proposals) {
+  if (!proposals || !proposals.length) return false;
+  var rich = 0;
+  for (var i = 0; i < proposals.length; i++) {
+    var pr = proposals[i] || {};
+    if (String(pr.personaShort || '').trim() || String(pr.personaDetail || '').trim()) rich++;
+    else if (String(pr.dishName || pr.dish || '').trim()) rich++;
+  }
+  // 半数以上にペルソナか料理があれば「前回の本文あり」とみなす
+  return rich * 2 >= proposals.length;
+}
+
+/**
+ * レ点ありだけ残す（selected が1件でもあるとき）。無印は従来どおり全部。
+ * @param {Array} proposals
+ * @return {Array}
+ */
+function b5FilterSelectedProposals_(proposals) {
+  if (!proposals || !proposals.length) return proposals || [];
+  var anyFlag = false;
+  for (var i = 0; i < proposals.length; i++) {
+    if (Object.prototype.hasOwnProperty.call(proposals[i] || {}, 'selected')) {
+      anyFlag = true;
+      break;
+    }
+  }
+  if (!anyFlag) return proposals;
+  var out = [];
+  for (var j = 0; j < proposals.length; j++) {
+    if ((proposals[j] || {}).selected) out.push(proposals[j]);
+  }
+  return out.length ? out : proposals;
+}
+
+/**
+ * @param {string} parentSku
+ * @return {{proposals:Array,nameBase?:string,name?:string,source:string}|null}
+ */
+function b5LoadProposalDraftFromDrive_(parentSku) {
+  parentSku = String(parentSku || '').trim();
+  if (!parentSku) return null;
+  var fname = b5ProposalDraftFileName_(parentSku);
+  var folders = [];
+  try {
+    var primary = b5ResolveProposalDraftFolder_();
+    if (primary) folders.push(primary);
+  } catch (e0) {
+    /* ignore */
+  }
+  try {
+    var testOut = resolveB5TestOutputFolderDetailed_();
+    if (testOut && testOut.folder) {
+      var itD = testOut.folder.getFoldersByName('b5_proposal_drafts');
+      if (itD.hasNext()) folders.push(itD.next());
+      else folders.push(testOut.folder.createFolder('b5_proposal_drafts'));
+    }
+  } catch (e1) {
+    /* ignore */
+  }
+  for (var fi = 0; fi < folders.length; fi++) {
+    try {
+      var f = b5FindFileInFolder_(folders[fi], fname);
+      if (!f) continue;
+      var meta = JSON.parse(f.getBlob().getDataAsString('UTF-8'));
+      // 下書きは全件保持。件数の切りは呼び出し側（子レ点）で行う。
+      var props = meta.proposals || [];
+      if (!props.length || !b5ProposalsReuseReady_(props)) continue;
+      return {
+        proposals: props,
+        nameBase: String(meta.nameBase || '').trim(),
+        name: String(meta.name || '').trim(),
+        source: 'draft'
+      };
+    } catch (e) {
+      Logger.log('[b5LoadProposalDraftFromDrive_] ' + e);
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {string} jan
+ * @param {string} parentSku
+ * @return {{folder:GoogleAppsScript.Drive.Folder,jan:string,parentSku:string,updated:number}|null}
+ */
+function b5PickLatestComposeRun_(jan, parentSku) {
+  jan = String(jan || '').trim();
+  parentSku = String(parentSku || '').trim();
+  if (!jan && !parentSku) return null;
+  try {
+    var rootInfo = resolveB5ComposeRootFolderDetailed_();
+    if (!rootInfo.folder) return null;
+    // 全件メタ読込は遅い。更新新しい順に探して親SKU一致で即返す（無ければ JAN 一致の最新）。
+    var cands = [];
+    var it = rootInfo.folder.getFolders();
+    while (it.hasNext()) {
+      var folder = it.next();
+      var nm = folder.getName();
+      if (!nm || nm.indexOf('_') === 0) continue;
+      var upd = 0;
+      try {
+        upd = folder.getLastUpdated() ? folder.getLastUpdated().getTime() : 0;
+      } catch (eU) {
+        upd = 0;
+      }
+      cands.push({ folder: folder, updated: upd });
+    }
+    cands.sort(function (a, b) {
+      return (b.updated || 0) - (a.updated || 0);
+    });
+    var janHit = null;
+    var maxProbe = Math.min(cands.length, 80);
+    for (var i = 0; i < maxProbe; i++) {
+      var metaFile = b5FindFileInFolder_(cands[i].folder, 'b5_proposals.json');
+      if (!metaFile) continue;
+      var meta = null;
+      try {
+        meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+      } catch (eP) {
+        continue;
+      }
+      var mJan = String((meta && meta.jan) || '').trim();
+      var mSku = String((meta && (meta.parentSku || meta.parent_sku)) || '').trim();
+      var hit = {
+        composeDir: cands[i].folder.getName(),
+        folder: cands[i].folder,
+        jan: mJan,
+        parentSku: mSku,
+        shortName: String((meta && (meta.shortName || meta.short_name)) || '').trim(),
+        updated: cands[i].updated
+      };
+      if (parentSku && mSku === parentSku) return hit;
+      if (!janHit && jan && mJan === jan) janHit = hit;
+    }
+    return janHit;
+  } catch (e) {
+    Logger.log('[b5PickLatestComposeRun_] ' + e);
+    return null;
+  }
+}
+
+/**
+ * 前回案の丸ごと（draft 優先 → compose）。無ければ null。
+ * @param {string} jan
+ * @param {string} parentSku
+ * @return {{proposals:Array,nameBase?:string,name?:string,source:string}|null}
+ */
+function b5TryReuseFullProposals_(jan, parentSku) {
+  var draft = b5LoadProposalDraftFromDrive_(parentSku);
+  if (draft) return draft;
+  try {
+    var best = b5PickLatestComposeRun_(jan, parentSku);
+    if (!best) return null;
+    var metaFile = b5FindFileInFolder_(best.folder, 'b5_proposals.json');
+    if (!metaFile) return null;
+    var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+    var props = meta.proposals || [];
+    // compose はキャッチだけ残っていることがある → ペルソナ無しは再利用しない（新規生成へ）
+    if (!props.length || !b5ProposalsReuseReady_(props)) {
+      Logger.log(
+        '[b5TryReuseFullProposals_] compose thin skip jan=' +
+          jan +
+          ' sku=' +
+          parentSku +
+          ' n=' +
+          (props ? props.length : 0)
+      );
+      return null;
+    }
+    return {
+      proposals: props,
+      nameBase: String(meta.nameBase || '').trim(),
+      name: String(meta.name || meta.nameBase || '').trim(),
+      source: 'compose'
+    };
+  } catch (e) {
+    Logger.log('[b5TryReuseFullProposals_] ' + e);
+    return null;
+  }
+}
+
+/**
+ * Drive 最新 compose の b5_proposals.json から catch／sales マップを取る（スロットキー）。
+ * @param {string} jan
+ * @param {string} parentSku
+ * @return {Object|null} bySlotKey
+ */
+function b5LoadProposalCopyFromDrive_(jan, parentSku) {
+  try {
+    var best = b5PickLatestComposeRun_(jan, parentSku);
+    if (!best) return null;
+    var metaFile = b5FindFileInFolder_(best.folder, 'b5_proposals.json');
+    if (!metaFile) return null;
+    var meta = JSON.parse(metaFile.getBlob().getDataAsString('UTF-8'));
+    var bySlot = {};
+    var props = meta.proposals || [];
+    for (var i = 0; i < props.length; i++) {
+      var pr = props[i] || {};
+      var sKey = b5ProposalSlotKey_(pr, i);
+      var catchText = String(pr.catch || '').trim();
+      if (!sKey || !catchText) continue;
+      var salesText = String(pr.salesTalk || '').replace(/【[^】]*】/g, '').trim();
+      bySlot[sKey] = {
+        catch: catchText,
+        salesTalk: salesText,
+        catchBurn: String(pr.catchBurn != null ? pr.catchBurn : catchText).trim(),
+        salesBurn: String(pr.salesBurn != null ? pr.salesBurn : salesText)
+          .replace(/【[^】]*】/g, '')
+          .trim(),
+        themeId: String(pr.themeId || '').trim(),
+        sellRank: parseInt(pr.sellRank, 10) || i + 1,
+        personaShort: String(pr.personaShort || pr.appealWho || '').trim(),
+        errand: String(pr.errand || pr.personaErrand || '').trim()
+      };
+    }
+    return Object.keys(bySlot).length ? bySlot : null;
+  } catch (e) {
+    Logger.log('[b5LoadProposalCopyFromDrive_] ' + e);
+    return null;
+  }
+}
+
+/**
+ * （廃止）旧: Property／Drive から catch／sales だけスロット上書き。
+ * 場面・ペルソナを残したままキャッチだけ貼ると同一用事が切れるため無効。
+ * 引き継ぎの正は b5TryReuseFullProposals_（下書き／compose 丸ごと）。
+ * @param {{parentSku?:string,jan?:string,proposals?:Array}} item
+ * @return {number} 常に 0
+ */
+function b5ApplyProposalCopyOverlay_(item) {
+  Logger.log(
+    '[b5ProposalCopy_] overlay disabled (full-reuse only) sku=' +
+      String((item && item.parentSku) || '') +
+      ' nProp=' +
+      ((item && item.proposals && item.proposals.length) || 0)
+  );
+  return 0;
+}
+
+/**
+ * ダイアログから文字色だけ再保存（切替待ち中に人が変えた色を案作成前に確定）。
+ * @param {{bindings?:Array<{parentSku?:string,textColor?:string}>}} payload
+ * @return {{ok:boolean,saved?:number,error?:string}}
+ */
+function saveB5TextColorFromClient(payload) {
+  try {
+    var bindings = (payload && payload.bindings) || [];
+    var rows = [];
+    for (var i = 0; i < bindings.length; i++) {
+      var b = bindings[i] || {};
+      var sku = String(b.parentSku || '').trim();
+      var tc = String(b.textColor || '').trim();
+      if (!sku || !tc) continue;
+      rows.push({ parentSku: sku, textColor: tc });
+      Logger.log('[B5.TEXT_COLOR] client sku=' + sku + ' tc=' + tc);
+    }
+    if (rows.length) saveB5TextColorByParent_(rows);
+    return { ok: true, saved: rows.length };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
   }
 }
 
@@ -40505,6 +52519,23 @@ function exportB5AdoptedTo02(payload) {
 function getB5ReviewFeedbackTemplates_() {
   return [
     {
+      id: 'dish_food_match_sample',
+      label: '料理上の個品を見本どおり',
+      text:
+        '添える料理の上の具と、小皿の開封後個品は、添付 IDENTITY／CANON 見本の色・質感・厚み・1片の形に合わせろ。' +
+        '見本と違うツヤ・別色・別形に寄せるな。一般トッピングに描き直すな。' +
+        'ミックスでは、載せる構成以外の個品を料理の上に出すな（他構成は小皿のみ）。'
+    },
+    {
+      id: 'wrap_match_sample',
+      label: '個包装を見本どおり',
+      text:
+        '個包装は添付 IMAGE_FOOD_UNIT_WRAP と機械読みどおり。' +
+        '密着・空気の有無・材質の硬さ／やわらかさ・縁・透明度・形を見本に合わせろ。' +
+        '見本に無い空気だまり・別材質・別形の小袋にするな。' +
+        '個包装は皿の横か後ろのみ。カメラ最近傍は開封後の個品。'
+    },
+    {
       id: 'text_budget_16',
       label: '20マス厳守（16目標）',
       text:
@@ -40531,7 +52562,7 @@ function getB5ReviewFeedbackTemplates_() {
       id: 'catch_unreadable',
       label: 'キャッチが読めない／途中切れ',
       text:
-        '後載せキャッチが潰れている・途中切れ・意味不明。人が指定した catch 文言に寄せて、語の途中から始まるな。全角だいたい8〜18字に収めて可読に。'
+        '後載せキャッチが潰れている・途中切れ・意味不明。人が指定した catch 文言に寄せて、語の途中から始まるな。全角6〜12字に収めて可読に。'
     },
     {
       id: 'package_weak',

@@ -20,13 +20,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from amazon_paste import run_paste_file
+from amazon_paste import run_paste_file, run_paste_mix_file
 from fill_metrics import fill_target_for_n
 from master_sets import (
+    MixBom,
     load_checked_set_children,
     load_checked_set_children_from_rows,
+    load_parent_mix_bom,
+    load_parent_mix_bom_from_rows,
     load_set_children_for_parent,
 )
+from mix_column_layout import load_mix_column_cfg
 from work_paths import (
     ASPECT_CHOICES,
     ASPECT_LABEL_JA,
@@ -39,6 +43,7 @@ from work_paths import (
     SUB_TEST_OUT,
     TAG_UNIT,
     default_work_root,
+    resolve_amazon_mix_base,
     resolve_amazon_product_bases,
     resolve_octas,
 )
@@ -207,6 +212,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     sheets_info: Dict[str, Any] = {}
     master_source = ""
+    master_rows: Optional[List[List[str]]] = None
+    mix_cfg = load_mix_column_cfg()
+    mix_enabled = bool(mix_cfg.get("enabled", True))
+    bom_cache: Dict[str, Optional[MixBom]] = {}
 
     if args.from_sheets:
         from sheets_master import count_true_in_column, fetch_master_rows
@@ -230,6 +239,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         children, food_map = load_checked_set_children_from_rows(
             rows, parent_sku=args.parent_sku or ""
         )
+        master_rows = rows
         if args.auto_bind_bases:
             from bind_amazon_base_to_parents import (
                 enrich_master_rows_rakuten_main_urls,
@@ -317,42 +327,95 @@ def main(argv: Optional[List[str]] = None) -> int:
             "setCount": ch.set_count,
             "isFood": is_food,
         }
-        try:
-            bases = resolve_amazon_product_bases(work_root, ch.parent_sku, None)
-        except FileNotFoundError as e:
-            entry["status"] = "skip"
-            entry["reason"] = f"no_base:{e}"
-            results.append(entry)
-            skip += 1
-            LOG.warning("SKIP %s n=%s no base", ch.child_sku, ch.set_count)
-            continue
+        # ミックス判定を先に（ミックス親は自前の単体が無く構成SKUの単体だけ、があり得る）
+        bom: Optional[MixBom] = None
+        if mix_enabled and ch.each_count is not None and int(ch.each_count) >= 1:
+            if ch.parent_sku not in bom_cache:
+                try:
+                    if master_rows is not None:
+                        bom_cache[ch.parent_sku] = load_parent_mix_bom_from_rows(
+                            master_rows, ch.parent_sku
+                        )
+                    elif args.master_csv:
+                        bom_cache[ch.parent_sku] = load_parent_mix_bom(
+                            Path(args.master_csv), ch.parent_sku
+                        )
+                    else:
+                        bom_cache[ch.parent_sku] = None
+                except Exception as e:
+                    LOG.warning("mix bom resolve failed parent=%s: %s", ch.parent_sku, e)
+                    bom_cache[ch.parent_sku] = None
+            bom = bom_cache.get(ch.parent_sku)
 
-        allowed, match_reason = _allow_unit_for_parent(
-            bases.unit,
-            ch.parent_sku,
-            work_root,
-            loose_unit_match=bool(args.loose_unit_match),
+        each_n = int(ch.each_count) if ch.each_count is not None else None
+        is_mix_bom = bool(
+            bom
+            and len(bom.component_parent_skus) >= 2
+            and each_n is not None
+            and each_n >= 1
         )
-        if not allowed:
-            entry["status"] = "skip"
-            entry["reason"] = match_reason
-            entry["unitFile"] = bases.unit.name
-            results.append(entry)
-            skip += 1
-            LOG.warning(
-                "SKIP %s n=%s unit file does not match parent (%s)",
-                ch.child_sku,
-                ch.set_count,
-                bases.unit.name,
-            )
-            continue
-        if match_reason == "single_unit_fallback":
-            LOG.warning(
-                "unit match fallback (single file in 01): %s for parent=%s",
-                bases.unit.name,
+        # ミックス分岐: 1=正本N1 / 2–4=列積み / 5+=正本×単品ロジック
+        mix_branch = ""
+        if is_mix_bom and mix_enabled and each_n is not None:
+            if each_n == 1:
+                mix_branch = "canon_n1"
+            elif 2 <= each_n <= 4:
+                mix_branch = "column_2_4"
+            else:
+                mix_branch = "canon_single_n5p"
+
+        use_mix_column = mix_branch == "column_2_4"
+        use_mix_canon = mix_branch in ("canon_n1", "canon_single_n5p")
+
+        bases = None
+        mix_canon_path: Optional[Path] = None
+        if use_mix_canon:
+            try:
+                mix_canon_path = resolve_amazon_mix_base(work_root, ch.parent_sku, None)
+            except FileNotFoundError as e:
+                entry["status"] = "skip"
+                entry["reason"] = f"no_mix_canon:{e}"
+                results.append(entry)
+                skip += 1
+                LOG.warning("SKIP %s n=%s no mix canon", ch.child_sku, ch.set_count)
+                continue
+        elif not use_mix_column:
+            try:
+                bases = resolve_amazon_product_bases(work_root, ch.parent_sku, None)
+            except FileNotFoundError as e:
+                entry["status"] = "skip"
+                entry["reason"] = f"no_base:{e}"
+                results.append(entry)
+                skip += 1
+                LOG.warning("SKIP %s n=%s no base", ch.child_sku, ch.set_count)
+                continue
+
+            allowed, match_reason = _allow_unit_for_parent(
+                bases.unit,
                 ch.parent_sku,
+                work_root,
+                loose_unit_match=bool(args.loose_unit_match),
             )
-            entry["unitMatch"] = match_reason
+            if not allowed:
+                entry["status"] = "skip"
+                entry["reason"] = match_reason
+                entry["unitFile"] = bases.unit.name
+                results.append(entry)
+                skip += 1
+                LOG.warning(
+                    "SKIP %s n=%s unit file does not match parent (%s)",
+                    ch.child_sku,
+                    ch.set_count,
+                    bases.unit.name,
+                )
+                continue
+            if match_reason == "single_unit_fallback":
+                LOG.warning(
+                    "unit match fallback (single file in 01): %s for parent=%s",
+                    bases.unit.name,
+                    ch.parent_sku,
+                )
+                entry["unitMatch"] = match_reason
 
         if is_food and not octas_path:
             entry["status"] = "skip"
@@ -362,7 +425,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             LOG.warning("SKIP %s food but Octas missing", ch.child_sku)
             continue
 
-        fill_min, band = fill_target_for_n(ch.set_count)
+        if use_mix_column and bom is not None and each_n is not None:
+            visible_n = int(each_n) * len(bom.component_parent_skus)
+        elif mix_branch == "canon_n1":
+            visible_n = 1
+        else:
+            visible_n = int(ch.set_count)
+        fill_min, band = fill_target_for_n(visible_n)
         if args.name_style == "prod":
             out_path = out_dir / f"{ch.child_sku}_amazon.jpg"
         else:
@@ -371,32 +440,88 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"_n{ch.set_count}_{_safe_stem(ch.child_sku)}"
             )
             out_path = out_dir / f"{stem}_pillow_amazon_set{ch.set_count}.jpg"
+        base_label = (
+            mix_branch
+            if mix_branch
+            else (bases.mode if bases is not None else "unit")
+        )
         LOG.info(
-            "==== paste parent=%s n=%s child=%s food=%s base=%s aspect=%s ====",
+            "==== paste parent=%s n=%s each=%s child=%s food=%s base=%s aspect=%s ====",
             ch.parent_sku,
             ch.set_count,
+            each_n,
             ch.child_sku,
             is_food,
-            bases.mode,
+            base_label,
             aspect,
         )
         try:
-            meta = run_paste_file(
-                hero_path=bases.hero,
-                unit_path=bases.unit,
-                set_count=ch.set_count,
-                out_path=out_path,
-                octas_path=octas_path if is_food else None,
-                canvas_size=args.canvas,
-                fill_min=fill_min,
-                layout_mode="edge_fill",
-                aspect=aspect,
-            )
-            meta["baseMode"] = bases.mode
+            if use_mix_column and bom is not None and each_n is not None:
+                kind_paths: List[Path] = []
+                missing: List[str] = []
+                for csku in bom.component_parent_skus:
+                    try:
+                        kb = resolve_amazon_product_bases(work_root, csku, None)
+                        kind_paths.append(kb.unit)
+                    except FileNotFoundError:
+                        missing.append(csku)
+                if missing:
+                    entry["status"] = "skip"
+                    entry["reason"] = "mix_missing_unit:" + ",".join(missing)
+                    results.append(entry)
+                    skip += 1
+                    LOG.warning(
+                        "SKIP %s mix missing unit for %s",
+                        ch.child_sku,
+                        missing,
+                    )
+                    continue
+                meta = run_paste_mix_file(
+                    kind_paths=kind_paths,
+                    each=int(each_n),
+                    out_path=out_path,
+                    octas_path=octas_path if is_food else None,
+                    canvas_size=args.canvas,
+                    fill_min=fill_min,
+                    aspect=aspect,
+                    component_skus=list(bom.component_parent_skus),
+                )
+                meta["baseMode"] = "mix_column_kinds"
+            elif use_mix_canon and mix_canon_path is not None:
+                paste_n = 1 if mix_branch == "canon_n1" else int(ch.set_count)
+                meta = run_paste_file(
+                    hero_path=mix_canon_path,
+                    unit_path=mix_canon_path,
+                    set_count=paste_n,
+                    out_path=out_path,
+                    octas_path=octas_path if is_food else None,
+                    canvas_size=args.canvas,
+                    fill_min=fill_min,
+                    layout_mode="edge_fill",
+                    aspect=aspect,
+                )
+                meta["baseMode"] = mix_branch
+                meta["mixCanon"] = mix_canon_path.name
+            else:
+                assert bases is not None
+                meta = run_paste_file(
+                    hero_path=bases.hero,
+                    unit_path=bases.unit,
+                    set_count=ch.set_count,
+                    out_path=out_path,
+                    octas_path=octas_path if is_food else None,
+                    canvas_size=args.canvas,
+                    fill_min=fill_min,
+                    layout_mode="edge_fill",
+                    aspect=aspect,
+                )
+                meta["baseMode"] = bases.mode
             meta["fillTarget"] = fill_min
             meta["fillBand"] = band
             meta["childSku"] = ch.child_sku
             meta["parentSku"] = ch.parent_sku
+            meta["mixColumn"] = use_mix_column
+            meta["mixBranch"] = mix_branch or "single"
             meta["aspect"] = aspect
             meta["aspectLabelJa"] = ASPECT_LABEL_JA.get(aspect, aspect)
             # 画像直下にはJPGのみ。メタは _meta/
@@ -413,7 +538,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "fillPass": meta.get("fillPass"),
                     "sealOpaqueRatioActual": oct.get("sealOpaqueRatioActual"),
                     "overlapMeasured": oct.get("overlapMeasured"),
-                    "baseMode": bases.mode,
+                    "baseMode": meta.get("baseMode"),
                     "aspect": aspect,
                 }
             )

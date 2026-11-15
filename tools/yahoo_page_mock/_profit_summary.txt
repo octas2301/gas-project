@@ -1,0 +1,2 @@
+valid=421 empty_or_zero=305 neg=52
+profit_median=737.0 mean=2049.3 p25=340.0 p75=1738.0

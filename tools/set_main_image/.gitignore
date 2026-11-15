@@ -5,6 +5,7 @@ secrets/
 *.local.json
 glyphs/rakuten/*.png
 _*.py
+_b5_checked_*.json
 tmp_*
 **/tmp_*
 _portrait_samples/

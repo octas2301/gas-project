@@ -1,0 +1,1 @@
+{"id":"T-CTW-03","desc":"H2: 選定例外は FAILED ログ＋watchdog_rearm","kind":"fire","throw_at":"pick","expect":{"outcome":"failed","log_has":["FAILED","pick_throw","watchdog_rearm"]}}

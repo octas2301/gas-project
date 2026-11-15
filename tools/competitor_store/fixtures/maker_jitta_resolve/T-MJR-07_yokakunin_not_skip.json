@@ -1,0 +1,15 @@
+{
+  "maker": "あさくま",
+  "summary": { "実態": "要確認" },
+  "master": {},
+  "expect": {
+    "skipped": false,
+    "jitta": "要確認",
+    "entry_preferred": "要確認",
+    "auto_confirm": false,
+    "gyoshu": "外食・飲食",
+    "confidence": "medium",
+    "業種": "外食・飲食",
+    "実態信頼度": "medium"
+  }
+}

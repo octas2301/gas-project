@@ -111,8 +111,17 @@
 - **変更4**: `products.forEach` の `catch (e)` で `isAuthError(e.message)` のときのみ、`getYahooAccessToken(mapSheet)` でトークン再取得 → `itemClient` を新トークンで再生成 → 当該商品だけ `runOneProduct` を再実行。成功なら successCount に含め、再失敗時のみ errorItems に追加。
 
 **未対応（今後の改善候補）**:
-- エラーメッセージ: 「使用できないアドレス」ではなく、API の `<Message>` をそのままログ・メールに出すと原因が分かりやすい。
 - 一括出品ログ: `[一括出品ログ] 記録失敗: データの行数が範囲の行数と一致しません。` → **対応済み**（コード.js の `logBatchExportProgress`）。`getRange(nextRow, 1, nextRow, 2)` の第3・4引数は「行数・列数」のため、第3引数を `1` に変更（1行2列の範囲に修正）。
+
+### 4.5.1 Yahoo! API 一時通信エラーの限定リトライ（2026-09）
+
+**経緯**: 30件出品中、`editItem` 成功直後の `setStock` 1件だけが `使用できないアドレス` で失敗し、前後の商品は正常だった。
+
+**対応内容（Yahoo.js `_post`）**:
+- GAS の通信例外（使用できないアドレス／timeout／service unavailable）と HTTP 429・5xx のみ最大3回まで再試行する。
+- 待機は1秒→2秒。認証・入力値など恒常エラーの 4xx は再試行しない。
+- 再試行ログに endpoint／attempt／HTTPコードまたは例外要約を残す。最終失敗はHTTPコードと本文を従来のエラー経路へ渡す。
+- `editItem`／`setStock` は同じ更新型POST経路を使用し、成功後の余分な再送はしない。
 
 ### 4.6 発送日情報（「発送日情報なし」の解消）
 
@@ -498,6 +507,7 @@ APIキー等は **Script Properties** に格納し、コードからは参照の
 - [x] **認証エラー時のリトライ**（§4.5）— トークン再取得＋1回リトライを Yahoo.js に実装済み
 - [ ] **一括出品ログの setValues 警告**: 「データは 1 行ですが、範囲は 2.行です」が出る場合、一括出品ログ用シートへの書き込みの行数指定を修正する
 - [ ] **出品失敗時のエラーメッセージ改善**: API の `<Message>`（例: Authentication parameters incompleted）をログ・メールにそのまま表示するよう変更を検討
+- [ ] **出品済みの部分更新（駐車・2026-09-16）**: 任意項目だけ直す器が無い。公式は `getItem`（XML・マッピングシート形式ではない）→変更欄だけ差し替え→`editItem` に現行値も同送。省略＝デフォルト上書き。現行の説明API反映はマッピング TRUE をマスタ再送（画像APIは呼ばない）。実装は別承認。メモ: [SESSION §5 YAHOO-PARTIAL-UPDATE](docs/SESSION_HANDOVER_YAHOO_CAPTION_20260915.md)
 
 ### 8.3 要件定義の残り
 

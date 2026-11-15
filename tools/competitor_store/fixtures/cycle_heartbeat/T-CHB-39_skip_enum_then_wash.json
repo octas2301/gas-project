@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-39",
+  "desc": "列挙を1回やったあとは規模不明が残っても洗う",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "未知", "実態": "製造メーカー", "セラーヒット": 2},
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40}
+    ],
+    "catalog_estimate": {"小社": 40},
+    "token_room": true,
+    "skip_enum_once": true
+  },
+  "expect": {"action": "wash_small", "maker": "小社"}
+}

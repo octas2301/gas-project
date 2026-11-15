@@ -54,6 +54,8 @@ def inspect_alpha(path: Path, *, announce: bool = True) -> Dict[str, Any]:
         "hasTransparency": False,
         "clearRatio": None,
         "nearWhiteOpaqueRatio": None,
+        "nearWhiteOpaqueEdgeRatio": None,
+        "edgeBandPx": None,
         "canvaBgRemovedLikely": False,
         "matteOk": False,
         "alphaMin": None,
@@ -114,15 +116,29 @@ def inspect_alpha(path: Path, *, announce: bool = True) -> Dict[str, Any]:
     has_t = clear_px > 0 or a_min < 250
     info["hasTransparency"] = bool(has_t)
 
-    # 不透明かつほぼ白の画素比率（白背景が焼き付いている指標）
+    # 不透明かつほぼ白: 全体は診断用。②は外周リングのみ
+    # （白袋・白ラベルを「背景残り」と誤判定しない）
+    band = max(24, min(80, int(round(min(w, h) * 0.04))))
+    inner_w = max(0, w - 2 * band)
+    inner_h = max(0, h - 2 * band)
+    ring_px = max(1, total - inner_w * inner_h)
     near_white_opaque = 0
-    for r, g, b, a in rgba.getdata():
+    near_white_edge = 0
+    for i, (r, g, b, a) in enumerate(rgba.getdata()):
         if a < 250:
             continue
-        if min(r, g, b) >= 245 and (max(r, g, b) - min(r, g, b)) <= 12:
-            near_white_opaque += 1
+        if min(r, g, b) < 245 or (max(r, g, b) - min(r, g, b)) > 12:
+            continue
+        near_white_opaque += 1
+        x = i % w
+        y = i // w
+        if x < band or x >= w - band or y < band or y >= h - band:
+            near_white_edge += 1
     nw_ratio = near_white_opaque / float(total)
+    nw_edge_ratio = near_white_edge / float(ring_px)
     info["nearWhiteOpaqueRatio"] = round(nw_ratio, 4)
+    info["nearWhiteOpaqueEdgeRatio"] = round(nw_edge_ratio, 4)
+    info["edgeBandPx"] = band
 
     # ① 透過PNGか
     if has_t and p.suffix.lower() == ".png":
@@ -143,19 +159,21 @@ def inspect_alpha(path: Path, *, announce: bool = True) -> Dict[str, Any]:
 
     # ② Canva背景リムーバー相当か
     # キャンバス透過のみだと透明比率がごく小さい（数%未満）ことが多い
+    # 白不透明は外周リングのみ見る（商品の白地は無視）
     MIN_CLEAR_RATIO = 0.10
-    MAX_NEAR_WHITE_OPAQUE = 0.08
+    MAX_NEAR_WHITE_EDGE = 0.08
     canva_ok = (
         check1_ok
         and clear_ratio >= MIN_CLEAR_RATIO
-        and nw_ratio <= MAX_NEAR_WHITE_OPAQUE
+        and nw_edge_ratio <= MAX_NEAR_WHITE_EDGE
     )
     info["canvaBgRemovedLikely"] = bool(canva_ok)
     if canva_ok:
         info["check2Ja"] = (
             f"② OK: Canva背景リムーバー実施の見込み"
             f"（透明比率 {clear_ratio:.1%} >= {MIN_CLEAR_RATIO:.0%} / "
-            f"白不透明 {nw_ratio:.1%} <= {MAX_NEAR_WHITE_OPAQUE:.0%}）"
+            f"外周{band}pxの白不透明 {nw_edge_ratio:.1%} <= {MAX_NEAR_WHITE_EDGE:.0%}）"
+            f"（全体の白不透明 {nw_ratio:.1%} は袋ラベル用で判定外）"
         )
     else:
         reasons = []
@@ -164,9 +182,9 @@ def inspect_alpha(path: Path, *, announce: bool = True) -> Dict[str, Any]:
                 f"透明比率が低い {clear_ratio:.1%} < {MIN_CLEAR_RATIO:.0%}"
                 "（キャンバス透過のみの可能性）"
             )
-        if nw_ratio > MAX_NEAR_WHITE_OPAQUE:
+        if nw_edge_ratio > MAX_NEAR_WHITE_EDGE:
             reasons.append(
-                f"白い不透明画素が多い {nw_ratio:.1%} > {MAX_NEAR_WHITE_OPAQUE:.0%}"
+                f"外周{band}pxの白い不透明画素が多い {nw_edge_ratio:.1%} > {MAX_NEAR_WHITE_EDGE:.0%}"
                 "（写真の白背景が残存）"
             )
         if not check1_ok:

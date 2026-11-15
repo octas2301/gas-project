@@ -1,0 +1,1 @@
+{"id":"T-HBL-09","desc":"C4 pick=0 → 心拍","steps":[{"action":"c4_pick0","now_ms":1000}],"expect":{"alive":true,"reason":"wash_trigger"}}

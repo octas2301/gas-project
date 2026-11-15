@@ -1,0 +1,43 @@
+{
+  "id": "T-CSA-05",
+  "desc": "セラー調査済みSP-API: 済み2件はスキップ。未済1件のみ API",
+  "sellers_before": [],
+  "cand": [
+    {
+      "ASIN": "B0CSA00040",
+      "門結果": "通過",
+      "セラー調査済みSP-API": true
+    },
+    {
+      "ASIN": "B0CSA00041",
+      "門結果": "通過",
+      "セラー調査済みSP-API": true
+    },
+    { "ASIN": "B0CSA00042", "門結果": "通過" }
+  ],
+  "keepa_full": [],
+  "side_effect": { "cand_rows": 8, "keepa_full_rows": 25 },
+  "run": {
+    "cap": 100,
+    "offers_by_asin": {
+      "B0CSA00042": ["AYSPAPIDONE01"]
+    }
+  },
+  "expect": {
+    "new_seller_ids": ["AYSPAPIDONE01"],
+    "seller_row_delta": 1,
+    "stopped": "ok",
+    "after_asin": "",
+    "api_calls": 1,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00042"],
+    "remain_asin": 0,
+    "new_rows": {
+      "AYSPAPIDONE01": {
+        "調査CK": false,
+        "採取元": "bb+spapi_new"
+      }
+    },
+    "side_effect_unchanged": true
+  }
+}

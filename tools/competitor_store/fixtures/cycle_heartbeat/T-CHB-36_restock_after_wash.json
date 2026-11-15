@@ -1,0 +1,18 @@
+{
+  "id": "T-CHB-36",
+  "desc": "洗い後の補充印かつ余力ありなら店1軒（C0しない）",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40},
+      {"メーカー": "中社", "実態": "製造メーカー", "セラーヒット": 1, "catalog_estimate": 120}
+    ],
+    "catalog_estimate": {"小社": 40, "中社": 120},
+    "unchecked_sellers": 6,
+    "k": 3,
+    "token_room": true,
+    "restock_after_wash": true,
+    "skip_enum_once": true
+  },
+  "expect": {"action": "alight", "detail_has": "restock_after_wash"}
+}

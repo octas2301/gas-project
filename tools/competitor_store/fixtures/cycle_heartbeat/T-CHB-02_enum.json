@@ -1,0 +1,1 @@
+{"id":"T-CHB-02","desc":"不明は列挙","kind":"next","input":{"maker_sum":[{"メーカー":"未知","実態":"製造メーカー","セラーヒット":2},{"メーカー":"小社","実態":"製造メーカー","セラーヒット":2,"catalog_estimate":40}],"catalog_estimate":{"小社":40}},"expect":{"action":"enum_unknown","maker":"未知"}}

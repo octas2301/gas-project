@@ -1,0 +1,23 @@
+{
+  "id": "T-CHB-21",
+  "desc": "大特大週間N=2到達で idle",
+  "input": {
+    "xl_weekly_used": 2,
+    "xl_weekly_cap": 2,
+    "unchecked_sellers": 0,
+    "untagged_gate_asins": 0,
+    "auto_ck_candidates": 0,
+    "token_room": true,
+    "maker_sum": [
+      {
+        "メーカー": "味の素",
+        "実態": "製造メーカー",
+        "規模帯": "特大",
+        "Catalog見積": 512,
+        "洗い状態": "未着手"
+      }
+    ],
+    "catalog_estimate": {"味の素": 512}
+  },
+  "expect": {"action": "idle", "detail_has": "xl_week_cap"}
+}

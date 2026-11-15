@@ -352,6 +352,108 @@ def _paste_box1000(
     return {"x": x, "y": y, "w": w, "h": h}
 
 
+def _alpha_bbox(im: Image.Image, alpha_min: int = 16) -> Optional[Tuple[int, int, int, int]]:
+    alpha = im.convert("RGBA").split()[-1]
+    return alpha.point(lambda a: 255 if a >= alpha_min else 0).getbbox()
+
+
+def _ink_rows(im: Image.Image) -> List[Tuple[int, int, int]]:
+    px = im.load()
+    w, h = im.size
+    rows = []
+    for y in range(h):
+        xs = [x for x in range(w) if px[x, y][3] > 20]
+        if xs:
+            rows.append((y, min(xs), max(xs)))
+    return rows
+
+
+def _split_upper_lower(rows: List[Tuple[int, int, int]]):
+    if len(rows) < 2:
+        return rows, []
+    best = 0
+    gap_at = None
+    prev = rows[0][0]
+    for y, _a, _b in rows[1:]:
+        gap = y - prev
+        if gap > best:
+            best = gap
+            gap_at = prev
+        prev = y
+    if best < 4 or gap_at is None:
+        return rows, []
+    upper = [r for r in rows if r[0] <= gap_at]
+    lower = [r for r in rows if r[0] > gap_at]
+    return upper, lower
+
+
+def load_kaku_glyph(dirs: List[Path]) -> Optional[Image.Image]:
+    p = find_glyph(["text_kaku.png", "各.png"], dirs)
+    if not p:
+        return None
+    return Image.open(p).convert("RGBA")
+
+
+def stamp_each_line(
+    unitset: Image.Image,
+    each_count: int,
+    glyph_dirs: List[Path],
+    tint_rgba: Optional[Tuple[int, int, int, int]] = None,
+) -> Image.Image:
+    """セットの帯だけ消し、同じ枠に「各」と種類あたりの数を置く。単位の位置は動かさない。"""
+    from text_color import recolor_glyph_rgba
+
+    base = unitset.convert("RGBA")
+    lock = _alpha_bbox(base, 16)
+    rows = _ink_rows(base)
+    _upper, lower = _split_upper_lower(rows)
+    kaku = load_kaku_glyph(glyph_dirs)
+    if not lower or kaku is None or int(each_count) < 1:
+        LOG.warning(
+            "each line skipped each=%s lower=%s kaku=%s",
+            each_count,
+            bool(lower),
+            kaku is not None,
+        )
+        return unitset
+    ly = lower[0][0]
+    by = lower[-1][0] + 1
+    lx = min(r[1] for r in lower)
+    rx = max(r[2] for r in lower) + 1
+    px = base.load()
+    for y in range(ly, by):
+        for x in range(base.size[0]):
+            if px[x, y][3] > 20:
+                px[x, y] = (0, 0, 0, 0)
+    color = tint_rgba or (128, 0, 32, 255)
+    target_h = max(1, by - ly)
+    parts = [_crop_to_alpha(recolor_glyph_rgba(kaku, color))]
+    for ch in str(int(each_count)):
+        parts.append(_crop_to_alpha(recolor_glyph_rgba(load_digit_glyph(ch, glyph_dirs), color)))
+    gap = max(1, int(round(target_h * 0.06)))
+    sized = []
+    for part in parts:
+        s = target_h / max(1, part.size[1])
+        sized.append(part.resize((max(1, int(round(part.size[0] * s))), target_h), Image.Resampling.LANCZOS))
+    tw = sum(p.size[0] for p in sized) + gap * (len(sized) - 1)
+    row = Image.new("RGBA", (tw, target_h), (0, 0, 0, 0))
+    x = 0
+    for part in sized:
+        row.alpha_composite(part, (x, 0))
+        x += part.size[0] + gap
+    box_w = max(1, rx - lx)
+    if row.size[0] > box_w:
+        s = box_w / row.size[0]
+        row = row.resize((box_w, max(1, int(round(row.size[1] * s)))), Image.Resampling.LANCZOS)
+    ox = lx + (box_w - row.size[0]) // 2
+    oy = ly + (target_h - row.size[1]) // 2
+    base.alpha_composite(row, (ox, oy))
+    if lock:
+        base.info["lockCropBox"] = lock
+    LOG.info("each line each=%s box=%s row=%s", each_count, [lx, ly, box_w, target_h], list(row.size))
+    return base
+
+
 def compose_badge_with_glyphs(
     base: Image.Image,
     *,
@@ -365,9 +467,16 @@ def compose_badge_with_glyphs(
     draw_set_label: bool = True,
     canvas: int = 1200,
     tint_rgba: Optional[Tuple[int, int, int, int]] = None,
+    each_count: Optional[int] = None,
 ) -> Tuple[Image.Image, dict]:
-    """金丸はそのまま。lockedUnitSet があれば単位+セット固定→数字。"""
+    """金丸はそのまま。lockedUnitSet があれば単位+セット固定→数字。each_count があるとき下段は各。"""
     from text_color import recolor_glyph_rgba
+
+    def _with_each(plate: Image.Image) -> Image.Image:
+        mix_on = bool((typo.get("mixEach") or {}).get("enabled", True))
+        if not mix_on or each_count is None or int(each_count) < 1:
+            return plate
+        return stamp_each_line(plate, int(each_count), glyph_dirs, tint_rgba)
 
     resolved_unit, unit_reason = resolve_unit_for_canva(unit, glyph_dirs)
     if unit_reason != "master":
@@ -381,6 +490,7 @@ def compose_badge_with_glyphs(
         if unitset is not None:
             if tint_rgba:
                 unitset = recolor_glyph_rgba(unitset, tint_rgba)
+            unitset = _with_each(unitset)
             work, meta = _compose_locked_unit_set(
                 base,
                 set_count=int(set_count),
@@ -395,6 +505,7 @@ def compose_badge_with_glyphs(
             meta["unitResolved"] = unit
             meta["unitResolveReason"] = unit_reason
             meta["tintRgba"] = list(tint_rgba) if tint_rgba else None
+            meta["eachCount"] = int(each_count) if each_count else None
             return work, meta
         LOG.warning("lockedUnitSet enabled but unitset missing unit=%r", unit)
 
@@ -404,6 +515,7 @@ def compose_badge_with_glyphs(
         if unitset is not None:
             if tint_rgba:
                 unitset = recolor_glyph_rgba(unitset, tint_rgba)
+            unitset = _with_each(unitset)
             work, meta = _compose_canva_unitset(
                 base,
                 set_count=int(set_count),
@@ -450,7 +562,11 @@ def _paste_unitset_uniform1000(
     ty = int(round(rect1000[1] * scale))
     tw = max(1, int(round(rect1000[2] * scale)))
     th = max(1, int(round(rect1000[3] * scale)))
-    cropped = _crop_to_alpha(unitset.convert("RGBA"))
+    lock_box = (getattr(unitset, "info", None) or {}).get("lockCropBox")
+    if lock_box:
+        cropped = unitset.convert("RGBA").crop(tuple(int(v) for v in lock_box))
+    else:
+        cropped = _crop_to_alpha(unitset.convert("RGBA"))
     cw, ch = cropped.size
     fit = min(tw / max(1, cw), th / max(1, ch))
     nw = max(1, int(round(cw * fit)))
@@ -553,6 +669,102 @@ def _load_number_glyph(
     return num_im, f"digits:{n}"
 
 
+def _is_badge_ink(
+    r: int,
+    g: int,
+    b: int,
+    a: int,
+    tint: Optional[Tuple[int, int, int, int]] = None,
+) -> bool:
+    """金丸の地色（黄）は除き、今の文字色に近い画素だけ。"""
+    if a <= 30:
+        return False
+    if tint:
+        tr, tg, tb = int(tint[0]), int(tint[1]), int(tint[2])
+        return abs(r - tr) + abs(g - tg) + abs(b - tb) < 90
+    if r > 150 and g > 110:
+        return False
+    return max(r, g, b) < 160 and (r + g + b) < 320
+
+
+def _upper_unit_edges(
+    work: Image.Image,
+    pos: Optional[dict],
+    tint: Optional[Tuple[int, int, int, int]] = None,
+) -> Optional[Tuple[int, int]]:
+    """単位行の左端と下端。セット行は隙間の下なので除く。戻り値は (left, bottom)。"""
+    if not pos:
+        return None
+    im = work.convert("RGBA")
+    px = im.load()
+    x0 = max(0, int(pos["x"]))
+    y0 = max(0, int(pos["y"]))
+    x1 = min(im.size[0], x0 + int(pos["w"]))
+    y1 = min(im.size[1], y0 + int(pos["h"]))
+    rows = []
+    for y in range(y0, y1):
+        xs = [x for x in range(x0, x1) if _is_badge_ink(*px[x, y], tint)]
+        if xs:
+            rows.append((y, min(xs), max(xs)))
+    if not rows:
+        return None
+    gap_at = None
+    best = 0
+    prev = rows[0][0]
+    for y, _a, _b in rows[1:]:
+        gap = y - prev
+        if gap > best:
+            best = gap
+            gap_at = prev
+        prev = y
+    upper = rows if best < 4 or gap_at is None else [r for r in rows if r[0] <= gap_at]
+    return min(r[1] for r in upper), upper[-1][0]
+
+
+def _mid_right(g: Image.Image) -> int:
+    """高さの中央付近で、いちばん右にあるインク。丸い数字は外接より左になる。"""
+    px = g.load()
+    w, h = g.size
+    y0, y1 = int(h * 0.32), int(h * 0.68)
+    edge = 0
+    for y in range(y0, max(y0 + 1, y1)):
+        xs = [x for x in range(w) if px[x, y][3] > 40]
+        if xs:
+            edge = max(edge, max(xs))
+    return edge if edge else w - 1
+
+
+def _paste_1digit_baseline(
+    work: Image.Image,
+    glyph: Image.Image,
+    box: List[int],
+    *,
+    canvas: int,
+    unit_bottom: int,
+    unit_left: int,
+    grid: float = 1000,
+) -> Dict[str, int]:
+    """1桁は1の高さに揃え、下辺は単位。袋との間隔は右辺のへこみで足す。"""
+    scale = canvas / grid
+    h = max(1, int(round(box[3] * scale)))
+    g = _crop_to_alpha(glyph.convert("RGBA"))
+    s = h / max(1, g.size[1])
+    nw = max(1, int(round(g.size[0] * s)))
+    nh = h
+    g = g.resize((nw, nh), Image.Resampling.LANCZOS)
+    mid = _mid_right(g)
+    gap = max(8, int(round(h * 0.12)))
+    # 1のように細い数字だけ、右の直線が袋に寄って見えるので少し離す。2〜9は動かさない。
+    extra = int(round(h * 0.14)) if (nw / max(1, nh)) < 0.58 else 0
+    ox0 = int(unit_left) - gap - mid - extra
+    ox = ox0
+    if ox + nw > int(unit_left) - 4:
+        ox = int(unit_left) - 4 - nw
+    oy = int(unit_bottom) - nh + 1
+    paste_glyph(work, g, (ox, oy))
+    return {"x": ox, "y": oy, "w": nw, "h": nh, "midRight": mid, "gap": gap}
+
+
 def _compose_locked_unit_set(
     base: Image.Image,
     *,
@@ -625,6 +837,21 @@ def _compose_locked_unit_set(
         if use_rb:
             num_pos = _paste_right_bottom1000(work, num_im, num_box, canvas=canvas)
             num_fit = "right_bottom"
+        elif digit_key == "1digit":
+            edges = _upper_unit_edges(work, unitset_pos, tint_rgba)
+            if edges is None:
+                num_pos = _paste_box1000(work, num_im, num_box, canvas=canvas, fit=num_fit)
+            else:
+                unit_left, unit_bottom = edges
+                num_pos = _paste_1digit_baseline(
+                    work,
+                    num_im,
+                    num_box,
+                    canvas=canvas,
+                    unit_bottom=unit_bottom,
+                    unit_left=unit_left,
+                )
+                num_fit = "baseline_unit"
         else:
             num_pos = _paste_box1000(work, num_im, num_box, canvas=canvas, fit=num_fit)
 

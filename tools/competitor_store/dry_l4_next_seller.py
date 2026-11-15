@@ -146,11 +146,32 @@ def main() -> int:
             row[c] = leftover
         else:
             row[c] = pct_by_name.get(c, 0)
-    live_h = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))[0]
-    append_rows(svc, COMPETITOR_SS, SHEET_SELLER, live_h, [row])
+    live_h = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))[0] or list(SELLER_HEADERS)
+    _, srows2 = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))
+    keyu = nxt.strip().upper()
+    hit_i = next(
+        (i for i, r in enumerate(srows2) if str(r.get("sellerId") or "").strip().upper() == keyu),
+        None,
+    )
+    values = [row.get(k, "") for k in live_h]
+    keep_cols = ("調査CK", "メモ", "巡回日", "asinList件数", "抽出メーカー", "ピック")
+    if hit_i is not None:
+        old = srows2[hit_i]
+        idx = {k: n for n, k in enumerate(live_h)}
+        for k in keep_cols:
+            if k in idx:
+                values[idx[k]] = old.get(k, values[idx[k]])
+        svc.spreadsheets().values().update(
+            spreadsheetId=COMPETITOR_SS,
+            range="'%s'!A%d" % (SHEET_SELLER.replace("'", "''"), hit_i + 2),
+            valueInputOption="USER_ENTERED",
+            body={"values": [values]},
+        ).execute()
+    else:
+        append_rows(svc, COMPETITOR_SS, SHEET_SELLER, live_h, [row])
     h2, rows2 = as_dicts(read_all(svc, COMPETITOR_SS, SHEET_SELLER))
     ids_now = [str(r.get("sellerId") or "") for r in rows2]
-    vok = nxt in ids_now and len(rows2) >= 2 and not parsed["_has_asinlist"]
+    vok = nxt in ids_now and not parsed["_has_asinlist"]
     line2 = "runId=pr_20260816_l4col seller=%s cats=%s food=%s consumed=%s n=%d %s" % (
         nxt,
         parsed["_n_cat"],

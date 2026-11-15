@@ -1,0 +1,31 @@
+{
+  "id": "T-SN-08",
+  "desc": "C2 Keepa複数・収束せず",
+  "input": {
+    "draft_name": "濃厚とまとラーメン",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000003",
+    "hit_asin": "B000000003",
+    "keepa_jans": [
+      "4905555555555",
+      "4906666666666"
+    ],
+    "search_jans": [
+      "4905555555555",
+      "4907777777777"
+    ]
+  },
+  "expect": {
+    "pattern": "C2",
+    "single_trust": "mid",
+    "jan_trust": "複数",
+    "for_estimate": true,
+    "need_human": true,
+    "auto_pick_jan": false,
+    "write_single_name": true
+  }
+}

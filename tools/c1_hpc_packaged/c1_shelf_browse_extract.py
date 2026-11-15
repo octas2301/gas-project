@@ -45,6 +45,12 @@ KNOWN_TEMPLATES = {
         "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
         "columnMapPath": "food_seasoning_column_map.json",
     },
+    "PACKAGED_SOUP_AND_STEW.xlsm": {
+        "allowedProductTypes": ["PACKAGED_SOUP_AND_STEW"],
+        "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+        "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+        "columnMapPath": "packaged_soup_and_stew_column_map.json",
+    },
 }
 
 

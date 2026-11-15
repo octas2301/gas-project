@@ -1,0 +1,1 @@
+{"id":"T-HBL-08","desc":"列挙・A-light・CK・C0・idle は次時計","steps":[{"action":"hb_enum","now_ms":1},{"action":"hb_alight","now_ms":2},{"action":"hb_auto_ck","now_ms":3},{"action":"hb_c0","now_ms":4},{"action":"hb_idle","now_ms":5}],"expect":{"alive":true,"reason":"wash_trigger"}}

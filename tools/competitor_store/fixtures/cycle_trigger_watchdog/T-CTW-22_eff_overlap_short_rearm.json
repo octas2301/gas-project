@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-22",
+  "desc": "P-eff-2: age<8 no takeover, short rearm 2min",
+  "kind": "eff_overlap_takeover",
+  "inflight_age_ms": 300000,
+  "eff_loop": true,
+  "expect": {
+    "takeover": false,
+    "rearm_min": 2,
+    "age_min": 5
+  }
+}

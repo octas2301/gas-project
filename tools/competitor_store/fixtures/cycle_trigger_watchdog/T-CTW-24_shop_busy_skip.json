@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-24",
+  "desc": "shop busy: wash fire skips and rearms 3min",
+  "kind": "shop_busy_skip",
+  "busy": true,
+  "ttl_ok": true,
+  "expect": {
+    "skip": true,
+    "rearm_min": 3,
+    "reason": "shop_hb_busy"
+  }
+}

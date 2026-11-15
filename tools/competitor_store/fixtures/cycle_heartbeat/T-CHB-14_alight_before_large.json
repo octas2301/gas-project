@@ -1,0 +1,1 @@
+{"id":"T-CHB-14","desc":"小中0で未調査店ありなら大を選ばず shop_before_large","kind":"next","input":{"maker_sum":[{"メーカー":"大社","実態":"製造メーカー","セラーヒット":3,"catalog_estimate":400}],"catalog_estimate":{"大社":400},"unchecked_sellers":2,"k":3},"expect":{"action":"alight","detail_has":"shop_before_large"}}

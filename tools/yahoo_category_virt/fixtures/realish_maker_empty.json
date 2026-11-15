@@ -1,0 +1,23 @@
+{
+  "id": "realish_maker_empty",
+  "note": "実ラン再現: メーカー欄が空の店ヒット。ヒット多→本戦全滅→第1FBゆるいシリーズで1071",
+  "productName": "食べるおだし（ まぐろ ・ ぶり ）",
+  "makerName": "石原水産",
+  "expectedCategoryId": "1071",
+  "topN": 15,
+  "hits": [
+    {"title": "インスタントコーヒー 詰め合わせ", "maker": "", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"},
+    {"title": "スティックコーヒー", "maker": "某店", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"},
+    {"title": "ギフト箱", "maker": "", "genreCategoryId": "4158", "path": "キッチン、日用品、文具:文具:ギフト箱"},
+    {"title": "キャットフード ドライ", "maker": "", "genreCategoryId": "4823", "path": "ペット用品:猫:キャットフード"},
+    {"title": "カフェオレ", "maker": "", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"},
+    {"title": "ブラックコーヒー", "maker": "", "genreCategoryId": "41392", "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"},
+    {"title": "食べるおだし まぐろ ぶり おつまみ", "maker": "", "genreCategoryId": "1071", "path": "食品:乾物、乾燥豆類、缶詰:かつお節、削り節"},
+    {"title": "食べるおだし 厚削り セット", "maker": "別ショップ", "genreCategoryId": "1071", "path": "食品:乾物、乾燥豆類、缶詰:かつお節、削り節"}
+  ],
+  "fallback": {
+    "source": "drive_master_csv",
+    "yahooCategoryId": "2140",
+    "path": "ベビー、キッズ、マタニティ:おもちゃ、教材:おしゃぶり、歯固め"
+  }
+}

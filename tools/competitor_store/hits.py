@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from schema import HITS_HEADERS, PURPOSE_RESEARCH, SHEET_HITS
 
@@ -69,7 +69,8 @@ def filter_unchanged_hits(existing: list[dict], incoming: list[dict]) -> tuple[l
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    """取得日時。日本時間（+09:00）。"""
+    return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
 
 def hit_row(*, mall: str, jan: str, query: str, rank: int, name: str, price, ship, point, url: str, raw: dict, purpose: str | None = None) -> dict:

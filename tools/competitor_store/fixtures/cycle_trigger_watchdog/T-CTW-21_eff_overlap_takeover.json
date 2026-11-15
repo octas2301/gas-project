@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-21",
+  "desc": "P-eff-2: overlap age>=8 immediate takeover",
+  "kind": "eff_overlap_takeover",
+  "inflight_age_ms": 1380000,
+  "eff_loop": true,
+  "expect": {
+    "takeover": true,
+    "rearm_min": 0,
+    "age_min": 23
+  }
+}

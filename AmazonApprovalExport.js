@@ -19,7 +19,7 @@
  *   APPROVAL_AMAZON_LV4_BRAND_GATE_MODE … M2(A): manual_ok 必須（人間が制限なし確認後）。未設定＝SKIPPED_BRAND_GATE
  *   APPROVAL_AMAZON_LV4_CK_ALLOW_IN_STOCK … Dレ点新規のみ在庫>0でも続行（未設定＝true。false で旧 SKIPPED_IN_STOCK に戻す）
  *   APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP … 親SKU→PT|BrowseNodeId（条件付き自動再GENERATED）
- * 送信在庫: inventoryMode ZERO（既定0）/ ONE / MASTER（マスタ「在庫数」生値・ALLOW_MASTER_QTY必須）
+ * 送信在庫: inventoryMode ZERO（既定0）/ ONE / MASTER（マスタ「在庫数」生値・Propertyゲートなし）
  * Track B 親行の inventory は常に0（MASTERでも親マスタ在庫は読まない。実在庫は子のみ）
  * マスタ「在庫数」「JAN」への書込禁止（読取のみ）
  *   APPROVAL_AMAZON_LV4_EXEMPTION_ALL_CATEGORIES … 21-⑭ を全カテゴリ `*` で記録（既定 false＝レ点カテゴリのみ）
@@ -76,7 +76,7 @@ var APPROVAL_AMAZON_LV4_LOG_HEADERS = [
  * メニュー 21-① / D×Amazon ファサード共用。
  * @param {{silent?:boolean, source?:string, track?:string, includeOffer?:boolean, inventoryMode?:string}=} opts
  *   source='child_ck' は人間レ点の新規カタログ行のみ。既定は承認①済。
- *   inventoryMode='MASTER' はバルク在庫列へマスタ「在庫数」生値（承認②・ALLOW_MASTER_QTY必須）
+ *   inventoryMode='MASTER' はバルク在庫列へマスタ「在庫数」生値（承認②・Propertyゲートなし）
  * @return {{ok:boolean, cancelled?:boolean, runId?:string, track?:string, summary?:Object, reason?:string, error?:string}}
  */
 function menuApprovalAmazonLv4Run(opts) {
@@ -1058,15 +1058,7 @@ function amazonApprovalLv4Run_(ss, runId, startSubBatchIndex, resumeState, track
   var inventoryMode = inventoryModeRaw === 'MASTER'
     ? 'MASTER'
     : (inventoryModeRaw === 'ONE' ? 'ONE' : 'ZERO');
-  if (inventoryMode === 'MASTER') {
-    var allowMasterProp = (typeof APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP === 'string')
-      ? APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP
-      : 'APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY';
-    if (!getBoolScriptProperty_(allowMasterProp, false)) {
-      throw new Error('マスタ在庫送信には ' + allowMasterProp +
-        '=true が必要です（承認②・既定は無効）。');
-    }
-  }
+  // MASTER は Property ゲートなし（店の既定。開始前確認は呼出側）。
   var stockOut = inventoryMode === 'ONE' ? 1 : 0;
   var shipping = amazonApprovalLv4ShippingTemplate_();
   var skipExport = getBoolScriptProperty_(APPROVAL_AMAZON_LV4_SKIP_EXPORT_PROP, false);
@@ -2509,6 +2501,9 @@ function amazonApprovalLv4BuildParentPtBrowseFpMap_(masterCtx, parents) {
 
 /** @return {Object<string,string>} */
 function amazonApprovalLv4LoadParentPtBrowseFpMap_() {
+  if (typeof scriptPropsJsonLoad_ === 'function') {
+    return scriptPropsJsonLoad_(APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP);
+  }
   var raw = '';
   try {
     raw = String(PropertiesService.getScriptProperties()
@@ -2537,6 +2532,10 @@ function amazonApprovalLv4SaveParentPtBrowseFpMap_(patch) {
     var k = keys[i];
     if (!k) continue;
     map[k] = String(patch[k] || '');
+  }
+  if (typeof scriptPropsJsonSave_ === 'function') {
+    scriptPropsJsonSave_(APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP, map);
+    return;
   }
   PropertiesService.getScriptProperties().setProperty(
     APPROVAL_AMAZON_LV4_PARENT_PT_BROWSE_FP_PROP,

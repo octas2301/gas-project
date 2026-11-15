@@ -218,7 +218,7 @@ Amazon API／登録処理は sellerSku 単位の upsert とする。
 | `APPROVAL_AMAZON_LV4_ENABLED` | false | 新規カタログGENERATED |
 | `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | false | 相乗りSP-API |
 | `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | false | prod許可 |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | 10（未設定時） | 上限（1〜50） |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | 50（未設定時） | 上限（1〜200） |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | true | 在庫0 |
 
 ### 6.2 承認①を再接続する条件

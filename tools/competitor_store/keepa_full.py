@@ -323,13 +323,14 @@ def product_to_full_row(product: dict, fetched_at: str, purpose: str | None = No
 
 
 def latest_row_for_asin(rows: list[dict], asin: str) -> dict | None:
+    """先頭挿入運用: シート上側（配列先頭）が最新。先勝ち。"""
     key = str(asin or "").strip().upper()
     hits = [r for r in rows if str(r.get("ASIN") or "").strip().upper() == key]
-    return hits[-1] if hits else None
+    return hits[0] if hits else None
 
 
 def upsert_keepa_full(store: Any, product: dict, fetched_at: str, purpose: str | None = None) -> str:
-    """最新1行の指紋が同じなら非書。変化時のみ追記。csv[]は落とす。目的既定=リサーチ。"""
+    """最新1行の指紋が同じなら非書。変化時のみ先頭挿入。csv[]は落とす。目的既定=リサーチ。"""
     from schema import SHEET_KEEPA_FULL
 
     rec = product_to_full_row(product, fetched_at, purpose=purpose)
@@ -338,7 +339,7 @@ def upsert_keepa_full(store: Any, product: dict, fetched_at: str, purpose: str |
     latest = latest_row_for_asin(store.rows(SHEET_KEEPA_FULL), rec["ASIN"])
     if latest and str(latest.get("価格指紋") or "") == rec["価格指紋"]:
         return "skip_same_fp"
-    store.append(SHEET_KEEPA_FULL, rec)
+    store.prepend(SHEET_KEEPA_FULL, rec)
     return "append"
 
 
@@ -348,7 +349,7 @@ def plan_upsert_actions(
     fetched_at: str,
     purpose: str | None = None,
 ) -> list[str]:
-    """シート非書。skip_no_asin / skip_same_fp / append。"""
+    """シート非書。skip_no_asin / skip_same_fp / append。先頭挿入をシミュレート。"""
     rows = list(existing_rows or [])
     actions: list[str] = []
     for product in products:
@@ -361,7 +362,7 @@ def plan_upsert_actions(
             actions.append("skip_same_fp")
             continue
         actions.append("append")
-        rows.append(rec)
+        rows.insert(0, rec)
     return actions
 
 

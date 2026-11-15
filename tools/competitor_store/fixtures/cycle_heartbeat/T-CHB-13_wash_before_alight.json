@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-13",
+  "desc": "洗える小中が1社でも余力があれば洗う（店は洗い後の印だけ）",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40}
+    ],
+    "catalog_estimate": {"小社": 40},
+    "unchecked_sellers": 10,
+    "k": 3,
+    "token_room": true
+  },
+  "expect": {"action": "wash_small", "maker": "小社"}
+}

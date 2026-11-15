@@ -12,8 +12,8 @@
  * Script Properties（第1段・第2段で共用）— 本番常時ONセット（2026-08-10）:
  *   APPROVAL_AMAZON_SPAPI_PUT_ENABLED … 未設定時 **true**（明示 false で緊急停止）
  *   APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD … 未設定時 **true**（開始前確認は残す）
- *   APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY … 既定 **false**（承認②・毎回ONにしない）
- *   APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS … 既定 10（1〜50。未設定時はこの既定）
+ *   APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY … **廃止**（2026-10-24。MASTER は Property 不要。キーが残っていても読まない）
+ *   APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS … 既定 50（1〜200。未設定時はこの既定。Property省略可）
  *   APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0 … 既定 true（マスタqty経路ON時のみ緩和）
  * デュアル Phase1: 自己発=Amazon相乗りSKU／FBA=Amazon相乗りSKU_FBA（列分離・1実行1系統）
  *   APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_ATTRS … 既定 true（FBA時に電池・危険物属性）
@@ -32,6 +32,9 @@ var APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_PROP = 'APPROVAL_AMAZON_SPAPI_PUT_FORCE_
 /** 本番常時ONセット: 未設定時 true（明示 false でOFF） */
 var AMAZON_PROD_DEFAULT_PUT_ENABLED_ = true;
 var AMAZON_PROD_DEFAULT_ALLOW_PROD_ = true;
+var AMAZON_PROD_DEFAULT_ALLOW_MASTER_QTY_ = true;
+var AMAZON_PROD_DEFAULT_MAX_ITEMS_ = 50;
+var AMAZON_PROD_HARD_MAX_ITEMS_ = 200;
 /** FBA時の電池・危険物属性付与（既定 true。false で旧body） */
 var APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_PROP =
   'APPROVAL_AMAZON_SPAPI_PUT_FBA_COMPLIANCE_ATTRS';
@@ -122,7 +125,7 @@ function menuAmazonSpapiPutApprovedProd() {
  * @param {{mode:string, source?:string, silent?:boolean, skipProdConfirmation?:boolean, offerFulfillment?:string, inventoryMode?:string}} opt
  *   source: 'child_ck'（第1段）| 'approved'（第2段）| 'offer_ck'（Dレ点相乗り）
  *   offerFulfillment: 'mfn' | 'fba'（D選択。相乗り自己発／相乗りFBA）
- *   inventoryMode: 'ZERO'（既定）| 'MASTER'（承認②・ALLOW_MASTER_QTY必須）
+ *   inventoryMode: 'ZERO'（既定）| 'MASTER'（承認②・Propertyゲートなし）
  * @return {{ok:boolean, reason?:string, runId?:string, count?:number, fail?:number, batchId?:string}}
  */
 function menuAmazonSpapiPutListings_(opt) {
@@ -184,16 +187,15 @@ function menuAmazonSpapiPutListings_(opt) {
     return amazonSpapiPutFail_(stepName, runId, noProd, silent);
   }
 
-  if (inventoryMode === 'MASTER' &&
-      !getBoolScriptProperty_(APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP, false)) {
-    var noMaster = 'マスタ在庫送信には ' + APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY_PROP +
-      '=true が必要です（承認②・既定は無効）。在庫0で出すか Property を有効にしてください。';
-    return amazonSpapiPutFail_(stepName, runId, noMaster, silent);
-  }
+  // MASTER は Property ゲートなし（店の既定）。
 
-  var maxItems = Math.floor(getNumberScriptProperty_(APPROVAL_AMAZON_SPAPI_PUT_MAX_PROP, 10));
+  var maxDefault = (typeof AMAZON_PROD_DEFAULT_MAX_ITEMS_ !== 'undefined')
+    ? AMAZON_PROD_DEFAULT_MAX_ITEMS_ : 50;
+  var maxHard = (typeof AMAZON_PROD_HARD_MAX_ITEMS_ !== 'undefined')
+    ? AMAZON_PROD_HARD_MAX_ITEMS_ : 200;
+  var maxItems = Math.floor(getNumberScriptProperty_(APPROVAL_AMAZON_SPAPI_PUT_MAX_PROP, maxDefault));
   if (maxItems < 1) maxItems = 1;
-  if (maxItems > 50) maxItems = 50;
+  if (maxItems > maxHard) maxItems = maxHard;
   // 相乗り: 既定 quantity=0。マスタqty経路ON時のみ FORCE_QTY_0 を緩和
   var useMasterQty = isOfferCheckbox && inventoryMode === 'MASTER';
   var forceQty0 = useMasterQty
@@ -484,6 +486,8 @@ function amazonSpapiPutCollectOfferCheckboxItems_(masterCtx, forceQty0, isProd, 
   var skipped = [];
   var targetRows1 = [];
   var qtyErrors = [];
+  /** @type {Object<string, number>} ASIN → 先勝ちの row1（相乗り先はユニーク） */
+  var seenAsin = {};
   for (var i = 0; i < inspected.offerRows.length; i++) {
     var one = inspected.offerRows[i];
     var rowIndex0 = one.rowIndex0;
@@ -496,9 +500,21 @@ function amazonSpapiPutCollectOfferCheckboxItems_(masterCtx, forceQty0, isProd, 
     }
     var asin = amazonSpapiPutResolveDirectOfferAsin_(masterCtx, rowIndex0, one.parentSku);
     if (!asin) {
-      skipped.push({ row1: one.row1, reason: 'ASINコード空/不正（競合店ASIN・URLは使用しません）' });
+      skipped.push({ row1: one.row1, reason: 'ASINコード空/不正（当該子行N列のみ。親フォールバックなし）' });
       continue;
     }
+    if (seenAsin[asin]) {
+      skipped.push({
+        row1: one.row1,
+        reason: '相乗りASIN重複のためスキップ asin=' + asin +
+          ' firstRow1=' + seenAsin[asin]
+      });
+      Logger.log('[amazonSpapiPutCollectOfferCheckboxItems_] skip_dup_asin row1=' +
+        one.row1 + ' asin=' + asin + ' firstRow1=' + seenAsin[asin] +
+        ' fx=' + fulfillment);
+      continue;
+    }
+    seenAsin[asin] = one.row1;
 
     var qty = 0;
     if (useMasterQty) {
@@ -618,17 +634,14 @@ function amazonSpapiPutFormatQtyConfirm_(items, fulfillment) {
     '\n内訳:\n' + lines.join('\n');
 }
 
-/** 相乗り先ASINはN列「ASINコード」のみ。子空時だけ同じ親の親行へフォールバック。 */
+/**
+ * 相乗り先ASINは当該子行のN列「ASINコード」のみ。
+ * 親行へのフォールバックはしない（同一親ASINの多重PUT・max_items誤爆を防ぐ）。
+ * @param {string=} parentSku 互換のため残す（未使用）
+ */
 function amazonSpapiPutResolveDirectOfferAsin_(masterCtx, rowIndex0, parentSku) {
   var asin = amazonApprovalLv4Cell_(masterCtx, rowIndex0, AMAZON_OFFER_ASIN_HEADER_);
   if (amazonApprovalLv4LooksLikeAsin_(asin)) return String(asin).toUpperCase();
-  if (parentSku) {
-    var parentRow = amazonSpapiExportFindParentRow_(masterCtx, parentSku);
-    if (parentRow != null) {
-      asin = amazonApprovalLv4Cell_(masterCtx, parentRow, AMAZON_OFFER_ASIN_HEADER_);
-      if (amazonApprovalLv4LooksLikeAsin_(asin)) return String(asin).toUpperCase();
-    }
-  }
   return '';
 }
 

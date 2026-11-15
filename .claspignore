@@ -26,6 +26,9 @@ check-rakuten-32byte.js
 check_rakuten_32byte.py
 楽天CSVファイル/バリエーション32バイトチェック.html
 
+# 調査用の一時コピー（壊れた _tmp_*.js を clasp push に混ぜない）
+_tmp_*.js
+
 # その他の不要ファイル
 .cursor/**
 *.md

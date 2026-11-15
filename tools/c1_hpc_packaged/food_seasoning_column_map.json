@@ -292,6 +292,9 @@
   "notes": "FOOD系複合テンプレ本線。PT/browseはマスタ必須（p4b_require_master_pt_browse）。唐辛子等の既定browse埋込禁止。許可PT=FOOD/SEASONING/HPC。ハイライト=楽天キャッチ→Yahooキャッチ→箇条書き①（タイトル≤75）。テーマ既定SET_NAME・形式既定ホール。検索KWは1枠のみ（99016）。B-T1: xlsm_header_aliases。",
   "keyword_max_slots": 1,
   "highlight_max_title_chars": 75,
+  "highlight_forbidden_phrases": [
+    "抜群"
+  ],
   "highlight_priority": [
     "catch_rakuten",
     "catch_yahoo",
@@ -301,6 +304,7 @@
   "p4b_c1_product_types": [
     "FOOD",
     "SEASONING",
+    "HERB",
     "HEALTH_PERSONAL_CARE"
   ],
   "xlsm_header_aliases": {

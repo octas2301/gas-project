@@ -1,0 +1,50 @@
+---
+description: B-④ MAIN compose の既存ラン再利用は Agent が自動判定し、三択をチャットで聞かない
+alwaysApply: true
+---
+
+# B-④ 既存ラン再利用 — Agent 自動進行
+
+人間が B-④（楽天MAIN基礎・案F／P2）の Cursor 指示を貼ったとき、**再利用の三択をチャットで聞かない**。判定してそのまま進める。
+
+正本: [docs/org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md](../../docs/org/D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md) §3.6.2
+
+## 判定（親ごと）
+
+JSON 保存後、必ず:
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project\tools\set_main_image
+python b5_reuse_decide.py --from-json _b5_checked_{JAN}.json
+```
+
+| mode | 動作 |
+|------|------|
+| `full` | チェック案を通常 compose（新規タイムスタンプ）→ `--fresh` で review |
+| `reuse` | compose しない。`composeDir` を `--fresh --compose-dir` で review |
+| `missing_only` | 足りないキャッチだけ同一 `composeDir` へ足す（out_dir＝既存）→ 案を sync → `--fresh` review |
+
+足りない判定の正は **catchBurn／catch が比較ファイル名に含まれるか**（themeId だけでは足りない）。
+
+## 人が明示したときだけ全部作り直し
+
+指示やチャットに「全部作り直し」とあるときだけ:
+
+```powershell
+python b5_reuse_decide.py --from-json _b5_checked_{JAN}.json --full
+```
+
+## 自動で full になる条件（聞かない）
+
+- 比較ランが無い／比較0枚
+- 文字色（textColor）が既存ランと違う
+- 正本袋（packageTruth）が既存ランと違う
+- チェック案のキャッチがすべて未作成
+
+## 禁止
+
+- 「既存を使う／足りない分だけ／全部作り直し」を毎回チャットで選ばせること
+- 沈黙を全部作り直しの肯定にすること
+- 古い review URL のまま進めること（review は `--fresh`）
+
+止めたときの返し: 「再利用は自動判定です。三択は聞きません。全部作り直しは明示したときだけです。」

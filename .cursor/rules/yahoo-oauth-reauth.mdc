@@ -1,0 +1,29 @@
+---
+description: Yahoo再認証・戻り先URL（localhost）・invalid_grant時は HUMAN_RUN §0 を先に開く
+alwaysApply: true
+---
+
+# Yahoo再認証・戻り先URL
+
+人間が次のいずれかを言ったら、手製の要約だけで済ませず **先に** [docs/org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md](docs/org/YAHOO_OAUTH_REAUTH_HUMAN_RUN.md) **§0** を開いて案内する。
+
+- Yahoo再認証／認可コード／リフレッシュトークン期限切れ
+- `invalid_grant`／`refresh token has expired`
+- `YAHOO_OAUTH_REDIRECT_URI`／戻り先／コールバック／localhost
+- Script Properties が50件超で登録できない
+
+## 正（この店・§0）
+
+- `YAHOO_OAUTH_REDIRECT_URI` ＝ **`http://localhost/`**（末尾 `/` 含む。アプリ登録と一致）
+- B14 ＝ リフレッシュトークンのみ。URLを入れない
+- 再認証メニュー: **Yahoo再認証（認可コード貼付）**。説明API反映・期限確認は更新メニューではない
+- 切れ後の出品やり直し: **Dの Yahooコースだけ**（楽天済みなら楽天は不要）
+- 50件超UI: HUMAN_RUN §2.1bis の一時 `setProperty`（値は §0 の URL）
+
+## 禁止
+
+- リフレッシュトークンを `YAHOO_OAUTH_REDIRECT_URI` に入れさせる
+- アプリ登録を見ずに戻り先を推測で変える（変えたら §0 を先に更新）
+- 一括出品ログの「Yahoo!出品完了」だけで Yahoo 成功と判定する（▼ログの FATAL を見る）
+
+止めたときは「正本は YAHOO_OAUTH_REAUTH_HUMAN_RUN §0。戻り先は http://localhost/。B14はトークン」と返す。

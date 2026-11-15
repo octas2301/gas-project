@@ -1,0 +1,35 @@
+{
+  "id": "T-CSA-03",
+  "desc": "429: 2件目 ASIN で停止。1件目分のみ追加。after_asin 保存",
+  "sellers_before": [],
+  "cand": [
+    { "ASIN": "B0CSA00020", "門結果": "通過" },
+    { "ASIN": "B0CSA00021", "門結果": "通過" }
+  ],
+  "keepa_full": [
+    { "ASIN": "B0CSA00021", "BuyBoxセラー": "AY429BB00001" }
+  ],
+  "side_effect": { "cand_rows": 8, "keepa_full_rows": 40 },
+  "run": {
+    "cap": 100,
+    "offers_by_asin": {
+      "B0CSA00020": ["AY429SELL01"],
+      "B0CSA00021": ["AY429SELL02"]
+    },
+    "stop_at_asin": "B0CSA00021",
+    "stop_reason": "429"
+  },
+  "expect": {
+    "new_seller_ids": ["AY429SELL01"],
+    "seller_row_delta": 1,
+    "stopped": "429",
+    "after_asin": "B0CSA00021",
+    "api_calls": 2,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00020"],
+    "remain_asin": 1,
+    "must_stay_unmarked": ["B0CSA00021"],
+    "must_not_add": ["AY429BB00001", "AY429SELL02"],
+    "side_effect_unchanged": true
+  }
+}

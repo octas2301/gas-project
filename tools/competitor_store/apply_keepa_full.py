@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -13,14 +13,16 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT.parent / "purchase_research_path3"))
+sys.path.insert(0, str(ROOT.parent / "common_ss_view"))
 
 from client import sheets_service  # noqa: E402
 from keepa_csv_vs_api import keepa_key  # noqa: E402
 from keepa_full import keepa_get_needed, latest_row_for_asin, product_to_full_row, warehouse_get_needed  # noqa: E402
+from registry import file_id  # noqa: E402
 from schema import KEEPA_FULL_HEADERS, PURPOSE_RESEARCH, SHEET_KEEPA_FULL  # noqa: E402
 
-RESEARCH_SS = "1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE"
-COMPETITOR_SS = "1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs"
+RESEARCH_SS = file_id("自動リサーチ260814_アマゾン調査")
+COMPETITOR_SS = file_id("統合情報DB260815_競合（amz/楽/Yah）")
 T_CAND = "①候補"
 T_LOG = "①ログ"
 SLICE = ["B0DF7P45TL", "B084MYZWXJ", "B09CP5Y7GS", "B0H2CDC526", "B0B9GC8DTN"]
@@ -29,7 +31,8 @@ TOKEN_RESERVE = 50
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    """取得日時など。日本時間（+09:00）。旧 UTC(Z) から切替。"""
+    return datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
 
 def read_all(svc, sid: str, title: str) -> list[list[str]]:
@@ -73,12 +76,57 @@ def fetch_stats90(key: str, asins: list[str]) -> dict:
 
 
 def append_rows(svc, sid: str, title: str, headers: list[str], recs: list[dict]) -> None:
+    """末尾追記（セラー等）。Keepaフル／モールヒットは prepend_rows を使う。"""
     values = [[rec.get(h, "") for h in headers] for rec in recs]
     svc.spreadsheets().values().append(
         spreadsheetId=sid,
         range="'" + title.replace("'", "''") + "'!A1",
         valueInputOption="RAW",
         insertDataOption="INSERT_ROWS",
+        body={"values": values},
+    ).execute()
+
+
+def prepend_rows(svc, sid: str, title: str, headers: list[str], recs: list[dict]) -> None:
+    """ヘッダ直下（2行目）へ挿入。バッチ先頭が最上行（最新）。"""
+    if not recs:
+        return
+    values = [[rec.get(h, "") for h in headers] for rec in recs]
+    meta = (
+        svc.spreadsheets()
+        .get(spreadsheetId=sid, fields="sheets(properties(sheetId,title))")
+        .execute()
+    )
+    sheet_id = None
+    for s in meta.get("sheets", []):
+        if s["properties"]["title"] == title:
+            sheet_id = s["properties"]["sheetId"]
+            break
+    if sheet_id is None:
+        raise RuntimeError("sheet missing: " + title)
+    n = len(values)
+    svc.spreadsheets().batchUpdate(
+        spreadsheetId=sid,
+        body={
+            "requests": [
+                {
+                    "insertDimension": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "dimension": "ROWS",
+                            "startIndex": 1,
+                            "endIndex": 1 + n,
+                        },
+                        "inheritFromBefore": False,
+                    }
+                }
+            ]
+        },
+    ).execute()
+    svc.spreadsheets().values().update(
+        spreadsheetId=sid,
+        range="'" + title.replace("'", "''") + "'!A2",
+        valueInputOption="RAW",
         body={"values": values},
     ).execute()
 
@@ -187,7 +235,7 @@ def main() -> int:
                 print("FAIL csv_in_json", rec["ASIN"])
                 return 3
             recs.append(rec)
-            existing.append(rec)
+            existing.insert(0, rec)
             got_asins.append(rec["ASIN"])
         if left_n < TOKEN_RESERVE:
             print("stop_token_reserve left=%s" % left)
@@ -196,8 +244,8 @@ def main() -> int:
         use_h = headers if set(KEEPA_FULL_HEADERS).issubset(set(headers)) else list(KEEPA_FULL_HEADERS)
         if "目的" not in use_h:
             use_h = list(use_h) + ["目的"]
-        append_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, use_h, recs)
-    msg = "runId=%s append=%d skip_fresh=%d consumed=%s left=%s" % (
+        prepend_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, use_h, recs)
+    msg = "runId=%s prepend=%d skip_fresh=%d consumed=%s left=%s" % (
         run_id,
         len(recs),
         len(skip_fresh),

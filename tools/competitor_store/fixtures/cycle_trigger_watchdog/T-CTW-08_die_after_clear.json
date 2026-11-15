@@ -1,0 +1,1 @@
+{"id":"T-CTW-08","desc":"H6: expect_clear直後のhard_killでも inflight が残る","kind":"fire_then_watchdog","die_at":"expect_clear","watchdog_after_ms":2100000,"expect":{"outcome":"hard_kill","wd.hint":"inflight_stale","wd.rearmed":true,"log_has":["phase=expect_clear"]}}

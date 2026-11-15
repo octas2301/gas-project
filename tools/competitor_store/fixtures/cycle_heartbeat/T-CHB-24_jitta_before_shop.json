@@ -1,0 +1,18 @@
+{
+  "id": "T-CHB-24",
+  "desc": "小中0かつ未調査ありなら店ラウンドより先に jitta_resolve",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "大社", "実態": "製造メーカー", "セラーヒット": 3, "catalog_estimate": 400},
+      {"メーカー": "未知A", "実態": "未調査", "セラーヒット": 2},
+      {"メーカー": "未知B", "実態": "未調査", "セラーヒット": 1}
+    ],
+    "catalog_estimate": {"大社": 400},
+    "unchecked_sellers": 5,
+    "auto_ck_candidates": 8,
+    "jitta_pending": 2,
+    "k": 3
+  },
+  "expect": {"action": "jitta_resolve", "detail_has": "sm_empty jitta_pending"}
+}

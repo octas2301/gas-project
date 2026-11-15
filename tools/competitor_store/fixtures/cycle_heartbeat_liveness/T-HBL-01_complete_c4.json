@@ -1,0 +1,1 @@
+{"id":"T-HBL-01","desc":"洗い完走→C4時計が残る（洗いトリガーは消えてよい）","steps":[{"action":"hb_wash_complete","now_ms":1000}],"expect":{"alive":true,"reason":"c4_trigger","c4_n":1,"wash_n":0}}

@@ -1,7 +1,7 @@
 # U4 — R2 URL → GENERATED／PACKAGED 埋め要件
 
 **文書種別**: 要件定義（**U4 v1 実機合格**）  
-**最終更新**: 2026-07-26  
+**最終更新**: 2026-09-16  
 **状態**: **実機合格**（[HUMAN_RUN §0](D_MENU_U4_HUMAN_RUN.md)）  
 **親**: [D_MENU_AMAZON_FACADE_REQUIREMENTS.md](D_MENU_AMAZON_FACADE_REQUIREMENTS.md) §6.2 Db・§9 U4  
 **設計参照**: [LV4_R2_IMAGE_PIPELINE_POC.md](LV4_R2_IMAGE_PIPELINE_POC.md) T4／[LV4_T2_HUMAN_RUN.md](LV4_T2_HUMAN_RUN.md)  
@@ -78,7 +78,8 @@ Drive `02` の `{sellerSku}.MAIN.jpg`（必要なら PT）を **R2 に上げ、�
 |----------|------|------|
 | `AMAZON_U4_URL_EMBED_ENABLED` | **false** | メニュー実行ガード |
 | `AMAZON_DRIVE_R2_UPLOAD_ENABLED` | false | R2 Put 時に true（既存）。成功後 false 推奨／将来は成功時自動OFF可 |
-| `AMAZON_U4_MAX_SKUS` | 例 20 | 1実行の上限 |
+| `AMAZON_U4_MAX_SKUS` | （廃止・無視） | 収集カットしない。切れは時間 |
+| `AMAZON_U4_SLICE_MS` | 省略＝1320000 | 1実行 22分。E②は親開始からの残り。超過はトリガー再開 |
 | `AMAZON_DRIVE_IMAGE_FOLDER_ID` | 02 | 既存 |
 
 シークレットは既存 `R2_*` のみ。コード・コミット禁止。
@@ -122,6 +123,7 @@ Drive `02` の `{sellerSku}.MAIN.jpg`（必要なら PT）を **R2 に上げ、�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-16 | **未充足ドレイン**: 件数上限廃止。E②開始＋22分で切って機械再開（上限12波）。 |
 | 2026-07-26 | **実機合格**記録（21-⑦・マスタ URL・D冪等想定内）。 |
 | 2026-07-26 | **U4 v1 実装**（21-⑦・GENERATED優先・HUMAN_RUN）。承認「U4 v1 承認」。 |
 | 2026-07-26 | 初版起草。T2再検証合格を前提に URL本線・xlsm直編集除外。 |

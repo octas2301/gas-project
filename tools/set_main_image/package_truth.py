@@ -89,6 +89,200 @@ def _score_candidate(path: Path, jan: str) -> Tuple[int, float]:
     return score, path.stat().st_mtime
 
 
+def amazon_base_dir(work_root: Optional[Path] = None) -> Path:
+    root = Path(work_root) if work_root else default_work_root()
+    return root / SUB_AMAZON
+
+
+def rel_under_amazon_base(path: Path, *, work_root: Optional[Path] = None) -> str:
+    """01.amazon白抜きベース からの相対（処理済み\\name.png）。GAS紐付けと同じ表記。"""
+    amazon = amazon_base_dir(work_root)
+    p = Path(path)
+    try:
+        rel = p.resolve().relative_to(amazon.resolve())
+        return str(rel).replace("/", "\\")
+    except Exception:
+        name = p.name
+        if (amazon / "処理済み" / name).is_file():
+            return f"処理済み\\{name}"
+        return name
+
+
+def _other_parent_bag_blocks(
+    *,
+    parent_sku: str = "",
+    work_root: Optional[Path] = None,
+) -> Dict[str, set]:
+    """他親に紐付いた袋を落とすためのキー。
+
+    - rels: packageTruthRel 全文＋ファイル名だけ
+    - skus: 他親の parentSku
+    - jans: 他親の JAN（ファイル名に含まれる単体・ミックスも落とす）
+    """
+    sku = str(parent_sku or "").strip()
+    out: Dict[str, set] = {"rels": set(), "skus": set(), "jans": set()}
+    try:
+        from b5_parent_shared import load_parent_shared
+    except Exception:
+        return out
+    by = load_parent_shared(work_root).get("byParentSku") or {}
+    if not isinstance(by, dict):
+        return out
+    for other, row in by.items():
+        if not isinstance(row, dict):
+            continue
+        other_s = str(other or "").strip()
+        if not other_s or (sku and other_s == sku):
+            continue
+        if other_s.lower() == "test":
+            continue
+        out["skus"].add(other_s.lower())
+        rel = str(row.get("packageTruthRel") or "").strip().replace("/", "\\")
+        if rel:
+            out["rels"].add(rel.lower())
+            out["rels"].add(Path(rel).name.lower())
+        jan = "".join(ch for ch in str(row.get("jan") or "") if ch.isdigit())
+        if len(jan) >= 8:
+            out["jans"].add(jan)
+    return out
+
+
+def _rels_linked_by_other_parents(
+    *,
+    parent_sku: str = "",
+    work_root: Optional[Path] = None,
+) -> set:
+    """互換: 他親の packageTruthRel 集合。"""
+    return set(
+        _other_parent_bag_blocks(parent_sku=parent_sku, work_root=work_root).get("rels")
+        or []
+    )
+
+
+def list_package_truth_candidates(
+    *,
+    jan: str = "",
+    parent_sku: str = "",
+    name_base: str = "",
+    current: Optional[Path] = None,
+    work_root: Optional[Path] = None,
+    limit: int = 16,
+    hide_other_parents: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    袋正本の候補（サムネ選択用）。
+    出どころは GAS ① と同じ 01.amazon白抜きベース（処理済み含む）。
+    hide_other_parents=True のとき、他親が紐付け済みの袋は出さない（いま選んでいる袋は残す）。
+    判定は相対パス完全一致に加え、同名ファイル・他親SKU・他親JANがファイル名に含まれるもの。
+    """
+    j = str(jan or "").strip()
+    sku = str(parent_sku or "").strip()
+    nb = str(name_base or "").strip()
+    amazon = amazon_base_dir(work_root)
+    files = _list_images(amazon, recursive_processed=True)
+    cur = Path(current) if current and Path(current).is_file() else None
+    cur_key = str(cur.resolve()) if cur is not None else ""
+    blocks = (
+        _other_parent_bag_blocks(parent_sku=sku, work_root=work_root)
+        if hide_other_parents
+        else {"rels": set(), "skus": set(), "jans": set()}
+    )
+    # いまの親の JAN は落とさない（同JANの別ファイル候補を残す）
+    self_jan = "".join(ch for ch in j if ch.isdigit())
+    if self_jan:
+        blocks["jans"].discard(self_jan)
+    # いまの親SKUは落とさない
+    if sku:
+        blocks["skus"].discard(sku.lower())
+
+    ranked: List[Tuple[Tuple[int, float], Path]] = []
+    for p in files:
+        if _looks_like_set_main(p) and TAG_UNIT not in p.stem:
+            continue
+        if nb:
+            # チーズ等の明らかな混入だけ落とす（food_unit_canon と同趣旨）
+            if "チーズ" in p.name and "チーズ" not in nb:
+                continue
+        sc, mt = _score_candidate(p, j)
+        if sku and p.stem.lower() == f"{sku}_単体".lower():
+            sc += 80
+        if cur_key and str(p.resolve()) == cur_key:
+            sc += 40
+        ranked.append(((sc, mt), p))
+    ranked.sort(key=lambda x: x[0], reverse=True)
+
+    def _row(p: Path, sc: int) -> Dict[str, Any]:
+        key = str(p.resolve())
+        return {
+            "rel": rel_under_amazon_base(p, work_root=work_root),
+            "path": str(p),
+            "name": p.name,
+            "score": int(sc),
+            "selected": bool(cur_key and key == cur_key),
+        }
+
+    def _blocked(p: Path) -> bool:
+        if cur_key and str(p.resolve()) == cur_key:
+            return False
+        rel = rel_under_amazon_base(p, work_root=work_root).replace("/", "\\")
+        rel_l = rel.lower()
+        name_l = p.name.lower()
+        stem_l = p.stem.lower()
+        if rel_l in blocks["rels"] or name_l in blocks["rels"]:
+            return True
+        for other_sku in blocks["skus"]:
+            if other_sku and other_sku in stem_l:
+                return True
+        for other_jan in blocks["jans"]:
+            if other_jan and other_jan in name_l:
+                # いまの親SKUが同じJAN枝を含むファイルは残す
+                if sku and sku.lower() in stem_l:
+                    continue
+                return True
+        return False
+
+    def _related(p: Path) -> bool:
+        if cur_key and str(p.resolve()) == cur_key:
+            return True
+        if j and j in p.name:
+            return True
+        if sku and sku.lower() in p.stem.lower():
+            return True
+        return False
+
+    # 親SKU／JANがあるときは関連ファイルを先に（誤選防止）。足りなければ全体へ広げる。
+    related = [
+        ((sc, mt), p) for (sc, mt), p in ranked if _related(p) and not _blocked(p)
+    ]
+    pool = related if related else [
+        ((sc, mt), p) for (sc, mt), p in ranked if not _blocked(p)
+    ]
+
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for (sc, _mt), p in pool:
+        key = str(p.resolve())
+        if key in seen or _blocked(p):
+            continue
+        seen.add(key)
+        out.append(_row(p, sc))
+        if len(out) >= max(1, int(limit)):
+            break
+    if len(out) < 2 and related and len(related) < len(ranked):
+        for (sc, _mt), p in ranked:
+            key = str(p.resolve())
+            if key in seen or _blocked(p):
+                continue
+            seen.add(key)
+            out.append(_row(p, sc))
+            if len(out) >= max(1, int(limit)):
+                break
+    if cur is not None and cur_key and not any(c.get("selected") for c in out):
+        out.insert(0, _row(cur, 999))
+        out = out[: max(1, int(limit))]
+    return out
+
+
 def resolve_package_truth(
     jan: str,
     *,

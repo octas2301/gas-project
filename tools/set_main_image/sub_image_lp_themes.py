@@ -2,11 +2,11 @@
 """
 食品EC LP向けサブ画像テーマ（①〜⑳）と、競合画像への紐付け。
 
-方針（2026-08-09）:
+方針（2026-08-30）:
 - 分類はページ（サブ画像1枚）全体のみ（パーツ単位は将来拡張メモ）
 - themeId を AI 判定 → phaseOrder はマスタから付与
-- スロット: 心理プロセス順 5（条件で6）× 各 A/B
-- フォールバック: 競合ユニークphase → 競合phase被り → 想像（最大2・事実数字禁止）
+- スロット: チェック済みかつ競合写真1枚以上のテーマだけ。1テーマ1枚（A/Bなし）
+- 写真が無いテーマは作らない（想像スロット既定OFF）
 """
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from sub_image_intent import TEXT_MODELS, _extract_json_obj
+from theme_compose_rules import hit_has_competitor_photo
 
 LOG = logging.getLogger("set_main_image.lp_themes")
 
@@ -62,8 +63,8 @@ LP_THEMES: List[Dict[str, Any]] = [
         "name": "視覚的なシズル感のアピール",
         "nameSlug": "shizuru_sizzle",
         "contentCluster": "sizzle",
-        "hint": "湯気・照り・食感など「美味しそう」を主役に。文字は最小。",
-        "signal": "湯気・照り・料理接写が全面。説明カードが弱い",
+        "hint": "照り・断面・しっとり食感など「美味しそう」を主役に。文字は最小。湯気は熱いご飯等との組み合わせ時のみ（常温珍味本体からの湯気は禁止）。",
+        "signal": "照り・食感接写が全面。説明カードが弱い",
     },
     {
         "id": 4,
@@ -588,25 +589,117 @@ def _pick_best(
     return None
 
 
+def _jobs_from_slots(
+    slots: List[Dict[str, Any]],
+    *,
+    proposals_per_slot: int,
+    seo_kws: List[str],
+) -> List[Dict[str, Any]]:
+    jobs: List[Dict[str, Any]] = []
+    for slot_i, s in enumerate(slots, start=1):
+        tid = int(s["themeId"])
+        meta = THEME_BY_ID[tid]
+        hit = s.get("hit") or {}
+        for pi in range(proposals_per_slot):
+            proposal = "a" if pi == 0 else "b"
+            stem = make_stem(slot=slot_i, theme_id=tid, proposal=proposal)
+            jobs.append(
+                {
+                    "jobIndex": len(jobs) + 1,
+                    "slotIndex": slot_i,
+                    "stem": stem,
+                    "themeId": tid,
+                    "secondaryThemeId": None,
+                    "variant": pi + 1,
+                    "proposal": proposal,
+                    "phase": meta["phase"],
+                    "phaseOrder": int(meta["phaseOrder"]),
+                    "phaseKey": meta["phaseKey"],
+                    "themeName": meta["name"],
+                    "themeSlug": meta["nameSlug"],
+                    "themeHint": meta["hint"],
+                    "contentCluster": meta["contentCluster"],
+                    "source": s.get("source") or "competitor",
+                    "refPaths": list(hit.get("paths") or []),
+                    "ocrSnippets": list(hit.get("ocrSnippets") or []),
+                    "score": float(hit.get("score") or 0.0),
+                    "count": int(hit.get("count") or 0),
+                    "seoKeywords": list(seo_kws),
+                }
+            )
+    return jobs
+
+
+def select_lp_slots_forced(
+    hits: Dict[int, Dict[str, Any]],
+    forced_theme_ids: Sequence[int],
+    *,
+    proposals_per_slot: int = 1,
+    product_name: str = "",
+    max_themes: int = 10,
+) -> List[Dict[str, Any]]:
+    """チェック済みかつ競合写真が1枚以上ある themeId だけ。無い分は作らない。"""
+    proposals_per_slot = max(1, min(2, int(proposals_per_slot)))
+    cap = max(1, min(10, int(max_themes)))
+    seo_kws = seo_keywords_from_product_name(product_name)
+    ids: List[int] = []
+    for x in forced_theme_ids or []:
+        try:
+            tid = int(x)
+        except (TypeError, ValueError):
+            continue
+        if tid in THEME_BY_ID and tid not in ids:
+            ids.append(tid)
+    slots: List[Dict[str, Any]] = []
+    for tid in ids:
+        hit = hits.get(tid)
+        if not hit_has_competitor_photo(hit):
+            LOG.info("skip theme T%02d: no competitor photo", tid)
+            continue
+        slots.append(
+            {
+                "themeId": tid,
+                "source": "competitor_forced",
+                "phaseOrder": _phase(tid),
+                "hit": hit,
+            }
+        )
+        if len(slots) >= cap:
+            break
+    slots.sort(key=lambda s: (int(s["phaseOrder"]), int(s["themeId"])))
+    return _jobs_from_slots(slots, proposals_per_slot=proposals_per_slot, seo_kws=seo_kws)
+
+
 def select_lp_slots(
     hits: Dict[int, Dict[str, Any]],
     *,
-    target_slots: int = 5,
-    proposals_per_slot: int = 2,
-    allow_invented: bool = True,
+    target_slots: int = 10,
+    proposals_per_slot: int = 1,
+    allow_invented: bool = False,
     max_invented: int = MAX_INVENTED_SLOTS,
     product_name: str = "",
+    forced_theme_ids: Optional[Sequence[int]] = None,
 ) -> List[Dict[str, Any]]:
     """
-    心理プロセス順スロットを埋め、各スロット proposals_per_slot 案のジョブを返す。
-    source: competitor | competitor_dup_phase | invented
-    product_name があれば SEO 語で軽微ブースト。
+    1テーマ1枚。チェック指定時は写真があるチェック分だけ（無い分は作らない・自動埋めしない）。
+    未指定時は写真があるテーマを心理順に最大 target_slots。想像は allow_invented のときだけ。
     """
-    target_slots = max(5, min(6, int(target_slots)))
     proposals_per_slot = max(1, min(2, int(proposals_per_slot)))
+    if forced_theme_ids is not None:
+        return select_lp_slots_forced(
+            hits,
+            forced_theme_ids,
+            proposals_per_slot=proposals_per_slot,
+            product_name=product_name,
+            max_themes=int(target_slots) if target_slots else 10,
+        )
+    target_slots = max(1, min(10, int(target_slots)))
     seo_kws = seo_keywords_from_product_name(product_name)
+    photo_hits = {
+        tid: b for tid, b in hits.items() if hit_has_competitor_photo(b)
+    }
     by_phase: Dict[int, List[Dict[str, Any]]] = {i: [] for i in range(1, 6)}
-    for b in hits.values():
+    for b in photo_hits.values():
         po = int(b.get("phaseOrder") or _phase(b["themeId"]))
         if 1 <= po <= 5:
             by_phase[po].append(b)
@@ -642,7 +735,7 @@ def select_lp_slots(
 
     # Pass2: 競合フェーズ被りで不足を補う
     all_hits = sorted(
-        hits.values(),
+        photo_hits.values(),
         key=lambda b: (
             float(b["score"]) + seo_boost_for_theme(int(b["themeId"]), seo_kws),
             b["count"],
@@ -720,40 +813,11 @@ def select_lp_slots(
 
     # phaseOrder 順に並べ替え（被り追加分も心理順に近づける）
     slots.sort(key=lambda s: (int(s["phaseOrder"]), -float(s["hit"].get("score") or 0)))
-
-    jobs: List[Dict[str, Any]] = []
-    for slot_i, s in enumerate(slots[:target_slots], start=1):
-        tid = int(s["themeId"])
-        meta = THEME_BY_ID[tid]
-        hit = s["hit"]
-        for pi in range(proposals_per_slot):
-            proposal = "a" if pi == 0 else "b"
-            stem = make_stem(slot=slot_i, theme_id=tid, proposal=proposal)
-            jobs.append(
-                {
-                    "jobIndex": len(jobs) + 1,
-                    "slotIndex": slot_i,
-                    "stem": stem,
-                    "themeId": tid,
-                    "secondaryThemeId": None,
-                    "variant": pi + 1,
-                    "proposal": proposal,
-                    "phase": meta["phase"],
-                    "phaseOrder": int(meta["phaseOrder"]),
-                    "phaseKey": meta["phaseKey"],
-                    "themeName": meta["name"],
-                    "themeSlug": meta["nameSlug"],
-                    "themeHint": meta["hint"],
-                    "contentCluster": meta["contentCluster"],
-                    "source": s["source"],
-                    "refPaths": list(hit.get("paths") or []),
-                    "ocrSnippets": list(hit.get("ocrSnippets") or []),
-                    "score": float(hit.get("score") or 0.0),
-                    "count": int(hit.get("count") or 0),
-                    "seoKeywords": list(seo_kws),
-                }
-            )
-    return jobs
+    return _jobs_from_slots(
+        slots[:target_slots],
+        proposals_per_slot=proposals_per_slot,
+        seo_kws=seo_kws,
+    )
 
 
 def select_themes_for_jobs(

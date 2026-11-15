@@ -19,10 +19,12 @@ from schema import (
     SHEET_KEEPA,
     SHEET_KEEPA_FULL,
     SHEET_MAKER,
+    SHEET_MAKER_SUM,
     SHEET_META,
     SHEET_SELLER,
     SHEETS,
     MAKER_HEADERS,
+    MAKER_SUM_HEADERS,
     SELLER_HEADERS,
 )
 from store import LocalStore
@@ -241,6 +243,16 @@ def init_google_workbook(ss_id: str) -> str:
     )
     if len(maker_vals) < 2:
         write_sheet(SHEET_MAKER, MAKER_HEADERS, [])
+    sum_vals = (
+        svc.spreadsheets()
+        .values()
+        .get(spreadsheetId=ss_id, range="'" + SHEET_MAKER_SUM + "'!A1:A2")
+        .execute()
+        .get("values")
+        or []
+    )
+    if len(sum_vals) < 2:
+        write_sheet(SHEET_MAKER_SUM, MAKER_SUM_HEADERS, [])
     return "ok sheets=" + ",".join(SHEETS)
 
 
@@ -452,6 +464,209 @@ def place_keepa_full_col_after(ss_id: str, col: str, after: str) -> str:
     return "ok moved %s after %s" % (col, after)
 
 
+CK_HEADER = "調査CK"
+
+
+def _sheet_gid(meta: dict, title: str):
+    for s in meta.get("sheets", []):
+        props = s.get("properties") or {}
+        if props.get("title") == title:
+            return int(props["sheetId"])
+    return None
+
+
+def ensure_leading_ck_google(svc, ss_id: str, sheet_title: str, current: list[str]) -> list[str]:
+    """A列に調査CKが無ければ列挿入。既存データは右へ。重複列は作らない。"""
+    cur = [str(x).strip() for x in (current or [])]
+    if cur and cur[0] == CK_HEADER:
+        return cur
+    if CK_HEADER in cur:
+        return cur
+    meta = svc.spreadsheets().get(spreadsheetId=ss_id).execute()
+    gid = _sheet_gid(meta, sheet_title)
+    if gid is None:
+        return cur
+    svc.spreadsheets().batchUpdate(
+        spreadsheetId=ss_id,
+        body={
+            "requests": [
+                {
+                    "insertDimension": {
+                        "range": {
+                            "sheetId": gid,
+                            "dimension": "COLUMNS",
+                            "startIndex": 0,
+                            "endIndex": 1,
+                        },
+                        "inheritFromBefore": False,
+                    }
+                }
+            ]
+        },
+    ).execute()
+    svc.spreadsheets().values().update(
+        spreadsheetId=ss_id,
+        range="'" + sheet_title + "'!A1",
+        valueInputOption="RAW",
+        body={"values": [[CK_HEADER]]},
+    ).execute()
+    return [CK_HEADER] + cur
+
+
+def _col_letter(n: int) -> str:
+    s = ""
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def apply_ck_ui_google(svc, ss_id: str, sheet_title: str) -> str:
+    """調査CK列にチェック枠を付け、レ点行の文字を青にする。既存のTRUEは消さない。"""
+    meta = (
+        svc.spreadsheets()
+        .get(
+            spreadsheetId=ss_id,
+            fields="sheets(properties(sheetId,title,gridProperties),conditionalFormats)",
+        )
+        .execute()
+    )
+    sheet = None
+    for s in meta.get("sheets") or []:
+        if (s.get("properties") or {}).get("title") == sheet_title:
+            sheet = s
+            break
+    if not sheet:
+        return "no_sheet"
+    props = sheet.get("properties") or {}
+    gid = int(props["sheetId"])
+    grid = props.get("gridProperties") or {}
+    row_count = int(grid.get("rowCount") or 1000)
+    col_count = int(grid.get("columnCount") or 26)
+    hdr_got = (
+        svc.spreadsheets()
+        .values()
+        .get(spreadsheetId=ss_id, range="'" + sheet_title + "'!1:1")
+        .execute()
+        .get("values")
+        or []
+    )
+    hdr = [str(x).strip() for x in (hdr_got[0] if hdr_got else [])]
+    try:
+        idx = hdr.index(CK_HEADER)
+    except ValueError:
+        return "no_ck_col"
+    # 実データの最終行は B列（sellerId／メーカー）で見る。Aはまだ空が多い
+    b_a1 = "'" + sheet_title + "'!B2:B"
+    b_vals = (
+        svc.spreadsheets()
+        .values()
+        .get(spreadsheetId=ss_id, range=b_a1)
+        .execute()
+        .get("values")
+        or []
+    )
+    last_data = 1
+    for i, row in enumerate(b_vals):
+        if row and str(row[0]).strip() != "":
+            last_data = i + 2
+    ck_letter = _col_letter(idx + 1)
+    col_a1 = "'" + sheet_title + "'!" + ck_letter + "2:" + ck_letter + str(max(last_data, 2))
+    col_vals = (
+        svc.spreadsheets()
+        .values()
+        .get(spreadsheetId=ss_id, range=col_a1)
+        .execute()
+        .get("values")
+        or []
+    )
+    out = []
+    need_false = False
+    for r in range(2, last_data + 1):
+        i = r - 2
+        raw = col_vals[i][0] if i < len(col_vals) and col_vals[i] else ""
+        s = str(raw).strip().upper()
+        if s in ("TRUE", "1", "YES"):
+            out.append([True])
+        else:
+            if s == "":
+                need_false = True
+            out.append([False])
+    if need_false and out:
+        pending_false = out
+    else:
+        pending_false = None
+    end_row = min(row_count, max(last_data + 80, 120))
+    formula = "=$" + ck_letter + "2=TRUE"
+    requests = []
+    cfs = sheet.get("conditionalFormats") or []
+    for i in range(len(cfs) - 1, -1, -1):
+        rule = cfs[i]
+        vals = ((rule.get("booleanRule") or {}).get("condition") or {}).get("values") or []
+        entered = " ".join(str(v.get("userEnteredValue") or "") for v in vals)
+        if formula in entered:
+            requests.append({"deleteConditionalFormatRule": {"sheetId": gid, "index": i}})
+    requests.append(
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": gid,
+                    "startRowIndex": 1,
+                    "endRowIndex": end_row,
+                    "startColumnIndex": idx,
+                    "endColumnIndex": idx + 1,
+                },
+                "cell": {
+                    "dataValidation": {
+                        "condition": {"type": "BOOLEAN"},
+                        "showCustomUi": True,
+                        "strict": False,
+                    }
+                },
+                "fields": "dataValidation",
+            }
+        }
+    )
+    requests.append(
+        {
+            "addConditionalFormatRule": {
+                "rule": {
+                    "ranges": [
+                        {
+                            "sheetId": gid,
+                            "startRowIndex": 1,
+                            "endRowIndex": end_row,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": col_count,
+                        }
+                    ],
+                    "booleanRule": {
+                        "condition": {
+                            "type": "CUSTOM_FORMULA",
+                            "values": [{"userEnteredValue": formula}],
+                        },
+                        "format": {
+                            "textFormat": {
+                                "foregroundColor": {"red": 0.0, "green": 0.0, "blue": 1.0}
+                            }
+                        },
+                    },
+                },
+                "index": 0,
+            }
+        }
+    )
+    svc.spreadsheets().batchUpdate(spreadsheetId=ss_id, body={"requests": requests}).execute()
+    if pending_false:
+        svc.spreadsheets().values().update(
+            spreadsheetId=ss_id,
+            range="'" + sheet_title + "'!" + ck_letter + "2",
+            valueInputOption="USER_ENTERED",
+            body={"values": pending_false},
+        ).execute()
+    return "ok ck_col=%s end_row=%s last_data=%s" % (ck_letter, end_row, last_data)
+
+
 def ensure_seller_google(ss_id: str) -> str:
     """セラータブを作り、空ならヘッダーだけ書く。既存データは消さない。"""
     from client import sheets_service
@@ -482,10 +697,13 @@ def ensure_seller_google(ss_id: str) -> str:
             valueInputOption="RAW",
             body={"values": [SELLER_HEADERS]},
         ).execute()
+        apply_ck_ui_google(svc, ss_id, SHEET_SELLER)
         return "ok wrote_headers n=%d" % len(SELLER_HEADERS)
+    current = ensure_leading_ck_google(svc, ss_id, SHEET_SELLER, current)
     missing = [h for h in SELLER_HEADERS if h not in current]
+    ui = apply_ck_ui_google(svc, ss_id, SHEET_SELLER)
     if not missing:
-        return "ok exists n=%d" % len(current)
+        return "ok exists n=%d ui=%s" % (len(current), ui)
 
     def col_letter(n: int) -> str:
         s = ""
@@ -502,7 +720,8 @@ def ensure_seller_google(ss_id: str) -> str:
         valueInputOption="RAW",
         body={"values": [missing]},
     ).execute()
-    return "ok added=%d" % len(missing)
+    ui2 = apply_ck_ui_google(svc, ss_id, SHEET_SELLER)
+    return "ok added=%d ui=%s" % (len(missing), ui2)
 
 
 if __name__ == "__main__":

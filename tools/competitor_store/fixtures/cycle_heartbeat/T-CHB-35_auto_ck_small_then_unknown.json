@@ -1,0 +1,14 @@
+{
+  "id": "T-CHB-35",
+  "desc": "自動レ点は店規模 小→未知→中。出現数より帯が先",
+  "kind": "auto_ck",
+  "daily_cap": 2,
+  "already_cked_today": 0,
+  "sellers": [
+    {"sellerId": "S_xl", "調査CK": "FALSE", "小規模出現": 90, "規模帯": "特大", "店名": "特大店"},
+    {"sellerId": "S_unk", "調査CK": "FALSE", "小規模出現": 5, "規模帯": "", "店名": "未調査店"},
+    {"sellerId": "S_s", "調査CK": "FALSE", "小規模出現": 1, "規模帯": "小", "店名": "小店"},
+    {"sellerId": "S_m", "調査CK": "FALSE", "小規模出現": 80, "規模帯": "中", "店名": "中店"}
+  ],
+  "expect": ["S_s", "S_unk"]
+}

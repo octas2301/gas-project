@@ -2,5 +2,6 @@
   "scriptId": "1DEMdFJKHVY7IRdncPOkxnasEipjmYDx_MJMn1vcDm5iUw2g5cQZhLKis",
   "rootDir": ".",
   "skipSubdirectories": true,
+  "ignoreSubdirectories": true,
   "projectId": "gen-lang-client-0933127937"
 }

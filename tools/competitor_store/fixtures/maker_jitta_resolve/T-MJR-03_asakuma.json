@@ -1,0 +1,20 @@
+{
+  "maker": "あさくま",
+  "summary": {},
+  "master": {},
+  "expect": {
+    "skipped": false,
+    "jitta": "要確認",
+    "entry_preferred": "要確認",
+    "auto_confirm": false,
+    "gyoshu": "外食・飲食",
+    "amazon_root_categories": "食品・飲料・お酒",
+    "amazon_browse_shelves": "調味料・ソース",
+    "confidence": "medium",
+    "業種": "外食・飲食",
+    "Amazonルートカテゴリ": "食品・飲料・お酒",
+    "AmazonBrowse棚": "調味料・ソース",
+    "実態信頼度": "medium",
+    "evidence_contains": ["asakuma.co.jp/company.html"]
+  }
+}

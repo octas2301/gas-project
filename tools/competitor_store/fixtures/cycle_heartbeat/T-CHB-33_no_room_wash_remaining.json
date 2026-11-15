@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-33",
+  "desc": "余力なし（予約以下）なら小中が残っていても洗わず時計待ち",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40}
+    ],
+    "catalog_estimate": {"小社": 40},
+    "unchecked_sellers": 10,
+    "k": 3,
+    "token_room": false
+  },
+  "expect": {"action": "idle", "detail_has": "token_reserve"}
+}

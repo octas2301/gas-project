@@ -1,0 +1,26 @@
+{
+  "id": "T-SN-16",
+  "desc": "通常A1はコーパス補助オフ",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000011",
+    "hit_asin": "B000000011",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ]
+  },
+  "expect": {
+    "pattern": "A1",
+    "corpus_assist_ok": false,
+    "for_estimate": true,
+    "auto_pick_jan": false
+  }
+}

@@ -1,0 +1,1 @@
+{"id":"T-CHB-08","desc":"停止時は01:00を張る","kind":"01_arm","input":{"paused":true,"manual_resumed":false},"expect":true}

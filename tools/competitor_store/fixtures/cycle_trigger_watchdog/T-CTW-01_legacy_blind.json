@@ -1,0 +1,1 @@
+{"id":"T-CTW-01","desc":"H1旧穴: expect先消し+選定死→番犬が沈黙を見逃す","kind":"legacy_die","candidates":8,"watchdog_after_ms":2100000,"expect":{"outcome":"hard_kill","wd.hint":"blind_silence","wd.rearmed":true,"pool_scans":8}}

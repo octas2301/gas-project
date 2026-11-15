@@ -1,0 +1,36 @@
+{
+  "id": "T-CAH-03",
+  "desc": "再巡回: 同店を2回batchしてもヒットはsellerId単位1（水増し禁止）",
+  "sellers_before": [
+    {
+      "sellerId": "SHOP_R",
+      "店名": "再巡回店",
+      "調査CK": true,
+      "抽出メーカー": "永谷園",
+      "食品比率": "50.0"
+    }
+  ],
+  "maker_sum_before": [{ "メーカー": "永谷園", "セラーヒット": 1 }],
+  "side_effect": { "cand_rows": 3, "keepa_full_rows": 10 },
+  "batch": {
+    "shop_seller_ids": ["SHOP_R", "SHOP_R"],
+    "product_cap": 20,
+    "shop_cap": 3,
+    "mocks": {
+      "SHOP_R": {
+        "total": 25,
+        "products": [
+          { "asin": "B010", "manufacturer": "永谷園", "brand": "永谷園" },
+          { "asin": "B011", "manufacturer": "永谷園", "brand": "Nagatanien" }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "永谷園": 1 },
+    "sellers_after": {
+      "SHOP_R": { "調査CK": false, "status": "done" }
+    },
+    "side_effect_unchanged": true
+  }
+}

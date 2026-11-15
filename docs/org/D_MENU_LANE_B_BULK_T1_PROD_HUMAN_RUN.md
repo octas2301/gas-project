@@ -13,7 +13,7 @@
 |------|------|
 | コマンド | `c1_bulk_fill_by_name.py --mode prod` |
 | 出力 | 03 に **`_DRYRUN` なし** PACKAGED |
-| 必須 | 棚 `DL_NOT_NEEDED`＋指紋一致＋必須列解決 |
+| 必須 | 棚 `DL_NOT_NEEDED`＋指紋一致＋必須列解決。棚なしなら **09/06 の `{PT}.xlsm` から auto-onboard**（既定ON） |
 | やらない | SC自動UL・06破壊・03上書き |
 
 ---
@@ -31,7 +31,7 @@
 
 ```text
 cd tools\c1_hpc_packaged
-python c1_bulk_fill_by_name.py --mode prod --product-type SEASONING ^
+python c1_bulk_fill_by_name.py --mode prod --product-type ALL ^
   --generated-csv "（GENERATED.csv）" ^
   --master-csv "（マスタCSV）" ^
   --output-dir "G:/マイドライブ/04.amazonカタログ作成（CSV一括UL）/03.SCへ上げる完成xlsm（人間が置く／DL）" ^
@@ -58,5 +58,7 @@ python c1_bulk_fill_by_name.py --mode prod --product-type SEASONING ^
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **バルクごと必須埋め**: データ定義の必須／条件付き必須を読み、値がある列だけ書く。 |
+| 2026-09-18 | **auto-onboard**: `--product-type ALL` 既定。09/06 の `{PT}.xlsm` から指紋＋列マップを自動登録。`--no-auto-onboard` で旧停止。 |
 | 2026-08-01 | 起草。 |
 | 2026-08-01 | **実装＋スモーク**。 |

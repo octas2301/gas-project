@@ -28,8 +28,8 @@
 |------|------|------|
 | `APPROVAL_AMAZON_SPAPI_PUT_ENABLED` | **true（未設定）** | 主スイッチ。明示 false で緊急停止 |
 | `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_PROD` | **true（未設定）** | prod 許可。開始前確認は残る |
-| `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY` | **false** | マスタ在庫送信のみ。常時ONにしない |
-| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `10`（未設定時） | 1〜50。Property省略可 |
+| ~~`APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY`~~ | **廃止** | マスタ在庫は Property 不要（2026-10-24） |
+| `APPROVAL_AMAZON_SPAPI_PUT_MAX_ITEMS` | `50`（未設定時） | 1〜200。Property省略可 |
 | `APPROVAL_AMAZON_SPAPI_PUT_FORCE_QTY_0` | **true** | 在庫0 |
 | `SPAPI_LWA_CLIENT_ID` | — | LWA（秘密・Git禁止） |
 | `SPAPI_LWA_CLIENT_SECRET` | — | LWA |
@@ -118,6 +118,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **max_items 既定 10→50**、ハード上限 50→200。Property 新規不要。要 clasp。 |
 | 2026-07-29 | **第2段実機合格**: 21-⑫ VALID／21-⑬ ACCEPTED（`…0832-48s11`・batch `…b7a053`）。 |
 | 2026-07-29 | **第2段実装**: 21-⑫⑬／承認①済抽出（21-⑨相当）。 |
 | 2026-07-29 | **実機合格（API）** dry_run／prod。ENDPOINT `https:\` 正規化。SC最終更新は反映待ち注記。 |

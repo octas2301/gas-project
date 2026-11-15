@@ -1,0 +1,1 @@
+{"id":"T-HBL-04","desc":"旧穴: heartbeat no_maker で再武装なし","steps":[{"action":"hb_no_maker","now_ms":1000,"legacy":true}],"expect":{"alive":false,"reason":"silence"}}

@@ -12,16 +12,43 @@ B実行タイムオーバー履歴.txt
 *.local_backup
 *.bak
 *.bak_*
+*.broken_bak*
+*.keep_*
+*.merged_*
 _local_backup/
+_pr_pull_compare/
+_tmp_clasp_probe/
+_tmp_*
+コード.js.before_*
+コード.js.truncated*
+コード.js.cut_*
+
+# 秘密・認証（絶対に載せない）
+.env
+.env.*
+**/secrets/
+**/credentials.json
+**/token.json
+**/*api_key*.txt
+**/*_api_key.txt
+**/client_secret*.json
+**/*.pem
+**/*.p12
 
 # 調査用の一時スクリプト・出力（コミットしない）
 tools/_tmp_*
+tools/**/_tmp_*
 tools/**/__pycache__/
+tools/**/out/
+tools/**/_out/
+tools/**/_out_*/
+tools/set_main_image/b5_official_url_cache.json
+tools/set_main_image/_out_b5_propose_virt/
+tools/c1_hpc_packaged/_x.py
 __pycache__/
 *.pyc
-tools/c1_hpc_packaged/_x.py
 
 node_modules/
 .DS_Store
 *.log
-.env
+*.zip

@@ -1,0 +1,1 @@
+{"id":"T-CTW-06","desc":"H4正: poolキャッシュは1回","kind":"fire","candidates":12,"pool_cached":true,"expect":{"outcome":"done","pool_scans":1,"log_has":["phase=pick_end scans=1"]}}

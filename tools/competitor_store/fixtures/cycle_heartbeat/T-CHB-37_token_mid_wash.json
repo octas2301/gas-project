@@ -1,0 +1,17 @@
+{
+  "id": "T-CHB-37",
+  "desc": "余力中は洗う。店フルはしない",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40}
+    ],
+    "catalog_estimate": {"小社": 40},
+    "unchecked_sellers": 10,
+    "k": 3,
+    "token_room": false,
+    "token_band": "mid",
+    "skip_enum_once": true
+  },
+  "expect": {"action": "wash_small", "maker": "小社"}
+}

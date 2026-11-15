@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-23",
+  "desc": "shop yield: clear inflight and arm short hb_yield",
+  "kind": "shop_yield",
+  "yield_arm_min": 3,
+  "expect": {
+    "inflight_cleared": true,
+    "shop_busy": true,
+    "arm_tag": "hb_yield_deferred",
+    "after_min": 3
+  }
+}

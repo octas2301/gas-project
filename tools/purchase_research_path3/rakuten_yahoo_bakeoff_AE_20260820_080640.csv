@@ -1,0 +1,126 @@
+﻿mall,case_id,jan,maker,ai_name,query_id,query_label,query_text,api_param,hit_rank,hit_name,hit_price,hit_url,postage_or_ship,error,hit_count
+rakuten,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,A,現行JAN,4906283045119,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,A,現行JAN,4906283045119,jan_code,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,B,JANをキーワード,4906283045119,keyword,0,,,,,"HTTP 429 { ""statusCode"": 429, ""message"": ""Rate limit is exceeded. Try again in 1 seconds."" }",0
+yahoo,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,B,JANをキーワード,4906283045119,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,C,AI商品名,食べるおだし（かつお）50ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,C,AI商品名,食べるおだし（かつお）50ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,D,メーカー+商品名,石原水産 食べるおだし（かつお）50ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,D,メーカー+商品名,石原水産 食べるおだし（かつお）50ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,E,短い核,石原水産 食べるおだし かつお 50g,keyword,0,,,,,"HTTP 429 { ""statusCode"": 429, ""message"": ""Rate limit is exceeded. Try again in 1 seconds."" }",0
+yahoo,katsuobushi,4906283045119,石原水産,食べるおだし（かつお）50ｇ,E,短い核,石原水産 食べるおだし かつお 50g,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,A,現行JAN,4906283045317,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,A,現行JAN,4906283045317,jan_code,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,B,JANをキーワード,4906283045317,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,B,JANをキーワード,4906283045317,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,C,AI商品名,食べるおだし（まぐろ）35ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,C,AI商品名,食べるおだし（まぐろ）35ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,D,メーカー+商品名,石原水産 食べるおだし（まぐろ）35ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,D,メーカー+商品名,石原水産 食べるおだし（まぐろ）35ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,E,短い核,石原水産 食べるおだし まぐろ 35g,keyword,0,,,,,"HTTP 429 { ""statusCode"": 429, ""message"": ""Rate limit is exceeded. Try again in 1 seconds."" }",0
+yahoo,maguro,4906283045317,石原水産,食べるおだし（まぐろ）35ｇ,E,短い核,石原水産 食べるおだし まぐろ 35g,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,A,現行JAN,4906283047410,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,A,現行JAN,4906283047410,jan_code,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,B,JANをキーワード,4906283047410,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,B,JANをキーワード,4906283047410,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,C,AI商品名,食べるおだし（ぶり）40ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,C,AI商品名,食べるおだし（ぶり）40ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,D,メーカー+商品名,石原水産 食べるおだし（ぶり）40ｇ,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,D,メーカー+商品名,石原水産 食べるおだし（ぶり）40ｇ,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,E,短い核,石原水産 食べるおだし ぶり 40g,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,buri,4906283047410,石原水産,食べるおだし（ぶり）40ｇ,E,短い核,石原水産 食べるおだし ぶり 40g,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,A,現行JAN,4906283045119,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,A,現行JAN,4906283045119,jan_code,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,B,JANをキーワード,4906283045119,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,B,JANをキーワード,4906283045119,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,C,AI商品名,食べるおだし（かつお・まぐろ・ぶり）,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,C,AI商品名,食べるおだし（かつお・まぐろ・ぶり）,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,D,メーカー+商品名,石原水産 食べるおだし（かつお・まぐろ・ぶり）,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,D,メーカー+商品名,石原水産 食べるおだし（かつお・まぐろ・ぶり）,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0
+rakuten,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,E,短い核,石原水産 食べるおだし かつお まぐろ ぶり,keyword,0,,,,,"HTTP 403 {
+  ""errors"": {
+    ""errorCode"": 403,
+    ""errorMessage"": ""REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING""
+  }
+}",0
+yahoo,set3,4906283045119,石原水産,食べるおだし（かつお・まぐろ・ぶり）,E,短い核,石原水産 食べるおだし かつお まぐろ ぶり,query,0,,,,,"HTTP 429 { ""Status"": 429, ""Message"":""The AppID is denied: total count of AppID reached the URL's limit count."" }",0

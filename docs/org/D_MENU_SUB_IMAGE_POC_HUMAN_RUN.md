@@ -28,7 +28,7 @@ python sub_image_b3_curate.py --jan 4538872180149 --jan 4538872281013 --jan 4538
 # → スプレッドシート「B-④ サブ画像作成（Python／Cursor指示）」でコマンドをコピーして Agent へ
 # または手動:
 python sub_image_b3_curate.py --sync-adopt-log-only
-python sub_image_ai_compose_poc.py --providers openai --openai-quality medium --target-slots 5 --jan …
+python sub_image_ai_compose_poc.py --providers openai --openai-quality medium --allow-invented false --export-pick a --jan …
 
 # 本線手順の正本: D_MENU_SUB_IMAGE_RAKUTEN_COURSE_HUMAN_RUN.md
 
@@ -37,7 +37,7 @@ python sub_image_part_poc.py --from-b3-adopt --jan 4538872180149 --jan 453887228
 
 # AI合成 v3（本線）: 心理プロセス順スロット5×A/B / gpt-image-2 medium / パッケージ厳禁
 # 分類はページ全体のみ。不足フェーズは競合phase被り→想像(最大2)
-python sub_image_ai_compose_poc.py --providers openai --openai-quality medium --target-slots 5 --jan 4538872281013
+python sub_image_ai_compose_poc.py --providers openai --openai-quality medium --allow-invented false --export-pick a --jan 4538872281013
 
 # 旧: Gemini + OpenAI 両比較
 # python sub_image_ai_compose_poc.py --providers gemini,openai --route all --jan ...

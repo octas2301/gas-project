@@ -1,0 +1,9 @@
+{
+  "id": "T-D2C-03",
+  "desc": "特大ティアも見送り",
+  "input": {
+    "qs_tier": "特大",
+    "weight": "1000g"
+  },
+  "expect": { "flag": "見送り", "reason": "大型サイズ" }
+}

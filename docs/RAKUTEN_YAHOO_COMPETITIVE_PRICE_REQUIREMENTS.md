@@ -61,7 +61,9 @@
 
 ## 5. 楽天：セット別最安値の算出
 
-- 選択行の JAN と A.セット商品数を取得。Ichiba API を呼び出し（JAN／メーカー＋商品名でフォールバック）。
+- 選択行の JAN と A.セット商品数を取得。Ichiba API を呼び出し。
+- **JAN 1ページ目の生ヒットが 5件以下**（0含む）ならメーカー＋商品名を URL マージ。メーカー＋商品名が 0件なら商品名のみ。**6件以上は JAN のみ**（13-② / B Step2）。13-①（1価格）は従来どおり 0件フォールバック。
+- Yahoo セット別・B Step2 も同じ件数条件（`jan_code` 1回の件数）。14-② はマージしない。
 - レスポンスの商品配列は `json.Items || json.Products || json.items` で取得。
 - 各商品の商品名からセット数を推測し、行の A.セット商品数と一致したものだけを対象に「総量＋ポイント込み」を計算し最小値をその行の楽天最安値とする。
 - 総量＋ポイント込み：総量＝販売価格＋送料（postageFlag で判定）、ポイント込み＝総量−ポイント還元（itemPrice×pointRate/100 等）。送料額が API で取れない場合は送料あり時は仮値または価格のみで比較。
@@ -94,6 +96,10 @@
 
 - 画像ダウンロードは本要件の範囲外。列や保存先が決まれば別要件で追加可能。
 - 楽天「商品価格ナビ製品検索API」は JAN で製品単位の価格取得に利用。セット別最安値は Ichiba Item Search API を主とする。
+- **2026-08-20**: Ichiba Item Search のエンドポイント版は **`20260701`**（`openapi.rakuten.co.jp/ichibams/...`）。`20220601` / 旧 `app.rakuten.co.jp` は `API Configuration not found`。GAS は Property `RAKUTEN_ICHIBA_ITEM_SEARCH_API_VERSION`（未設定=`20260701`）。
+- **2026-08-20**: **Yahoo 競合検索**を楽天と同順に統一。`fetchYahooShoppingItemsWithCompetitorFallback_`（jan_code → query=JAN → メーカー+商品名 → 商品名）。14-②・Yahooセット別・B Step2・定時再検索で共用。**Amazon 確定（◎）は変更なし**。
+- **2026-08-20**: JAN 1ページ目（Yahoo は `jan_code`）が **5件以下**ならメーカー+商品名をマージ（0件なら商品名のみ）。6件以上は JAN のみ。定数 `COMPETITOR_JAN_PAGE1_NAME_MERGE_MAX_`。14-② / 13-① は対象外。
+- **2026-08-20**: 12-⑭／ミックス検索で **選択・よりどり**（`から選択` 等）は最安でも不採用。ミックス楽天／Yahooは N種クエリ検索→袋数一致の価格＋URL（0件は空・足し算なし）。
 
 ---
 

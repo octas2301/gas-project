@@ -1,0 +1,11 @@
+{
+  "id": "T-CTW-20",
+  "desc": "P-eff-1: liveLeft 満タンなら afterMin を 2 に抑える",
+  "kind": "eff_full_cap",
+  "after_min": 22,
+  "live_left": 300,
+  "expect": {
+    "after_min": 2,
+    "eff_capped": true
+  }
+}

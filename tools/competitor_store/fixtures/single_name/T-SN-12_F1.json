@@ -1,0 +1,29 @@
+{
+  "id": "T-SN-12",
+  "desc": "F1 まとめ売りタイトル不一致は正常",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "②",
+    "set_qty": 9,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "low",
+    "row_asin": "B000000007",
+    "hit_asin": "B000000007",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ],
+    "keepa_title": "五木 鍋焼うどん 9個入りまとめ"
+  },
+  "expect": {
+    "pattern": "F1",
+    "single_trust": "mid",
+    "for_estimate": true,
+    "need_human": false,
+    "write_single_name": true,
+    "corpus_assist_ok": true
+  }
+}

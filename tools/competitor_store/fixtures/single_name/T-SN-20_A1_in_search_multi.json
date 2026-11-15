@@ -1,0 +1,27 @@
+{
+  "id": "T-SN-20",
+  "desc": "KeepaJANが検索複数に含まれる→A1",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000015",
+    "hit_asin": "B000000015",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890",
+      "4909999999990"
+    ]
+  },
+  "expect": {
+    "pattern": "A1",
+    "jan_trust": "high",
+    "for_estimate": true,
+    "auto_pick_jan": false
+  }
+}

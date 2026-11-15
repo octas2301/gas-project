@@ -1,0 +1,19 @@
+{
+  "id": "T-CHB-30",
+  "desc": "キュー未済は続きではない。余りでも次社洗い（店は補充印のとき）",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 40},
+      {"メーカー": "次社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 30}
+    ],
+    "catalog_estimate": {"小社": 40, "次社": 30},
+    "wash_queue": [
+      {"メーカー": "次社", "ASIN": "B00QUEUE1", "Keepa済": ""}
+    ],
+    "unchecked_sellers": 4,
+    "k": 3,
+    "token_room": true
+  },
+  "expect": {"action": "wash_small", "detail_has": "restock_wash"}
+}

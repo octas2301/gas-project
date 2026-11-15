@@ -25,15 +25,21 @@
 2. 上記 Property ＋ Yahooマッピング認証が有効なこと
 3. レ点親を1件に絞る
 4. Z → **7.5**
-5. 確認:
-   - `YahooカテゴリID` が **SCのプロダクトカテゴリ検索に存在する**こと
-   - ログに `shp_validated` / `shp_resolved` / `shp_brand_validated` / `shp_brand_from_maker`
-   - ブランドも SC／API 上の有効コードであること
-   - ショップ path 未作成は出品時エラーになり得る（**自動作成は未実装**。既存サイトマップに同名がある場合だけ通る）
-6. 全トグル **false**
+5. 確認（**7.6 推奨・Bと同系**）:
+   - ログ `BRANCH_SAME` / `BRANCH_VOTE` / `BRANCH_WEIGHT_IN_VOTE`
+   - `YahooカテゴリID` が SC に存在（`shp_validated`）
+6. 仮想だけ先に見る場合（B不要）:
+
+```powershell
+cd C:\Users\takuy\Desktop\gas-project
+python tools/yahoo_category_virt/run_virt.py
+```
+
+7. 全トグル **false**
 
 ## スモーク注意
 
-- 競合0 → AI/Driveは**候補のみ**。書込前に必ず SHP 検証
+- 競合0／同商品0 → AI/Driveフォールバック（要確認付き）。書込前に必ず SHP 検証
 - SHP認証失敗時はカテゴリ／ブランド非書込＋要確認
 - ショップ path の **新規作成 API は未実装**（マスタへ path 文字列を書くだけ）
+- 単独はレ点 **1親** に絞って Z **7.6**（B全体より短い）

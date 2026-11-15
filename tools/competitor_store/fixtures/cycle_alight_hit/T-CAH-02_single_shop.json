@@ -1,0 +1,41 @@
+{
+  "id": "T-CAH-02",
+  "desc": "単店A-light: 1店mock→抽出更新・CK OFF・新メーカーサマリ行",
+  "sellers_before": [
+    {
+      "sellerId": "MORITA",
+      "店名": "モリタストア",
+      "調査CK": true,
+      "抽出メーカー": "",
+      "食品比率": "46.9"
+    }
+  ],
+  "maker_sum_before": [],
+  "side_effect": { "cand_rows": 5, "keepa_full_rows": 20 },
+  "batch": {
+    "shop_seller_ids": ["MORITA"],
+    "product_cap": 20,
+    "shop_cap": 3,
+    "mocks": {
+      "MORITA": {
+        "total": 30,
+        "products": [
+          { "asin": "B001", "manufacturer": "永谷園", "brand": "永谷園" },
+          { "asin": "B002", "manufacturer": "石原水産", "brand": "石原水産" }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "永谷園": 1, "石原水産": 1 },
+    "sellers_after": {
+      "MORITA": {
+        "調査CK": false,
+        "status": "done",
+        "抽出メーカー_contains": ["永谷園", "石原水産"]
+      }
+    },
+    "maker_sum_jitta": { "永谷園": "入口ブランド", "石原水産": "製造メーカー" },
+    "side_effect_unchanged": true
+  }
+}

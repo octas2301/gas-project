@@ -1,0 +1,12 @@
+{
+  "id": "T-CHB-20",
+  "desc": "案B: shop_after_sm で A-light を優先",
+  "input": {
+    "shop_after_sm": "尾西食品",
+    "unchecked_sellers": 2,
+    "maker_sum": [
+      {"メーカー": "尾西食品", "実態": "製造メーカー", "規模帯": "小", "洗い状態": "完了"}
+    ]
+  },
+  "expect": {"action": "alight", "detail_has": "shop_after_sm"}
+}

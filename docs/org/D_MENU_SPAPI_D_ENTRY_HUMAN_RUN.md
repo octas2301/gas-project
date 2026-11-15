@@ -15,8 +15,8 @@
 | Amazonのみ＋相乗り自己発／FBA＋prod（既定） | レ点行 → PUT（ALLOW_PROD＋確認）。**SKU列空ならprodで生成・成功後に系統別列へ保存**（通常運用はdry_run不要） |
 | Amazonのみ＋相乗り＋dry_run（上級・折りたたみ） | VALID後、自己発→`Amazon相乗りSKU`／FBA→`Amazon相乗りSKU_FBA`（任意検証） |
 | 送信在庫＝0（既定） | 承認①相当。**新規GENERATED在庫列＝0**／相乗り quantity=0（FBAはquantity非送信） |
-| 送信在庫＝マスタ在庫 | 承認②。`ALLOW_MASTER_QTY=true`＋確認に件数・qty内訳（**新規＋相乗りとも**）。**子の**空/負/非数は**停止**。Track B **親行の inventory は常に0**（親マスタ在庫は読まない）。マスタ列は非書込 |
-| 新規＋相乗り | 同じレ点子SKUを両方へ。新規=子SKU／相乗り=系統別列（**N列ASINがある行だけ**相乗り。空は行スキップ） |
+| 送信在庫＝マスタ在庫 | 承認②。E③で選択＋開始前確認（件数・qty内訳）。**Property ゲートなし**（店の既定）。**子の**空/負/非数は**停止**。Track B **親行の inventory は常に0**（親マスタ在庫は読まない）。マスタ列は非書込 |
+| 新規＋相乗り | 同じレ点子SKUを両方へ。新規=子SKU／相乗り=系統別列（**子行N列ASINがある行だけ**相乗り。空はスキップ。**親ASINフォールバックなし**。同一実行内の相乗り先ASINはユニーク＝重複は先勝ち・後続スキップ） |
 | フル → Amazon | 開始前確認後、楽天→Yahoo→選択したAmazon方式（prod既定に含む） |
 
 段階実行は **D補助. Amazon段階実行（旧E）** または **Z → E互換**。Z-21（⑩〜⑬）はテスト・復旧用に残る。X列は新規SKU式用で、相乗り時に変更不要。
@@ -26,24 +26,24 @@
 ## 1. 既存相乗りの手順（D）
 
 1. `clasp push`（`コード.js`／`AmazonApprovalExport.js`／`AmazonSpapiPut.js`）
-2. 対象**子行**にレ点。相乗りする行だけ N列`ASINコード`を設定（X列は触らなくてよい）。**ASIN空のレ点行はスキップされ、全体は止まらない**（有効ASINが0件のときだけ停止）
+2. 対象**子行**にレ点。相乗りする行だけ **その子行の** N列`ASINコード`を設定（X列は触らなくてよい）。**子N列が空はスキップ**（親行ASINには落ちない）。同一ASINの複数レ点は先勝ち1件のみ。全体は止まらない（有効ASINが0件のときだけ停止）
 3. **デュアル Phase1**: 自己発は `Amazon相乗りSKU`（初回空可）／FBAは `Amazon相乗りSKU_FBA`（列追加必須・初回空可）。中央がすでにASINの子SKUはJAN置換せず、発送記号だけ `s→as`／`f→af`（D選択）に揃える
 4. （本番常時ON）`APPROVAL_AMAZON_SPAPI_PUT_ENABLED`／`ALLOW_PROD` は **未設定または true**（毎回切り替え不要。緊急停止だけ明示 false）
 5. D → Amazonのみ → **既存カタログに相乗り** → 自己発orFBA → **prod（既定）** → 確認OK → ACCEPTED。**SKU列が空でも生成してPUT**し、成功後に当該系統列へ保存
 6. （任意・上級）dry_run で VALID／列保存だけ先に確認してもよい
-7. マスタ在庫で出す場合のみ `APPROVAL_AMAZON_SPAPI_PUT_ALLOW_MASTER_QTY=true`（**作業後は false**。常時ONにしない）
-8. ~~トグルfalse~~ **不要**（常時ONセット。MASTER_QTY だけ戻す）
+7. マスタ在庫は **Property 不要**（ゲート廃止。2026-10-24）
+8. ~~トグルfalse~~ **不要**（常時ONセット）
 
 ### 0b. 本番常時ONセット（2026-08-10）
 
 正本: [CURRENT_PHASE.md](../CURRENT_PHASE.md) §0。
 
-| 未設定時ON | 常時OFF |
+| 未設定時ON | 緊急停止だけ明示 false |
 |------------|---------|
-| `PUT_ENABLED`／`ALLOW_PROD`／`LV4_ENABLED`／`SC_SUMMARY_ENABLED` | `ALLOW_MASTER_QTY`／`P4B_PT_WRITE`／`U2`／`U4` |
+| `PUT_ENABLED`／`ALLOW_PROD`／`LV4_ENABLED`／`SC_SUMMARY_ENABLED` | `P4B_PT_WRITE`／`U2`／`U4` |
 
 既存が false のキーは **削除**か **true に1回**。`clasp push` 後に有効。
-相乗り先はN列`ASINコード`のみ。O列／競合URLは使わない。  
+相乗り先は**子行**N列`ASINコード`のみ（親フォールバックなし・実行内ユニーク）。O列／競合URLは使わない。  
 送信在庫の既定は **0**（新規GENERATED／相乗りとも）。マスタ選択時のみ「在庫数」生値を GENERATED在庫列および自己発PUTへ（FBAは非送信）。  
 開始前確認に **新規もqty内訳**を出す（2026-08-01補強）。 
 A1暫定で NF に入った `…af…` は **人手で `Amazon相乗りSKU_FBA` へ移す**（自動移設なし）。  
@@ -181,6 +181,7 @@ PACKAGED再送: `…_20260731_032459.xlsm`（KW1枠・粉末・グラム）。
 
 | 日付 | 内容 |
 |------|------|
+| 2026-10-27 | **相乗りASIN**: 子行N列のみ（親フォールバック廃止）。同一実行内ASINユニーク（先勝ち）。要出品 clasp。 |
 | 2026-08-10 | **本番常時ONセット**: PUT／ALLOW_PROD 未設定=ON。トグル毎回切替不要。MASTER_QTYのみ作業後OFF。 |
 | 2026-08-05 | **条件付き自動再GENERATED（案B）**: 冪等0件＋PT/Browse差分で自動解除。要 clasp push。 |
 | 2026-08-05 | Track B **親行 inventory 常に0**（MASTERでも親マスタ在庫非読取。子のみ厳密）。親 `#DIV/0!` で送信停止しない。 |

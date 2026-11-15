@@ -110,6 +110,7 @@
     "omit_color": true,
     "omit_item_form": true,
     "omit_temperature_rating": true,
+    "honor_omit_for_black_cells": true,
     "unit_uom_default": "缶",
     "notes": "synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. synced from ▼設定(Amazonマッピング) MAP. MAP RULES: CHILD_ONLY＋PARSE_SET_COUNT/WEIGHT。親総個数6・総重量960・一人分160・色その他・保存方法長文・形態ホールを書かない。"
   },
@@ -378,6 +379,9 @@
   "notes": "FOOD_FISH_GROCERY複合。本線PT=GROCERY。テーマ=サイズ（プルダウンのみ）。size=ATのsize属性（package_size_nameではない）。入数/ユニット=セット缶数、重量=サイズからg解析。色・形態・温度定格はGROCERY黒セル対策で未出力。親総個数/総重量/一人分数量禁止。",
   "keyword_max_slots": 1,
   "highlight_max_title_chars": 75,
+  "highlight_forbidden_phrases": [
+    "抜群"
+  ],
   "highlight_priority": [
     "catch_rakuten",
     "catch_yahoo",

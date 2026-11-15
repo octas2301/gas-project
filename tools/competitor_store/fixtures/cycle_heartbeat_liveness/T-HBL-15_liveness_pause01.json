@@ -1,0 +1,1 @@
+{"id":"T-HBL-15","desc":"生存番犬: pauseで01欠落→01を張る","start":{"paused":true,"resume01_n":0},"steps":[{"action":"liveness_tick","now_ms":1000}],"expect":{"alive":true,"reason":"paused_01","log_has":["liveness_rearm resume01"]}}

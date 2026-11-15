@@ -1,6 +1,6 @@
 {
   "version": "SHELF-BROWSE-1",
-  "updatedAt": "2026-08-02T03:54:35Z",
+  "updatedAt": "2026-09-17T22:51:38Z",
   "notes": "データを閲覧する 全行網羅。照合キー=browseNodeId。",
   "rows": [
     {
@@ -3207,6 +3207,132 @@
       "fingerprintSha": "57190dbc80b8494201e52242874037a4782e80ada4764e53d503564454c2b8e5",
       "columnMapPath": "food_seasoning_column_map.json",
       "extractedAt": "2026-08-02T03:54:35Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2431369051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > お茶漬け",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71169051",
+      "browsePath": "食品・飲料・お酒 > 乾物 > だし昆布",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "71204051",
+      "browsePath": "食品・飲料・お酒 > 調味料・食用油・ドレッシング > 和風だし",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2436199051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > スープ・味噌汁 > スープ",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2436201051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > スープ・味噌汁 > お吸い物",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2436200051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > スープ・味噌汁 > 味噌汁",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2431124051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > シチュー",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "2427326051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > 料理の素 > 鍋の素",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
+      "sourceSheet": "データを閲覧する"
+    },
+    {
+      "browseNodeId": "3964587051",
+      "browsePath": "食品・飲料・お酒 > レトルト・料理の素 > おでん",
+      "templateFile": "PACKAGED_SOUP_AND_STEW.xlsm",
+      "templateUrl": "",
+      "allowedProductTypes": [
+        "PACKAGED_SOUP_AND_STEW"
+      ],
+      "preferredProductType": "PACKAGED_SOUP_AND_STEW",
+      "fingerprintSha": "c6372856adbb32e99e644a336e1ae873731845e2d56316af0bbd2f5d8899ab5a",
+      "columnMapPath": "packaged_soup_and_stew_column_map.json",
+      "extractedAt": "2026-09-17T22:51:38Z",
       "sourceSheet": "データを閲覧する"
     }
   ]

@@ -1,0 +1,21 @@
+{
+  "id": "T-CCC-08",
+  "desc": "完走サマリ更新（CK OFF・最終調査日・完了）",
+  "parent": "石原水産",
+  "wash_complete": true,
+  "survey_day": "2026-08-23",
+  "maker_sum": [
+    {"メーカー": "石原水産", "実態": "製造メーカー", "セラーヒット": 1, "洗い状態": "Keepa中", "調査CK": true}
+  ],
+  "d1": {"state": "DONE", "pass": 0},
+  "d2": {"state": "DONE", "leftover": 0},
+  "expect": {
+    "chain_state": "idle_no_next",
+    "summary_row": {
+      "メーカー": "石原水産",
+      "洗い状態": "完了",
+      "最終調査日": "2026-08-23",
+      "調査CK": false
+    }
+  }
+}

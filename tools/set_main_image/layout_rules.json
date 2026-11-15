@@ -89,6 +89,25 @@
         "policyJa": "Amazon貼付は単体のみ使用（ヒーロー画像は中止）。レイアウト上の大＝単体拡大。",
         "folder": "01.amazon白抜きベース"
       },
+      "mixColumnLayout": {
+        "enabled": true,
+        "status": "locked_pass",
+        "lockedAt": "2026-10-24",
+        "noteJa": "ミックス（セット構成2種以上・数量同一）: each=1は親_ミックス正本をN=1中央最大化／each=2–4は列積み（種＝列・+6°・辺フラッシュ）／each≥5は親_ミックス正本×従来単品ロジック。単一種は既存aspect本線。",
+        "menuBranchJa": "k>=2: each1=canon_n1／2-4=mix_column／5+=canon_single／k=1 → square|portrait|landscape 既存",
+        "tiltDegCw": 6.0,
+        "hOverlapMax": 0.25,
+        "pitchMax": 0.92,
+        "vStepMin": 0.1,
+        "vStepMax": 1.12,
+        "vStepPrefLo": 0.28,
+        "vStepPrefHi": 1.05,
+        "sideFlush": true,
+        "pitchStep": 0.03,
+        "vStepStep": 0.08,
+        "equalQtyOnly": true,
+        "engine": "mix_column_layout.py"
+      },
       "portraitTilt": {
         "status": "locked_pass",
         "lockedAt": "2026-08-08",
@@ -273,7 +292,159 @@
       "cx": 1056,
       "cy": 148,
       "diameter": 289,
-      "note": "Gemini外枠中心(880,123)・一辺≈241 を×1.2。文字は絶対番地優先。"
+      "note": "旧・枠内収まり推定（Gemini外枠×1.2）。数字グリフは lockedUnitSet1000。B-⑤空金丸は goldCircle1200SampleOverflow。"
+    },
+    "goldCircle1200SampleOverflow": {
+      "cx": 1102,
+      "cy": 103,
+      "diameter": 343,
+      "r": 171.5,
+      "canvas": 1200,
+      "overflowTopPx": 69,
+      "overflowRightPx": 75,
+      "visibleLeftX": 931,
+      "visibleBottomY": 274,
+      "visibleW": 269,
+      "visibleH": 275,
+      "nSamples": 26,
+      "exclude": "oya2 mix",
+      "method": "右上角から金ピクセルflood-fill → 外弧の最小二乗円。対象見本26枚で中央値一致。",
+      "measuredAt": "2026-08-26",
+      "note": "見本は上・右のキャンバス外枠からはみ出す。空金丸スタンプは円全体を描きキャンバスでクリップ。縦=横=直径343。"
+    },
+    "appealHeadline1200": {
+      "note": "見出しはAI描画。起点連鎖（上段固定→間隔→下段→下線）。全部y<20%。書体UDモトヤマルベリ。下段白。下線半透明。",
+      "render": "ai_in_image",
+      "goldPassToAi": true,
+      "layoutPassToAi": true,
+      "rakutenTextMaxAreaPct": 20,
+      "rakutenTextGrid": { "cols": 10, "rows": 10, "cell": 120, "maxCells": 20 },
+      "textBand": { "row0": 0, "row1": 1, "y0": 0, "y1": 240, "note": "上辺10マス+直下10マス。セット数文字も含む" },
+      "box": { "x": 0, "y": 0, "w": 840, "h": 240 },
+      "textKeepOut1200": {
+        "x": 0,
+        "y": 0,
+        "w": 840,
+        "h": 248,
+        "note": "②見出し+下線。パッケージAABBはこの矩形と交差させない。背景は可。"
+      },
+      "packagePlace": {
+        "margin": 28,
+        "corner": "bottom_left",
+        "tiltDegCcw": 10,
+        "maxHRatio": 0.58,
+        "maxWRatio": 0.46,
+        "octas": true,
+        "note": "左下寄せ。袋は左へ傾ける（上部が左）。右下にOctas（Amazon本線と同じ面積比0.075・8°）。文字帯と非交差。"
+      },
+      "rightLimitX": 840,
+      "goldVisibleLeftX": 931,
+      "goldCols": [7, 8, 9],
+      "headlineChain": {
+        "note": "見本5515実測。上段左上固定。下段y=上段下端+間隔。下線y=下段下端-重なり。",
+        "upperOriginX": 48,
+        "upperOriginY": 31,
+        "gapAfterUpperPx": 20,
+        "yMustStayBelowPct": 20,
+        "yHardCap": 238,
+        "rightLimitPct": 70,
+        "doNotUse1200PxOn1K": true
+      },
+      "underline": {
+        "assetFolder": "98.楽天金丸素材",
+        "assetNameContains": "アンダーライン",
+        "style": "brush_swoosh",
+        "countsAsText": true,
+        "mustStayIn20Cells": true,
+        "notFullWidthBand": true,
+        "x": 52,
+        "y": 161,
+        "w": 720,
+        "h": 76,
+        "yBottom": 237,
+        "overlapLowerPx": 40,
+        "alpha": 0.85,
+        "layer": "behind_text",
+        "fillFrom": "textColors",
+        "note": "見本5515: 下段インクy=97-200。下線y=163-236。Pillowは下段h=104で下端y=201、下線y=161。"
+      },
+      "noExtraBars": true,
+      "outline": "none",
+      "pillowSameColorStroke": {
+        "note": "枠線ではなく同色ストロークで芯を太くする。コントラスト枠は禁止。",
+        "upper": 1,
+        "lower": 2
+      },
+      "pillowSoftShadow": { "off": 2, "rgba": [40, 30, 20, 70] },
+      "textColorLinkedToC": "underline_and_gold_digits",
+      "headlineFill": "auto",
+      "headlineFillLumaThresh": 140,
+      "headlineLightFracThresh": 0.25,
+      "baseTextOnLight": "#0d1321",
+      "baseTextOnDark": "#ffffff",
+      "noGuideFrame": true,
+      "fontId": "ud_motoya_maru_berry",
+      "fontNameJa": "UDモトヤマルベリ",
+      "fontNameEn": "UD Motoya Maru Berry",
+      "measuredAt": "2026-08-27",
+      "measuredFrom": "sanky-4906283045515-oya（青下線） / sanky-4906283045614-oya（白文字+赤下線）",
+      "count": "全角換算（全角=1・半角=0.5。小数は切り上げ）",
+      "pillowFallback": {
+        "note": "AI失敗時のみ。字数・番地は維持。",
+        "upper": {
+          "role": "sub",
+          "minZenkaku": 12,
+          "maxZenkaku": 18,
+          "x": 48,
+          "y": 31,
+          "fontPx": 59,
+          "trackingPx": 3,
+          "xScale": 1.0,
+          "targetInkH": 46
+        },
+        "lower": {
+          "role": "main",
+          "minZenkaku": 4,
+          "maxZenkaku": 8,
+          "x": 40,
+          "y": 97,
+          "fontPx": 134,
+          "trackingPx": 8,
+          "xScale": 0.858,
+          "targetInkH": 104
+        }
+      },
+      "upper": {
+        "role": "sub",
+        "minZenkaku": 12,
+        "maxZenkaku": 18,
+        "x": 48,
+        "y": 31,
+        "fontPx": 59,
+        "trackingPx": 3,
+        "xScale": 1.0,
+        "targetInkH": 46,
+        "fill": "#ffffff",
+        "note": "小さめ・長め。見本14-16。開始 x=48 y=31（5515/5614）。白。"
+      },
+      "lower": {
+        "role": "main",
+        "minZenkaku": 4,
+        "maxZenkaku": 8,
+        "x": 40,
+        "y": 97,
+        "fontPx": 134,
+        "trackingPx": 8,
+        "xScale": 0.858,
+        "targetInkH": 104,
+        "fill": "#ffffff",
+        "inkBottomY": 201,
+        "note": "見本5515。開始は上段下端+間隔20。y=97。インク高104。fontPx=134。白。下線は下端から40px重ね。"
+      },
+      "modes": {
+        "name": "パッケージで商品名が大きく読めない → 下段に商品名明示",
+        "talk": "パッケージで商品名が分かる → 下段はセールストーク"
+      }
     },
     "badgeTypography": {
       "description": "Canva 95: unitset(単位+セット一体)＋digit/pair。1桁と2桁でunitsetRectとnumberHoleが異なる。",
@@ -455,6 +626,10 @@
         "minTopPaddingRatioOfDiameter": 0.12,
         "minBottomPaddingRatioOfDiameter": 0.16
       },
+      "mixEach": {
+        "enabled": true,
+        "note": "ミックスで構成数量が同じときだけ、金丸の数字は合計、下段は各。false で各をやめセットに戻す（2026-10-20）。"
+      },
       "lockedUnitSet1000": {
         "enabled": true,
         "note": "unitset一体・等倍。①②③パターン位置固定（2026-08-02合格）。勝手に座標を変えない。",
@@ -477,7 +652,7 @@
           "numberFitMode": "contain",
           "freezeUnitSet": true,
           "freezeNumber": true,
-          "note": "①一桁 FIXED — digit_* contain。unitset+number 変更禁止。"
+          "note": "①一桁。高さは1に揃え、下辺は単位。袋との間隔は数字の真ん中の右端。細い1だけ少し左（2026-10-20）。2〜9の位置はロック。単位セットの枠は変えない。"
         },
         "2digit": {
           "patternId": "2_pair_or_3_digits",

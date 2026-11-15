@@ -1,0 +1,29 @@
+{
+  "id": "T-SN-02",
+  "desc": "A2 JAN不一致",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000001",
+    "hit_asin": "B000000001",
+    "keepa_jans": [
+      "4901111111111"
+    ],
+    "search_jans": [
+      "4902222222222"
+    ]
+  },
+  "expect": {
+    "pattern": "A2",
+    "single_trust": "mid",
+    "jan_trust": "low",
+    "for_estimate": true,
+    "need_human": false,
+    "auto_pick_jan": false,
+    "write_single_name": true
+  }
+}

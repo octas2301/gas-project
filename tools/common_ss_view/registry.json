@@ -1,0 +1,156 @@
+{
+  "files": {
+    "自動リサーチ260814_アマゾン調査": {
+      "id": "1tf7gvkD88yyNz7JWXfNysBcIqSZDlI9dC-l6gOPyLjE",
+      "aliases": ["research", "①", "1tf7", "仕入れ検討①スプシ"],
+      "tabs": {
+        "①ログ": { "role": "log", "tail": 40 },
+        "①候補": { "role": "result", "head": 80 },
+        "仕入検討品番リスト": { "role": "result", "data_start": 5, "head": 40 }
+      }
+    },
+    "統合情報DB260815_競合（amz/楽/Yah）": {
+      "id": "1UrdWDBw8NcuOf71Bi-2m8WNQDW2onIkA-zl6mLE7AHs",
+      "aliases": ["competitor", "競合DB", "1Urd"],
+      "tabs": {
+        "メーカーサマリ": { "role": "lookup", "head": 80 },
+        "Keepaフル": { "role": "keepa", "tail": 20 },
+        "セラー": { "role": "lookup", "head": 40 },
+        "実態AIログ": { "role": "log", "tail": 40 }
+      }
+    },
+    "自動出品260221_セラセン出力": {
+      "id": "1LIWp0qjgvPaZtjsIBmCGqCEEB7AA00nLmBA7iE1MI28",
+      "aliases": ["listing", "出品", "1LIW"],
+      "tabs": {
+        "▼ログ(システム用)": { "role": "log", "tail": 40 },
+        "▼商品マスタ(人間作業用)": { "role": "result", "head": 40 }
+      }
+    },
+    "広告自動化_タイムセール（amz/楽/Yah）": {
+      "id": "17jwaao79ApQrHzA27BPVIl1sQ9G2tVAqWPkVvrGGelo",
+      "aliases": ["ads", "広告", "17jwa"],
+      "tabs": {
+        "タイムセール_マスタ": { "role": "lookup", "head": 40 },
+        "履歴データ": { "role": "log", "tail": 40 }
+      }
+    },
+    "見積発注_三協乾物": {
+      "id": "17nXSRjFp8xy-3EaBmp-LIu_tMc9ZOgfkhJoZjO3FLIc",
+      "aliases": [
+        "見積",
+        "発注",
+        "見積もり",
+        "三協",
+        "三協乾物",
+        "17nX",
+        "estimate",
+        "order"
+      ],
+      "tabs": {
+        "お見積もり依頼リスト": { "role": "result", "data_start": 5, "head": 40 },
+        "見積もり（未回答リスト）": { "role": "result", "data_start": 3, "head": 40 },
+        "貼付sheet": { "role": "result", "data_start": 4, "head": 40 },
+        "PV": { "role": "result", "data_start": 3, "head": 40 },
+        "問い合わせ用PV": { "role": "result", "data_start": 3, "head": 40 },
+        "検討": { "role": "result", "data_start": 5, "head": 40 },
+        "送料": { "role": "lookup", "head": 40 }
+      },
+      "notes": "発注書は日付タブ（発注書YYMMDD）。固定タブにしない。dump 時は --sheet で指定するか titles から最新を取る。"
+    }
+  },
+  "menus": {
+    "仕入れ検討①": [
+      "自動リサーチ260814_アマゾン調査",
+      "統合情報DB260815_競合（amz/楽/Yah）"
+    ],
+    "出品": [
+      "自動出品260221_セラセン出力"
+    ],
+    "広告・タイムセール": [
+      "広告自動化_タイムセール（amz/楽/Yah）"
+    ],
+    "見積・発注": [
+      "見積発注_三協乾物"
+    ]
+  },
+  "menu_aliases": {
+    "purchase_research": "仕入れ検討①",
+    "①": "仕入れ検討①",
+    "レ点メーカー": "仕入れ検討①",
+    "D1": "仕入れ検討①",
+    "AI出品ツール": "出品",
+    "Yahoo!出品": "出品",
+    "listing": "出品",
+    "広告運用": "広告・タイムセール",
+    "タイムセール": "広告・タイムセール",
+    "ads": "広告・タイムセール",
+    "estimate": "見積・発注",
+    "order": "見積・発注",
+    "見積": "見積・発注",
+    "発注": "見積・発注",
+    "見積もり": "見積・発注",
+    "三協": "見積・発注"
+  },
+  "intents": {
+    "judge": {
+      "自動リサーチ260814_アマゾン調査": ["①ログ", "①候補", "仕入検討品番リスト"],
+      "統合情報DB260815_競合（amz/楽/Yah）": ["メーカーサマリ", "セラー", "実態AIログ"]
+    },
+    "maker": {
+      "自動リサーチ260814_アマゾン調査": ["①ログ", "①候補", "仕入検討品番リスト"],
+      "統合情報DB260815_競合（amz/楽/Yah）": ["メーカーサマリ"]
+    },
+    "keepa": {
+      "自動リサーチ260814_アマゾン調査": ["①ログ", "①候補"],
+      "統合情報DB260815_競合（amz/楽/Yah）": ["Keepaフル"]
+    },
+    "seller": {
+      "自動リサーチ260814_アマゾン調査": ["①ログ"],
+      "統合情報DB260815_競合（amz/楽/Yah）": ["セラー"]
+    },
+    "listing_fail": {
+      "自動出品260221_セラセン出力": ["▼ログ(システム用)", "▼商品マスタ(人間作業用)"]
+    },
+    "ads": {
+      "広告自動化_タイムセール（amz/楽/Yah）": ["タイムセール_マスタ", "履歴データ"]
+    },
+    "estimate": {
+      "見積発注_三協乾物": [
+        "お見積もり依頼リスト",
+        "見積もり（未回答リスト）",
+        "貼付sheet",
+        "PV"
+      ]
+    },
+    "order": {
+      "見積発注_三協乾物": ["お見積もり依頼リスト", "PV"]
+    },
+    "estimate_profit": {
+      "見積発注_三協乾物": ["お見積もり依頼リスト", "検討", "送料", "PV"]
+    }
+  },
+  "intent_aliases": {
+    "合否": "judge",
+    "判定": "judge",
+    "ログ": "judge",
+    "メーカー": "maker",
+    "レ点": "maker",
+    "洗い": "maker",
+    "Keepa": "keepa",
+    "keepa": "keepa",
+    "店": "seller",
+    "セラー": "seller",
+    "出品": "listing_fail",
+    "広告": "ads",
+    "タイムセール": "ads",
+    "見積": "estimate",
+    "見積もり": "estimate",
+    "未回答": "estimate",
+    "発注": "order",
+    "発注書": "order",
+    "利益": "estimate_profit",
+    "検討": "estimate_profit",
+    "送料": "estimate_profit"
+  }
+}

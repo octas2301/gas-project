@@ -1,0 +1,11 @@
+{
+  "id": "T-CTW-17",
+  "desc": "PR_WASH_OVERLAP_STALE_AWARE=false なら8分固定",
+  "kind": "overlap_stale_min",
+  "inflight_age_ms": 360000,
+  "stale_aware": false,
+  "expect": {
+    "after_min": 8,
+    "stale_aware": false
+  }
+}

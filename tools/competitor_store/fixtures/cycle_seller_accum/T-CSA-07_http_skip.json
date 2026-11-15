@@ -1,0 +1,38 @@
+{
+  "id": "T-CSA-07",
+  "desc": "http: 2件目は飛ばして済印。BBは残す。3件目まで進む",
+  "sellers_before": [],
+  "cand": [
+    { "ASIN": "B0CSA00070", "門結果": "通過" },
+    { "ASIN": "B0CSA00071", "門結果": "通過" },
+    { "ASIN": "B0CSA00072", "門結果": "通過" }
+  ],
+  "keepa_full": [
+    { "ASIN": "B0CSA00071", "BuyBoxセラー": "AYHTTPBB0001" }
+  ],
+  "side_effect": { "cand_rows": 8, "keepa_full_rows": 40 },
+  "run": {
+    "cap": 100,
+    "offers_by_asin": {
+      "B0CSA00070": ["AYHTTPSELL01"],
+      "B0CSA00071": ["AYHTTPSELL02"],
+      "B0CSA00072": ["AYHTTPSELL03"]
+    },
+    "stop_at_asin": "B0CSA00071",
+    "stop_reason": "http"
+  },
+  "expect": {
+    "new_seller_ids": ["AYHTTPSELL01", "AYHTTPBB0001", "AYHTTPSELL03"],
+    "seller_row_delta": 3,
+    "stopped": "ok",
+    "after_asin": "",
+    "api_calls": 3,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00070", "B0CSA00071", "B0CSA00072"],
+    "remain_asin": 0,
+    "skip_http": 1,
+    "skip_http_asins": ["B0CSA00071"],
+    "must_not_add": ["AYHTTPSELL02"],
+    "side_effect_unchanged": true
+  }
+}

@@ -1,7 +1,7 @@
 # 競合セット数パースの精度と経緯
 
-**最終更新**: 2026-08-15  
-**関連**: [COMPETITOR_FIELDS.md](COMPETITOR_FIELDS.md)／12-⑭／`parseSetCountFromItemNameWithSource`
+**最終更新**: 2026-08-21  
+**関連**: [COMPETITOR_FIELDS.md](COMPETITOR_FIELDS.md)／12-⑭／`parseSetCountFromItemNameWithSource`／ミックスは `parseMixCompetitorSetCountFromItemName_`
 
 ## 1. 採用仕様（価格）
 
@@ -17,20 +17,28 @@
 
 | 案 | 内容 | 状態 |
 |----|------|------|
-| A | `計`/`合計`/`全` N袋を最優先。`各N袋`・`N袋ずつ` はセットにしない | 済（共有パース） |
+| A | `計`/`合計`/`全` N袋を最優先。`各N袋`・`N袋ずつ` はセットにしない | 済（**単品**共有パース） |
 | C | 同一モールで他セット単価中央値の **2倍以上** のセットを捨てる | 済（12-⑭クラスタのみ） |
-| B | `N種`/`N種類` × `各M袋` → 計が無くても N×M（例: 3種類×各5＝15） | 済（2026-08-15・共有パース＋GAS） |
+| B | `N種`/`N種類` × `各M袋` → 計が無くても N×M（例: 3種類×各5＝15） | 済（**単品**共有パース＋GAS） |
 
-## 3. 残課題（精度）
+## 3. ミックス（2026-08-21）— 単品と分離
+
+- ミックスの `A.セット商品数` は **何セットか**（各N＋単位 → N）。合計袋数（種×各）や「計N袋最優先」は使わない。
+- パースは `parseMixCompetitorSetCountFromItemName_`。単品の `parseSetCountFromItemNameWithSource` は触らない。
+- 種だけ → 仮1 → 画像 Vision（セット数）＋参考画像一致ゲート。画像優先。親上限既定20。
+- 詳細は [COMBO_SET_BOM_REQUIREMENTS.md](COMBO_SET_BOM_REQUIREMENTS.md) §6.2.1。
+
+## 4. 残課題（精度・単品）
 
 - GAS の `\d` は半角のみ。貼付実題は `【３種類】`（全角）。**数字は半角化してからパース**（2026-08-15）。
-- **計が無いミックス**は `N種類×各M袋` で総袋。Keepa セット数セルよりタイトル優先。種類数の無い `各N袋` だけは不明（単品Nにしない）。
+- **計が無いミックス表記の単品JAN**は `N種類×各M袋` で総袋（12-⑭）。ミックス親のモール検索は §3。
 - 運用: Keepa A が先に◎を書き、**人が直してからメニューB**。P2 は機械◎でもふるさと／選択／中古／種類数なし各N袋を非候補（評価列は消さない）。
 - Amazon④: **2種以上**（`N種類`）は◎でも単品JANマスタに載せない（2026-08-15・`B0DWMJQTXT`）。袋数の数え（N×各M）は12-⑭用。評価◎は消さない。
 - C は **本当に高い最安** も落とす。倍率 2 は仮。定数 `COMPETITOR_UNIT_PRICE_OUTLIER_RATIO`。
 - `10袋入×2` など別構文は未対応。
 - `4P` は 12-⑭ では捨てる（内容量）。楽天セット別は Gemini 補完あり。
 - Keepa `numberOfItems` は袋数の正にしない（FIELDS 共通ルール）。
-- 楽天セット別・B Step2 は **A のパースは共有**。C の単価外れは 12-⑭ だけ。
+- **単品12-⑭**画像袋数: タイトル不能時のみ。実行上限5。`COMPETITOR_HIT_SET_COUNT_FROM_IMAGE`。
+- 楽天セット別・B Step2 単品は **A のパースは共有**。C の単価外れは 12-⑭ だけ。
 
 切戻し: Git revert。C だけ止めたい場合は倍率を大きくするか `filterOutlierSetUnitPrices_` の呼び出しを外す。

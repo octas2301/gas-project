@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-22",
+  "desc": "大完走後 shop_after_large は門通過(C0)をレ点より先",
+  "input": {
+    "shop_after_sm": "大社",
+    "untagged_gate_asins": 3,
+    "unchecked_sellers": 5,
+    "auto_ck_candidates": 2,
+    "maker_sum": [
+      {"メーカー": "大社", "実態": "製造メーカー", "規模帯": "大", "catalog_estimate": 400, "洗い状態": "完了"}
+    ],
+    "catalog_estimate": {"大社": 400}
+  },
+  "expect": {"action": "c0", "detail_has": "shop_after_large"}
+}

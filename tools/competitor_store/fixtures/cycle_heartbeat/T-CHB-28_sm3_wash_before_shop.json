@@ -1,0 +1,18 @@
+{
+  "id": "T-CHB-28",
+  "desc": "洗える小中が3以上なら店にトークンを使わず洗う",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社A", "実態": "製造メーカー", "セラーヒット": 4, "catalog_estimate": 40},
+      {"メーカー": "小社B", "実態": "製造メーカー", "セラーヒット": 3, "catalog_estimate": 50},
+      {"メーカー": "中社C", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 120}
+    ],
+    "catalog_estimate": {"小社A": 40, "小社B": 50, "中社C": 120},
+    "unchecked_sellers": 10,
+    "auto_ck_candidates": 8,
+    "jitta_pending": 20,
+    "k": 3
+  },
+  "expect": {"action": "wash_small", "maker": "小社A"}
+}

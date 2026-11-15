@@ -24,6 +24,10 @@ var AMAZON_IMAGE_CANDIDATE_ARCHIVE_FOLDER_NAME = 'アップロード済み画像
 var AMAZON_IMAGE_CANDIDATE_TILE_ALL_PROP = 'AMAZON_IMAGE_CANDIDATE_TILE_ALL_ENABLED';
 /** 未設定=true。子SKUファイル名一致のみ MAIN 自動投入（U2-ε） */
 var AMAZON_IMAGE_MAIN_AUTOBIND_PROP = 'AMAZON_IMAGE_MAIN_AUTOBIND_ENABLED';
+/** 未設定=true。E①は楽天未整理フォルダを読まず、楽天欄を保持／レ点差分は重なりだけ引き継ぐ */
+var AMAZON_E1_KEEP_RAKUTEN_PROP = 'AMAZON_E1_KEEP_RAKUTEN_ENABLED';
+/** 楽天ゾーン（商品情報5＋メイン/サブ20＋候補50） */
+var AMAZON_E1_RAKUTEN_KEEP_COLS = 75;
 /** 1行1枚モードで読む候補ファイルの上限（行数分あれば足りる） */
 var AMAZON_MX_CAND_FILE_MAX = 300;
 
@@ -858,5 +862,257 @@ function amazonImageSplitPtIds_(val) {
 }
 
 function amazonImageFormula_(fileId) {
-  return '=IMAGE("https://drive.google.com/uc?export=view&id=' + fileId + '", 2)';
+  return (typeof rakutenDrivePreviewImageFormula_ === 'function')
+    ? rakutenDrivePreviewImageFormula_(fileId)
+    : ('=IMAGE("https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000", 2)');
+}
+
+/**
+ * E①: シート準備。楽天未整理フォルダは読まない。
+ * keep=レ点一致で楽天欄そのまま／rebuild_overlap=レ点差分で重なりSKUの楽天欄だけ引き継ぎ／create=シートなし。
+ * @return {{branch:string, sheet:GoogleAppsScript.Spreadsheet.Sheet, kept:number, added:number, dropped:number, rows:number}}
+ */
+function amazonE1PrepareMatrix_(ss) {
+  var fn = 'amazonE1PrepareMatrix_';
+  var sheet = ss.getSheetByName(SHEET_NAME_MATRIX);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME_MATRIX);
+    var created = amazonE1RebuildMatrixFromSelection_(ss, sheet, {});
+    Logger.log('[' + fn + '] branch=create rows=' + created.rows);
+    return {
+      branch: 'create',
+      sheet: sheet,
+      kept: 0,
+      added: created.rows,
+      dropped: 0,
+      rows: created.rows
+    };
+  }
+
+  var selection = amazonImageMatrixValidateCurrentSelection_(ss, sheet);
+  if (selection.ok) {
+    Logger.log('[' + fn + '] branch=keep ' + selection.message);
+    return { branch: 'keep', sheet: sheet, kept: -1, added: 0, dropped: 0, rows: Math.max(sheet.getLastRow() - 2, 0) };
+  }
+
+  var snap = amazonE1SnapshotRakutenByKey_(sheet);
+  var rebuilt = amazonE1RebuildMatrixFromSelection_(ss, sheet, snap);
+  Logger.log(
+    '[' + fn + '] branch=rebuild_overlap kept=' + rebuilt.kept +
+      ' added=' + rebuilt.added + ' dropped=' + rebuilt.dropped +
+      ' reason=' + String(selection.message || '').replace(/\n/g, ' | ')
+  );
+  return {
+    branch: 'rebuild_overlap',
+    sheet: sheet,
+    kept: rebuilt.kept,
+    added: rebuilt.added,
+    dropped: rebuilt.dropped,
+    rows: rebuilt.rows
+  };
+}
+
+/** @return {Object<string, Array>} key=親\\t子 → 列1〜75の式または値 */
+function amazonE1SnapshotRakutenByKey_(sheet) {
+  var out = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) return out;
+  var keepCols = Math.min(AMAZON_E1_RAKUTEN_KEEP_COLS, sheet.getLastColumn());
+  if (keepCols < 2) return out;
+  var formulas = sheet.getRange(3, 1, lastRow - 2, keepCols).getFormulas();
+  var values = sheet.getRange(3, 1, lastRow - 2, keepCols).getValues();
+  var i;
+  var c;
+  for (i = 0; i < values.length; i++) {
+    var p = String(values[i][0] || '').trim();
+    if (!p) continue;
+    var key = p + '\t' + String(values[i][1] || '').trim();
+    var row = [];
+    for (c = 0; c < keepCols; c++) {
+      var f = String(formulas[i][c] || '').trim();
+      row.push(f ? f : values[i][c]);
+    }
+    out[key] = row;
+  }
+  return out;
+}
+
+/**
+ * レ点から枠を書き、snapshot があれば楽天列（E〜75）をキー一致で戻す。
+ * @return {{rows:number, kept:number, added:number, dropped:number}}
+ */
+function amazonE1RebuildMatrixFromSelection_(ss, sheet, snapshot) {
+  var display = amazonE1CollectSelectionDisplay_(ss);
+  if (!display.ok) throw new Error(display.message);
+  snapshot = snapshot || {};
+  var oldKeys = Object.keys(snapshot);
+  amazonE1WriteMatrixStructure_(sheet, display.rows);
+  var kept = amazonE1ApplyRakutenSnapshot_(sheet, snapshot);
+  var newKeys = {};
+  var i;
+  for (i = 0; i < display.rows.length; i++) {
+    newKeys[display.rows[i].pCode + '\t' + display.rows[i].cCode] = true;
+  }
+  var added = 0;
+  var dropped = 0;
+  Object.keys(newKeys).forEach(function (k) {
+    if (!snapshot[k]) added++;
+  });
+  oldKeys.forEach(function (k) {
+    if (!newKeys[k]) dropped++;
+  });
+  return { rows: display.rows.length, kept: kept, added: added, dropped: dropped };
+}
+
+function amazonE1CollectSelectionDisplay_(ss) {
+  var masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+  if (!masterSheet) return { ok: false, message: 'マスタがありません。' };
+  var mValues = masterSheet.getDataRange().getValues();
+  var headerRowIdx = getAnchorRowIndex(mValues);
+  if (headerRowIdx < 0) return { ok: false, message: 'マスタヘッダーが見つかりません。' };
+  var colMap = getColumnIndexMap(mValues[headerRowIdx]);
+  var idxP = colMap[COL_NAME_PARENT_SKU];
+  var idxC = colMap[COL_NAME_CHILD_SKU];
+  var idxName = colMap[COL_NAME_ITEM_NAME];
+  var idxVar = colMap[COL_NAME_VAR_NAME];
+  var idxCheck = colMap[COL_NAME_CHECK];
+  var idxRef = colMap['▼マスタ(参考情報(画像URL))'] !== undefined
+    ? colMap['▼マスタ(参考情報(画像URL))'] : -1;
+  if (idxP === undefined || idxCheck === undefined) {
+    return { ok: false, message: '必須列（親SKU または 出品CK）が見つかりません。' };
+  }
+
+  function isChecked_(v) {
+    return v === true || v === 1 || String(v).toUpperCase() === 'TRUE';
+  }
+
+  var parentMeta = {};
+  var r;
+  for (r = headerRowIdx + 1; r < mValues.length; r++) {
+    var row = mValues[r];
+    var pCode = String(row[idxP] || '').trim();
+    if (!pCode) continue;
+    var cCode = idxC !== undefined ? String(row[idxC] || '').trim() : '';
+    if (!parentMeta[pCode]) {
+      parentMeta[pCode] = { name: '', refImg: '', parentChecked: false, children: [] };
+    }
+    if (!cCode) {
+      var name = idxName !== undefined ? String(row[idxName] || '').trim() : '';
+      var refUrl = idxRef !== -1 ? String(row[idxRef] || '').trim() : '';
+      if (name) parentMeta[pCode].name = name;
+      if (refUrl) parentMeta[pCode].refImg = refUrl;
+      parentMeta[pCode].parentChecked = isChecked_(row[idxCheck]);
+    } else {
+      parentMeta[pCode].children.push({
+        cCode: cCode,
+        varName: idxVar !== undefined ? String(row[idxVar] || '').trim() : '',
+        checked: isChecked_(row[idxCheck])
+      });
+    }
+  }
+
+  var rows = [];
+  Object.keys(parentMeta).forEach(function (pCode) {
+    var meta = parentMeta[pCode];
+    var checkedChildren = meta.children.filter(function (ch) { return ch.checked; });
+    var childrenToAdd = [];
+    if (checkedChildren.length > 0) childrenToAdd = checkedChildren;
+    else if (meta.parentChecked) childrenToAdd = meta.children.slice();
+    else return;
+    rows.push({
+      pCode: pCode,
+      cCode: '',
+      name: meta.name || '',
+      varName: '',
+      refImg: meta.refImg || ''
+    });
+    childrenToAdd.forEach(function (ch) {
+      rows.push({
+        pCode: pCode,
+        cCode: ch.cCode,
+        name: '',
+        varName: ch.varName || '',
+        refImg: meta.refImg || ''
+      });
+    });
+  });
+
+  if (!rows.length) {
+    return {
+      ok: false,
+      message: '出品対象の商品がありません。子SKU行に出品CKを付けるか、親行のみに出品CKを付けてください。'
+    };
+  }
+  return { ok: true, message: 'ok', rows: rows };
+}
+
+function amazonE1WriteMatrixStructure_(sheet, displayRows) {
+  var candidateLimit = AMAZON_E1_RAKUTEN_KEEP_COLS - 5 - RAKUTEN_IMAGE_COLS.length;
+  var candidateHeaders = [];
+  var i;
+  for (i = 0; i < candidateLimit; i++) candidateHeaders.push('候補' + (i + 1));
+  var header1 = ['商品情報', '', '', '', '', '▼アップロード対象 (ここに移動)']
+    .concat(new Array(19).fill(''))
+    .concat(['▼未整理・候補 (ここから左へドラッグ)'])
+    .concat(new Array(candidateLimit - 1).fill(''));
+  var header2 = ['親SKU', '子SKU', '商品名', 'バリエーション値', '参考画像']
+    .concat(RAKUTEN_IMAGE_COLS)
+    .concat(candidateHeaders);
+  var totalCols = header2.length;
+
+  sheet.clear();
+  sheet.getRange(1, 1, 1, totalCols).setValues([header1]).setFontWeight('bold').setFontColor('white');
+  sheet.getRange(1, 1, 1, 5).setBackground('#4c1130');
+  sheet.getRange(1, 6, 1, 20).setBackground('#0b5394');
+  sheet.getRange(1, 26, 1, candidateLimit).setBackground('#666666');
+  sheet.getRange(2, 1, 1, totalCols).setValues([header2]).setBackground('#d9d9d9').setFontWeight('bold');
+  sheet.setFrozenRows(2);
+  sheet.setFrozenColumns(5);
+
+  var outputRows = displayRows.map(function (row) {
+    var refFunc = '';
+    if (row.refImg) refFunc = '=IMAGE("' + row.refImg + '", 2)';
+    var emptyImg = [];
+    var j;
+    for (j = 0; j < RAKUTEN_IMAGE_COLS.length + candidateLimit; j++) emptyImg.push('');
+    return [row.pCode, row.cCode, row.name, row.varName, refFunc].concat(emptyImg);
+  });
+  if (outputRows.length) {
+    sheet.getRange(3, 1, outputRows.length, outputRows[0].length).setValues(outputRows);
+    sheet.setRowHeights(3, outputRows.length, 100);
+    sheet.setColumnWidth(5, 100);
+    sheet.setColumnWidths(6, 20, 100);
+    sheet.setColumnWidths(26, candidateLimit, 60);
+    sheet.getRange(3, 1, outputRows.length, 4).setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+    sheet.getRange(3, 6, outputRows.length, 20).setBorder(
+      true, true, true, true, true, true, '#0000ff', SpreadsheetApp.BorderStyle.SOLID_MEDIUM
+    );
+  }
+}
+
+/** @return {number} 楽天列を戻した行数 */
+function amazonE1ApplyRakutenSnapshot_(sheet, snapshot) {
+  if (!snapshot || !Object.keys(snapshot).length) return 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) return 0;
+  var keepCols = AMAZON_E1_RAKUTEN_KEEP_COLS;
+  var keys = sheet.getRange(3, 1, lastRow - 2, 2).getValues();
+  var kept = 0;
+  var i;
+  var c;
+  for (i = 0; i < keys.length; i++) {
+    var p = String(keys[i][0] || '').trim();
+    if (!p) continue;
+    var key = p + '\t' + String(keys[i][1] || '').trim();
+    var old = snapshot[key];
+    if (!old) continue;
+    var width = Math.min(keepCols, old.length);
+    if (width < 5) continue;
+    var slice = [];
+    for (c = 4; c < width; c++) slice.push([old[c] == null ? '' : old[c]]);
+    if (!slice.length) continue;
+    sheet.getRange(i + 3, 5, 1, slice.length).setValues([slice.map(function (x) { return x[0]; })]);
+    kept++;
+  }
+  return kept;
 }

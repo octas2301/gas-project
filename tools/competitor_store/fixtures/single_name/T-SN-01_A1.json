@@ -1,0 +1,30 @@
+{
+  "id": "T-SN-01",
+  "desc": "A1 存在OK KeepaJAN1 検索一致",
+  "input": {
+    "draft_name": "鍋焼うどん",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000001",
+    "hit_asin": "B000000001",
+    "keepa_jans": [
+      "4901234567890"
+    ],
+    "search_jans": [
+      "4901234567890"
+    ]
+  },
+  "expect": {
+    "pattern": "A1",
+    "single_trust": "high",
+    "jan_trust": "high",
+    "for_estimate": true,
+    "need_human": false,
+    "auto_pick_jan": false,
+    "write_single_name": true,
+    "corpus_assist_ok": false
+  }
+}

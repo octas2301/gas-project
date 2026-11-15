@@ -1,0 +1,28 @@
+{
+  "id": "T-SN-19",
+  "desc": "まとめ売り＋JAN複数でもF1・見積可",
+  "input": {
+    "draft_name": "みそ汁",
+    "sale_form": "②",
+    "set_qty": 10,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "low",
+    "row_asin": "B000000014",
+    "hit_asin": "B000000014",
+    "keepa_jans": [],
+    "search_jans": [
+      "4911111111111",
+      "4922222222222"
+    ]
+  },
+  "expect": {
+    "pattern": "F1",
+    "single_trust": "mid",
+    "jan_trust": "複数",
+    "for_estimate": true,
+    "need_human": true,
+    "auto_pick_jan": false,
+    "corpus_assist_ok": true
+  }
+}

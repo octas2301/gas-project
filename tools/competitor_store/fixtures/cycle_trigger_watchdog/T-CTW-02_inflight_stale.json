@@ -1,0 +1,1 @@
+{"id":"T-CTW-02","desc":"H1正: inflight残して選定死→35分後 inflight_stale で再武装","kind":"fire_then_watchdog","die_at":"pick","pool_cached":true,"watchdog_after_ms":2100000,"expect":{"outcome":"hard_kill","wd.hint":"inflight_stale","wd.rearmed":true,"log_has":["phase=pick_begin","hard_kill phase=pick","hint=inflight_stale"]}}

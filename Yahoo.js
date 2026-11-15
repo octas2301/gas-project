@@ -11,6 +11,7 @@ const SHEET_NAME_LOG = '▼ログ(システム用)';
 // Yahoo! API エンドポイント
 const YAHOO_AUTH_URL = "https://auth.login.yahoo.co.jp/yconnect/v2/token";
 const YAHOO_IMG_API_URL = "https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/uploadItemImage";
+const YAHOO_LIB_IMG_API_URL = "https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/uploadLibImage";
 const YAHOO_ITEM_API_URL = "https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/editItem";
 const YAHOO_STOCK_API_URL = "https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/setStock";
 const YAHOO_SUBMIT_ITEM_API_URL = "https://circus.shopping.yahooapis.jp/ShoppingWebService/V1/submitItem"; // ストアクリエイターpro 反映（1件ずつ）
@@ -21,6 +22,10 @@ const YAHOO_STORE_BASE_URL = "https://store.shopping.yahoo.co.jp";
 
 // 削除確認WebアプリのURL（完了メールの「削除用」リンクで使用。デプロイし直した場合はここを更新）
 const YAHOO_DELETE_WEBAPP_BASE_URL = "https://script.google.com/macros/s/AKfycbz8q0bMB-BAL7L0Y4MtgrWX4iDgeeOmOViQCfGcp4JHsboG5l8mmk_zUaV0saMKPhhd/exec";
+
+// 商品説明（caption）／フリースペース上書き防止（要件 YAHOO_CAPTION_TEMPLATE_LOCK）
+const YAHOO_CAPTION_RICH_LOCK_ENABLED_PROP = 'YAHOO_CAPTION_RICH_LOCK_ENABLED';
+const YAHOO_CAPTION_LOCK_COL = '▼マスタ(Yahoo説明LOCK)';
 
 // スプレッドシートまとめて削除用：マスタで「削除CK」にレ点を付けた行が削除対象
 const DELETE_CHECK_HEADER = '削除CK';
@@ -473,7 +478,7 @@ class YahooImageUploader {
   }
 
   /**
-   * 画像を1枚送信する
+   * 画像を1枚送信する（商品画像）
    */
   upload(itemCode, fileName, imageUrl) {
     if (!imageUrl || imageUrl === "undefined") return false;
@@ -539,6 +544,45 @@ class YahooImageUploader {
       console.warn(`   [NG] APIエラー: ${fileName} (${responseCode})`);
       return false;
     }
+  }
+
+  /**
+   * 追加画像（store lib）へ1枚UP。公式 uploadLibImage。
+   * @param {Blob} blob ファイル名付き Blob
+   * @param {string} [directory] 空ならAPI既定（パーツ）
+   * @return {{ok:boolean, code:number, body:string}}
+   */
+  uploadLib(blob, directory) {
+    if (!blob) return { ok: false, code: 0, body: 'no_blob' };
+    var fileName = blob.getName() || 'image.jpg';
+    var boundary = '----YahooLibBound' + Utilities.getUuid().replace(/-/g, '');
+    var meta =
+      '--' + boundary + '\r\n' +
+      'Content-Disposition: form-data; name="file"; filename="' + fileName + '"\r\n' +
+      'Content-Type: image/jpeg\r\n\r\n';
+    var dirPart = '';
+    if (directory) {
+      dirPart =
+        '\r\n--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="directory"\r\n\r\n' +
+        String(directory);
+    }
+    var body = Utilities.newBlob(meta).getBytes()
+      .concat(blob.getBytes())
+      .concat(Utilities.newBlob(dirPart + '\r\n--' + boundary + '--\r\n').getBytes());
+    var uploadUrl = YAHOO_LIB_IMG_API_URL + '?seller_id=' + encodeURIComponent(this.sellerId);
+    var response = UrlFetchApp.fetch(uploadUrl, {
+      method: 'post',
+      contentType: 'multipart/form-data; boundary=' + boundary,
+      headers: { Authorization: 'Bearer ' + this.token },
+      payload: body,
+      muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    var text = response.getContentText() || '';
+    var ok = code === 200 && /<Status>\s*OK\s*<\/Status>|<Status>OK<\/Status>|OK/i.test(text);
+    console.log('[YAHOO_LIB_IMG] upload file=' + fileName + ' http=' + code + ' ok=' + ok);
+    return { ok: ok, code: code, body: text.substring(0, 300) };
   }
 }
 
@@ -708,9 +752,67 @@ class YahooCSVGenerator {
 // 4. データ構築クラス (Builder)
 // ==========================================
 
-/** マスタ「出品CK」と generateRakutenCSV 等と同様に真とみなす（TRUE 文字列含む） */
+/** 出品CK。狭い判定は masterCheckboxIsTrue_（1・✓ に広げない） */
 function yahooMasterCheckboxIsTrue_(cell) {
+  if (typeof masterCheckboxIsTrue_ === 'function') return masterCheckboxIsTrue_(cell);
   return cell === true || String(cell).toUpperCase() === 'TRUE';
+}
+
+/** Script Property YAHOO_CAPTION_RICH_LOCK_ENABLED（未設定=false） */
+function yahooCaptionRichLockEnabled_() {
+  if (typeof getBoolScriptProperty_ === 'function') {
+    return getBoolScriptProperty_(YAHOO_CAPTION_RICH_LOCK_ENABLED_PROP, false);
+  }
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(YAHOO_CAPTION_RICH_LOCK_ENABLED_PROP);
+    if (v === undefined || v === null || String(v).trim() === '') return false;
+    var s = String(v).trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'yes' || s === 'on';
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 装飾欄をテンプレHTMLで上書きするか（Property扉）。
+ * Yahoo editItem は省略項目をデフォルト上書きするため「送らないLOCK」は不可。
+ * ON時はテンプレ解決できる商品に caption/FS を生成HTMLで同送する（案A'）。
+ * @param {Object} product
+ * @return {boolean}
+ */
+function yahooCaptionRichLockIsActive_(product) {
+  if (!yahooCaptionRichLockEnabled_()) return false;
+  return true;
+}
+
+/**
+ * マッピング上の装飾欄か（JOIN短文の代わりにテンプレを載せる対象）。
+ * @param {string} apiParam _toApiParamName 後
+ * @param {string} mappingField マッピング1行目のキー
+ * @return {boolean}
+ */
+function yahooCaptionRichLockShouldOmitApiParam_(apiParam, mappingField) {
+  var p = String(apiParam || '').toLowerCase().replace(/-/g, '_');
+  var f = String(mappingField || '');
+  if (p === 'caption') return true;
+  if (p === 'additional1' || p === 'additional_1') return true;
+  if (p === 'additional2' || p === 'additional_2') return true;
+  if (p === 'sp_additional' || p === 'additional_sp' || p.indexOf('sp_additional') === 0) return true;
+  if (/スマートフォン用フリースペース|スマホ用フリースペース/.test(f)) return true;
+  if (/フリースペース\s*[12１２]|フリースペース[12１２]/.test(f)) return true;
+  return false;
+}
+
+/**
+ * apiParam → テンプレHTMLのキー。対象外は null。
+ */
+function yahooCaptionRichHtmlKeyForApiParam_(apiParam) {
+  var p = String(apiParam || '').toLowerCase().replace(/-/g, '_');
+  if (p === 'caption') return 'caption';
+  if (p === 'additional1' || p === 'additional_1') return 'additional1';
+  if (p === 'additional2' || p === 'additional_2') return 'additional2';
+  if (p === 'sp_additional' || p === 'additional_sp' || p.indexOf('sp_additional') === 0) return 'sp_additional';
+  return null;
 }
 
 /** ▼商品マスタ(人間作業用) のヘッダー行を 0-based で返す。見つからなければ -1 */
@@ -836,7 +938,7 @@ class YahooDataBuilder {
     const mergedData = this._mergeParentChild(parentRow, childRow);
 
     // 【修正】特定項目は強制的に親の値を適用（子行の入力を無視）。商品名は商品名Yahoo!/商品名amazon を優先（要件 TITLE_WORKAREA_DROPDOWN_AND_MALL_NAMES_REQUIREMENTS.md）
-    const forceParentCols = ['商品名Yahoo!', '商品名amazon', '商品名', 'キャッチコピー', 'Yahoo!キャッチコピー\nAIから取得', '商品説明の箇条書き①', '商品説明の箇条書き②', '商品説明の箇条書き③', '商品説明の箇条書き④', '商品説明の箇条書き⑤'];
+    const forceParentCols = ['商品名Yahoo!', '商品名amazon', '商品名', 'キャッチコピー', 'Yahoo!キャッチコピー\nAIから取得', '商品説明の箇条書き①', '商品説明の箇条書き②', '商品説明の箇条書き③', '商品説明の箇条書き④', '商品説明の箇条書き⑤', YAHOO_CAPTION_LOCK_COL, '▼マスタ(Yahoo説明テンプレID)', '▼マスタ(Yahoo説明画像1)', '▼マスタ(Yahoo説明画像2)', '▼マスタ(Yahoo説明画像3)', '楽天サブ画像1', '楽天サブ画像2', '楽天サブ画像3'];
     forceParentCols.forEach(col => {
       const idx = this.headerMap[col];
       if (idx !== undefined) mergedData[col] = String(parentRow[idx]).trim();
@@ -852,6 +954,17 @@ class YahooDataBuilder {
       return ch;
     });
     const safeGroupingId = half.replace(/[^a-zA-Z0-9-]/g, '') || raw.replace(/[^a-zA-Z0-9-]/g, '');
+    // Yahoo説明P5: 同一親の袋数→子SKU（セットコーナー自動埋込）
+    const captionSiblings = [];
+    const colReq = this.headerMap['依頼日'];
+    allChildren.forEach(sibling => {
+      const sibSku = String(sibling[this.headerMap['子SKU']] || '').trim();
+      if (!sibSku) return;
+      const sibVar = this.headerMap['バリエーション値'] !== undefined
+        ? String(sibling[this.headerMap['バリエーション値']] || '').trim() : '';
+      const sibReq = colReq !== undefined ? String(sibling[colReq] || '').trim() : '';
+      captionSiblings.push({ code: sibSku, variation: sibVar, requestName: sibReq });
+    });
     return {
       code: yahooCode,
       name: yahooName,
@@ -861,7 +974,8 @@ class YahooDataBuilder {
       originalRow: mergedData, // 【修正】マージ済みデータを使用
       parentRow: parentRow,
       images: imageUrls,
-      imageFiles: imageFiles
+      imageFiles: imageFiles,
+      captionSiblings: captionSiblings
     };
   }
 
@@ -943,10 +1057,10 @@ class YahooDataBuilder {
         if (isCheck) g._lastParentChecked = row;
         g.parent = g._lastParentChecked || g._lastParentAny;
       } else if (pSku && cSku && currentParent && pSku === currentParentSku) {
-        // 子行: レ点が付いている行だけ出品対象に追加
+        // 兄弟はレ点なしも含む（Yahoo説明のセットコーナー用）。出品対象はレ点付きのみ。
+        groups[pSku].siblings.push(row);
         if (isCheck) {
           groups[pSku].children.push(row);
-          groups[pSku].siblings.push(row);
         }
       }
     });
@@ -1295,6 +1409,18 @@ class YahooApiClient {
   updateItem(product) {
     this._logLeadTimeMappingKeys();
     const payload = {};
+    // 案A': Property ON かつテンプレ解決可 → caption/FS に生成HTMLを同送（省略禁止＝Yahoo公式）
+    var richInject = null;
+    var richTmplId = '';
+    if (yahooCaptionRichLockIsActive_(product) && typeof yahooCaptionRichBuildHtml_ === 'function' &&
+        typeof yahooCaptionRichReadVarsFromProduct_ === 'function') {
+      var richVars = yahooCaptionRichReadVarsFromProduct_(product);
+      richTmplId = richVars && richVars.templateId ? String(richVars.templateId) : '';
+      if (richTmplId) {
+        richInject = yahooCaptionRichBuildHtml_(richTmplId, richVars);
+      }
+    }
+    const injectedKeys = [];
     
     // 出力フラグがTRUE かつ ファイル区分が'data'の項目を動的に追加
     for (const [field, config] of Object.entries(this.mapping)) {
@@ -1302,6 +1428,10 @@ class YahooApiClient {
       if (config.fileType !== 'data') continue;
       
       const apiParam = this._toApiParamName(field);
+      // テンプレ注入対象のマッピング行は JOIN 等をスキップ（後で html を載せる）
+      if (richInject && yahooCaptionRichLockShouldOmitApiParam_(apiParam, field)) {
+        continue;
+      }
       let value = this._getValue(field, product);
       
       // 特殊処理が必要な項目
@@ -1353,6 +1483,21 @@ class YahooApiClient {
       if (val !== "" && val !== null && val !== undefined) {
         payload[apiParam] = val;
       }
+    }
+
+    // テンプレHTMLを必ず同送（マッピングに無い欄も含む。省略するとYahooがデフォルト上書き）
+    const itemCodeForLog = payload.item_code || product.code || '';
+    if (richInject) {
+      payload.caption = richInject.caption;
+      payload.additional1 = richInject.additional1;
+      payload.additional2 = richInject.additional2;
+      payload.sp_additional = richInject.sp_additional;
+      injectedKeys.push('caption', 'additional1', 'additional2', 'sp_additional');
+      console.log('[YAHOO_CAPTION_RICH] inject item_code=' + itemCodeForLog +
+        ' tmpl=' + richTmplId + ' keys=' + injectedKeys.join(','));
+    } else if (yahooCaptionRichLockIsActive_(product)) {
+      console.log('[YAHOO_CAPTION_RICH] no_template item_code=' + itemCodeForLog +
+        ' (Property ONだがテンプレ未解決→マッピング従来送信)');
     }
     
     // デバッグログ: 送信するペイロードの内容
@@ -1623,16 +1768,35 @@ class YahooApiClient {
       muteHttpExceptions: true
     };
 
-    const res = UrlFetchApp.fetch(endpoint, options);
-    const code = res.getResponseCode();
-    const body = res.getContentText();
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      let res;
+      try {
+        res = UrlFetchApp.fetch(endpoint, options);
+      } catch (e) {
+        const message = e && e.message ? String(e.message) : String(e);
+        const transient = /使用できないアドレス|address.*unavailable|timed?\s*out|timeout|temporar|service.*unavailable/i.test(message);
+        if (!transient || attempt >= maxAttempts) throw e;
+        console.warn(`[Yahoo API Retry] 通信例外 endpoint=${endpoint} attempt=${attempt}/${maxAttempts} error=${message}`);
+        Utilities.sleep(1000 * attempt);
+        continue;
+      }
 
-    if (code === 200) {
-      return true;
-    } else {
+      const code = res.getResponseCode();
+      const body = res.getContentText();
+      if (code === 200) return true;
+
+      const transientHttp = code === 429 || code >= 500;
+      if (transientHttp && attempt < maxAttempts) {
+        console.warn(`[Yahoo API Retry] HTTP ${code} endpoint=${endpoint} attempt=${attempt}/${maxAttempts} body=${body.substring(0, 300)}`);
+        Utilities.sleep(1000 * attempt);
+        continue;
+      }
+
       console.warn(`API Error (${code}): ${body}`);
-      throw new Error(`API Error: ${body}`);
+      throw new Error(`API Error (${code}): ${body}`);
     }
+    return false;
   }
 
   /**

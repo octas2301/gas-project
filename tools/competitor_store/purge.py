@@ -28,6 +28,16 @@ def parse_acquired(raw) -> datetime | None:
             return datetime.fromtimestamp(n, tz=timezone.utc)
     except (TypeError, ValueError):
         pass
+    # ISO: ...Z / ...+09:00 / naive
+    s_iso = s.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(s_iso)
+        if dt.tzinfo is None:
+            # 旧naiveはUTC扱い、新仕様の日付のみは東京日付としてUTC正午相当にしない（日付比較用）
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        pass
     s2 = s.replace("Z", "")
     for fmt, size in (("%Y-%m-%dT%H:%M:%S", 19), ("%Y-%m-%d", 10)):
         try:

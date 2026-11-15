@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-25",
+  "desc": "小中0で未調査が残るなら店より先に実態AI",
+  "kind": "next",
+  "input": {
+    "maker_sum": [{"メーカー": "大社", "実態": "製造メーカー", "catalog_estimate": 400}],
+    "catalog_estimate": {"大社": 400},
+    "unchecked_sellers": 0,
+    "auto_ck_candidates": 8,
+    "jitta_pending": 40,
+    "jitta_backlog_gate": 30,
+    "k": 3
+  },
+  "expect": {"action": "jitta_resolve", "detail_has": "sm_empty jitta_pending"}
+}

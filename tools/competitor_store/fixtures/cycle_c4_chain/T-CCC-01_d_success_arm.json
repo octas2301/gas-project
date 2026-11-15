@@ -1,0 +1,22 @@
+{
+  "id": "T-CCC-01",
+  "desc": "完走→D成功→次社arm",
+  "parent": "石原水産",
+  "wash_complete": true,
+  "survey_day": "2026-08-23",
+  "maker_sum": [
+    {"メーカー": "石原水産", "実態": "製造メーカー", "セラーヒット": 1, "洗い状態": "Keepa中", "調査CK": true},
+    {"メーカー": "永谷園", "実態": "製造メーカー", "セラーヒット": 3},
+    {"メーカー": "味の素", "実態": "製造メーカー", "セラーヒット": 2, "最終調査日": "2026-08-23"}
+  ],
+  "d1": {"state": "DONE", "pass": 5, "new": 2},
+  "d2": {"state": "DONE", "quote": 3, "leftover": 0},
+  "catalog_estimate": {"永谷園": 120, "石原水産": 80},
+  "expect": {
+    "chain_state": "armed",
+    "arm_next": true,
+    "next_maker": "永谷園",
+    "d_ok": true,
+    "summary_contains": "arm=永谷園"
+  }
+}

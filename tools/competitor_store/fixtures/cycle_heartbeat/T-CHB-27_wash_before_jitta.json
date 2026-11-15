@@ -1,0 +1,20 @@
+{
+  "id": "T-CHB-27",
+  "desc": "洗い後の補充印なら実態AIを店より先",
+  "kind": "next",
+  "input": {
+    "maker_sum": [
+      {"メーカー": "小社", "実態": "製造メーカー", "セラーヒット": 2, "catalog_estimate": 20},
+      {"メーカー": "未知Y", "実態": "未調査", "セラーヒット": 9}
+    ],
+    "catalog_estimate": {"小社": 20},
+    "unchecked_sellers": 3,
+    "auto_ck_candidates": 5,
+    "jitta_pending": 50,
+    "k": 3,
+    "skip_enum_once": true,
+    "restock_after_wash": true,
+    "token_room": true
+  },
+  "expect": {"action": "jitta_resolve", "detail_has": "restock_after_wash jitta_pending"}
+}

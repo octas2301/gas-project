@@ -1,0 +1,1 @@
+{"id":"T-CTW-10","desc":"H8: fire直後hard_kill（expect未クリア）は inflight で番犬回復","kind":"fire_then_watchdog","die_at":"fire","watchdog_after_ms":2100000,"expect":{"outcome":"hard_kill","wd.hint":"inflight_stale","wd.rearmed":true}}

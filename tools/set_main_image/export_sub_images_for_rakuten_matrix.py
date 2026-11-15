@@ -4,6 +4,7 @@
 目視（auto-export 既定）:
   品番キー（JAN→親SKU→代表1子→compose名）あたり最大10枚。全セット子への複製はしない。
   `{品番キー}_{pattern}_subN.jpg`（既定 pick=ab）
+  **既存ファイルは上書きしない**（同名がある場合は `__{composeDir名}` を付けて別名保存）。
 
 本番投入（明示 `--to-checked-children`）:
   出品CK付き子SKUへだけ複製。出品CK0件時の全セット子フォールバックは禁止。
@@ -15,6 +16,7 @@ import json
 import logging
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -26,6 +28,29 @@ LOG = logging.getLogger("export_sub_rakuten")
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 PROVIDER_PREFERENCE = ("openai", "gemini", "fal")
 REVIEW_MAX_SUBS = 10
+
+
+def resolve_non_overwrite_dest(dest: Path, *, tag: str = "") -> Path:
+    """
+    既存があれば上書きせず別名にする。
+    tag 例: compose フォルダ名 `4906283045119_20260825_052428`
+    """
+    dest = Path(dest)
+    if not dest.exists():
+        return dest
+    raw = (tag or datetime.now().strftime("%Y%m%d_%H%M%S")).strip()
+    safe = re.sub(r"[^\w\-]+", "_", raw, flags=re.UNICODE).strip("_")[:96] or "dup"
+    candidate = dest.with_name(f"{dest.stem}__{safe}{dest.suffix}")
+    if not candidate.exists():
+        LOG.info("no-overwrite: %s exists -> %s", dest.name, candidate.name)
+        return candidate
+    n = 2
+    while True:
+        c2 = dest.with_name(f"{dest.stem}__{safe}_{n}{dest.suffix}")
+        if not c2.exists():
+            LOG.info("no-overwrite: %s exists -> %s", dest.name, c2.name)
+            return c2
+        n += 1
 
 
 def _slot_key(path: Path) -> Tuple[int, int, str]:
@@ -306,7 +331,7 @@ def export_subs(
     report = []
     for i, src in enumerate(files[: max(1, int(max_subs))], start=1):
         dest_name = sub_filename(child_sku, i)
-        dest = out_dir / dest_name
+        dest = resolve_non_overwrite_dest(out_dir / dest_name, tag=src_dir.name)
         entry = {
             "src": str(src),
             "dest": str(dest),
@@ -314,10 +339,10 @@ def export_subs(
             "childSku": child_sku,
         }
         if dry_run:
-            LOG.info("DRY %s -> %s", src.name, dest_name)
+            LOG.info("DRY %s -> %s", src.name, dest.name)
         else:
             shutil.copy2(src, dest)
-            LOG.info("copied %s -> %s", src.name, dest_name)
+            LOG.info("copied %s -> %s", src.name, dest.name)
         report.append(entry)
     if len(files) > max_subs:
         LOG.warning(
@@ -370,7 +395,7 @@ def export_from_compose(
             i,
             pattern=job.get("themeSlug") or job.get("themeName") or "",
         )
-        dest = out_dir / dest_name
+        dest = resolve_non_overwrite_dest(out_dir / dest_name, tag=compose_dir.name)
         entry = {
             "src": str(src),
             "dest": str(dest),
@@ -389,7 +414,7 @@ def export_from_compose(
                 slot,
                 job.get("phaseOrder"),
                 src.name,
-                dest_name,
+                dest.name,
             )
         else:
             shutil.copy2(src, dest)
@@ -398,7 +423,7 @@ def export_from_compose(
                 slot,
                 job.get("phaseOrder"),
                 src.name,
-                dest_name,
+                dest.name,
             )
         report.append(entry)
 

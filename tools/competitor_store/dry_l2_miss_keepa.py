@@ -18,6 +18,7 @@ from apply_keepa_full import (
     append_log,
     append_rows,
     as_dicts,
+    prepend_rows,
     fetch_stats90,
     read_all,
     sheets_service,
@@ -150,7 +151,7 @@ def main() -> int:
                 return 3
             recs.append(rec)
         if recs:
-            append_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, live_h, recs)
+            prepend_rows(svc, COMPETITOR_SS, SHEET_KEEPA_FULL, live_h, recs)
             appended += len(recs)
         try:
             left_n = int(left)

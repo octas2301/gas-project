@@ -1,0 +1,19 @@
+{
+  "maker": "ＫＥＹＲＯＯＭ",
+  "summary": {},
+  "master": {},
+  "expect": {
+    "skipped": false,
+    "jitta": "要確認",
+    "entry_preferred": "要確認",
+    "auto_confirm": false,
+    "gyoshu": "不明",
+    "amazon_root_categories": "",
+    "amazon_browse_shelves": "",
+    "confidence": "low",
+    "業種": "不明",
+    "Amazonルートカテゴリ": "",
+    "AmazonBrowse棚": "",
+    "実態信頼度": "low"
+  }
+}

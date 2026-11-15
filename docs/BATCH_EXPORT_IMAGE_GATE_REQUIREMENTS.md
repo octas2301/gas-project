@@ -4,12 +4,16 @@
 
 一括出品（`runBatchExport` / `showBatchExportModal`）実行時、**デフォルト（Strict）**では次を満たすまで楽天 CSV 生成・Yahoo 出品に進まない。
 
+**関連（コード済・未設定OFF）**: フォルダ内枚数上限時の **R-Cabinet フォルダ自動切替**は [org/D_MENU_RAKUTEN_CABINET_AUTO_FOLDER_REQUIREMENTS.md](org/D_MENU_RAKUTEN_CABINET_AUTO_FOLDER_REQUIREMENTS.md)（ルート直下・同じ D 続き・停止時原因ログ。`RAKUTEN_CABINET_AUTO_FOLDER_ENABLED=true` でON）。
+
 1. **画像アップロード**（`executeRenameAndUploadFromMatrix` 相当）を実行し、R-Cabinet の **API 失敗件数（errorCount）が 0**。マトリクスシート欠如・データなし・マスタヘッダー不正のときも Strict では停止する（「画像アップロードをスキップ」で緩和）。
 2. **出品 CK** 付きの全行で **楽天メイン画像1** が空でない（子 SKU 行は同一親 SKU の**親行**のメイン画像でフォールバック。`generateRakutenCSV` の前提に合わせる）。
 
 モーダルで次を選べる。
 
 - **画像アップロードをスキップ** … マスタにパスが既にあるとき。アップロード工程は行わないが、**Strict ではメイン画像1のゲートは継続**。
+  - **初期レ点（2026-10-27）**: 出品CK対象で **楽天メイン画像1が揃っている**とき、ダイアログ表示時からレ点 ON（`validateCheckedRowsHaveRakutenMainImage1_` が ok かつ checkedCount>0）。未設定が1件でもあれば OFF。
+  - **再送ルール**: 画像を再送して付け直す場合は、**人間がレ点を外す**。機械は外さない。
 - **ベストエフォート** … 上記の欠陥があっても楽天・Yahoo を続行。内容は「一括出品ログ」に記録。
 
 ## Strict（既定・チェックオフ時）
@@ -93,3 +97,4 @@
 - 2026-05-02: 初版（実装と同期）
 - 2026-05-02: R-Cabinet 画像サイズ対策・列番号マスタ自動更新・経緯/判断を追記
 - 2026-05-06: R-Cabinet **目安上限 1,900,000 バイト**、**アップロード直前 JPEG 一本化**、サムネ採用は **JPEG 化後バイト**で判定（Capacity 実例と対策の経緯を本節に追記）
+- 2026-10-27: Dモーダル「画像スキップ」初期レ点＝出品CKの楽天メイン画像1そろい時ON。再送時は人間が外す

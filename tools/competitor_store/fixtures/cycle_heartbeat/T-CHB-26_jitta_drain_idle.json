@@ -1,0 +1,15 @@
+{
+  "id": "T-CHB-26",
+  "desc": "店も大も無いとき未調査があれば drain jitta（idle にしない）",
+  "kind": "next",
+  "input": {
+    "maker_sum": [{"メーカー": "未知Z", "実態": "未調査", "セラーヒット": 1}],
+    "unchecked_sellers": 0,
+    "auto_ck_candidates": 0,
+    "untagged_gate_asins": 0,
+    "jitta_pending": 1,
+    "shop_rounds_active": false,
+    "k": 3
+  },
+  "expect": {"action": "jitta_resolve", "detail_has": "jitta_pending"}
+}

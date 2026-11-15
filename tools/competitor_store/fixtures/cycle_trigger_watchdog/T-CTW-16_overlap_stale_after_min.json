@@ -1,0 +1,11 @@
+{
+  "id": "T-CTW-16",
+  "desc": "overlap stale寄せ: age6分→afterMin=30（35-6+1, 下限8）",
+  "kind": "overlap_stale_min",
+  "inflight_age_ms": 360000,
+  "stale_aware": true,
+  "expect": {
+    "after_min": 30,
+    "stale_aware": true
+  }
+}

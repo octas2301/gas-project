@@ -1,0 +1,1 @@
+{"id":"T-HBL-14","desc":"洗い途中スライスは洗い時計を残す","steps":[{"action":"hb_wash_incomplete","now_ms":1000}],"expect":{"alive":true,"reason":"wash_trigger"}}

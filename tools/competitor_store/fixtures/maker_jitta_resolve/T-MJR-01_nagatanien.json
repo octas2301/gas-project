@@ -1,0 +1,20 @@
+{
+  "maker": "永谷園",
+  "summary": {},
+  "master": {},
+  "expect": {
+    "skipped": false,
+    "jitta": "製造メーカー",
+    "entry_preferred": "メーカー",
+    "auto_confirm": true,
+    "gyoshu": "即席食品・中食（食品製造）",
+    "amazon_root_categories": "食品・飲料・お酒",
+    "amazon_browse_shelves": "お茶漬け・ふりかけ|即席みそ汁|惣菜・食材・調味料",
+    "confidence": "high",
+    "業種": "即席食品・中食（食品製造）",
+    "Amazonルートカテゴリ": "食品・飲料・お酒",
+    "AmazonBrowse棚": "お茶漬け・ふりかけ|即席みそ汁|惣菜・食材・調味料",
+    "実態信頼度": "high",
+    "evidence_contains": ["nagatanien.co.jp/company/profile.html"]
+  }
+}

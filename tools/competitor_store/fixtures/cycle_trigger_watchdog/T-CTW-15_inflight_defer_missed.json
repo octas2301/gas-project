@@ -1,0 +1,13 @@
+{
+  "id": "T-CTW-15",
+  "desc": "ckpt22分＋overlap→誤 missed なし（短縮無効）",
+  "kind": "ckpt_overlap_missed",
+  "ckpt_no_shorten": true,
+  "defer_inflight": true,
+  "expect": {
+    "ckpt_after_min": 22,
+    "wait_shortened": false,
+    "overlap.overlap_skip": true,
+    "trigger_missed_logged": false
+  }
+}

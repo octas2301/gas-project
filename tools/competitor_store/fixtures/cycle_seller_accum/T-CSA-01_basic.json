@@ -1,0 +1,57 @@
+{
+  "id": "T-CSA-01",
+  "desc": "基本: 門通過3 ASIN → BB+オファー和集合で新規3店。調査CK OFF",
+  "sellers_before": [
+    {
+      "sellerId": "AYEXIST00001",
+      "店名": "既存店",
+      "調査CK": true,
+      "採取元": "manual"
+    }
+  ],
+  "cand": [
+    { "ASIN": "B0CSA00001", "門結果": "通過" },
+    { "ASIN": "B0CSA00002", "門結果": "通過" },
+    { "ASIN": "B0CSA00003", "門結果": "通過" },
+    { "ASIN": "B0CSA00099", "門結果": "落ち" }
+  ],
+  "keepa_full": [
+    { "ASIN": "B0CSA00001", "BuyBoxセラー": "AYNEWBB00001" },
+    { "ASIN": "B0CSA00002", "BuyBoxセラー": "AYNEWBB00002" },
+    { "ASIN": "B0CSA00003", "BuyBoxセラー": "AYNEWBB00003" }
+  ],
+  "side_effect": { "cand_rows": 12, "keepa_full_rows": 80 },
+  "run": {
+    "cap": 100,
+    "offers_by_asin": {
+      "B0CSA00001": ["AYNEWOF00001"],
+      "B0CSA00002": ["AYNEWOF00002"],
+      "B0CSA00003": ["AYNEWOF00003"]
+    }
+  },
+  "expect": {
+    "new_seller_ids": [
+      "AYNEWBB00001",
+      "AYNEWOF00001",
+      "AYNEWBB00002",
+      "AYNEWOF00002",
+      "AYNEWBB00003",
+      "AYNEWOF00003"
+    ],
+    "seller_row_delta": 6,
+    "stopped": "ok",
+    "after_asin": "",
+    "api_calls": 3,
+    "keepa_get": 0,
+    "marked_asins": ["B0CSA00001", "B0CSA00002", "B0CSA00003"],
+    "remain_asin": 0,
+    "new_rows": {
+      "AYNEWBB00001": {
+        "調査CK": false,
+        "採取元": "bb+spapi_new",
+        "メモ_contains": "C0貯め"
+      }
+    },
+    "side_effect_unchanged": true
+  }
+}

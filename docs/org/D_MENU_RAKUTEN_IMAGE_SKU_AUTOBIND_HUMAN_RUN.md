@@ -2,16 +2,18 @@
 
 **状態**: **実装済（要 clasp push → 実機検収）**  
 **承認**: [LV4_RAKUTEN_IMAGE_SKU_AUTOBIND_APPROVAL.md](LV4_RAKUTEN_IMAGE_SKU_AUTOBIND_APPROVAL.md)  
-**要件**: [D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md](D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md)  
+**要件**: [D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md](D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_REQUIREMENTS.md)／[D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md](D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md)  
 **Cコース**: [D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md](D_MENU_C_IMAGE_COURSE_HUMAN_RUN.md)
 
 ---
 
 ## 0. 前提
 
-- マスタにセット数違いの**子SKU行**があり、総個数（またはセット数）列が埋まっている
-- 生成は **`{子SKU}_rakuten.jpg`**（MAIN）／**`{子SKU}_subN.jpg`**（サブ）
+- マスタにセット数違いの**子SKU行**があり、`A.セット商品数`（またはバリエーション名の数字）が埋まっている
+- 生成は **`{子SKU}_rakuten.jpg`**（MAIN）／**`{子SKU}_{theme}_subN.jpg`**（サブ・**親あたり1セット**）
 - 置き場: 楽天 Drive ソース（`DRIVE_IMAGE_SOURCE_FOLDER_ID`＝未整理画像フォルダ）直下、または作業後にマトリクスが読む位置
+- **レイアウト拡張（既定ON）**: メイン2〜10＝他セット昇順、サブ＝親のみ投入→全子へ**上書き**共有、親行＝最少セット子。戻し `RAKUTEN_MATRIX_LAYOUT_EXPAND_ENABLED=false`
+- **混在／テーマ別の「採用分を出口へ」**: JAN名や全子複製はしない。親1セット（代表子SKU名）だけ出す。全子へ同じ絵を置くと未整理・候補へ溢れる
 
 ---
 
@@ -69,7 +71,9 @@ python export_sub_images_for_rakuten_matrix.py --child-sku "子SKU" --src-dir "�
 - [ ] セット数違いの子が2つ以上で、各 `{子SKU}_rakuten.jpg` が正しい行のメイン1
 - [ ] 既存メインあり行は非上書き
 - [ ] `{子SKU}_subN.jpg` → サブN
-- [ ] Property false でファイル名自動が止まる
+- [ ] メイン2〜10に他セットMAIN（昇順）が入る
+- [ ] 全子＋親のサブが同一／親＝最少セット子と同じメイン・サブ
+- [ ] Property false でファイル名自動／レイアウト拡張が止まる
 - [ ] アップ後マスタ URL・Amazon ε 非回帰
 
 ---
@@ -78,4 +82,6 @@ python export_sub_images_for_rakuten_matrix.py --child-sku "子SKU" --src-dir "�
 
 | 日付 | 内容 |
 |------|------|
+| 2026-10-26 | 出口は親1セット（子SKU名）。JAN／全子複製をやめる（枠外候補対策）。clasp不要 |
+| 2026-09-05 | レイアウト拡張 L1〜L3（[LAYOUT](D_MENU_RAKUTEN_MATRIX_LAYOUT_REQUIREMENTS.md)） |
 | 2026-08-09 | 初版。 |

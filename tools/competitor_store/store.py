@@ -10,6 +10,7 @@ from schema import (
     KEEPA_FULL_HEADERS,
     KEEPA_SNAP_HEADERS,
     MAKER_HEADERS,
+    MAKER_SUM_HEADERS,
     META_HEADERS,
     SELLER_HEADERS,
     SHEET_FIELD_MAP,
@@ -17,6 +18,7 @@ from schema import (
     SHEET_KEEPA,
     SHEET_KEEPA_FULL,
     SHEET_MAKER,
+    SHEET_MAKER_SUM,
     SHEET_META,
     SHEET_SELLER,
 )
@@ -40,6 +42,7 @@ class LocalStore:
             SHEET_KEEPA_FULL: KEEPA_FULL_HEADERS,
             SHEET_META: META_HEADERS,
             SHEET_MAKER: MAKER_HEADERS,
+            SHEET_MAKER_SUM: MAKER_SUM_HEADERS,
             SHEET_SELLER: SELLER_HEADERS,
         }
         for name, headers in specs.items():
@@ -79,6 +82,13 @@ class LocalStore:
         headers = self.headers(name)
         rows = self.rows(name)
         rows.append({h: rec.get(h, "") for h in headers})
+        self.replace(name, headers, rows)
+
+    def prepend(self, name: str, rec: dict) -> None:
+        """ヘッダ直下（CSV先頭行）へ挿入。Keepaフル／モールヒットの最新=上。"""
+        headers = self.headers(name)
+        rows = self.rows(name)
+        rows.insert(0, {h: rec.get(h, "") for h in headers})
         self.replace(name, headers, rows)
 
     def row_count(self, name: str) -> int:

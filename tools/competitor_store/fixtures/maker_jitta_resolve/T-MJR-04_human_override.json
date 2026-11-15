@@ -1,0 +1,9 @@
+{
+  "maker": "永谷園",
+  "summary": { "実態": "製造メーカー", "実態信頼度": "high" },
+  "master": {},
+  "expect": {
+    "skipped": true,
+    "jitta": "製造メーカー"
+  }
+}

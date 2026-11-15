@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # Tuple: prefer score
 
 LOG = logging.getLogger("set_main_image.paths")
 
@@ -52,6 +52,20 @@ ASPECT_LABEL_JA = {
 # 人間が01直下で付ける指定タグ（ファイル名に含める）
 TAG_HERO = "ヒーロー"
 TAG_UNIT = "単体"
+TAG_MIX = "ミックス"
+
+
+def _sku_token_in_name(name: str, sku: str) -> bool:
+    """
+    親SKUがファイル名に区切り付きで含まれるか。
+    …5317-oya が …5317-oya2_単体 に食い込まないようにする。
+    """
+    import re
+
+    want = (sku or "").strip().lower()
+    if not want:
+        return False
+    return re.search(re.escape(want) + r"(?:[_./\s-]|$)", name.lower()) is not None
 
 
 @dataclass
@@ -131,9 +145,41 @@ def resolve_amazon_base(work_root: Path, parent_sku: str, explicit: Optional[Pat
 
 def _strip_role_tags(stem: str) -> str:
     s = stem
-    for tag in (TAG_HERO, TAG_UNIT):
+    for tag in (TAG_HERO, TAG_UNIT, TAG_MIX):
         s = s.replace(tag, "")
     return s.strip(" _-\t")
+
+
+def resolve_amazon_mix_base(
+    work_root: Path,
+    parent_sku: str = "",
+    explicit: Optional[Path] = None,
+) -> Path:
+    """
+    ミックス親の正本（ファイル名に『ミックス』）。01直下→処理済み。
+    1セット中央最大化／5セット以上の単品ロジック用。
+    """
+    if explicit and explicit.is_file():
+        return explicit
+    folder = work_root / SUB_AMAZON
+    done = folder / SUB_RAKUTEN_DONE
+    imgs = _list_images(folder) + _list_images(done)
+    mixes = [p for p in imgs if TAG_MIX in p.stem]
+    want = (parent_sku or "").strip().lower()
+    hits = [p for p in mixes if _sku_token_in_name(p.name, want)] if want else []
+    if not hits:
+        raise FileNotFoundError(
+            f"ミックス正本が見つかりません parent_sku={parent_sku!r} folder={folder}"
+        )
+
+    def _score(p: Path) -> Tuple[int, int, float]:
+        name = p.name.lower()
+        in_root = 1 if p.parent.resolve() == folder.resolve() else 0
+        return (1 if name.startswith(want) else 0, in_root, -p.stat().st_mtime)
+
+    chosen = sorted(hits, key=_score, reverse=True)[0]
+    LOG.info("amazon mix canon unit=%s", chosen.name)
+    return chosen
 
 
 def resolve_amazon_product_bases(
@@ -155,7 +201,9 @@ def resolve_amazon_product_bases(
         )
 
     folder = work_root / SUB_AMAZON
-    imgs = _list_images(folder)
+    done = folder / SUB_RAKUTEN_DONE  # 01/処理済み
+    # 直下優先、続いて処理済み（ぶり等は処理済みのみのことがある）
+    imgs = _list_images(folder) + _list_images(done)
     if not imgs:
         raise FileNotFoundError(f"画像がありません: {folder}")
 
@@ -167,14 +215,25 @@ def resolve_amazon_product_bases(
             return None
         want = (parent_sku or "").strip().lower()
         if want:
-            for p in cands:
-                if want in p.name.lower():
-                    return p
+            # 区切り付きSKU一致（…oya が …oya2 に食い込まない）
+            hits = [p for p in cands if _sku_token_in_name(p.name, want)]
+            if hits:
+                def _score(p: Path) -> Tuple[int, int, float]:
+                    name = p.name.lower()
+                    in_root = 1 if p.parent.resolve() == folder.resolve() else 0
+                    return (1 if name.startswith(want) else 0, in_root, -p.stat().st_mtime)
+
+                return sorted(hits, key=_score, reverse=True)[0]
+            # SKU指定時に無ければ最新フォールバックしない（ミックス誤種の原因）
+            return None
         return sorted(cands, key=lambda x: x.stat().st_mtime, reverse=True)[0]
 
     if units:
         u = _prefer(units)
-        assert u is not None
+        if u is None:
+            raise FileNotFoundError(
+                f"単体が見つかりません parent_sku={parent_sku!r} folder={folder}"
+            )
         LOG.info(
             "amazon bases UNIT_ONLY (hero素材中止) unit=%s",
             u.name,
@@ -188,7 +247,10 @@ def resolve_amazon_product_bases(
 
     if heroes:
         h = _prefer(heroes)
-        assert h is not None
+        if h is None:
+            raise FileNotFoundError(
+                f"ヒーローも単体もSKU一致なし parent_sku={parent_sku!r}"
+            )
         LOG.warning(
             "単体タグ無し — フォールバックでヒーローを使用: %s",
             h.name,
@@ -202,8 +264,39 @@ def resolve_amazon_product_bases(
     return AmazonProductBases(hero=one, unit=one, mode="unit_only", pair_key="")
 
 
-def resolve_rakuten_base(work_root: Path, parent_sku: str, explicit: Optional[Path] = None) -> Path:
-    return _pick(work_root / SUB_RAKUTEN, parent_sku, explicit)
+def resolve_rakuten_base(
+    work_root: Path,
+    parent_sku: str,
+    explicit: Optional[Path] = None,
+    *,
+    child_sku: str = "",
+) -> Path:
+    """
+    02.楽天ベースから土台を解決。
+    child_sku があり set_base_map.json があればマップ優先。無ければ従来の1枚解決。
+    """
+    if explicit and explicit.is_file():
+        return explicit
+    folder = work_root / SUB_RAKUTEN
+    ch = str(child_sku or "").strip()
+    if ch and str(parent_sku or "").strip():
+        try:
+            from b5_set_base_map import load_map, resolve_base_for_child
+
+            mapping = load_map(folder, parent_sku)
+            if mapping:
+                hit = resolve_base_for_child(folder, mapping, ch)
+                if hit is not None and hit.is_file():
+                    LOG.info(
+                        "rakuten base from map parent=%s child=%s file=%s",
+                        parent_sku,
+                        ch,
+                        hit.name,
+                    )
+                    return hit
+        except Exception as e:
+            LOG.warning("set_base_map resolve skip: %s", e)
+    return _pick(folder, parent_sku, None)
 
 
 def move_rakuten_base_to_processed(base_path: Path, work_root: Optional[Path] = None) -> Optional[Path]:
@@ -335,11 +428,26 @@ def resolve_octas(work_root: Path, explicit: Optional[Path] = None) -> Optional[
 
 
 def resolve_kinmaru(work_root: Path, explicit: Optional[Path] = None) -> Optional[Path]:
-    """金丸単体。02に金丸込みなら不要。"""
+    """金丸単体。02に金丸込みなら不要。アンダーライン素材は除外。"""
     if explicit and explicit.is_file():
         return explicit
     imgs = _list_images(work_root / SUB_KINMARU)
-    return imgs[0] if imgs else None
+    golds = [p for p in imgs if "アンダーライン" not in p.stem]
+    if not golds:
+        golds = imgs
+    named = [p for p in golds if "金丸" in p.stem]
+    if named:
+        return named[0]
+    return golds[0] if golds else None
+
+
+def resolve_underline_sample(work_root: Path, explicit: Optional[Path] = None) -> Optional[Path]:
+    """98フォルダのセールストークアンダーライン色見本。"""
+    if explicit and explicit.is_file():
+        return explicit
+    imgs = _list_images(work_root / SUB_KINMARU)
+    hits = [p for p in imgs if "アンダーライン" in p.stem]
+    return hits[0] if hits else None
 
 
 def resolve_amazon_reference(

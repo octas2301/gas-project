@@ -1,0 +1,1 @@
+{"id":"T-CHB-15","desc":"小中薄く店なし→自動レ点候補","kind":"next","input":{"maker_sum":[],"unchecked_sellers":0,"auto_ck_candidates":4,"k":3},"expect":{"action":"auto_ck"}}

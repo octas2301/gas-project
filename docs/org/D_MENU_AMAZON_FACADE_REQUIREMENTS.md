@@ -127,7 +127,7 @@ D×Amazon = **準備完了まで**（掲載完了ではない）
 7. **`UPLOADED_OK`**: **SC処理サマリ自動（21-⑮系）を本線**（監視フォルダへサマリ配置）。21-③／E-5 は自動失敗時の逃げ道  
 8. Property トグルをオフに戻す（定常チェック）  
 
-**新規プレフライト（実装済 2026-08-02）**: D で新規 ON 時、先頭で PT 空なら P4b → 棚に PT 無ければハード停止＋DL指示。棚は Drive `AMAZON_SHELF_REGISTRY_FILE_ID`。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)
+**新規プレフライト（実装済 2026-08-02／09取込 2026-09-17）**: E③ で新規 ON 時、先頭で 09 の未取込 xlsm を棚へ取り込み → PT/Browse 空なら P4b → 棚に Node/PT 無ければ専用案内。09保存後に E③再実行→選択画面。自動実行しない。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)
 
 **失敗後の再GENERATED（実装済 2026-08-02）**: 専用メニューは作らない。Dダイアログのレ点「失敗後の再GENERATED」ON 時、確認後にレ点付き親の **最新 open subBatch のみ** を `UPLOAD_FAILED` してから通常D続行。`UPLOADED_OK` は触らない。[LV4_D_REMAKE_MENU_APPROVAL.md](LV4_D_REMAKE_MENU_APPROVAL.md)
 
@@ -303,6 +303,8 @@ U3 着手時は必ず **変更予定ファイル一覧／概要／リスク** �
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-18 | **PACKAGED auto-onboard**: Cursor 手渡しは 09 の `{PT}.xlsm` から指紋＋列マップを自動登録して 03 まで。[棚ゲート](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
+| 2026-09-17 | **E③ 09取込**: 棚なしは専用案内。09保存後に再実行で選択画面。自動実行しない。[棚ゲート](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |
 | 2026-08-02 | **失敗後再GENERATED＝D内レ点実装**（§6.1）。要 clasp push。[LV4_D_REMAKE_MENU_APPROVAL](LV4_D_REMAKE_MENU_APPROVAL.md)。 |
 | 2026-08-02 | **失敗後再GENERATED＝D内レ点**方針を§6.1に追記。[LV4_D_REMAKE_MENU_APPROVAL](LV4_D_REMAKE_MENU_APPROVAL.md)。 |
 | 2026-08-02 | **D新規ゲート＋Cursor手渡し実装**（Drive棚）。[LV4_D_NEW_PT_SHELF_GATE_APPROVAL](LV4_D_NEW_PT_SHELF_GATE_APPROVAL.md)。 |

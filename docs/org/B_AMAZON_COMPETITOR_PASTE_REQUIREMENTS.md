@@ -46,7 +46,7 @@ A（既存 Keepa）          貼付 ASIN に属性。末尾で非候補化（P5�
 
 **網羅**＝公式キーを全部列にしない。列は印付き、残りは生JSON。xlsx は閲覧。CSV が Git 正。実装前に `docs/org/competitor_fields/keepa_official.csv` を FIELDS へ足す。
 
-Keepaフル粒度: ASIN＋取得日時。運用は **ASIN 最新1行を更新し、価格指紋が変わったときだけ追記**（実装時に固定してよい）。
+Keepaフル粒度: ASIN＋取得日時。運用は **価格指紋が変わったときだけヘッダ直下へ挿入**（最新＝上。読取は先勝ち）。同一指紋は非書。
 
 Amazon② SP-API 今値は **後回し**。④の Amazon 価格は Keepa BuyBox／Amazon 現在。今値 GET は別メニュー。
 
@@ -134,6 +134,7 @@ Amazon の確定価格・競合店ASIN・URL は **人間◎行だけ**。機械
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-20 | Keepaフル書込は指紋変化時のみ先頭挿入（最新=上） |
 | 2026-08-16 | 後続: A画像Gemini OFF検証（Catalog→Keepa名）。Property未変更 |
 | 2026-08-15 | W4 dry: 貼付60のうち39はフル90日ヒット。本線は Property |
 | 2026-08-15 | ① KeepaはKeepaフルへ。貼付は90日内読む。洗いCatalog階段とは混ぜない |

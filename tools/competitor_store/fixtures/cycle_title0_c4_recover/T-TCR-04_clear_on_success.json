@@ -1,0 +1,12 @@
+{
+  "id": "T-TCR-04",
+  "desc": "列挙成功で title0 カウンタクリア",
+  "mode": "script",
+  "start": {"props": {"PR_WASH_TITLE0_FAIL_JSON": "{\"株式会社山清\":2}"}},
+  "steps": [
+    {"op": "title0_clear", "parent": "株式会社山清"}
+  ],
+  "expect": {
+    "title0_map.株式会社山清": null
+  }
+}

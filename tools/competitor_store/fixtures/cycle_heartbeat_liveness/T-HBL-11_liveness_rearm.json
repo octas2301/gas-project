@@ -1,0 +1,1 @@
+{"id":"T-HBL-11","desc":"発火死から21分・時計なし→沈黙。番犬がリセット再武装","steps":[{"action":"fire_start","now_ms":0},{"action":"fire_die_hard","now_ms":1000},{"action":"liveness_tick","now_ms":1260000}],"expect":{"alive":true,"reason":"wash_trigger","log_has":["liveness_reset silence"]}}

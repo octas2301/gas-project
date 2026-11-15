@@ -1,0 +1,21 @@
+{
+  "id": "fallback_no_same",
+  "note": "同商品0・ゆるいシリーズも0。Drive FBは商品語とpath無関係→ガードで非採用",
+  "productName": "全く別の新商品XYZ123",
+  "makerName": "未知メーカー",
+  "expectedCategoryId": "",
+  "topN": 15,
+  "hits": [
+    {
+      "title": "全然違うコーヒーギフト",
+      "maker": "他社",
+      "genreCategoryId": "41392",
+      "path": "食品:ドリンク、水、お酒:コーヒー:インスタントコーヒー"
+    }
+  ],
+  "fallback": {
+    "source": "rakuten_mapped",
+    "yahooCategoryId": "996",
+    "path": "食品:魚介類、海産物:その他魚介類、海鮮類"
+  }
+}

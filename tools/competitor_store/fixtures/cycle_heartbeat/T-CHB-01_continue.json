@@ -1,0 +1,1 @@
+{"id":"T-CHB-01","desc":"洗い途中が最優先","kind":"next","input":{"maker_sum":[{"メーカー":"途中社","実態":"製造メーカー","洗い状態":"Keepa中","catalog_estimate":50},{"メーカー":"小社","実態":"製造メーカー","セラーヒット":3,"catalog_estimate":40}]},"expect":{"action":"wash_continue","maker":"途中社"}}

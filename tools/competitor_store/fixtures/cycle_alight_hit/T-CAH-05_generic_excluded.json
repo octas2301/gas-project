@@ -1,0 +1,43 @@
+{
+  "id": "T-CAH-05",
+  "desc": "Generic除外: 抽出セルにGenericがあってもヒットに数えない",
+  "sellers_before": [
+    {
+      "sellerId": "SHOP_G",
+      "店名": "Generic店",
+      "調査CK": true,
+      "抽出メーカー": "Generic",
+      "食品比率": "40.0"
+    },
+    {
+      "sellerId": "SHOP_H",
+      "店名": "通常店",
+      "調査CK": true,
+      "抽出メーカー": "",
+      "食品比率": "55.0"
+    }
+  ],
+  "maker_sum_before": [],
+  "side_effect": { "cand_rows": 2, "keepa_full_rows": 5 },
+  "batch": {
+    "shop_seller_ids": ["SHOP_G", "SHOP_H"],
+    "product_cap": 20,
+    "shop_cap": 3,
+    "mocks": {
+      "SHOP_G": {
+        "total": 10,
+        "products": [{ "asin": "B030", "manufacturer": "Generic", "brand": "Generic" }]
+      },
+      "SHOP_H": {
+        "total": 12,
+        "products": [{ "asin": "B031", "manufacturer": "永谷園", "brand": "永谷園" }]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "永谷園": 1 },
+    "maker_sum_jitta": { "永谷園": "入口ブランド" },
+    "hits_must_not_include": ["Generic"],
+    "side_effect_unchanged": true
+  }
+}

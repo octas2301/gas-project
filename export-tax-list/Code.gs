@@ -24,22 +24,100 @@ function getConfig() {
 }
 
 /**
+ * 処理対象年（西暦）→ 令和N。2019年=令和1年。
+ */
+function reiwaNumberFromWestern_(year) {
+  var y = parseInt(year, 10);
+  if (isNaN(y)) y = new Date().getFullYear();
+  return y - 2018;
+}
+
+function firstFolderByName_(parent, name) {
+  var it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : null;
+}
+
+/**
+ * 経理親（成田共有）の直下から 令和N年 / 令和N年度 を探す
+ */
+function findYearFolderUnder_(keiriParent, westernYear) {
+  var n = reiwaNumberFromWestern_(westernYear);
+  var names = ['令和' + n + '年', '令和' + n + '年度'];
+  for (var i = 0; i < names.length; i++) {
+    var found = firstFolderByName_(keiriParent, names[i]);
+    if (found) return found;
+  }
+  return null;
+}
+
+function inferKeiriParentFromWatch_(watchFolder) {
+  var yearParents = watchFolder.getParents();
+  if (!yearParents.hasNext()) return null;
+  var yearFolder = yearParents.next();
+  var keiriParents = yearFolder.getParents();
+  if (!keiriParents.hasNext()) return null;
+  return keiriParents.next();
+}
+
+/**
+ * 年度フォルダが変わっても、設定の「処理対象年」で
+ *   経理親 / 令和N年[度] / 輸出許可書
+ * を解決する。経理親フォルダIDが空なら、監視フォルダIDから親を推定する。
+ */
+function resolveWatchFolder_(config) {
+  var year = config['処理対象年'] ? parseInt(config['処理対象年'], 10) : new Date().getFullYear();
+  var watchName = (config['監視フォルダ名'] || '輸出許可書').toString().trim() || '輸出許可書';
+  var keiriId = (config['経理親フォルダID'] || '').toString().trim();
+  var seedId = (config['監視フォルダID'] || '').toString().trim();
+  var keiriParent = null;
+  if (keiriId) {
+    keiriParent = DriveApp.getFolderById(keiriId);
+  } else if (seedId) {
+    keiriParent = inferKeiriParentFromWatch_(DriveApp.getFolderById(seedId));
+  }
+  if (keiriParent) {
+    var yearFolder = findYearFolderUnder_(keiriParent, year);
+    if (!yearFolder) {
+      var n = reiwaNumberFromWestern_(year);
+      throw new Error(
+        '経理フォルダ内に「令和' + n + '年」または「令和' + n + '年度」がありません。' +
+        '処理対象年=' + year + '。年度フォルダを作ってその中に「' + watchName + '」を置いてください。'
+      );
+    }
+    var watch = firstFolderByName_(yearFolder, watchName);
+    if (!watch) {
+      throw new Error(yearFolder.getName() + ' の中に「' + watchName + '」フォルダがありません。');
+    }
+    Logger.log('監視フォルダ: ' + keiriParent.getName() + ' / ' + yearFolder.getName() + ' / ' + watch.getName());
+    return watch;
+  }
+  if (!seedId) {
+    throw new Error('設定シートに「監視フォルダID」または「経理親フォルダID」がありません。');
+  }
+  Logger.log('監視フォルダ: ID指定 ' + seedId);
+  return DriveApp.getFolderById(seedId);
+}
+
+function watchFolderPathLabel_(folder) {
+  var names = [folder.getName()];
+  var p = folder.getParents();
+  if (p.hasNext()) names.unshift(p.next().getName());
+  return names.join(' / ');
+}
+
+/**
  * 監視フォルダ直下に「転記済み」「転記失敗」フォルダがなければ作成する
  */
 function ensureFolders() {
   var config = getConfig();
-  var folderId = config['監視フォルダID'];
-  if (!folderId) {
-    throw new Error('設定シートに「監視フォルダID」がありません。');
-  }
-  var parentFolder = DriveApp.getFolderById(folderId);
+  var parentFolder = resolveWatchFolder_(config);
   var completedName = config['転記済みフォルダ名'] || '転記済み';
   var failedName = config['転記失敗フォルダ名'] || '転記失敗';
 
   var completedFolder = getOrCreateSubFolder(parentFolder, completedName);
   var failedFolder = getOrCreateSubFolder(parentFolder, failedName);
 
-  return { completed: completedFolder, failed: failedFolder };
+  return { watch: parentFolder, completed: completedFolder, failed: failedFolder };
 }
 
 function getOrCreateSubFolder(parentFolder, name) {
@@ -53,6 +131,113 @@ function getOrCreateSubFolder(parentFolder, name) {
 /** 一覧シートのヘッダー行（要件どおり＋6項目追加＋重複防止用元ファイル名＋保存先＋元ファイル名重複） */
 var HEADER_ROW = ['No.', '海　外　客　先', '取引年月日', '輸出金額', 'Invoice No.', '品名', '貨物個数', '貨物重量', '通貨', '通貨レート', 'FOB価格', '要確認', '元ファイル名', '保存先', '元ファイル名重複'];
 
+var PROP_JOB = 'EXPORT_TAX_JOB';
+var PROP_STOP = 'EXPORT_TAX_STOP';
+var PROP_PHASE = 'EXPORT_TAX_PHASE';
+var RESUME_HANDLER = 'resumeCurrentJob';
+var CONSIGNEE_SHORT_LEN = 8;
+
+function consigneeLooksLikeAddress_(s) {
+  return /VILLAGE|SOI|DISTRICT|SUBDISTRICT|BANGKOK|ROAD|\bRD\.|\bMOO\b|TAMBON|AMPHUR|PROVINCE/i.test(String(s || ''));
+}
+
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('フォルダからデータ取り込み')
+    .addItem('1. 新しいPDFを取り込む（フォルダ直下の未処理 → シート）', 'menuRunWatch')
+    .addItem('2. 失敗・抜け・二重を直す（すでに動かした分の補完）', 'menuCompleteCurrent')
+    .addItem('3. 取り込み後：件数・二重・漏れを確認する', 'menuShowStatus')
+    .addItem('取り込みを止める', 'menuStopImport')
+    .addSubMenu(
+      ui.createMenu('その他')
+        .addItem('同じ申告番号の行を1つにまとめる', 'menuDedupeYearSheet')
+        .addItem('読み取りに失敗したPDFをもう一度取り込む', 'menuRetryFailed')
+        .addItem('転記済みフォルダの抜けをシートへ足す', 'menuRetryUnregistered')
+        .addItem('自動で繰り返すタイマーを消す', 'menuDeleteTimeTriggers')
+        .addItem('年のシートと見出しを作る', 'testSheetSetup')
+    )
+    .addToUi();
+}
+
+function acquireLock_() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(3000)) {
+    Logger.log('他の実行が進行中のため終了します。');
+    return null;
+  }
+  return lock;
+}
+
+function isStopRequested_() {
+  return PropertiesService.getScriptProperties().getProperty(PROP_STOP) === '1';
+}
+
+function clearStop_() {
+  PropertiesService.getScriptProperties().deleteProperty(PROP_STOP);
+}
+
+function setJob_(job) {
+  PropertiesService.getScriptProperties().setProperty(PROP_JOB, job || '');
+}
+
+function getJob_() {
+  return PropertiesService.getScriptProperties().getProperty(PROP_JOB) || '';
+}
+
+function setPhase_(phase) {
+  PropertiesService.getScriptProperties().setProperty(PROP_PHASE, phase || '');
+}
+
+function getPhase_() {
+  return PropertiesService.getScriptProperties().getProperty(PROP_PHASE) || '';
+}
+
+function normalizeInvoice_(inv) {
+  return String(inv == null ? '' : inv).replace(/[\s\-]/g, '');
+}
+
+function invoiceDigitsFromFileName_(fileName) {
+  var m = String(fileName || '').match(/JF3(\d{10,11})/i);
+  return m ? m[1] : '';
+}
+
+function loadInvoiceSet_(sheet) {
+  var set = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return set;
+  var colE = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+  for (var i = 0; i < colE.length; i++) {
+    var n = normalizeInvoice_(colE[i][0]);
+    if (n) set[n] = true;
+  }
+  return set;
+}
+
+function invoiceSetHas_(set, invoiceNo) {
+  var n = normalizeInvoice_(invoiceNo);
+  if (!n) return false;
+  return !!(set && set[n]);
+}
+
+function invoiceSetAdd_(set, invoiceNo) {
+  var n = normalizeInvoice_(invoiceNo);
+  if (n && set) set[n] = true;
+}
+
+function alertSafe_(title, msg) {
+  try {
+    SpreadsheetApp.getUi().alert(title, msg, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {}
+}
+
+function clearResumeTriggers_() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === RESUME_HANDLER) {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+}
 /**
  * 西暦年（例: 2025）のシートを取得。なければ作成する。
  */
@@ -92,19 +277,30 @@ function getPdfFilesInFolder(folder) {
 }
 
 /**
- * 1分後に自分自身を実行するトリガーを1つだけ作成
+ * 1分後に resumeCurrentJob を1つだけ作成（残りが0なら作らない）
  */
-function scheduleResumeInOneMinute() {
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'run') {
-      ScriptApp.deleteTrigger(triggers[i]);
-    }
+function scheduleResumeInOneMinute_(remaining) {
+  if (isStopRequested_()) {
+    clearResumeTriggers_();
+    Logger.log('停止フラグがあるため再開トリガーは作りません。');
+    return;
   }
-  ScriptApp.newTrigger('run')
+  if (remaining == null || remaining <= 0) {
+    clearResumeTriggers_();
+    Logger.log('残り0のため再開トリガーは作りません。');
+    return;
+  }
+  clearResumeTriggers_();
+  ScriptApp.newTrigger(RESUME_HANDLER)
     .timeBased()
     .after(60 * 1000)
     .create();
+  Logger.log('1分後に再開します。残り目安: ' + remaining);
+}
+
+/** 旧トリガー互換。残り不明のときは1件扱いで再開する */
+function scheduleResumeInOneMinute() {
+  scheduleResumeInOneMinute_(1);
 }
 
 /**
@@ -237,90 +433,20 @@ function sendResultEmail(config, runAt, result, count, message, extra) {
 }
 
 /**
- * メイン処理の入口（手動実行・トリガー共通）
+ * メイン処理の入口（旧トリガー互換）。監視フォルダ取り込み。
  */
 function run() {
-  var runAt = new Date();
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var config;
-  try {
-    config = getConfig();
-  } catch (e) {
-    appendLog(ss, runAt, 'エラー', 0, '設定読み込み失敗: ' + e.message);
-    Logger.log('エラー: ' + e.message);
-    return;
-  }
-
-  var maxRunSec = parseInt(config['最大実行時間秒'] || '240', 10) || 240;
-  var maxRunMs = maxRunSec * 1000;
-  var startTime = new Date().getTime();
-  var GAS_LIMIT_MS = 6 * 60 * 1000;
-  var CLEANUP_BUFFER_MS = 90 * 1000;
-  var stopAtMs = Math.min(maxRunMs, GAS_LIMIT_MS - CLEANUP_BUFFER_MS);
-
-  var folderId = config['監視フォルダID'];
-  if (!folderId) {
-    appendLog(ss, runAt, 'エラー', 0, '監視フォルダIDが設定されていません');
-    Logger.log('エラー: 監視フォルダIDが設定されていません。');
-    return;
-  }
-
-  var parentFolder, folders;
-  try {
-    parentFolder = DriveApp.getFolderById(folderId);
-    folders = ensureFolders();
-  } catch (e) {
-    appendLog(ss, runAt, 'エラー', 0, 'フォルダ取得失敗: ' + e.message);
-    Logger.log('エラー: ' + e.message);
-    return;
-  }
-
-  var year = config['処理対象年'] ? parseInt(config['処理対象年'], 10) : new Date().getFullYear();
-  var sheet = getOrCreateYearSheet(ss, year);
-  ensureHeader(sheet);
-
-  var pdfs = getPdfFilesInFolder(parentFolder);
-  if (pdfs.length === 0) {
-    appendLog(ss, runAt, '対象なし', 0, '処理対象のPDFはありません');
-    Logger.log('処理対象のPDFはありません。');
-    return;
-  }
-
-  Logger.log('未処理PDF: ' + pdfs.length + ' 件');
-
-  var processedCount = 0;
-  var errorCount = 0;
-
-  for (var i = 0; i < pdfs.length; i++) {
-    if (new Date().getTime() - startTime > stopAtMs) {
-      Logger.log('制限時間のため停止。1分後に再実行します。');
-      scheduleResumeInOneMinute();
-      var remainingPdfs = getPdfFilesInFolder(parentFolder).length;
-      appendLog(ss, runAt, '途中終了', pdfs.length, '制限時間のため停止。1分後に再実行（処理済み' + processedCount + '／エラー' + errorCount + '／残り' + remainingPdfs + '）');
-      return;
-    }
-
-    var file = pdfs[i];
-    var res = processOnePdf(file, sheet, folders, config, startTime, stopAtMs);
-    if (res === 'timeout') {
-      Logger.log('制限時間のため停止。1分後に再実行します。');
-      scheduleResumeInOneMinute();
-      var remainingPdfs = getPdfFilesInFolder(parentFolder).length;
-      appendLog(ss, runAt, '途中終了', pdfs.length, '制限時間のため停止。1分後に再実行（処理済み' + processedCount + '／エラー' + errorCount + '／残り' + remainingPdfs + '）');
-      return;
-    }
-    if (res === 'completed') processedCount++; else errorCount++;
-  }
-
-  appendLog(ss, runAt, '成功', pdfs.length, '全件処理しました（処理済み' + processedCount + '／エラー' + errorCount + '）');
-  Logger.log('今回の実行で全件処理しました。');
+  setJob_('watch');
+  runWatchJob_(true);
 }
 
 /**
  * PDF 1件の処理：読み取り → 転記 → 転記済み or 転記失敗へ移動
- * startTime, stopAtMs を渡すと、残りが stopAt を切っている場合は処理せず 'timeout' を返す（強制終了・メール未送信を防ぐ）
+ * invoiceSet: 正規化Invoiceの存在マップ（渡すと全列再読込しない）
+ * opts.forceSingleAi: 再取り込み時は1回読み
  */
-function processOnePdf(file, sheet, folders, config, startTime, stopAtMs) {
+function processOnePdf(file, sheet, folders, config, startTime, stopAtMs, invoiceSet, opts) {
+  opts = opts || {};
   if (startTime != null && stopAtMs != null) {
     var remainMs = stopAtMs - (new Date().getTime() - startTime);
     if (remainMs < 90 * 1000) return 'timeout';
@@ -333,8 +459,10 @@ function processOnePdf(file, sheet, folders, config, startTime, stopAtMs) {
     return 'failed';
   }
 
+  if (!invoiceSet) invoiceSet = loadInvoiceSet_(sheet);
+
   var blob = file.getBlob();
-  var numChecks = parseInt(config['複数AI検証回数'] || '0', 10) || 0;
+  var numChecks = opts.forceSingleAi ? 1 : (parseInt(config['複数AI検証回数'] || '0', 10) || 0);
   var extracted;
   try {
     if (numChecks >= 2) {
@@ -364,15 +492,21 @@ function processOnePdf(file, sheet, folders, config, startTime, stopAtMs) {
   for (var i = 0; i < extracted.length; i++) {
     var r = extracted[i];
     var invoiceNo = (r.申告番号 != null ? r.申告番号 : '').toString().trim();
-    if (isDuplicate(sheet, invoiceNo, fileName)) continue;
+    if (invoiceSetHas_(invoiceSet, invoiceNo)) {
+      Logger.log('Invoice重複のためスキップ: ' + invoiceNo + ' / ' + fileName);
+      continue;
+    }
 
     var nextRow = sheet.getLastRow() + 1;
     if (firstRowForThisFile === null) firstRowForThisFile = nextRow;
     var sameFileAsRow = (firstRowForThisFile === nextRow) ? null : firstRowForThisFile;
 
-    var needCheck = (r.仕向人 === '' || r.申告年月日 === '' || r.申告番号 === '' || r.申告価格 === null || r.申告価格 === '');
+    var consignee = (r.仕向人 != null ? r.仕向人 : '').toString().trim();
+    var needCheck = (consignee === '' || r.申告年月日 === '' || r.申告番号 === '' || r.申告価格 === null || r.申告価格 === '');
+    if (!needCheck && consignee.replace(/\s/g, '').length < CONSIGNEE_SHORT_LEN) needCheck = true;
     var completedLabel = (config['転記済みフォルダ名'] || '').toString().trim() || '転記済み';
     appendRecord(sheet, r, fileName, needCheck, completedLabel, sameFileAsRow);
+    invoiceSetAdd_(invoiceSet, invoiceNo);
     anyWritten = true;
   }
 
@@ -380,33 +514,36 @@ function processOnePdf(file, sheet, folders, config, startTime, stopAtMs) {
     moveToFolder(file, folders.completed);
     return 'completed';
   }
-  // 全件重複＝既にシートにデータがあるため転記済み扱いにする（転記失敗にすると件数不整合・「転記されているのに転記失敗」になる）
   Logger.log('全件重複のため新規転記は0件ですが、既存データのため転記済みへ移動: ' + fileName);
   moveToFolder(file, folders.completed);
   return 'completed';
 }
 
 function moveToFolder(file, folder) {
-  folder.addFile(file);
-  file.getParents().next().removeFile(file);
+  var destId = folder.getId();
+  var parents = file.getParents();
+  var inDest = false;
+  var other = [];
+  while (parents.hasNext()) {
+    var p = parents.next();
+    if (p.getId() === destId) inDest = true;
+    else other.push(p);
+  }
+  if (!inDest) folder.addFile(file);
+  for (var i = 0; i < other.length; i++) {
+    try {
+      other[i].removeFile(file);
+    } catch (e) {
+      Logger.log('親フォルダからの除外に失敗: ' + file.getName() + ' - ' + e.message);
+    }
+  }
 }
 
 /**
- * シートで重複判定（申告番号 or 元ファイル名が既に存在するか）
- * Invoice No.は5列目（E列）、元ファイル名は13列目（M列）
+ * シートで重複判定（正規化した申告番号のみ。空番号は重複にしない。ファイル名では判定しない）
  */
 function isDuplicate(sheet, invoiceNo, fileName) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return false;
-  var colE = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
-  var colM = sheet.getRange(2, 13, lastRow - 1, 1).getValues();
-  for (var i = 0; i < colE.length; i++) {
-    if ((colE[i][0] != null && colE[i][0].toString().trim() === invoiceNo) ||
-        (colM[i][0] != null && colM[i][0].toString().trim() === fileName)) {
-      return true;
-    }
-  }
-  return false;
+  return invoiceSetHas_(loadInvoiceSet_(sheet), invoiceNo);
 }
 
 /**
@@ -495,7 +632,7 @@ function buildGeminiRequest(blob, apiKey) {
     contents: [{
       parts: [
         { inline_data: { mime_type: 'application/pdf', data: base64 } },
-        { text: 'このPDFは輸出許可書です。次の項目を抽出し、JSON配列で返してください。複数ページの場合はページごとに1件ずつオブジェクトを入れてください。\n項目:\n- 仕向人\n- 申告年月日(YYYY/MM/DD形式)\n- 申告価格(数値のみ・カンマ・円記号なし)\n- 申告番号\n- 品名(そのまま文字列)\n- 貨物個数(整数、単位「個」は除く)\n- 貨物重量(小数点以下を含む数値、単位「KGM」は除く。例:1.6)\n- 通貨(通貨レート欄の通貨コード部分、例: THB, USD)\n- 通貨レート(小数点第2位まで含む数値。例:4.45)\n- FOB価格(小数点第2位まで含む数値。例:1029.00)\n形式: [{"仕向人":"...","申告年月日":"...","申告価格":数値,"申告番号":"...","品名":"...","貨物個数":整数,"貨物重量":小数,"通貨":"...","通貨レート":小数,"FOB価格":小数}, ...]' }
+        { text: 'このPDFは輸出許可書です。次の項目を抽出し、JSON配列で返してください。複数ページの場合はページごとに1件ずつオブジェクトを入れてください。\n項目:\n- 仕向人（「仕向人」ラベルの右／ハイフンの後の文字を省略せず最後まで。1文字の屋号・イニシャルも残す。仕向人欄に VILLAGE や DISTRICT と書いてあっても切らない。「住所」ラベル以降の行は入れない）\n- 申告年月日(YYYY/MM/DD形式)\n- 申告価格(数値のみ・カンマ・円記号なし)\n- 申告番号\n- 品名(そのまま文字列)\n- 貨物個数(整数、単位「個」は除く)\n- 貨物重量(小数点以下を含む数値、単位「KGM」は除く。例:1.6)\n- 通貨(通貨レート欄の通貨コード部分、例: THB, USD)\n- 通貨レート(小数点第2位まで含む数値。例:4.45)\n- FOB価格(小数点第2位まで含む数値。例:1029.00)\n形式: [{"仕向人":"...","申告年月日":"...","申告価格":数値,"申告番号":"...","品名":"...","貨物個数":整数,"貨物重量":小数,"通貨":"...","通貨レート":小数,"FOB価格":小数}, ...]' }
       ]
     }],
     generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
@@ -657,6 +794,490 @@ function majorityVoteNumber(vals) {
     if (counts[k] > maxCount) { maxCount = counts[k]; result = parseFloat(k); }
   }
   return result;
+}
+
+function resumeCurrentJob() {
+  if (isStopRequested_()) {
+    clearResumeTriggers_();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    appendLog(ss, new Date(), '停止', 0, '停止フラグのため再開しませんでした');
+    Logger.log('停止フラグのため再開しませんでした。');
+    return;
+  }
+  var job = getJob_();
+  Logger.log('resumeCurrentJob job=' + job + ' phase=' + getPhase_());
+  if (job === 'completeCurrent') completeCurrentJob_(true);
+  else if (job === 'retryFailed') retryFailedJob_(true);
+  else if (job === 'retryUnregistered') retryUnregisteredJob_(true);
+  else runWatchJob_(true);
+}
+
+function menuCompleteCurrent() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert(
+    '2. 失敗・抜け・二重を直す',
+    '対象は「すでに取り込みを動かしたあと」のフォルダです。\n（フォルダ直下に置いた新品のPDFは 1. で取り込みます）\n\nやること:\n・シートで同じ申告番号が2行ある → 1行にする（仕向人が長い方）\n・転記失敗フォルダで、シートに無い → もう一度読む\n・転記済みフォルダで、シートに無い → 行を足す\n\n終わったら 3. で件数・二重・漏れを確認してください。\n時間切れは自動再開します。よろしいですか？',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (res !== ui.Button.OK) return;
+  clearStop_();
+  setJob_('completeCurrent');
+  setPhase_('dedupe');
+  completeCurrentJob_(false);
+}
+
+function menuRunWatch() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert(
+    '1. 新しいPDFを取り込む',
+    '対象は「輸出許可書」フォルダの直下にある、まだ転記済みへ移していないPDFです。\n（転記済み・転記失敗の中は見ません。それは 2. です）\n\nやること:\n・PDFを読んでシートに行を足す\n・成功したファイルは転記済みへ移す\n・読めなかったファイルは転記失敗へ移す\n\n終わったら 2. で失敗・抜け・二重を直してください。\n時間切れは自動再開します。よろしいですか？',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (res !== ui.Button.OK) return;
+  clearStop_();
+  setJob_('watch');
+  runWatchJob_(false);
+}
+
+function menuRetryFailed() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert('読み取りに失敗したPDFをもう一度取り込む', '「転記失敗」フォルダのうち、シートにまだ無いPDFだけを再読みします。よろしいですか？', ui.ButtonSet.OK_CANCEL);
+  if (res !== ui.Button.OK) return;
+  clearStop_();
+  setJob_('retryFailed');
+  retryFailedJob_(false);
+}
+
+function menuRetryUnregistered() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert('転記済みフォルダの抜けをシートへ足す', '「転記済み」にあるのにシートに無いPDFだけを読み、行を足します。よろしいですか？', ui.ButtonSet.OK_CANCEL);
+  if (res !== ui.Button.OK) return;
+  clearStop_();
+  setJob_('retryUnregistered');
+  retryUnregisteredJob_(false);
+}
+
+function menuDedupeYearSheet() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert('同じ申告番号の行を1つにまとめる', '同じ申告番号（Invoice）が2行あるとき、仕向人が長い方を残して1行にします。よろしいですか？', ui.ButtonSet.OK_CANCEL);
+  if (res !== ui.Button.OK) return;
+  var lock = acquireLock_();
+  if (!lock) {
+    alertSafe_('実行中', '他の取り込みが進行中です。');
+    return;
+  }
+  try {
+    var ctx = getRunContext_();
+    if (!ctx) return;
+    var d = dedupeYearSheet_(ctx.sheet);
+    appendLog(ctx.ss, ctx.runAt, '重複解消', d.removed, d.message);
+    alertSafe_('同じ申告番号を1つに', d.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function menuStopImport() {
+  PropertiesService.getScriptProperties().setProperty(PROP_STOP, '1');
+  clearResumeTriggers_();
+  alertSafe_('取り込みを止める', 'これから始まる続きの取り込みを止めました。今動いている処理は、いまのファイルが終わると止まります。');
+}
+
+function menuDeleteTimeTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var deleted = 0;
+  for (var i = 0; i < triggers.length; i++) {
+    var name = triggers[i].getHandlerFunction();
+    if (name === 'run' || name === 'runScheduled' || name === RESUME_HANDLER) {
+      ScriptApp.deleteTrigger(triggers[i]);
+      deleted++;
+    }
+  }
+  alertSafe_('自動タイマーを消す', deleted + ' 件の自動実行を消しました。フォルダが空なのに1分ごとに動く状態を止めます。');
+}
+
+function menuShowStatus() {
+  var ctx = getRunContext_();
+  if (!ctx) return;
+  var st = collectStatus_(ctx);
+  var msg =
+    '取り込み先フォルダ: ' + st.watchPath + '\n' +
+    '年シート（' + st.yearSheetName + '）の行: ' + st.sheetRows + '\n' +
+    '申告番号の種類: ' + st.uniqueInvoices + '\n' +
+    '同じ申告番号が二重の組: ' + st.dupGroups + '\n' +
+    '監視フォルダ直下のPDF: ' + st.watchPdfs + '\n' +
+    '転記済みのPDF: ' + st.completedPdfs + '\n' +
+    '転記失敗のPDF: ' + st.failedPdfs + '\n' +
+    '転記済みなのにシートに無い: ' + st.unregisteredCompleted + '\n' +
+    '転記失敗でシートに無い: ' + st.unregisteredFailed + '\n' +
+    '要確認の行: ' + st.needCheck;
+  var next = [];
+  if (st.watchPdfs > 0) next.push('直下に未処理PDFあり → 1. 新しいPDFを取り込む');
+  if (st.dupGroups > 0 || st.unregisteredCompleted > 0 || st.unregisteredFailed > 0) {
+    next.push('二重または漏れあり → 2. 失敗・抜け・二重を直す');
+  }
+  if (next.length === 0) next.push('二重0・漏れ0・直下の未処理0。現行分は揃っています');
+  msg += '\n\n次にすること:\n' + next.join('\n');
+  Logger.log(msg);
+  appendLog(ctx.ss, ctx.runAt, '状況', st.sheetRows, msg.replace(/\n/g, ' / '));
+  alertSafe_('3. 取り込み後の確認', msg);
+}
+
+function completeCurrentJob_(isResume) {
+  var lock = acquireLock_();
+  if (!lock) {
+    if (!isResume) alertSafe_('実行中', '他の取り込みが進行中です。');
+    return;
+  }
+  try {
+    var ctx = getRunContext_();
+    if (!ctx) return;
+    var phase = isResume ? (getPhase_() || 'dedupe') : 'dedupe';
+    Logger.log('completeCurrent phase=' + phase);
+
+    if (phase === 'dedupe') {
+      var d = dedupeYearSheet_(ctx.sheet);
+      appendLog(ctx.ss, ctx.runAt, '重複解消', d.removed, d.message);
+      ctx.invoiceSet = loadInvoiceSet_(ctx.sheet);
+      setPhase_('failed');
+      phase = 'failed';
+    }
+
+    if (isStopRequested_()) {
+      appendLog(ctx.ss, ctx.runAt, '停止', 0, '重複解消後に停止しました');
+      return;
+    }
+
+    if (phase === 'failed') {
+      var r1 = processSourcePdfs_(ctx, 'failed');
+      appendLog(ctx.ss, ctx.runAt, r1.timeout ? '途中終了' : '失敗再取込', r1.processed, r1.message);
+      if (r1.timeout) {
+        setPhase_('failed');
+        scheduleResumeInOneMinute_(r1.remaining);
+        return;
+      }
+      setPhase_('unregistered');
+      phase = 'unregistered';
+    }
+
+    if (isStopRequested_()) {
+      appendLog(ctx.ss, ctx.runAt, '停止', 0, '失敗再取込後に停止しました');
+      return;
+    }
+
+    if (phase === 'unregistered') {
+      var r2 = processSourcePdfs_(ctx, 'unregistered');
+      appendLog(ctx.ss, ctx.runAt, r2.timeout ? '途中終了' : '未登録再取込', r2.processed, r2.message);
+      if (r2.timeout) {
+        setPhase_('unregistered');
+        scheduleResumeInOneMinute_(r2.remaining);
+        return;
+      }
+    }
+
+    setPhase_('done');
+    clearResumeTriggers_();
+    var st = collectStatus_(ctx);
+    var doneMsg = '完了。行' + st.sheetRows + '／一意' + st.uniqueInvoices + '／重複組' + st.dupGroups + '／未登録(済' + st.unregisteredCompleted + '・失敗' + st.unregisteredFailed + ')';
+    appendLog(ctx.ss, ctx.runAt, '成功', st.sheetRows, doneMsg);
+    alertSafe_('フォルダから取り込み', doneMsg);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function runWatchJob_(isResume) {
+  var lock = acquireLock_();
+  if (!lock) {
+    if (!isResume) alertSafe_('実行中', '他の取り込みが進行中です。');
+    return;
+  }
+  try {
+    var ctx = getRunContext_();
+    if (!ctx) return;
+    var r = processSourcePdfs_(ctx, 'watch');
+    if (r.timeout) {
+      appendLog(ctx.ss, ctx.runAt, '途中終了', r.processed, r.message);
+      scheduleResumeInOneMinute_(r.remaining);
+      return;
+    }
+    if (r.attempted === 0) {
+      Logger.log('処理対象のPDFはありません。');
+      return;
+    }
+    appendLog(ctx.ss, ctx.runAt, '成功', r.processed, r.message);
+    clearResumeTriggers_();
+    if (!isResume) alertSafe_('新しいPDFの取り込み', r.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function retryFailedJob_(isResume) {
+  var lock = acquireLock_();
+  if (!lock) {
+    if (!isResume) alertSafe_('実行中', '他の取り込みが進行中です。');
+    return;
+  }
+  try {
+    var ctx = getRunContext_();
+    if (!ctx) return;
+    var r = processSourcePdfs_(ctx, 'failed');
+    if (r.timeout) {
+      appendLog(ctx.ss, ctx.runAt, '途中終了', r.processed, r.message);
+      scheduleResumeInOneMinute_(r.remaining);
+      return;
+    }
+    appendLog(ctx.ss, ctx.runAt, '失敗再取込', r.processed, r.message);
+    clearResumeTriggers_();
+    if (!isResume) alertSafe_('失敗したPDFの再読込', r.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function retryUnregisteredJob_(isResume) {
+  var lock = acquireLock_();
+  if (!lock) {
+    if (!isResume) alertSafe_('実行中', '他の取り込みが進行中です。');
+    return;
+  }
+  try {
+    var ctx = getRunContext_();
+    if (!ctx) return;
+    var r = processSourcePdfs_(ctx, 'unregistered');
+    if (r.timeout) {
+      appendLog(ctx.ss, ctx.runAt, '途中終了', r.processed, r.message);
+      scheduleResumeInOneMinute_(r.remaining);
+      return;
+    }
+    appendLog(ctx.ss, ctx.runAt, '未登録再取込', r.processed, r.message);
+    clearResumeTriggers_();
+    if (!isResume) alertSafe_('転記済みの抜け', r.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getRunContext_() {
+  var runAt = new Date();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var config;
+  try {
+    config = getConfig();
+  } catch (e) {
+    appendLog(ss, runAt, 'エラー', 0, '設定読み込み失敗: ' + e.message);
+    Logger.log('エラー: ' + e.message);
+    return null;
+  }
+  var maxRunSec = parseInt(config['最大実行時間秒'] || '240', 10) || 240;
+  var stopAtMs = Math.min(maxRunSec * 1000, 6 * 60 * 1000 - 90 * 1000);
+  var folders;
+  try {
+    folders = ensureFolders();
+  } catch (e) {
+    appendLog(ss, runAt, 'エラー', 0, 'フォルダ取得失敗: ' + e.message);
+    Logger.log('エラー: ' + e.message);
+    return null;
+  }
+  var year = config['処理対象年'] ? parseInt(config['処理対象年'], 10) : new Date().getFullYear();
+  var sheet = getOrCreateYearSheet(ss, year);
+  ensureHeader(sheet);
+  return {
+    runAt: runAt,
+    ss: ss,
+    config: config,
+    parentFolder: folders.watch,
+    folders: folders,
+    sheet: sheet,
+    yearSheetName: year + '年',
+    watchPath: watchFolderPathLabel_(folders.watch),
+    startTime: new Date().getTime(),
+    stopAtMs: stopAtMs,
+    invoiceSet: loadInvoiceSet_(sheet)
+  };
+}
+
+function listTargetPdfs_(ctx, source) {
+  var files;
+  if (source === 'watch') files = getPdfFilesInFolder(ctx.parentFolder);
+  else if (source === 'failed') files = getPdfFilesInFolder(ctx.folders.failed);
+  else files = getPdfFilesInFolder(ctx.folders.completed);
+
+  var targets = [];
+  var already = 0;
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var digits = invoiceDigitsFromFileName_(f.getName());
+    if (source === 'watch') {
+      targets.push(f);
+      continue;
+    }
+    if (digits && invoiceSetHas_(ctx.invoiceSet, digits)) {
+      already++;
+      if (source === 'failed') {
+        moveToFolder(f, ctx.folders.completed);
+      }
+      continue;
+    }
+    targets.push(f);
+  }
+  return { targets: targets, already: already, listed: files.length };
+}
+
+function processSourcePdfs_(ctx, source) {
+  var listed = listTargetPdfs_(ctx, source);
+  var pdfs = listed.targets;
+  Logger.log('source=' + source + ' listed=' + listed.listed + ' targets=' + pdfs.length + ' already=' + listed.already);
+  var processed = 0;
+  var errorCount = 0;
+  var skippedDup = listed.already;
+  var opts = { forceSingleAi: source !== 'watch' };
+
+  for (var i = 0; i < pdfs.length; i++) {
+    if (isStopRequested_()) {
+      return {
+        timeout: true,
+        processed: processed,
+        remaining: pdfs.length - i,
+        attempted: pdfs.length,
+        message: '停止フラグのため中断（処理済み' + processed + '／エラー' + errorCount + '／残り' + (pdfs.length - i) + '）'
+      };
+    }
+    if (new Date().getTime() - ctx.startTime > ctx.stopAtMs) {
+      return {
+        timeout: true,
+        processed: processed,
+        remaining: pdfs.length - i,
+        attempted: pdfs.length,
+        message: '制限時間のため停止。1分後に再実行（処理済み' + processed + '／エラー' + errorCount + '／残り' + (pdfs.length - i) + '）'
+      };
+    }
+    var res = processOnePdf(pdfs[i], ctx.sheet, ctx.folders, ctx.config, ctx.startTime, ctx.stopAtMs, ctx.invoiceSet, opts);
+    if (res === 'timeout') {
+      return {
+        timeout: true,
+        processed: processed,
+        remaining: pdfs.length - i,
+        attempted: pdfs.length,
+        message: '制限時間のため停止。1分後に再実行（処理済み' + processed + '／エラー' + errorCount + '／残り' + (pdfs.length - i) + '）'
+      };
+    }
+    if (res === 'completed') processed++;
+    else errorCount++;
+  }
+  return {
+    timeout: false,
+    processed: processed,
+    remaining: 0,
+    attempted: pdfs.length,
+    message: source + ' 処理済み' + processed + '／エラー' + errorCount + '／既登録スキップ' + skippedDup
+  };
+}
+
+function dedupeYearSheet_(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) {
+    return { removed: 0, kept: Math.max(0, lastRow - 1), message: '重複対象なし' };
+  }
+  var width = HEADER_ROW.length;
+  var values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  var bestByInv = {};
+  var noInv = [];
+  var removed = 0;
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    var inv = normalizeInvoice_(row[4]);
+    var consignee = String(row[1] == null ? '' : row[1]);
+    if (!inv) {
+      noInv.push(row);
+      continue;
+    }
+    if (!bestByInv[inv]) {
+      bestByInv[inv] = row;
+      continue;
+    }
+    removed++;
+    var cur = String(bestByInv[inv][1] == null ? '' : bestByInv[inv][1]);
+    var curAddr = consigneeLooksLikeAddress_(cur);
+    var newAddr = consigneeLooksLikeAddress_(consignee);
+    if (curAddr && !newAddr) bestByInv[inv] = row;
+    else if (!curAddr && newAddr) { /* keep current name-only */ }
+    else if (consignee.length > cur.length) bestByInv[inv] = row;
+  }
+  var keep = [];
+  for (var k in bestByInv) {
+    if (Object.prototype.hasOwnProperty.call(bestByInv, k)) keep.push(bestByInv[k]);
+  }
+  keep = keep.concat(noInv);
+  keep.sort(function (a, b) {
+    var na = parseInt(a[0], 10) || 0;
+    var nb = parseInt(b[0], 10) || 0;
+    return na - nb;
+  });
+  for (var n = 0; n < keep.length; n++) {
+    keep[n][0] = n + 1;
+  }
+  sheet.getRange(2, 1, lastRow - 1, width).clearContent();
+  if (keep.length > 0) {
+    sheet.getRange(2, 1, keep.length, width).setValues(keep);
+    sheet.getRange(2, 3, keep.length, 1).setNumberFormat('yyyy/mm/dd');
+  }
+  Logger.log('重複1行化: 元' + values.length + ' → 残' + keep.length + '（削除' + removed + '）');
+  return {
+    removed: removed,
+    kept: keep.length,
+    message: '重複1行化: ' + values.length + '行 → ' + keep.length + '行（削除' + removed + '）'
+  };
+}
+
+function collectStatus_(ctx) {
+  var lastRow = ctx.sheet.getLastRow();
+  var sheetRows = Math.max(0, lastRow - 1);
+  var unique = 0;
+  var dupGroups = 0;
+  var needCheck = 0;
+  if (sheetRows > 0) {
+    var colE = ctx.sheet.getRange(2, 5, sheetRows, 1).getValues();
+    var colL = ctx.sheet.getRange(2, 12, sheetRows, 1).getValues();
+    var counts = {};
+    for (var i = 0; i < colE.length; i++) {
+      var n = normalizeInvoice_(colE[i][0]);
+      if (n) counts[n] = (counts[n] || 0) + 1;
+      if (String(colL[i][0] || '') !== '') needCheck++;
+    }
+    for (var k in counts) {
+      if (counts[k] >= 2) dupGroups++;
+      unique++;
+    }
+  }
+  var watchPdfs = getPdfFilesInFolder(ctx.parentFolder).length;
+  var completedFiles = getPdfFilesInFolder(ctx.folders.completed);
+  var failedFiles = getPdfFilesInFolder(ctx.folders.failed);
+  var unregC = 0;
+  var unregF = 0;
+  var set = ctx.invoiceSet || loadInvoiceSet_(ctx.sheet);
+  for (var c = 0; c < completedFiles.length; c++) {
+    var d1 = invoiceDigitsFromFileName_(completedFiles[c].getName());
+    if (!d1 || !invoiceSetHas_(set, d1)) unregC++;
+  }
+  for (var f = 0; f < failedFiles.length; f++) {
+    var d2 = invoiceDigitsFromFileName_(failedFiles[f].getName());
+    if (!d2 || !invoiceSetHas_(set, d2)) unregF++;
+  }
+  return {
+    sheetRows: sheetRows,
+    uniqueInvoices: unique,
+    dupGroups: dupGroups,
+    watchPdfs: watchPdfs,
+    completedPdfs: completedFiles.length,
+    failedPdfs: failedFiles.length,
+    unregisteredCompleted: unregC,
+    unregisteredFailed: unregF,
+    needCheck: needCheck,
+    watchPath: ctx.watchPath || watchFolderPathLabel_(ctx.parentFolder),
+    yearSheetName: ctx.yearSheetName || ''
+  };
 }
 
 /**

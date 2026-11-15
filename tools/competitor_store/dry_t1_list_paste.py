@@ -12,11 +12,11 @@ from schema import SHEET_KEEPA_FULL
 LIST_TITLE = "仕入検討品番リスト"
 HEADER_ROW = 4  # 1-based
 DATA_START = 5
+FORMULA_TEMPLATE_ROW = 2
 ORIG_SS = "1Uk-DEfoSTVqb5N8XsfSqciaZcIjzbbPpGvg4hQYgDl4"
 
-# 品番リスト列名 → Keepaフル列。式・人間・K1-K6は載せない。
+# 品番リスト列名 → Keepaフル列（直書き）。メーカー名・最安値・順位・ランキング等は build_row 内 computed。
 MAP = {
-    "メーカー名": "製造者",
     "ASIN": "ASIN",
     "商品名": "商品名",
     "JANコード": "商品コード: EAN",
@@ -24,23 +24,48 @@ MAP = {
     "画像URL": "画像",
     "Keepaグラフ": "URL: Keepa",
     "amazonページ": "URL: Amazon",
-    "最安値": "新品: 現在価格",
     "FBA手数料": "出品FBA手数料",
     "amazon本体が出品者にいる": "Amazon直販",
-    "順位": "売れ筋ランキング: 現在",
-    "カテゴリー": "カテゴリ: ルート",
     "クイックショップサイズ表記": "出品FBAティア",
     "自己配送 送料概算": "自己発送送料",
     "サイズ3辺合計": "梱包3辺合計_cm",
 }
+
+# 行5が式でも Keepa／computed 値を直書きする列
+DIRECT_WRITE_HEADERS = frozenset(
+    {
+        "調査日",
+        "Keepaグラフ",
+        "amazonページ",
+        "順位",
+        "カテゴリー",
+        "ランキング",
+        "最安値",
+        "メーカー名",
+        "ASIN",
+        "商品名",
+        "JANコード",
+        "サイズ",
+        "重量",
+        "出品者数",
+        "画像URL",
+        "FBA手数料",
+        "amazon本体が出品者にいる",
+        "過去1か月販売数（表示あれば）",
+        "クイックショップサイズ表記",
+        "自己配送 送料概算",
+        "サイズ3辺合計",
+        "税率",
+        "販売形態",
+        "同商品のセット数量",
+    }
+)
 
 SKIP_HEADERS = {
     "ASIN重複チェック",
     "調査員名",
     "メーカーがマイナーか有名か",
     "商品画像",
-    "販売形態",
-    "同商品のセット数量",
     "単品商品名",
     "JAN調査プロンプト",
     "AI調査プロンプト",
@@ -49,7 +74,6 @@ SKIP_HEADERS = {
     "1点当たり メーカー定価(税込)",
     "価格が安定しているか",
     "卸商品リスト卸値（税抜き）",
-    "税率",
     "卸商品リスト卸値（税込み）",
     "卸値一覧（あれば）sheet商品名VLOOK",
     "卸値一覧（あれば）sheet卸値税抜き",
@@ -147,7 +171,8 @@ def category_name(full: dict) -> str:
 
 
 def rank_display(full: dict) -> str:
-    r = str(full.get("売れ筋ランキング: 現在") or "").strip()
+    """90日平均順位＋カテゴリ（リスト「ランキング」列）。"""
+    r = str(full.get("売れ筋ランキング: 90 日平均") or "").strip()
     cat = category_name(full)
     if r and cat:
         try:
@@ -162,10 +187,178 @@ def rank_display(full: dict) -> str:
     return r
 
 
-def build_row(headers: list[str], full: dict, formula_cols: set[int]) -> list[str]:
+def min_cart_new_price(full: dict) -> str:
+    """カート(Buy Box)と新品現在の安い方。"""
+    vals: list[float] = []
+    for k in ("Buy Box: 現在価格", "新品: 現在価格"):
+        v = str(full.get(k) or "").strip().replace(",", "")
+        if not v:
+            continue
+        try:
+            n = float(v)
+            if n > 0:
+                vals.append(n)
+        except ValueError:
+            continue
+    if not vals:
+        return ""
+    m = min(vals)
+    return str(int(m)) if m == int(m) else str(m)
+
+
+def list_maker_name(cand_row: dict | None, full: dict) -> str:
+    """競合ストアで決めたメーカー名（①候補。ブランド洗いの親名）。"""
+    if cand_row:
+        m = str(cand_row.get("メーカー") or "").strip()
+        if m:
+            return m
+    return str(full.get("製造者") or full.get("ブランド") or "").strip()
+
+
+def image_url_from_full(full: dict) -> str:
+    img = str(full.get("画像") or "").strip()
+    if img.startswith("http"):
+        return img
+    m = re.match(r'(?i)=HYPERLINK\s*\(\s*"([^"]+)"', img)
+    if m:
+        return m.group(1)
+    sub = str(full.get("サブ画像") or "").strip()
+    if sub:
+        for part in sub.split("|"):
+            u = part.strip()
+            if u.startswith("http"):
+                return u
+    return ""
+
+
+def image_hyperlink(url: str) -> str:
+    u = str(url or "").strip()
+    if not u:
+        return ""
+    return '=HYPERLINK("%s","メイン")' % u.replace('"', "")
+
+
+def _norm_fw_digits(s: str) -> str:
+    return str(s or "").translate(str.maketrans("０１２３４５６７８９", "0123456789"))
+
+
+def extract_set_count_candidates_from_title(title: str) -> list[int]:
+    if not title:
+        return []
+    num_map = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+    patterns = [
+        r"(\d+)\s*個\s*セット",
+        r"(\d+)\s*袋\s*セット",
+        r"(\d+)\s*セット",
+        r"(\d+)\s*袋\s*×\s*(\d+)",
+        r"(\d+)\s*袋(?!\s*×)",
+        r"(三|３|五|５|十)\s*袋",
+        r"(五|５)\s*袋\s*入?",
+        r"(\d+)\s*袋\s*入",
+        r"(\d+)\s*パック",
+        r"(\d+)\s*本\s*入り",
+        r"(\d+)\s*個\s*入り",
+        r"(\d+)\s*個(?!\s*[セ入])",
+        r"×\s*(\d+)\s*袋",
+        r"(\d+)\s*P\s*入り",
+        r"(\d+)\s*P\)",
+        r"（\s*(\d+)\s*袋\s*）",
+        r"[（(](\d+)[袋個][）)]",
+    ]
+    seen: set[int] = set()
+    out: list[int] = []
+    for pat in patterns:
+        m = re.search(pat, title, re.I)
+        if not m:
+            continue
+        for g in m.groups():
+            if g is None:
+                continue
+            n = num_map.get(g)
+            if n is None:
+                try:
+                    n = int(g)
+                except ValueError:
+                    continue
+            if 1 <= n <= 999 and n not in seen:
+                seen.add(n)
+                out.append(n)
+    return out
+
+
+def extract_set_count_from_title(title: str) -> int | None:
+    c = extract_set_count_candidates_from_title(title)
+    return c[0] if c else None
+
+
+def parse_set_count_from_title_alt(title: str) -> tuple[int, str] | None:
+    s = _norm_fw_digits(str(title or "").strip())
+    m = re.search(r"(?:合計|計|全)\s*(\d+)\s*袋", s, re.I)
+    if m:
+        return int(m.group(1)), "total_bag"
+    kind_m = re.search(r"(?:【)?(\d+)\s*種類?(?:】)?", s)
+    each_m = re.search(r"各\s*(\d+)\s*袋", s)
+    if kind_m and each_m:
+        return int(kind_m.group(1)) * int(each_m.group(1)), "kind_x_each"
+    kind_bag = re.search(r"(\d+)\s*種\s*[×x]\s*(\d+)\s*袋", s, re.I)
+    if kind_bag:
+        return int(kind_bag.group(1)) * int(kind_bag.group(2)), "kind_x_bag"
+    eat_m = re.search(r"(\d+)\s*食(?:\s|$|入)", s, re.I)
+    if eat_m:
+        return int(eat_m.group(1)), "shoku"
+    return None
+
+
+def title_looks_content_only(title: str) -> bool:
+    s = _norm_fw_digits(str(title or "").strip())
+    if not re.search(r"\d{3,}\s*入", s):
+        return False
+    if re.search(r"\d+\s*(個|袋|本|食|パック)\s*(セット|入)", s, re.I):
+        return False
+    return True
+
+
+def sale_form_label(title: str, qty: int) -> str:
+    s = str(title or "")
+    mix = bool(re.search(r"種類|種\s*[×x]|詰め合わせ|飲み比べ|詰合|アソート|よりどり|ミックス|詰合せ", s, re.I))
+    bulk = bool(re.search(r"\d+\s*袋\s*セット|まとめ|×\s*\d+\s*袋|\d+袋(?:セット|入)", s, re.I))
+    if mix and bulk:
+        return "④別品番とセット売り+まとめ売り"
+    if mix:
+        return "③別品番とセット売り"
+    if qty > 1:
+        return "②同商品まとめ売り"
+    return "①単品売り"
+
+
+def list_set_qty_and_sale_form(full: dict) -> tuple[str, str]:
+    title = str(full.get("商品名") or "").strip()
+    qty: int | None = None
+    alt = parse_set_count_from_title_alt(title)
+    if alt:
+        qty = alt[0]
+    if qty is None:
+        qty = extract_set_count_from_title(title)
+    if qty is None and title_looks_content_only(title):
+        qty = 1
+    if qty is None:
+        try:
+            noi = int(float(full.get("アイテム数") or 0))
+            if 1 <= noi <= 999:
+                qty = noi
+        except (TypeError, ValueError):
+            pass
+    if qty is None or qty < 1:
+        qty = 1
+    if qty > 999:
+        qty = 999
+    return str(qty), sale_form_label(title, qty)
+
+
+def build_row(headers: list[str], full: dict, formula_cols: set[int], cand_row: dict | None = None) -> list[str]:
     rec = {h: "" for h in headers}
     rec["調査日"] = date.today().isoformat()
-    rec["メーカー名"] = full.get("製造者") or full.get("ブランド") or ""
+    rec["メーカー名"] = list_maker_name(cand_row, full)
     rec["ASIN"] = full.get("ASIN") or ""
     rec["ランキング"] = rank_display(full)
     rec["過去1か月販売数（表示あれば）"] = full.get("月間売上") or ""
@@ -174,18 +367,25 @@ def build_row(headers: list[str], full: dict, formula_cols: set[int]) -> list[st
     rec["サイズ"] = pack_size(full)
     rec["重量"] = pack_weight(full)
     rec["出品者数"] = full.get("出品者数") or ""
-    rec["画像URL"] = full.get("画像") or ""
+    rec["画像URL"] = image_hyperlink(image_url_from_full(full))
     rec["Keepaグラフ"] = full.get("URL: Keepa") or ""
     rec["amazonページ"] = full.get("URL: Amazon") or ""
-    rec["最安値"] = full.get("新品: 現在価格") or ""
+    rec["最安値"] = min_cart_new_price(full)
     rec["FBA手数料"] = full.get("出品FBA手数料") or ""
     rec["amazon本体が出品者にいる"] = full.get("Amazon直販") or ""
-    rec["順位"] = full.get("売れ筋ランキング: 現在") or ""
+    rec["順位"] = full.get("売れ筋ランキング: 90 日平均") or ""
     rec["カテゴリー"] = category_name(full)
     rec["クイックショップサイズ表記"] = full.get("出品FBAティア") or ""
+    rec["税率"] = 0.08
+    qty, form = list_set_qty_and_sale_form(full)
+    rec["同商品のセット数量"] = qty
+    rec["販売形態"] = form
     out = []
     for i, h in enumerate(headers):
-        if i in formula_cols or h in SKIP_HEADERS:
+        if i in formula_cols and h not in DIRECT_WRITE_HEADERS:
+            out.append("")
+            continue
+        if h in SKIP_HEADERS:
             out.append("")
             continue
         out.append(str(rec.get(h) or ""))
@@ -207,28 +407,37 @@ def main() -> int:
     headers = [str(x).replace("\n", " ").strip() for x in (
         svc.spreadsheets().values().get(spreadsheetId=RESEARCH_SS, range=rng_h).execute().get("values") or [[]]
     )[0]]
-    # formulas on first data row
-    frng = "'%s'!A%d:%s%d" % (LIST_TITLE.replace("'", "''"), DATA_START, col_letter(len(headers)), DATA_START)
-    frow = (
-        svc.spreadsheets()
-        .values()
-        .get(spreadsheetId=RESEARCH_SS, range=frng, valueRenderOption="FORMULA")
-        .execute()
-        .get("values")
-        or [[]]
-    )[0]
-    formula_cols = set()
-    for i, v in enumerate(frow):
-        if str(v).startswith("="):
-            formula_cols.add(i)
+    # formulas: row2 template + row5 data
+    formula_cols: set[int] = set()
+    for frow_num in (FORMULA_TEMPLATE_ROW, DATA_START):
+        frng = "'%s'!A%d:%s%d" % (
+            LIST_TITLE.replace("'", "''"),
+            frow_num,
+            col_letter(len(headers)),
+            frow_num,
+        )
+        frow = (
+            svc.spreadsheets()
+            .values()
+            .get(spreadsheetId=RESEARCH_SS, range=frng, valueRenderOption="FORMULA")
+            .execute()
+            .get("values")
+            or [[]]
+        )[0]
+        for i, v in enumerate(frow):
+            if str(v).startswith("="):
+                formula_cols.add(i)
     mapped = [h for h in headers if h in MAP or h in ("調査日", "ランキング", "サイズ", "重量", "過去1か月販売数（表示あれば）", "梱包サイズ")]
     mapped = list(dict.fromkeys(mapped))
 
     ch, cand = as_dicts(read_all(svc, RESEARCH_SS, T_CAND))
     pass_asins = []
     seen = set()
+    cand_by_asin: dict[str, dict] = {}
     for r in cand:
         a = str(r.get("ASIN") or "").strip().upper()
+        if a:
+            cand_by_asin[a] = r
         st = str(r.get("門結果") or "")
         if a and st == "通過" and a not in seen:
             seen.add(a)
@@ -261,7 +470,7 @@ def main() -> int:
     print("map_headers", mapped)
     sample = have_full[0] if have_full else None
     if sample:
-        row = build_row(headers, fullmap[sample], formula_cols)
+        row = build_row(headers, fullmap[sample], formula_cols, cand_by_asin.get(sample))
         nonempty = [(headers[i], row[i][:40]) for i in range(len(headers)) if row[i]]
         print("sample", sample, nonempty[:12])
 
@@ -343,7 +552,7 @@ def main() -> int:
         }
     )
     svc.spreadsheets().batchUpdate(spreadsheetId=RESEARCH_SS, body={"requests": reqs}).execute()
-    values = [build_row(headers, fullmap[a], formula_cols) for a in have_full]
+    values = [build_row(headers, fullmap[a], formula_cols, cand_by_asin.get(a)) for a in have_full]
     data_cols = [i for i in range(len(headers)) if i not in formula_cols and headers[i] not in SKIP_HEADERS]
     data = []
     for ridx, row in enumerate(values):

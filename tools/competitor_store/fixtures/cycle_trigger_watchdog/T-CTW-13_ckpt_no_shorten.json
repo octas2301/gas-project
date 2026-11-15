@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-13",
+  "desc": "ckpt tag は wait_shortened 無効→22分のまま",
+  "kind": "ckpt_no_shorten",
+  "after_min": 22,
+  "tag": "full_trigger_ckpt0",
+  "ckpt_no_shorten": true,
+  "expect": {
+    "after_min": 22,
+    "wait_shortened": false
+  }
+}

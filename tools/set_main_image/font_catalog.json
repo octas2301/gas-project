@@ -19,6 +19,17 @@
       ]
     },
     {
+      "id": "ud_motoya_maru_berry",
+      "label": "UDモトヤマルベリ近似（見出し。本体未導入時は BIZ-UDGothic）",
+      "canva_like": ["UDモトヤマルベリ", "UDモトヤ マルベリ"],
+      "gemini_prompt_hint": "UD Motoya Maru Berry / rounded Japanese UD gothic",
+      "windows_paths": [
+        "C:/Windows/Fonts/BIZ-UDGothicB.ttc",
+        "C:/Windows/Fonts/YuGothB.ttc",
+        "C:/Windows/Fonts/meiryob.ttc"
+      ]
+    },
+    {
       "id": "genjyuu_gothic_like",
       "label": "源柔ゴシック 近似（見出し・ゴシック寄り）",
       "canva_like": ["源柔ゴシック", "源ノ角ゴシック"],

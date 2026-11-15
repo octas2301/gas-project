@@ -1,0 +1,32 @@
+{
+  "measuredAt": "2026-08-26",
+  "canvas": 1200,
+  "nSamples": 26,
+  "exclude": ["oya2 mix"],
+  "method": "flood-fill gold from top-right corner + least-squares fit on outer arc",
+  "adopted": {
+    "cx": 1102,
+    "cy": 103,
+    "diameter": 343,
+    "r": 171.5,
+    "overflowTopPx": 69,
+    "overflowRightPx": 75,
+    "visibleLeftX": 931,
+    "visibleBottomY": 274,
+    "visibleW": 269,
+    "visibleH": 275
+  },
+  "fitMedianRaw": {
+    "cx": 1102.4,
+    "cy": 102.7,
+    "r": 171.7,
+    "diameter": 343.4
+  },
+  "oldLockedInFrame": {
+    "cx": 1056,
+    "cy": 148,
+    "diameter": 289,
+    "note": "digit overlay は lockedUnitSet1000。この旧円は B-⑤ 空丸に使わない。"
+  },
+  "layoutRulesKey": "rakuten.goldCircle1200SampleOverflow"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "T-D2C-04",
+  "desc": "寸法なし（ティア空）は見積候補",
+  "input": {
+    "qs_tier": "",
+    "weight": ""
+  },
+  "expect": { "flag": "見積候補", "reason": "" }
+}

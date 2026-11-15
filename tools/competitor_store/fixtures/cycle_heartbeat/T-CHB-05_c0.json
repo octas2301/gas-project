@@ -1,0 +1,1 @@
+{"id":"T-CHB-05","desc":"店なし＋未タグ→C0","kind":"next","input":{"maker_sum":[],"unchecked_sellers":0,"untagged_gate_asins":12},"expect":{"action":"c0"}}

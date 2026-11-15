@@ -1,0 +1,44 @@
+{
+  "id": "T-CAH-06",
+  "desc": "hold特大店: total≥901でもcap分productからメーカー抽出（フルしない）",
+  "sellers_before": [
+    {
+      "sellerId": "HUGE",
+      "店名": "巨大店",
+      "調査CK": true,
+      "抽出メーカー": "",
+      "食品比率": "35.0"
+    }
+  ],
+  "maker_sum_before": [],
+  "side_effect": { "cand_rows": 100, "keepa_full_rows": 200 },
+  "batch": {
+    "shop_seller_ids": ["HUGE"],
+    "product_cap": 5,
+    "shop_cap": 3,
+    "mocks": {
+      "HUGE": {
+        "total": 97843,
+        "products": [
+          { "asin": "B040", "manufacturer": "永谷園", "brand": "永谷園" },
+          { "asin": "B041", "manufacturer": "五木食品", "brand": "五木食品" },
+          { "asin": "B042", "manufacturer": "尾西食品", "brand": "尾西食品" },
+          { "asin": "B043", "manufacturer": "石原水産", "brand": "石原水産" },
+          { "asin": "B044", "manufacturer": "永谷園", "brand": "永谷園" },
+          { "asin": "B045", "manufacturer": "未使用", "brand": "未使用" }
+        ]
+      }
+    }
+  },
+  "expect": {
+    "seller_hits": { "永谷園": 1, "五木食品": 1, "尾西食品": 1, "石原水産": 1 },
+    "sellers_after": {
+      "HUGE": {
+        "調査CK": false,
+        "status": "hold",
+        "抽出メーカー_contains": ["永谷園", "五木食品"]
+      }
+    },
+    "side_effect_unchanged": true
+  }
+}

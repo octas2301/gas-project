@@ -1363,6 +1363,75 @@ def compose_amazon_paste(
     return out, meta
 
 
+def run_paste_mix_file(
+    *,
+    kind_paths: List[Path],
+    each: int,
+    out_path: Path,
+    octas_path: Optional[Path] = None,
+    canvas_size: int = 1200,
+    fill_min: float = 0.48,
+    aspect: str = "square",
+    component_skus: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    ミックス列積み（aspect 共通）。kind_paths は種ごとの単体、each は各種枚数。
+    """
+    from transparent_bg import ensure_transparent_product, inspect_alpha
+    from octas_prep import prepare_octas_seal
+    from fill_metrics import ink_fill_ratio
+    from mix_column_layout import compose_mix_columns, load_mix_column_cfg
+
+    if len(kind_paths) < 2:
+        raise ValueError("mix paste requires >=2 kind paths")
+    if int(each) < 1:
+        raise ValueError("each >= 1 required")
+
+    cache = Path(kind_paths[0]).parent / "_transparent_cache"
+    kinds_im: List[Image.Image] = []
+    alpha_checks: List[Dict[str, Any]] = []
+    for kp in kind_paths:
+        a_path = ensure_transparent_product(kp, cache)
+        kinds_im.append(Image.open(a_path).convert("RGBA"))
+        alpha_checks.append(inspect_alpha(Path(kp), announce=False))
+
+    octas_im = None
+    octas_prep = None
+    if octas_path and Path(octas_path).is_file():
+        tilted, octas_prep = prepare_octas_seal(
+            Path(octas_path),
+            Path(octas_path).parent / "_tilt_cache",
+            seed=hash(f"mix:{kind_paths[0].name}:{each}") % (2**31),
+            direction="top_to_right",
+        )
+        octas_im = Image.open(tilted)
+
+    cfg = load_mix_column_cfg()
+    img, meta = compose_mix_columns(
+        kinds_im,
+        int(each),
+        canvas=int(canvas_size),
+        octas_rgba=octas_im,
+        cfg=cfg,
+    )
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(out_path, format="JPEG", quality=90, optimize=True)
+    meas = ink_fill_ratio(out_path)
+    meta["output"] = str(out_path)
+    meta["fill"] = meas
+    meta["fillPass"] = meas["inkFillRatio"] >= fill_min
+    meta["octasPrep"] = octas_prep
+    meta["kindPaths"] = [str(p) for p in kind_paths]
+    meta["componentSkus"] = list(component_skus or [])
+    meta["each"] = int(each)
+    meta["setCountVisible"] = int(each) * len(kind_paths)
+    meta["aspect"] = str(aspect or "square")
+    meta["alphaCheck"] = {"kinds": alpha_checks}
+    meta["menuBranch"] = "mix_column_all_aspects"
+    return meta
+
+
 def run_paste_file(
     *,
     hero_path: Path,

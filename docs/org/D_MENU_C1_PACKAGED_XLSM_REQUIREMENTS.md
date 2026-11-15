@@ -54,7 +54,7 @@ Drive **06 の純正 HPC `.xlsm`** を読み、GENERATED＋マスタ（**`Amazon
    - 06をコピー → HPC行構造に従い親子一式を書く（§4）  
    - メイン画像URL列に U4 `Amazon MAIN URL` を書く  
    - ヘッダー指紋チェック（§4）  
-   - DRY_RUN: セル対応表・件数・欠落必須列・**除外親SKU一覧**をレポート（ファイル非作成または `_DRYRUN` 名）  
+   - DRY_RUN: セル対応表・件数・欠落必須列・**除外親SKU一覧**をレポート（**xlsm 非作成が本線**。旧 `_DRYRUN` 名は廃止）  
 3. **出力**  
    - 03 へ `{runIdまたはsubBatchId}_PACKAGED_….xlsm` **新規**（親SKUを含む一意名推奨）  
 4. **ログ**  

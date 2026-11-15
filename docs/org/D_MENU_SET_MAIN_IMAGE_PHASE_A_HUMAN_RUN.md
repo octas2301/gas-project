@@ -4,7 +4,10 @@
 **ツール**: `tools/set_main_image/`（Pillow・生成AIなし・出力JPEG quality≈85）  
 **作業ルート**: `G:\マイドライブ\05.画像生成（セットMAIN）\`  
 **量産出口（楽天）**: `G:\マイドライブ\03.楽天・Yahoo!商品登録（CSV一括UL）\02.楽天アップロード画像保存場所`  
-**Cメニュー**: 「セットMAIN量産（楽天・Cursor指示）」→ 文字色（日本語）選択 → Cursor指示文をコピー
+**Cメニュー**: 「金丸数字を載せる（楽天・一括／再実行）」→ **文字色は02 `set_base_map` から自動**（無い親だけフォールバック選択）→ Cursor指示文をコピー（複数品番の対象サマリ付き）  
+**Amazon MAIN**: 本線は **B-⑥**（[B6要件](D_MENU_B6_AMAZON_MAIN_REQUIREMENTS.md)）。Cモーダルからは外した。
+
+**弱い統合（B-④レビュー→C）**: MAINレビューUIで「02へコピー」成功後、同画面に C楽天量産の指示文を出す（`c_set_main_rakuten_prompt.py`／`GET /api/c-set-main-prompt`）。**既定＝今の親だけ**（`--parent-sku`）。任意実行は「この親だけCを実行」（`POST /api/c-set-main-run`）。全親一括は UI の切替。強い統合（無人自動）は後段・未ロック。
 
 ---
 
@@ -29,13 +32,13 @@
 
 | # | 日本語 | hex |
 |---|--------|-----|
-| 1 | えんじ（既定） | `#800020` |
+| 1 | えんじ（フォールバック既定） | `#800020` |
 | 2 | 青 | `#001b44` |
 | 3 | 黒 | `#0d1321` |
 | 4 | 緑 | `#1b4332` |
 | 5 | 茶 | `#3d2b1f` |
 
-`--text-color 1` または `--text-color 茶`。見本は正方形パッチ（数字ゼロ不要）。
+**正（2026-09-04）**: 親ごと **共有 textColor**（`B5_TEXT_COLOR_BY_PARENT`／作業ルート `_b5_text_color_by_parent.json` → `02` マップ）。MAIN／サブどちらが先でも可。[ALIGN §3](B45_MAIN_SUB_ALIGN_REQUIREMENTS.md)。Cモーダルで毎回選ばない。`--text-color` はフォールバック。
 
 ---
 
@@ -85,10 +88,10 @@ python sheets_master.py
 
 ### Amazon素材・透過2点確認（必須）
 
-Cメニュー「セットMAIN量産（Amazon・透過確認＋Cursor指示）」でも同内容を出します。
+**B-⑥**「Amazon MAIN（透過確認＋Cursor指示）」でも同内容を出します。
 
 1. **① 透過PNGか** — `01.amazon白抜きベース` の素材にアルファがあるか  
-2. **② Canva背景リムーバー実施か** — ダウンロードの「背景透過」だけでは不足。写真の白を消して市松になったPNGか  
+2. **② Canva背景リムーバー実施か** — ダウンロードの「背景透過」だけでは不足。写真の白を消して市松になったPNGか。判定の白残りは**外周リングのみ**（白袋・白ラベルは無視）  
 
 ```text
 cd tools\set_main_image
@@ -144,6 +147,8 @@ python amazon_paste_batch.py --from-sheets --checked-only --min-n 1 --loose-unit
 
 マスタ **出品CKレ点** × **総個数** × **バリエーション単位**（空/素材なし→**個**）で、`02.楽天ベース` にバッジを合成。
 
+**B-⑤ P3b（要件ロック・未実装）**: 親に `{親SKU}_set_base_map.json` があるとき、Cは **子SKUごとに** `02` のテーマ別土台（`_単体__{themeId}.png`）を選んで数字載せ。マップ無しは従来どおり `{親SKU}_単体.png` 1枚。Yahoo は同じ解決。Amazon は `01` 側のまま（B-⑤マップ非参照）。正本: [D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md](D_MENU_B5_RAKUTEN_MAIN_BASE_REQUIREMENTS.md) §3.6.1。
+
 ```text
 cd tools\set_main_image
 python compose_set_main.py ^
@@ -189,6 +194,10 @@ python compose_set_main.py --smoke-rakuten --text-color 茶 --out-dir .\_smoke_o
 
 | 日付 | 内容 |
 |------|------|
+| 2026-09-04 | **文字色共有（要件）**: 親単位・MAIN／サブ順不同。実装後段。[ALIGN §3](B45_MAIN_SUB_ALIGN_REQUIREMENTS.md) |
+| 2026-09-04 | **弱い統合・親絞り**: 02後C指示＝今の親だけ＋任意実行。全親は切替。`byChildSku`集計修正。 |
+| 2026-09-03 | **弱い統合**: B-④レビューUI→02成功後にC楽天量産指示（コピーのみ）。`c_set_main_rakuten_prompt.py`。 |
+| 2026-09-03 | **C楽天量産**: 文字色は02マップ自動／複数品番サマリ。フォールバックのみ手動。要 clasp。 |
 | 2026-08-09 | **楽天SKU自動紐付け**: 出力名とマトリクス自動投入の接続を追記。[SKU HUMAN_RUN](D_MENU_RAKUTEN_IMAGE_SKU_AUTOBIND_HUMAN_RUN.md)。 |
 | 2026-08-09 | **横長タイプ合格固定**: C③／`--aspect landscape`／`landscape_layout.py`。楽天N=1をC指示に明記。要 clasp push。 |
 | 2026-08-09 | **楽天 N=1 も生成**（レ点時）。`compose_rakuten_badge` の N≥2 制限を撤廃。 |

@@ -1,0 +1,20 @@
+{
+  "id": "T-CCC-06",
+  "desc": "D成功だが次社なし→idle",
+  "parent": "石原水産",
+  "wash_complete": true,
+  "now": "2026-08-23",
+  "maker_sum": [
+    {"メーカー": "石原水産", "実態": "製造メーカー", "セラーヒット": 1},
+    {"メーカー": "味の素", "実態": "製造メーカー", "セラーヒット": 2, "最終調査日": "2026-08-23"},
+    {"メーカー": "Generic", "実態": "非仕入先", "セラーヒット": 9}
+  ],
+  "d1": {"state": "DONE", "pass": 1},
+  "d2": {"state": "DONE", "leftover": 0},
+  "expect": {
+    "chain_state": "idle_no_next",
+    "arm_next": false,
+    "d_ok": true,
+    "next_maker": null
+  }
+}

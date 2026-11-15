@@ -1,0 +1,12 @@
+{
+  "id": "T-CTW-14",
+  "desc": "PR_WASH_CKPT_NO_SHORTEN=false なら ckpt も2分化（旧挙動）",
+  "kind": "ckpt_no_shorten",
+  "after_min": 22,
+  "tag": "full_trigger_ckpt0",
+  "ckpt_no_shorten": false,
+  "expect": {
+    "after_min": 2,
+    "wait_shortened": true
+  }
+}

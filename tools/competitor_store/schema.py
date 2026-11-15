@@ -5,16 +5,20 @@ SHEET_FIELD_MAP = "項目マップ"
 SHEET_HITS = "モールヒット"
 SHEET_KEEPA = "Keepaスナップショット"
 SHEET_KEEPA_FULL = "Keepaフル"
+SHEET_KEEPA_FULL_INDEX = "Keepaフル索引"
 SHEET_META = "運用メタ"
 SHEET_MAKER = "メーカーマスタ"
+SHEET_MAKER_SUM = "メーカーサマリ"
 SHEET_SELLER = "セラー"
 SHEETS = (
     SHEET_FIELD_MAP,
     SHEET_HITS,
     SHEET_KEEPA,
     SHEET_KEEPA_FULL,
+    SHEET_KEEPA_FULL_INDEX,
     SHEET_META,
     SHEET_MAKER,
+    SHEET_MAKER_SUM,
     SHEET_SELLER,
 )
 
@@ -26,14 +30,51 @@ MAKER_HEADERS = [
     "取得日時",
     "再採取しない",
     "メモ",
+    # 実態リゾルバ（AI/Web キャッシュ）。正本: docs/org/B_MAKER_JITTA_CLASSIFICATION.md §1.1
+    "実態候補",
+    "実態信頼度",
+    "実態採取元",
+    "実態根拠URL",
+    "実態取得日時",
+    "実態再採取しない",
+    "業種",
+    "Amazonルートカテゴリ",
+    "AmazonBrowse棚",
+    "入口語候補",
+    "判定メモ",
+]
+
+MAKER_SUM_HEADERS = [
+    "調査CK",
+    "メーカー",
+    "最終調査日",
+    "入口推奨",
+    "入口語ヒット",
+    "実態",
+    "メモ",
+    "更新",
+    "実態ck",
+    # メーカーマスタからのミラー。正本: B_MAKER_JITTA_CLASSIFICATION.md §1.2
+    "実態採取元",
+    "実態信頼度",
+    "実態根拠URL",
+    "業種",
+    "Amazonルートカテゴリ",
+    "AmazonBrowse棚",
 ]
 
 SELLER_HEADERS = [
+    "調査CK",
     "sellerId",
     "店名",
     "対象カテゴリ",
     "巡回日",
+    "名取り日",
     "asinList件数",
+    "在庫SKU見積",
+    "規模帯",
+    "SKU見積内訳",
+    "規模帯内訳",
     "抽出メーカー",
     "ピック",
     "採取元",

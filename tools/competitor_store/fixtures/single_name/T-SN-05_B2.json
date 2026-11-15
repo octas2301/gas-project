@@ -1,0 +1,28 @@
+{
+  "id": "T-SN-05",
+  "desc": "B2 JAN空・検索複数",
+  "input": {
+    "draft_name": "たまごスープ",
+    "sale_form": "①",
+    "set_qty": 1,
+    "existence": "ok",
+    "ai_confidence": "high",
+    "title_match": "high",
+    "row_asin": "B000000002",
+    "hit_asin": "B000000002",
+    "keepa_jans": [],
+    "search_jans": [
+      "4903333333333",
+      "4904444444444"
+    ]
+  },
+  "expect": {
+    "pattern": "B2",
+    "single_trust": "mid",
+    "jan_trust": "複数",
+    "for_estimate": true,
+    "need_human": true,
+    "auto_pick_jan": false,
+    "write_single_name": true
+  }
+}

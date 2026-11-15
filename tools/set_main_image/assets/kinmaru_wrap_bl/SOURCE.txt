@@ -1,0 +1,12 @@
+source_new: Downloads/数字1200×1200px (2).png
+file: kinmaru_wrap_bl_ring_1200.png
+purpose: MAIN left-bottom WRAP gold — true hollow double ring (center + inter-ring gap transparent)
+geometry_at_1200 (approx):
+  - hole (transparent): r < ~532
+  - inner gold ring: r ~532–543
+  - transparent gap: r ~544–557
+  - outer gold ring: r ~558–598
+stamp:
+  - 中の写真は内リングの内側に接する（内リングの金が細い枠として少し見える）
+  - 内リングと外リングのあいだの透過は MAIN 背景が見える
+legacy_solid: _legacy_solid/ (旧・中塗りつぶし。使わない)
