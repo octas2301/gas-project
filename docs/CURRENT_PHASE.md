@@ -7,13 +7,12 @@
 
 ## 0domain4. 領域4 モール在庫同期・適正在庫・発注（2026-11-15）
 
-**状態**: F0済。**F1コード投入済**（読取スパイク）。人間突合（G1b）待ち。  
-**正本**: [DOMAIN4](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)／[P0要件](org/DOMAIN4_P0_REQUIREMENTS.md)／[MAJORITY](org/DOMAIN4_P0_THREE_REVIEW_MAJORITY.md)／[F1 HUMAN_RUN](org/DOMAIN4_P0_F1_HUMAN_RUN.md)  
-**ロック要約**: 案A／B1／単品=代表JAN／ミックス=構成品JAN（P6）／薄い台帳。  
-**コード**: `tools/domain4_inventory/`（`read_spike.py`／`stock_recalc.py`）。registry に在庫スプシ読取登録。  
-**開発ゲート**: F0済 → **F1突合中** → F2単品算出（別承認）→ F3検収。  
+**状態**: F0済。F1コード済（G1bはWeb権限で自動突合不可・人手待ち）。**F2コード投入済**（適正在庫TSV）。  
+**正本**: [DOMAIN4](org/DOMAIN4_MALL_INVENTORY_ORDER_REQUIREMENTS.md)／[P0](org/DOMAIN4_P0_REQUIREMENTS.md)／[F1](org/DOMAIN4_P0_F1_HUMAN_RUN.md)／[F2](org/DOMAIN4_P0_F2_HUMAN_RUN.md)  
+**コード**: `tools/domain4_inventory/`（`calc_proper_stock.py`／`formulas.py`／`listing_read.py` 等）。出口は `proper_stock_STUB_*.tsv` のみ。  
+**開発ゲート**: F1人手G1b → **F2ゲートG2a–f確認** → F3検収。  
 **聖域**: inventory-app UI・出品PUT・楽天CSV。書込なし。  
-**本線フォーカス**: F1 HUMAN_RUN で G1a–c。出品／①は別スレ。
+**本線フォーカス**: F2 HUMAN_RUN。出品／①は別スレ。
 
 ---
 

@@ -39,12 +39,27 @@ python read_spike.py --sample 5
 
 ---
 
-## 3. 画面突合（G1b）
+## 3. 画面突合（G1b）— **Web（推奨）**
 
-1. inventory-app（Webまたはスプシの差異・在庫一覧）を開く  
-2. TSVの各 `stock_key` について、**実行直後**（間に入出荷を入れない）に画面の現在庫を見る  
-3. TSVの `screen_qty_blank_for_human` に画面値を記入（手で可）  
-4. `diff = screen − stock_qty` がすべて **0** であること  
+正とする画面は **在庫管理アプリのウェブ**（スプシ生表ではない）。
+
+Webの「現在庫」は GAS `apiGetCurrentStockList` → `getCurrentStockBatch` と同じ式なので、F1の Python 再計算と突合する相手として正しい。
+
+### 手順
+
+1. `python read_spike.py --sample 5`（または `--jans …`）を実行し、`out/f1_stock_compare_*.tsv` を開く  
+2. **すぐあと**（入荷・出荷・棚卸を挟まない）に、デプロイ済みの在庫アプリURLをブラウザで開く  
+3. 下ナビ／メニューから **「在庫」**（`?view=stock`・見出し「現在庫」）を開く  
+4. 表の **JAN** と **合計** 列を見る（場所別列は見なくてよい。突合は合計）  
+5. TSVの各 `stock_key` について、Webの **合計** を `screen_qty_blank_for_human` に手書き  
+6. `diff = screen − stock_qty` がすべて **0** なら G1b 合格  
+
+### 注意
+
+- URLは GAS「デプロイ → ウェブアプリ」のURL（`inventory-app/README.md` の手順で発行したもの）  
+- ログインGoogleアカウントが「アクセス許可」シートに入っていること  
+- 画面が古いときは **再読み込み**してから見る（アプリ側キャッシュあり）  
+- サンプルが5未満しか商品マスタに無い場合は、あるだけ突合し件数を記録（不足はデータ側の制約としてメモ）  
 
 不一致時: 日付境界・セッション・確定後修正を疑い、コード修正は別承認。解消できなければ GAS読取IFを依存タスク化。
 

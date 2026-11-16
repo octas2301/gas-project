@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import sys
 from pathlib import Path
@@ -90,8 +91,50 @@ def load_paste_ex(svc) -> dict[str, float]:
     return out
 
 
-def load_key_jan(svc) -> dict[str, str]:
-    """商品キー → 代表JAN（品番リスト）。"""
+def load_paste_name_jan(svc) -> dict:
+    """貼付の商品名 → JAN（検品キーが貼付名のとき用）。"""
+    rows = (
+        svc.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=SANK,
+            range="'貼付sheet'!A3:F",
+            valueRenderOption="UNFORMATTED_VALUE",
+        )
+        .execute()
+        .get("values")
+        or []
+    )
+    out = {}
+    for r in rows[1:]:
+        while len(r) < 6:
+            r.append("")
+        j = jan_norm(r[2])
+        p = num(r[5])
+        if len(j) < 8 or not p:
+            continue
+        maker = str(r[0] or "").strip()
+        name = str(r[3] or "").strip()
+        if not name:
+            continue
+        nb = re.sub(r"\s+", "", name)
+        out[nb] = j
+        out[(maker, nb)] = j
+        # 税込仕入付きキー（FLOOR概算と一致しやすいよう両系統）
+        for tax in (0.08, 0.1):
+            incl = int(math.floor(p * (1.0 + tax) + 1e-9))
+            key = f"{name}／仕入{incl}"
+            out[key] = j
+            out[re.sub(r"\s+", "", key)] = j
+    return out
+
+
+def load_key_jan(svc) -> dict:
+    """商品キー／(メーカー,単品名) → 代表JAN。
+
+    見積候補に加え見送りも見る（門落ち込み検品用）。
+    貼付商品名も足す（1商品1行でキーが貼付名のとき）。
+    """
     hdr = [
         str(c).strip()
         for c in (
@@ -118,23 +161,27 @@ def load_key_jan(svc) -> dict[str, str]:
         .get("values")
         or []
     )
-    out = {}
+    out = load_paste_name_jan(svc)
     for r in rows:
         while len(r) < len(hdr):
             r.append("")
-        if str(r[idx["見積候補"]]).strip() != "見積候補":
+        flag = str(r[idx["見積候補"]]).strip()
+        if flag not in ("見積候補", "見送り"):
             continue
         name = str(r[idx["単品商品名"]]).strip()
         cost = num(r[idx["1点仕入れ額（税込み）"]])
         j = jan_norm(r[idx["JANコード"]])
-        if not name or not cost or not j:
+        if not j:
             continue
-        key = f"{name}／仕入{int(round(cost)) if abs(cost - round(cost)) < 1e-6 else cost}"
-        # 正規化キーも
-        out[key] = j
-        out[re.sub(r"\s+", "", key)] = j
         maker = str(r[idx["メーカー名"]]).strip()
-        out[(maker, re.sub(r"\s+", "", name))] = j
+        if name and "要確認" not in name:
+            nb = re.sub(r"\s+", "", name)
+            out[(maker, nb)] = j
+            out[nb] = j
+            if cost and cost > 0:
+                key = f"{name}／仕入{int(round(cost)) if abs(cost - round(cost)) < 1e-6 else cost}"
+                out[key] = j
+                out[re.sub(r"\s+", "", key)] = j
     return out
 
 
@@ -220,7 +267,7 @@ def main():
         .values()
         .get(
             spreadsheetId=RES,
-            range=f"'{SHEET}'!A1:K200",
+            range=f"'{SHEET}'!A1:L500",
             valueRenderOption="UNFORMATTED_VALUE",
         )
         .execute()
@@ -237,7 +284,7 @@ def main():
             .values()
             .get(
                 spreadsheetId=RES,
-                range=f"'{SHEET}'!A1:K200",
+                range=f"'{SHEET}'!A1:L500",
                 valueRenderOption="UNFORMATTED_VALUE",
             )
             .execute()
@@ -260,21 +307,26 @@ def main():
             hope = num(row[6])
 
         base = key.split("／")[0].strip()
+        nb = re.sub(r"\s+", "", base)
         j = key_jan.get(key) or key_jan.get(re.sub(r"\s+", "", key))
         if not j:
-            j = key_jan.get((maker, re.sub(r"\s+", "", base)))
-        # fuzzy
+            j = key_jan.get((maker, nb)) or key_jan.get(nb)
+        # fuzzy（メーカー一致＋名前の包含）
         if not j:
-            nb = re.sub(r"\s+", "", base)
             for k, jan in key_jan.items():
                 if isinstance(k, tuple) and k[0] == maker and (nb in k[1] or k[1] in nb):
                     j = jan
                     break
+        if not j and nb:
+            for k, jan in key_jan.items():
+                if isinstance(k, str) and not k.startswith("jan") and "／" not in k:
+                    if len(k) >= 4 and (nb in k or k in nb):
+                        j = jan
+                        break
 
         quote = paste.get(j) if j else None
-        # 石原など貼付に無い → 商品キーの仕入税込から税抜概算はしない（正は貼付税抜）
-        # 仕入324税込 → 見積税抜は別。キーから reverse: cost/1.08
-        if quote is None:
+        # 貼付JANが取れないときだけ、商品キーの仕入税込÷1.08で概算（正は貼付税抜）
+        if quote is None and "仕入なし" not in key:
             m = re.search(r"仕入\s*([0-9.]+)", key)
             if m:
                 cost_in = float(m.group(1))

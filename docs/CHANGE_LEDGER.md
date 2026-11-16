@@ -2,6 +2,9 @@
 
 コード全文ではなく **対象・目的・戻し方** のみ記録する（[AGENT_HANDOVER.md](AGENT_HANDOVER.md) §8・§9.1）。
 
+| 2026-11-17 | `judge_seed_pick.py`／`judge_seed_pick_launch.py`／外側フロー／`PLATING` §3.3§6 | **判定種ラジオ検収UI実装**: Vision候補クロップ→人間が1つ選択→judgeSeed。切戻し Git。clasp不要 | Git revert |
+| 2026-11-17 | `PLATING` §3.3 | **判定単位は機械候補→人間ラジオで1つ**（検収）。レ点複数不可。切戻し Git。clasp不要 | Git revert |
+| 2026-11-16 | `PLATING` §3.2／§3.3 | **敢えて順位の定義**＋**判定単位 `judgeSeed` 固定**（複数片種は切ってから合否）。切戻し Git。clasp不要 | Git revert |
 | 2026-11-15 | `vision_judge`／`prompt_fix_from_vision`／PLATING §3.1 | **C8言語化強化**: 具体差・keep・nextFix必須。抽象「別物禁止」だけの回し禁止。切戻し Git。clasp不要 | Git revert |
 | 2026-11-15 | 外側フロー／PLATING §3.1 | **②一片FAIL→③深堀で補完**（②で止めない）。1枚直列は維持。切戻し Git。clasp不要 | Git revert |
 | 2026-11-15 | C8／外側フロー／PLATING §3.1 | **1枚直列**: 1枚→Vision→不合格理由+合格側言語化→1枚再生成。3並行禁止。`passedFiles`明示。切戻し Git。clasp不要 | Git revert |
@@ -12,6 +15,7 @@
 | 2026-11-15 | `b5_generic_plating`／`b5_piece_truth_rules` | **SURFACE試験産物除外**: reinhard等を同送しない。切戻し Git。clasp不要 | Git revert |
 | 2026-11-15 | `estimate_paste_match`／`estimate_cost_from_paste`／検品 build・apply_judge／見積検品要件 | **貼付→仕入を見送り＋名前部分一致可**。接合一致度を判断列・アラート色。clasp不要 | Git revert／`--no-name-partial` |
 | 2026-11-15 | `estimate_inspection_build_rows.py` | **1商品1行**: 種を貼付名／単品名に集約。ASINタイトル分割をやめる。clasp不要 | Git revert |
+| 2026-11-16 | `estimate_inspection_cols_quote_diff.py` | **H問屋見積**: 見送り＋貼付名キーでもJAN接合。再生成後の空欄を埋める。clasp不要 | Git revert |
 | 2026-11-15 | `PurchaseResearch.js` D1 | **D1段階ログ**: cand後の exist／Keepa flat／GET／enrich／classify／書込と flat_read 進捗。最終 phase で切断点特定。要① clasp | Git revert（prD1PhaseLog_ 等） |
 | 2026-11-15 | `PurchaseResearch.js` D1 cand | **門落ち込み固まり直し**: 調査カテゴリ外の落ちは倉庫読込前に除外。D1 RUNNINGログ追加。要① clasp | Git revert |
 | 2026-11-15 | `PurchaseResearch.js` D1／再門／見積検品 build_rows／FLOW・検品要件 | **オリエンタル第1**: メーカー指定再門→D1門落ち込み（調査カテゴリONのみ・落ちはGETしない）→D2。検品は `--makers --include-skip --allow-no-cost`。要① clasp | Prop OFF／メニュー使わない／Git |

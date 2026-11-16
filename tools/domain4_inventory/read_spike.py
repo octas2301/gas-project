@@ -19,38 +19,24 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "out"
 sys.path.insert(0, str(ROOT))
 
+from inventory_load import build_inventory_cache  # noqa: E402
 from sheets_io import (  # noqa: E402
     inventory_spreadsheet_id,
-    list_sheet_titles,
     listing_spreadsheet_id,
     read_sheet_values,
     sheets_service_readonly,
 )
 from stock_recalc import (  # noqa: E402
-    REQUIRED_INV_SHEETS,
-    InventoryCache,
     get_current_stock,
     get_last_count_date,
-    load_products_from_sheet,
     norm_key,
 )
 
 JST = timezone(timedelta(hours=9))
 
 
-def build_cache(svc, inv_id: str) -> InventoryCache:
-    titles = set(list_sheet_titles(svc, inv_id))
-    missing = [t for t in REQUIRED_INV_SHEETS if t not in titles]
-    cache = InventoryCache(missing_sheets=missing)
-    if missing:
-        return cache
-    cache.session_data = read_sheet_values(svc, inv_id, "棚卸セッション")
-    cache.count_data = read_sheet_values(svc, inv_id, "棚卸スキャンリスト")
-    cache.receiving_data = read_sheet_values(svc, inv_id, "入荷リスト")
-    cache.shipping_data = read_sheet_values(svc, inv_id, "出荷リスト")
-    products = read_sheet_values(svc, inv_id, "商品マスタ")
-    cache.product_jans, cache.product_names = load_products_from_sheet(products)
-    return cache
+def build_cache(svc, inv_id: str):
+    return build_inventory_cache(svc, inv_id)
 
 
 def peek_listing(svc, listing_id: str) -> dict:

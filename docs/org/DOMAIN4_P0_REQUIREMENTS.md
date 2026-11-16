@@ -161,3 +161,4 @@ HUMAN_RUN: 実装承認後に [DOMAIN4_P0_HUMAN_RUN.md](DOMAIN4_P0_HUMAN_RUN.md)
 | 2026-11-15 | 初版提出 |
 | 2026-11-15 | 3者レビュー反映・社長ロック（案A／TSV／B1／単品代表JAN／ミックス構成JAN／フェーズゲート） |
 | 2026-11-15 | F1実装承認後: `tools/domain4_inventory` 読取スパイク投入。HUMAN_RUN [DOMAIN4_P0_F1_HUMAN_RUN.md](DOMAIN4_P0_F1_HUMAN_RUN.md)。 |
+| 2026-11-16 | F2: `calc_proper_stock.py` 適正在庫TSV（単品・stub・ミックスP6 skip）。HUMAN_RUN [DOMAIN4_P0_F2_HUMAN_RUN.md](DOMAIN4_P0_F2_HUMAN_RUN.md)。 |
